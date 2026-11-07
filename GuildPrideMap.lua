@@ -1,6 +1,6 @@
 -- GuildPride: Gildenmitglieder mit GuildPride auf der Weltkarte
 -- Blizzard zeigt auf der Karte nur Gruppenmitglieder. Hier schickt jeder mit
--- GuildPride seine Position über den abgesicherten Gildenkanal ("POS"), und
+-- GuildPride seine Position über die Gilde ("POS"), und
 -- auf der Weltkarte erscheinen Punkte für alle anderen Gildenmitglieder.
 -- Gesendet wird nur, solange jemand in der Gilde die Karte offen hat: wer sie
 -- öffnet, fragt mit "POSQ" nach, die anderen melden sich dann eine Weile.
@@ -25,16 +25,23 @@ local function Showing() return GuildPrideDB and GuildPrideDB.mapShow ~= false e
 ---------------------------------------------------------------------
 -- Eigene Position
 ---------------------------------------------------------------------
--- Karte und Position (je 0 … 1000), nil in Instanzen oder ohne Position
+-- Zähler für /gp karte
+local stats = { sent = 0, sentNone = 0, asked = 0, askIn = 0, posIn = 0, lastIn = nil }
+
+-- Karte und Position (je 0 … 1000); ohne Position nil und der Grund
 local function MyPosition()
-    if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition) then return end
-    if IsInInstance and IsInInstance() then return end
+    if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition) then return nil, "keine Karten-API" end
+    if IsInInstance and IsInInstance() then return nil, "in einer Instanz" end
     local map = C_Map.GetBestMapForUnit("player")
-    if not map or Secret(map) then return end
+    if not map then return nil, "keine Karte für dich" end
+    if Secret(map) then return nil, "Karte gesperrt (geschützter Wert)" end
     local pos = C_Map.GetPlayerMapPosition(map, "player")
-    if not pos or Secret(pos) then return end
+    if not pos then return nil, "keine Position auf Karte " .. map end
+    if Secret(pos) then return nil, "Position gesperrt (geschützter Wert)" end
     local x, y = pos:GetXY()
-    if not x or Secret(x) or Secret(y) or (x == 0 and y == 0) then return end
+    if not x then return nil, "Position leer" end
+    if Secret(x) or Secret(y) then return nil, "Koordinaten gesperrt (geschützter Wert)" end
+    if x == 0 and y == 0 then return nil, "Position 0,0" end
     return map, math.floor(x * 1000 + 0.5), math.floor(y * 1000 + 0.5)
 end
 
@@ -50,11 +57,18 @@ local function SendPos(force)
     -- ohne Position nur einmal Bescheid sagen, nicht ständig
     if not map and lastMsg == "0" and not force then return end
     lastMsg, lastSentAt = msg, now
-    if map then ns.QueueLatest("POS", "@CHANNEL", map, x, y) else ns.QueueLatest("POS", "@CHANNEL", 0) end
+    if map then stats.sent = stats.sent + 1 else stats.sentNone = stats.sentNone + 1 end
+    -- Wie Version und Gruppensuche über die Gilde (plus Kanal): nur über den
+    -- Kanal kam in WoW Forever nichts an. Der Zeitstempel macht jede Meldung
+    -- einmalig – gleiche Nachrichten verwirft der Empfang sonst 30 s lang.
+    local stamp = GetServerTime()
+    if map then ns.QueueLatest("POS", nil, map, x, y, stamp) else ns.QueueLatest("POS", nil, 0, 0, 0, stamp) end
 end
 
 ns.On("POSQ", function(_, sender)
-    if sender == ns.Me() or not Sharing() then return end
+    if sender == ns.Me() then return end
+    stats.askIn, stats.lastAskFrom = stats.askIn + 1, ns.Clean(sender, 40)
+    if not Sharing() then return end
     wantedUntil = GetTime() + WANT_FOR
     -- verteilt antworten, damit nicht alle gleichzeitig senden
     C_Timer.After(0.3 + math.random() * 2, function() SendPos(true) end)
@@ -62,6 +76,8 @@ end)
 
 ns.On("POS", function(payload, sender)
     if sender == ns.Me() then return end
+    -- für die Anzeige im Chat entschärft (keine Farb-, Link- oder Bildcodes)
+    stats.posIn, stats.lastIn = stats.posIn + 1, ns.Clean(sender, 40) .. ": " .. ns.Clean(payload, 60)
     local map, x, y = strsplit(SEP, payload or "")
     map = ns.Num(map, 0, 999999)
     x, y = ns.Num(x, 0, 1000), ns.Num(y, 0, 1000)
@@ -77,7 +93,8 @@ local function Ask()
     if not IsInGuild() or not Showing() or not ns.Queue then return end
     if GetTime() - lastAsk < ASK_EVERY then return end
     lastAsk = GetTime()
-    ns.QueueLatest("POSQ", "@CHANNEL", "1")
+    stats.asked = stats.asked + 1
+    ns.QueueLatest("POSQ", nil, GetServerTime())
 end
 
 ---------------------------------------------------------------------
@@ -226,6 +243,51 @@ function ns.MapShareChanged()
     if not Sharing() then SendPos(true) elseif GetTime() < wantedUntil then SendPos(true) end
 end
 function ns.MapShowChanged() Refresh() end
+
+---------------------------------------------------------------------
+-- /gp karte: Diagnose, warum jemand (nicht) auf der Karte erscheint
+---------------------------------------------------------------------
+local function MapName(id)
+    local info = id and C_Map.GetMapInfo and C_Map.GetMapInfo(id)
+    return (info and info.name or "?") .. " (" .. tostring(id) .. ")"
+end
+
+local function Diagnose()
+    local P = ns.Print
+    local map, x, y = MyPosition()
+    P(("Karte: Anzeigen %s, Teilen %s, Gildenkanal %s"):format(Showing() and "an" or "aus",
+        Sharing() and "an" or "aus", ns.DataChannelId and ns.DataChannelId() and "ja" or "nein (über Gilde)"))
+    if map then
+        P(("Deine Position: %s  %d / %d"):format(MapName(map), x, y))
+    else
+        P("Deine Position: keine – " .. tostring(x))   -- x ist hier der Grund
+    end
+    P(("Gesendet: %d Positionen, %d ohne Position, %d Anfragen. Senden noch %d s"):format(
+        stats.sent, stats.sentNone, stats.asked, math.max(0, math.floor(wantedUntil - GetTime()))))
+    P(("Empfangen: %d Anfragen (zuletzt %s), %d Positionen (zuletzt %s)"):format(
+        stats.askIn, tostring(stats.lastAskFrom), stats.posIn, tostring(stats.lastIn)))
+    local shown = WorldMapFrame and WorldMapFrame:GetMapID()
+    P("Weltkarte zeigt: " .. (shown and MapName(shown) or "nichts (Karte nie geöffnet)")
+        .. (overlay and "" or "  |cffff4040Kartenebene fehlt|r"))
+    local group, roster, now, any = GroupNames(), RosterInfo(), GetTime(), false
+    for who, p in pairs(positions) do
+        any = true
+        local why
+        if now - p.t > STALE then why = "zu alt"
+        elseif not roster[who] then why = "nicht in der Gildenliste online gefunden"
+        elseif InGroup(group, who) then why = "in deiner Gruppe"
+        elseif shown and not Translate(p.map, p.x, p.y, shown) then why = "liegt nicht auf der gezeigten Karte"
+        else why = "|cff40ff40wird gezeigt|r" end
+        P(("  %s: %s %.3f / %.3f, vor %d s – %s"):format(who, MapName(p.map), p.x, p.y, math.floor(now - p.t), why))
+    end
+    if not any then P("  Keine Positionen von anderen bekannt.") end
+end
+
+local origSlash = SlashCmdList.GUILDPRIDE
+SlashCmdList.GUILDPRIDE = function(arg)
+    local cmd = strtrim(arg or ""):lower()
+    if cmd == "karte" or cmd == "map" then Diagnose() else origSlash(arg) end
+end
 
 local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")

@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.1.1
+
+**English**
+- Guild on the world map: positions and requests now go over the guild like the version check and the Group Finder. Before, they only went over the secured channel and often never arrived, so nobody showed up on the map
+- Repeated position updates are no longer thrown away as duplicates, so standing still no longer makes you vanish from the map
+- New `/gp karte` (or `/gp map`) shows in chat whether your position is read, what was sent and received, and why a guild member is or isn't shown
+
+**Deutsch**
+- Gilde auf der Weltkarte: Positionen und Anfragen gehen jetzt wie die Versionsabfrage und die Gruppensuche über die Gilde. Vorher liefen sie nur über den abgesicherten Kanal und kamen oft nicht an, deshalb erschien niemand auf der Karte
+- Wiederholte Positionsmeldungen werden nicht mehr als doppelt verworfen. Wer stillsteht, verschwindet nicht mehr von der Karte
+- Neu: `/gp karte` zeigt im Chat, ob deine Position gelesen wird, was gesendet und empfangen wurde und warum ein Gildenmitglied angezeigt wird oder nicht
+
 ## 2.1.0
 
 **English**
