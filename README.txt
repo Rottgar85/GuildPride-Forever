@@ -13,7 +13,7 @@ Wichtige Befehle (alle: /gp hilfe)
   /gp                  Fenster          /gp blizzard      Blizzard-Gildenfenster an/aus
   /gp sound | popup                     Sounds, Popups an/aus
   /gp version          Versionen in der Gilde
-  /gp einladen Name-Realm               Spieler in die Gilde einladen
+  /gp einladen Vorname Nachname         /ginvite-Befehl im Chat anzeigen
   /gp badge 30         Popup testen
 
 ENGLISH
@@ -28,7 +28,7 @@ Important commands (all of them: /gp help)
   /gp                  window           /gp blizzard      Blizzard guild window on/off
   /gp sound | popup                     sounds, pop-ups on/off
   /gp version          versions in the guild
-  /gp invite Name-Realm                 invite a player to the guild
+  /gp invite First Last                 show the /ginvite command in chat
   /gp badge 30         preview pop-up
 
 GuildPride tauscht Daten nur mit GuildPride-Spielern der eigenen Gilde per Addon-Nachricht.

@@ -214,6 +214,12 @@ function Crown(full, guid)
     return file and CrownMarkup(file) or ""
 end
 
+-- Krone zum Rangindex, für die Mitgliederlisten (dort ist der Rang schon bekannt)
+function ns.RankCrown(rankIndex)
+    local file = not Secret(rankIndex) and CROWN_FILE[rankIndex] or nil
+    return file and CrownMarkup(file) or ""
+end
+
 -- GUID -> Name aus der Gildenliste (für Gilden- und Offizierschat).
 -- Neu einlesen, wenn die Liste leer ist oder eine GUID fehlt (höchstens alle 5 s),
 -- sonst bleiben Namen direkt nach dem Login lange "Unbekannt".

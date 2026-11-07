@@ -507,81 +507,17 @@ local function CanInviteToClub(clubId)
     return priv and priv.canSendInvitation
 end
 
--- Forever erlaubt die Gildeneinladung nur aus unberührtem Code (AllowedWhenUntainted):
--- Der direkte Aufruf, /ginvite als macrotext und eine vorausgefüllte Chat-Eingabe sind
--- gesperrt (die Eingabe bleibt dann bis zum /reload gesperrt, also nicht
--- ChatFrame_OpenChat benutzen!). Deshalb ein echtes, gespeichertes Makro: Der Text wird
--- vor dem Klick hineingeschrieben, der sichere Knopf führt es dann per Name aus.
-local INVITE_MACRO = "GuildPride Einladen"
-local ShowInviteAsk, PrepareInviteMacro
+-- Forever sperrt die Gildeneinladung für alles, was ein Addon auslöst: direkter Aufruf,
+-- /ginvite aus einem Makroskript, Blizzards Einladefenster per Knopf und vom Addon
+-- eingetragener Chat-Text (taint.log: ChatFrame1EditBox:GetText() -> Invite()).
+-- Nur selbst getippt geht es, darum zeigt das Addon hier nur den Befehl an.
+local ShowInviteHint
 if ns.IS_FOREVER then
-    -- Legt das Makro an oder schreibt es um; false, wenn kein Makroplatz frei ist
-    local function WriteInviteMacro(body)
-        if GetMacroIndexByName(INVITE_MACRO) > 0 then
-            EditMacro(INVITE_MACRO, INVITE_MACRO, nil, body)
-            return true
-        end
-        local account, character = GetNumMacros()
-        local perCharacter
-        if account >= (MAX_ACCOUNT_MACROS or 120) then
-            if character >= (MAX_CHARACTER_MACROS or 18) then return false end
-            perCharacter = true
-        end
-        return CreateMacro(INVITE_MACRO, "INV_MISC_QUESTIONMARK", body, perCharacter) ~= nil
-    end
-
-    local f = CreateFrame("Frame", "GuildPrideInviteAsk", UIParent, "BackdropTemplate")
-    f:SetSize(340, 96)
-    f:SetPoint("CENTER", 0, 120)
-    f:SetFrameStrata("DIALOG")
-    f:EnableMouse(true)
-    f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
-    f:SetBackdropColor(0.07, 0.05, 0.04, 0.97)
-    ns.Paint(f, "accent")
-    f:Hide()
-    tinsert(UISpecialFrames, "GuildPrideInviteAsk")   -- Esc schließt
-
-    local text = f:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
-    text:SetPoint("TOPLEFT", 14, -14); text:SetPoint("TOPRIGHT", -14, -14)
-    text:SetJustifyH("LEFT")
-
-    local yes = ns.SecureMacroButton(f, 170, L["Einladen"])
-    yes:SetPoint("BOTTOMLEFT", 14, 14)
-    yes:SetAttribute("macro", INVITE_MACRO)
-    yes:SetScript("PostClick", function() f:Hide() end)
-
-    local no = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    no:SetSize(110, 24); no:SetPoint("BOTTOMRIGHT", -14, 14); no:SetText(L["Abbrechen"])
-    no:SetScript("OnClick", function() f:Hide() end)
-
-    -- Vor Kampfbeginn schließen: der sichere Knopf wird dann abgehängt (siehe oben)
-    f:RegisterEvent("PLAYER_REGEN_DISABLED")
-    f:SetScript("OnEvent", function(self) self:Hide() end)
-
-    -- Schreibt den Namen ins Makro; liefert den bereinigten Namen oder nil
-    PrepareInviteMacro = function(name)
-        if InCombatLockdown() then
-            ns.Print(L["|cffff4040Im Kampf kann niemand in die Gilde eingeladen werden.|r"]); return nil
-        end
-        -- Der Name landet in einem ausführbaren Makro: keine Zeilenumbrüche (sonst
-        -- ließe sich ein zweiter Befehl anhängen) und keine Farb- oder Linkcodes
-        name = name:gsub("[%c|]", ""):gsub("^%s+", ""):gsub("%s+$", "")
-        if name == "" then return nil end
-        local ok, written = pcall(WriteInviteMacro, "/ginvite " .. name)
-        if not (ok and written) then
-            ns.Print(L["|cffff4040Kein Makroplatz frei: Bitte ein Makro löschen und es noch einmal versuchen.|r"])
-            return nil
-        end
-        return name
-    end
-
-    -- Rechtsklick-Menüs und die Enter-Taste können keinen sicheren Klick auslösen:
-    -- Dort bleibt ein Knopf zum Bestätigen.
-    ShowInviteAsk = function(name)
-        name = PrepareInviteMacro(name)
-        if not name then return end
-        text:SetText((L["|cffffd100%s|r in die Gilde einladen?"]):format(name))
-        f:Show()
+    ShowInviteHint = function(rawName)
+        -- Keine Zeilenumbrüche, Farb- oder Linkcodes aus dem Namen in die Ausgabe
+        local name = rawName:gsub("[%c|]", ""):gsub("^%s+", ""):gsub("%s+$", "")
+        if name == "" then return end
+        ns.Print((L["Zum Einladen bitte im Chat eingeben: |cffffd100/ginvite %s|r"]):format(name))
     end
 end
 
@@ -591,7 +527,7 @@ function ns.InviteToGuild(name)
     if CanGuildInvite and not CanGuildInvite() then
         ns.Print(L["|cffff4040Du darfst keine Spieler in die Gilde einladen.|r"]); return
     end
-    if ShowInviteAsk then ShowInviteAsk(name); return end
+    if ShowInviteHint then ShowInviteHint(name); return end
     if C_GuildInfo and C_GuildInfo.Invite then C_GuildInfo.Invite(name) else GuildInvite(name) end
     ns.Print((L["Gildeneinladung an |cffffd100%s|r gesendet."]):format(name))
 end
@@ -789,45 +725,6 @@ inviteBtn:SetScript("OnClick", function() DoInvite(inviteBox) end)
 inviteBox:SetScript("OnEnterPressed", DoInvite)
 inviteBox:SetScript("OnEscapePressed", inviteBox.ClearFocus)
 
--- Forever: Sicherer Knopf über dem normalen Knopf, damit ein Klick direkt einlädt.
--- Nur für die Gilde; Community-Einladungen laufen weiter über den normalen Knopf.
-local function DirectInviteButton(box, nativeBtn, label)
-    if not ns.IS_FOREVER then return function() end end
-    local b = ns.SecureMacroButton(nativeBtn:GetParent(), nativeBtn:GetWidth(), label)
-    b:SetAllPoints(nativeBtn)
-    b:SetFrameLevel(nativeBtn:GetFrameLevel() + 2)
-    b:SetAttribute("macro", INVITE_MACRO)
-
-    local function Sync()
-        if InCombatLockdown() or b.gpParked then return end
-        b:SetShown(not source and nativeBtn:IsShown())
-    end
-    b.gpAfterCombat = Sync
-    hooksecurefunc(nativeBtn, "SetShown", Sync)
-
-    local sent
-    b:SetScript("PreClick", function(self)
-        sent = false
-        self:SetAttribute("type", nil)   -- ohne gültigen Namen führt der Klick nichts aus
-        local name = strtrim(box:GetText() or "")
-        if name == "" then ns.Print(L["Bitte einen Charakternamen eingeben."]); return end
-        if not IsInGuild() then ns.Print(L["Du bist in keiner Gilde."]); return end
-        if CanGuildInvite and not CanGuildInvite() then
-            ns.Print(L["|cffff4040Du darfst keine Spieler in die Gilde einladen.|r"]); return
-        end
-        if PrepareInviteMacro(name) then
-            self:SetAttribute("type", "macro")
-            sent = true
-        end
-    end)
-    b:SetScript("PostClick", function()
-        if sent then box:SetText(""); box:ClearFocus() end
-    end)
-    Sync()
-    return Sync
-end
-local SyncDirectInvite = DirectInviteButton(inviteBox, inviteBtn, L["In Gilde einladen"])
-
 -- Dasselbe unter der kompakten Mitgliederliste neben dem Chat, nur mit Einladerecht
 local rosterInviteBox = CreateFrame("EditBox", nil, roster, "InputBoxTemplate")
 rosterInviteBox:SetSize(118, 22); rosterInviteBox:SetPoint("BOTTOMLEFT", 10, 5)
@@ -841,7 +738,6 @@ local rosterInviteBtn = CreateFrame("Button", nil, roster, "UIPanelButtonTemplat
 rosterInviteBtn:SetSize(72, 24); rosterInviteBtn:SetPoint("LEFT", rosterInviteBox, "RIGHT", 4, 0)
 rosterInviteBtn:SetText(L["Einladen"])
 rosterInviteBtn:SetScript("OnClick", function() DoInvite(rosterInviteBox) end)
-local SyncDirectRosterInvite = DirectInviteButton(rosterInviteBox, rosterInviteBtn, L["Einladen"])
 
 local function UpdateRosterInvite()
     local can
@@ -849,7 +745,6 @@ local function UpdateRosterInvite()
     else can = IsInGuild() and (not CanGuildInvite or CanGuildInvite()) end
     rosterInviteBox:SetShown(can and true or false)
     rosterInviteBtn:SetShown(can and true or false)
-    SyncDirectRosterInvite()
     rosterHolder:SetPoint("BOTTOMRIGHT", -2, can and 32 or 4)
 end
 
@@ -1192,6 +1087,12 @@ local function ClassName(m)
     return ("|cff%02x%02x%02x%s|r"):format(c.r * 255, c.g * 255, c.b * 255, m.name)
 end
 
+-- Name mit Rang-Krone; nur Gildenmitglieder, in Communities sagt der Gildenrang nichts aus
+local function CrownedName(m)
+    local crown = m.guild and ns.RankCrown and ns.RankCrown(m.rankIndex) or ""
+    return crown .. ClassName(m)
+end
+
 -- Linksklick: Details/Verwaltung · Rechtsklick: Menü (GuildPrideManage.lua)
 local function RowClicks(row)
     row:EnableMouse(true)
@@ -1211,7 +1112,6 @@ function members:Refresh()
     end
     mark(bOnline, not showOffline); mark(bAll, showOffline)
     inviteBtn:SetText(source and L["In Community einladen"] or L["In Gilde einladen"])
-    SyncDirectInvite()
     -- Inaktive / Beförderungen: nur Gilde, nur wer entfernen oder befördern darf
     local canInactive = not source and ((CanGuildRemove and CanGuildRemove())
         or (CanGuildPromote and CanGuildPromote()) or ns.IsOfficer())
@@ -1238,7 +1138,7 @@ function members:Refresh()
         end
         row.data = m
         local alpha = m.online and 1 or 0.55   -- Offline-Mitglieder gedimmt
-        row.left:SetText(ClassName(m))
+        row.left:SetText(CrownedName(m))
         row.left:SetAlpha(alpha); row.mid:SetAlpha(alpha)
         local mid = (m.level and m.level > 0) and ("Lvl %d · %s"):format(m.level, m.rank or "") or (m.rank or "")
         if source and m.inGuild then mid = mid .. "  |cff999999(" .. L["Gilde"] .. ")|r" end
@@ -1285,12 +1185,15 @@ function roster:Refresh()
         end
         row.data = m
         local alpha = m.online and 1 or 0.55
-        row.left:SetText((m.online and "|cff40ff40●|r " or "|cff555555●|r ") .. ClassName(m))
+        row.left:SetText((m.online and "|cff40ff40●|r " or "|cff555555●|r ") .. CrownedName(m))
         row.left:SetAlpha(alpha)
         row.right:SetText((m.level and m.level > 0) and m.level or "")
     end
     rosterList:Finish(#data)
 end
+
+-- Style gewechselt: Kronen in der neuen Farbe zeigen
+ns.OnThemeChanged(RefreshMembers)
 
 -- Community-Mitglieder ändern sich -> Liste neu zeichnen (gebündelt)
 if HAS_CLUB then

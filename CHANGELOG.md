@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.0.1
+
+**English**
+- Member lists now show the crowns too: filled for the guild master, outlined for officers
+- Guild invites: WoW Forever only accepts `/ginvite` when you type it yourself and blocks it for addons. The invite button, **Invite to guild** in the right-click menu and `/gp invite` now show the ready-made command in chat instead of ending in an error message
+- The saved macro "GuildPride Einladen" is no longer used; you can delete it
+
+**Deutsch**
+- Die Mitgliederlisten zeigen jetzt auch die Kronen: gefüllt für den Gildenmeister, leer für Offiziere
+- Gildeneinladung: WoW Forever nimmt `/ginvite` nur an, wenn du es selbst eintippst, und blockiert es für Addons. Der Einladen-Knopf, **In Gilde einladen** im Rechtsklick-Menü und `/gp einladen` zeigen jetzt den fertigen Befehl im Chat an, statt mit einer Fehlermeldung zu enden
+- Das gespeicherte Makro „GuildPride Einladen“ wird nicht mehr benutzt und kann gelöscht werden
+
 ## 2.0.0
 
 **English**
