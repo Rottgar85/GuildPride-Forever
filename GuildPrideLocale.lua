@@ -194,6 +194,7 @@ local enUS = {
     ["Warnung bei Beitritt / Austritt"] = "Alert when members join / leave",
     ["Hinweis, wenn jemand Gruppe / Quest-Hilfe sucht"] = "Notify me when someone needs a group / quest help",
     ["Blizzard-Gildenfenster öffnen"] = "Open Blizzard's guild window",
+    ["Das alte Addon „GuildPride“ ist auch aktiv. Bitte schalte es in der Addon-Liste ab, sonst stören sich beide."] = "The old \"GuildPride\" addon is also active. Please turn it off in the addon list, or the two will interfere.",
     ["Neue GuildPride-Version verfügbar: |cff40ff40%s|r (du hast %s). Bitte aktualisieren!"] = "A new GuildPride version is available: |cff40ff40%s|r (you have %s). Please update!",
     ["Deine Version: "] = "Your version: ",
     ["  Noch keine anderen Versionen empfangen."] = "  No other versions received yet.",

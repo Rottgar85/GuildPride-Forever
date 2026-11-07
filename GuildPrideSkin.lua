@@ -1,7 +1,7 @@
 -- GuildPride: Einheitlicher Look für alle Knöpfe, Eingabefelder und Dialoge
 -- Wandelt Blizzard-Standardelemente in den gewählten Style um (GuildPrideTheme.lua).
 local ADDON, ns = ...
-local MEDIA = "Interface\\AddOns\\GuildPride\\Media\\"
+local MEDIA = "Interface\\AddOns\\GuildPrideForever\\Media\\"
 local Paint, PaintEnabled = ns.Paint, ns.PaintEnabled
 local skinned = setmetatable({}, { __mode = "k" })
 

@@ -1,5 +1,5 @@
 # Packager-Einstellungen (BigWigsMods/packager): baut die ZIP fuer CurseForge, Wago und GitHub
-package-as: GuildPride
+package-as: GuildPrideForever
 
 ignore:
   - .github

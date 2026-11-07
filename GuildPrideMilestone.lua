@@ -2,7 +2,7 @@
 -- Statt nur einer Textzeile erscheint ein animiertes Banner mit Abzeichen.
 local ADDON, ns = ...
 local L = ns.L
-local MEDIA = "Interface\\AddOns\\GuildPride\\Media\\"
+local MEDIA = "Interface\\AddOns\\GuildPrideForever\\Media\\"
 local SHOW_TIME = 6
 
 local function BadgeFor(kind, value)

@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 1.15.0
+
+**English**
+- GuildPride for WoW Forever is now its own addon, **GuildPride Forever** (CurseForge project 1788777). The features are the same as GuildPride 1.14.7
+- Remove or turn off the old GuildPride addon in WoW Forever. GuildPride Forever warns you in chat if both are active
+- To keep your local data, close the game and rename `WTF\Account\<account>\SavedVariables\GuildPride.lua` to `GuildPrideForever.lua`
+- Guild members on the old GuildPride and on GuildPride Forever keep syncing with each other
+
+**Deutsch**
+- GuildPride für WoW Forever ist jetzt ein eigenes Addon: **GuildPride Forever** (CurseForge-Projekt 1788777). Der Funktionsumfang entspricht GuildPride 1.14.7
+- Entferne das alte GuildPride in WoW Forever oder schalte es ab. GuildPride Forever warnt im Chat, wenn beide aktiv sind
+- Um deine lokalen Daten zu behalten: Spiel schließen und `WTF\Account\<Account>\SavedVariables\GuildPride.lua` in `GuildPrideForever.lua` umbenennen
+- Gildenmitglieder mit dem alten GuildPride und mit GuildPride Forever gleichen sich weiter ab
+
 ## 1.14.7
 
 **English**

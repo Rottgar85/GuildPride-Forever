@@ -1,5 +1,5 @@
-GuildPride 1.14.7 (Retail, Midnight, WoW Forever, alle Classic-Versionen) - Autor: Rottgar85
-CurseForge: Projekt 1771937
+GuildPride Forever 1.15.0 (nur WoW Forever) - Autor: Rottgar85
+CurseForge: Projekt 1788777
 
 DEUTSCH
 Eigenes Gildenfenster mit Meilensteinen, Events, Gildeninfo, Gruppensuche und Gildenchat.
@@ -7,7 +7,7 @@ Mitglieder von Gilde und Communities ansehen, einladen und verwalten (Rang, Noti
 Meilensteine, Events und Gruppensuche werden mit allen Gildenmitgliedern abgeglichen,
 die GuildPride nutzen. Deutsch und Englisch.
 
-Installation: Ordner "GuildPride" nach World of Warcraft/_retail_/Interface/AddOns kopieren.
+Installation: Ordner "GuildPrideForever" nach World of Warcraft/_forever_/Interface/AddOns kopieren.
 
 Wichtige Befehle (alle: /gp hilfe)
   /gp                  Fenster          /gp blizzard      Blizzard-Gildenfenster an/aus
@@ -22,7 +22,7 @@ See, invite and manage the members of your guild and communities (rank, note, re
 Milestones, events and the group finder sync with all guild members who use GuildPride.
 English and German.
 
-Installation: copy the "GuildPride" folder to World of Warcraft/_retail_/Interface/AddOns.
+Installation: copy the "GuildPrideForever" folder to World of Warcraft/_forever_/Interface/AddOns.
 
 Important commands (all of them: /gp help)
   /gp                  window           /gp blizzard      Blizzard guild window on/off

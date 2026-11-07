@@ -7,7 +7,7 @@ local L = ns.L
 -- Eigene Schriften (DejaVu, siehe Media/Fonts/LICENSE-DejaVu.txt)
 ---------------------------------------------------------------------
 do
-    local F = "Interface\\AddOns\\GuildPride\\Media\\Fonts\\"
+    local F = "Interface\\AddOns\\GuildPrideForever\\Media\\Fonts\\"
     local function Make(name, file, size, r, g, b)
         local f = CreateFont(name)
         f:SetFont(F .. file, size, "")
@@ -76,7 +76,7 @@ local PREFIX = "GuildPride"          -- max. 16 Zeichen
 local MILESTONES = { [10]=true, [20]=true, [30]=true, [40]=true, [50]=true,
                      [60]=true, [70]=true, [80]=true, [90]=true }
 
--- Eigenes Logo: Interface\AddOns\GuildPride\logo.tga (64x64, 32-bit TGA)
+-- Eigenes Logo: Interface\AddOns\GuildPrideForever\logo.tga (64x64, 32-bit TGA)
 -- Fallback, solange du noch kein Logo hast:
 local FALLBACK_ICON = "Interface\\Icons\\INV_Misc_Tournaments_banner_Human"
 
@@ -168,7 +168,7 @@ local function Print(msg)
 end
 
 local function IconString(size)
-    local path = "Interface\\AddOns\\GuildPride\\Media\\logo_small"
+    local path = "Interface\\AddOns\\GuildPrideForever\\Media\\logo_small"
     return ("|T%s:%d|t"):format(path, size or 14)
 end
 

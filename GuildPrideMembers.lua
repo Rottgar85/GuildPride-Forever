@@ -52,7 +52,7 @@ local function ShowToast(kind, name)
     if kind == "join" then
         headline:SetText(L["|cff40ff40Neues Gildenmitglied!|r"])
         line:SetText((L["|cffffd100%s|r ist der Gilde beigetreten.\nSag Hallo!"]):format(short))
-        icon:SetTexture("Interface\\AddOns\\GuildPride\\Media\\logo")
+        icon:SetTexture("Interface\\AddOns\\GuildPrideForever\\Media\\logo")
     else
         headline:SetText(L["|cffff4040Mitglied hat die Gilde verlassen|r"])
         line:SetText(("|cffffd100%s|r %s"):format(short, kind == "kick" and L["wurde aus der Gilde entfernt."] or L["hat die Gilde verlassen."]))

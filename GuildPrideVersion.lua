@@ -45,6 +45,9 @@ end)
 local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")
 f:SetScript("OnEvent", function()
+    -- Altes und neues Addon teilen sich globale Namen und GuildPrideDB
+    local IsLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+    if IsLoaded and IsLoaded("GuildPride") then ns.Print(L["Das alte Addon „GuildPride“ ist auch aktiv. Bitte schalte es in der Addon-Liste ab, sonst stören sich beide."]) end
     C_Timer.After(12, function() ns.Queue("VER", nil, MY_VERSION, "") end)
 end)
 

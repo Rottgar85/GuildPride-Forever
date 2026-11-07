@@ -3,7 +3,7 @@
 local ADDON, ns = ...
 local L = ns.L
 
-local MEDIA = "Interface\\AddOns\\GuildPride\\Media\\"
+local MEDIA = "Interface\\AddOns\\GuildPrideForever\\Media\\"
 local CLASS_COLORS = RAID_CLASS_COLORS
 local GOLD_TEXT = "|cfff0c88c"
 local Paint = ns.Paint
