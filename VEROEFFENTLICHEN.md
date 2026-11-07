@@ -24,7 +24,7 @@ Für Wago zusätzlich: `## X-Wago-ID: abcdef12` in die `.toc` und das Secret `WA
 1. In `GuildPrideForever.toc` die `## Version:` erhöhen und in `CHANGELOG.md` eintragen, was neu ist.
 2. Änderungen hochladen (commit und push). GitHub prüft dabei den Lua-Code (Check).
 3. Einen Tag mit der Version setzen und hochladen, zum Beispiel:
-   `git tag v1.15.1` und dann `git push origin v1.15.1`
+   `git tag v2.0.1` und dann `git push origin v2.0.1`
 4. Unter „Actions“ im Repository siehst du, wie die ZIP gebaut und hochgeladen wird.
    Die fertige ZIP liegt danach auch unter „Releases“.
 

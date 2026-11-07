@@ -1,6 +1,6 @@
 # GuildPride Changelog
 
-## 1.15.0
+## 2.0.0
 
 **English**
 - GuildPride for WoW Forever is now its own addon, **GuildPride Forever** (CurseForge project 1788777). The features are the same as GuildPride 1.14.7
