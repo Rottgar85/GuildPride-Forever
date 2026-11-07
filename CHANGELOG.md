@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.2.0
+
+**English**
+- **Customize the menu**: new section **Customize menu** at the bottom of the settings. For every tab in the sidebar you can hide it, give it your own name, move it up or down and pick it as the start tab that opens every time
+- Clicking the chosen start tab again turns it off, then the window opens on the tab you had open last, as before. **Reset menu** brings back the default
+- "Settings" always stays visible at the bottom, so you can't lock yourself out
+
+**Deutsch**
+- **Menü anpassen**: neuer Bereich **Menü anpassen** ganz unten in den Einstellungen. Jeden Reiter der Seitenleiste kannst du ausblenden, umbenennen, nach oben oder unten schieben und als Startreiter wählen, der bei jedem Öffnen kommt
+- Ein zweiter Klick auf den Startreiter schaltet ihn ab, dann öffnet das Fenster wie bisher den zuletzt offenen Reiter. **Menü zurücksetzen** stellt den Standard wieder her
+- „Einstellungen“ bleibt immer sichtbar und unten, damit man sich nicht aussperren kann
+
 ## 2.1.2
 
 **English**

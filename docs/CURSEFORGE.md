@@ -22,6 +22,7 @@
 - **Dungeon Finder** – the **Dungeon Finder** button opens Blizzard's own Dungeon Finder, and **Search Dungeon Finder** brings its groups into your list, marked **[Dungeon Finder]**. The dots show which roles are already in the group (blue tank, green healer, red damage), the line below says if a tank or healer is still missing, and **Whisper** opens a whisper to the group leader.
 - **Copy messages** – click `[GuildPride]` in front of a GuildPride chat message to open just that line, ready to copy with Ctrl+C.
 - **Guild on the world map** – guild members with GuildPride show up on the world map as a dot in their class color, even when they are not in your group. Positions are only shared with your guild, and both showing and sharing can be turned off in the settings.
+- **Customize the menu** – hide, rename and reorder the sidebar tabs and pick a start tab that opens every time. "Settings" always stays.
 - **Polls** – officers create polls with up to 6 answers and an optional duration, everyone votes.
 - **Guild info** – Blizzard's guild info text for everyone, with a notice when it changes and a copy button.
 - **Six styles** – Forge, Frost, Emerald, Arcane, Night or your own colours; window size, opacity and chat font size are adjustable. Minimap button, optional automatic welcome for new members, version check.
@@ -74,6 +75,7 @@ Bug reports and ideas are very welcome in the comments here. Please include the 
 - **Dungeonbrowser** – Der Knopf **Dungeonbrowser** öffnet Blizzards eigenen Dungeonbrowser, **Browser durchsuchen** holt dessen Gruppen in deine Liste, markiert mit **[Dungeonbrowser]**. Die Punkte zeigen, welche Rollen schon dabei sind (blau Tank, grün Heiler, rot DD), darunter steht, ob noch Tank oder Heiler fehlt, und **Anflüstern** öffnet ein Flüstern an den Gruppenleiter.
 - **Meldungen kopieren** – Klick auf `[GuildPride]` vor einer GuildPride-Meldung im Chat öffnet genau diese Zeile, fertig zum Kopieren mit Strg+C.
 - **Gilde auf der Weltkarte** – Gildenmitglieder mit GuildPride erscheinen als Punkt in ihrer Klassenfarbe auf der Weltkarte, auch wenn sie nicht in deiner Gruppe sind. Die Position sieht nur deine Gilde, Anzeigen und Teilen lassen sich in den Einstellungen abschalten.
+- **Menü anpassen** – Reiter der Seitenleiste ausblenden, umbenennen, umsortieren und einen Startreiter wählen, der bei jedem Öffnen kommt. „Einstellungen“ bleibt immer da.
 - **Umfragen** – Offiziere legen Umfragen mit bis zu 6 Antworten und wahlweiser Laufzeit an, alle stimmen ab.
 - **Gildeninfo** – der Info-Text aus dem Blizzard-Gildenfenster für alle, mit Hinweis bei Änderungen und Kopier-Knopf.
 - **Sechs Styles** – Schmiede, Frost, Smaragd, Arkan, Nacht oder eigene Farben; Fenstergröße, Deckkraft und Chat-Schriftgröße einstellbar. Minimap-Knopf, wahlweise automatische Begrüßung neuer Mitglieder, Versionscheck.

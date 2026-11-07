@@ -156,23 +156,101 @@ local function SelectTab(id)
     if pages[id] and pages[id].Refresh then pages[id]:Refresh() end
 end
 
+-- Eigene Menü-Einstellungen: GuildPrideDB.menu[Schlüssel] = { hide, name, order }
+-- Schlüssel ist die feste Standard-Ordnung des Reiters (z. B. "30" = Events)
+local function MenuEntry(tab, create)
+    local db = GuildPrideDB
+    if not db then return nil end
+    if create then db.menu = db.menu or {} end
+    local menu = db.menu
+    if not menu then return nil end
+    if create and not menu[tab.key] then menu[tab.key] = {} end
+    return menu[tab.key]
+end
+
+-- Einstellungen (ab Ordnung 90) bleiben immer sichtbar und unten
+local function IsFixed(tab) return tab.defaultOrder >= 90 end
+
+local function TabHidden(tab)
+    if IsFixed(tab) then return false end
+    local e = MenuEntry(tab)
+    return e and e.hide and true or false
+end
+
+local function ApplyTabText(tab)
+    local e = MenuEntry(tab)
+    local name = e and type(e.name) == "string" and e.name ~= "" and e.name or nil
+    tab.label = name or tab.defaultLabel
+    tab.text:SetText(tab.label .. (tab.badge and ("  |cffff8c40" .. tab.badge .. "|r") or ""))
+end
+
+-- Reiter in Anzeige-Reihenfolge (ohne Einstellungen)
+local function MenuTabs()
+    local list = {}
+    for _, tab in ipairs(tabs) do
+        if not IsFixed(tab) then
+            local e = MenuEntry(tab)
+            tab.order = e and tonumber(e.order) or tab.defaultOrder
+            list[#list + 1] = tab
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.order ~= b.order then return a.order < b.order end
+        return a.defaultOrder < b.defaultOrder
+    end)
+    return list
+end
+ns.MenuTabs = MenuTabs
+
 -- Reiter nach "order" sortiert untereinander; ab Ordnung 90 (Einstellungen)
 -- unten in der Seitenleiste
 local function LayoutTabs()
-    local sorted = {}
-    for _, tab in ipairs(tabs) do sorted[#sorted + 1] = tab end
-    table.sort(sorted, function(a, b) return a.order < b.order end)
     local top, bottom = 0, 0
-    for _, tab in ipairs(sorted) do
+    for _, tab in ipairs(MenuTabs()) do
         tab:ClearAllPoints()
-        if tab.order >= 90 then
-            tab:SetPoint("BOTTOMLEFT", 10, 34 + bottom * 40)
-            bottom = bottom + 1
+        ApplyTabText(tab)
+        if TabHidden(tab) then
+            tab:Hide()
         else
+            tab:Show()
             tab:SetPoint("TOPLEFT", 10, -168 - top * 40)
             top = top + 1
         end
     end
+    for _, tab in ipairs(tabs) do
+        if IsFixed(tab) then
+            tab:ClearAllPoints()
+            ApplyTabText(tab)
+            tab:Show()
+            tab:SetPoint("BOTTOMLEFT", 10, 34 + bottom * 40)
+            bottom = bottom + 1
+        end
+    end
+end
+
+-- Startreiter: gespeicherter Schlüssel, falls sichtbar, sonst der erste sichtbare
+local function StartTabId()
+    local key = GuildPrideDB and GuildPrideDB.startTab
+    for i, tab in ipairs(tabs) do
+        if key and tab.key == key and not TabHidden(tab) then return i end
+    end
+    for _, tab in ipairs(MenuTabs()) do
+        if not TabHidden(tab) then return tab.id end
+    end
+    for i, tab in ipairs(tabs) do
+        if IsFixed(tab) then return i end
+    end
+    return 1
+end
+ns.StartTabId = StartTabId
+ns.TabHidden = TabHidden
+
+-- Nach Änderungen im Menü neu anordnen; ausgeblendete Seite verlassen
+function ns.MenuChanged()
+    LayoutTabs()
+    local cur = tabs[frame.selected or 0]
+    if cur and TabHidden(cur) then SelectTab(StartTabId()) end
+    if cur and not TabHidden(cur) then pageTitle:SetText(cur.label) end
 end
 
 -- order: Platz in der Seitenleiste (kleiner = weiter oben)
@@ -196,7 +274,11 @@ local function AddTab(label, order)
     tab.text:SetPoint("LEFT", 18, 0)
     tab.text:SetText(label)
     tab.label = label
+    tab.defaultLabel = label
     tab.order = order or id * 10
+    tab.defaultOrder = tab.order
+    tab.key = tostring(tab.defaultOrder)
+    tab.id = id
     tab:SetScript("OnClick", function()
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
         SelectTab(id)
@@ -211,7 +293,8 @@ end
 function ns.SetTabBadge(page, text)
     local tab = tabs[page.tabId]
     if not tab then return end
-    tab.text:SetText(tab.label .. (text and ("  |cffff8c40" .. text .. "|r") or ""))
+    tab.badge = text
+    ApplyTabText(tab)
 end
 
 -- Abschnitts-Überschrift mit Kupferlinie
@@ -1469,9 +1552,136 @@ function ns.NoteTemplates()
     return out
 end
 
-settings:SetHeight(-(baseY - 150))
+-- Menü anpassen: Reiter zeigen/ausblenden, umbenennen, verschieben, Startreiter.
+-- Die Zeilen entstehen erst beim ersten Öffnen, weil andere Dateien ihre
+-- Reiter nach dieser Datei anlegen.
+local MENU_ROWS = 10
+local menuY = baseY - 160
+Section(settings, L["Menü anpassen"], nil, menuY)
+local menuHint = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+menuHint:SetPoint("TOPLEFT", 4, menuY - 26)
+menuHint:SetWidth(620); menuHint:SetJustifyH("LEFT")
+menuHint:SetText(L["Haken = sichtbar, Name ändern, Pfeile = Reihenfolge, Start = beim Öffnen gezeigt. „Einstellungen“ bleibt immer da."])
+menuHint:SetTextColor(0.75, 0.72, 0.68)
+local menuRows = {}
+
+local function RenumberMenu(list)
+    for i, tab in ipairs(list) do MenuEntry(tab, true).order = i * 10 end
+end
+
+local RefreshMenuRows
+local function MoveTab(index, dir)
+    local list = MenuTabs()
+    local other = index + dir
+    if not list[index] or not list[other] then return end
+    list[index], list[other] = list[other], list[index]
+    RenumberMenu(list)
+    ns.MenuChanged()
+    RefreshMenuRows()
+end
+
+local function ArrowButton(parent, up)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(24, 24)
+    local base = "Interface\\ChatFrame\\UI-ChatIcon-Scroll" .. (up and "Up" or "Down")
+    b:SetNormalTexture(base .. "-Up")
+    b:SetPushedTexture(base .. "-Down")
+    b:SetDisabledTexture(base .. "-Disabled")
+    b:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    return b
+end
+
+local function BuildMenuRow(i)
+    local y = menuY - 48 - (i - 1) * 30
+    local row = {}
+    row.show = CreateFrame("CheckButton", nil, settings, "UICheckButtonTemplate")
+    row.show:SetSize(26, 26); row.show:SetPoint("TOPLEFT", 4, y)
+    row.show:SetScript("OnClick", function(self)
+        local tab = row.tab
+        if not tab then return end
+        MenuEntry(tab, true).hide = not self:GetChecked() or nil
+        ns.MenuChanged()
+        RefreshMenuRows()
+    end)
+    row.name = CreateFrame("EditBox", nil, settings, "InputBoxTemplate")
+    row.name:SetSize(200, 22); row.name:SetPoint("TOPLEFT", 42, y - 2)
+    row.name:SetAutoFocus(false); row.name:SetMaxLetters(24)
+    row.name:SetScript("OnTextChanged", function(self, user)
+        local tab = row.tab
+        if not user or not tab then return end
+        local text = strtrim(((self:GetText() or ""):gsub("|", "")))
+        MenuEntry(tab, true).name = (text ~= "" and text ~= tab.defaultLabel) and text or nil
+        ns.MenuChanged()
+    end)
+    row.name:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    row.name:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    row.name:SetScript("OnEditFocusLost", function(self)
+        if row.tab then self:SetText(row.tab.label) end
+    end)
+    row.orig = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+    row.orig:SetPoint("LEFT", row.name, "RIGHT", 10, 0)
+    row.orig:SetWidth(150); row.orig:SetJustifyH("LEFT")
+    row.orig:SetTextColor(0.6, 0.58, 0.55)
+    row.up = ArrowButton(settings, true)
+    row.up:SetPoint("LEFT", row.name, "RIGHT", 168, 0)
+    row.up:SetScript("OnClick", function() MoveTab(row.index, -1) end)
+    row.down = ArrowButton(settings, false)
+    row.down:SetPoint("LEFT", row.up, "RIGHT", 2, 0)
+    row.down:SetScript("OnClick", function() MoveTab(row.index, 1) end)
+    row.start = CreateFrame("CheckButton", nil, settings, "UIRadioButtonTemplate")
+    row.start:SetPoint("LEFT", row.down, "RIGHT", 16, 0)
+    row.start:SetScript("OnClick", function()
+        -- Nochmal klicken: kein fester Start mehr (zuletzt offener Reiter)
+        if row.tab then
+            GuildPrideDB.startTab = GuildPrideDB.startTab ~= row.tab.key and row.tab.key or nil
+        end
+        RefreshMenuRows()
+    end)
+    row.startText = settings:CreateFontString(nil, "OVERLAY", "GPFont_Text")
+    row.startText:SetPoint("LEFT", row.start, "RIGHT", 4, 0)
+    row.startText:SetText(L["Start"])
+    row.widgets = { row.show, row.name, row.orig, row.up, row.down, row.start, row.startText }
+    menuRows[i] = row
+    return row
+end
+
+local menuReset = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+menuReset:SetSize(200, 24)
+menuReset:SetText(L["Menü zurücksetzen"])
+menuReset:SetScript("OnClick", function()
+    GuildPrideDB.menu = nil
+    GuildPrideDB.startTab = nil
+    ns.MenuChanged()
+    RefreshMenuRows()
+end)
+
+function RefreshMenuRows()
+    local list = MenuTabs()
+    local startKey = GuildPrideDB.startTab
+    for i = 1, math.min(#list, MENU_ROWS) do
+        local row = menuRows[i] or BuildMenuRow(i)
+        local tab = list[i]
+        row.tab, row.index = tab, i
+        for _, w in ipairs(row.widgets) do w:Show() end
+        row.show:SetChecked(not TabHidden(tab))
+        if not row.name:HasFocus() then row.name:SetText(tab.label) end
+        row.orig:SetText(tab.label ~= tab.defaultLabel and ("(" .. tab.defaultLabel .. ")") or "")
+        row.up:SetEnabled(i > 1)
+        row.down:SetEnabled(i < #list)
+        row.start:SetChecked(startKey == tab.key)
+    end
+    for i = #list + 1, #menuRows do
+        menuRows[i].tab = nil
+        for _, w in ipairs(menuRows[i].widgets) do w:Hide() end
+    end
+    menuReset:ClearAllPoints()
+    menuReset:SetPoint("TOPLEFT", 10, menuY - 56 - math.min(#list, MENU_ROWS) * 30)
+end
+
+settings:SetHeight(-(menuY - 56 - MENU_ROWS * 30 - 60))
 
 function settingsPage:Refresh()
+    RefreshMenuRows()
     MarkStyle()
     for key, cb in pairs(checks) do cb:SetChecked(GuildPrideDB[key]) end
     for _, s in ipairs(steppers) do s.Show() end
@@ -1541,7 +1751,13 @@ function ns.ToggleUI()
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_CLOSE)
     else
         if C_GuildInfo and C_GuildInfo.GuildRoster then C_GuildInfo.GuildRoster() end
-        frame:Show()
+        LayoutTabs()
+        -- Gewählter Startreiter bei jedem Öffnen, sonst der zuletzt offene
+        local cur = tabs[frame.selected or 0]
+        if (GuildPrideDB and GuildPrideDB.startTab) or not cur or TabHidden(cur) then
+            frame.selected = StartTabId()
+        end
+        frame:Show()   -- OnShow-Haken (z. B. geänderte Gildeninfo) darf das noch ändern
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
         UpdateHeader()
         SelectTab(frame.selected or 1)
