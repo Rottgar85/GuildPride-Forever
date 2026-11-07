@@ -16,6 +16,7 @@ local BEAT      = 15    -- s: unveränderte Position trotzdem so oft senden
 
 local positions = {}    -- [Name] = { map, x, y, t }  (x, y: 0 … 1)
 local wantedUntil, lastAsk = 0, -999
+local askers = {}       -- [Name] = bis wann er Positionen haben will
 local lastMsg, lastSentAt = nil, -999
 
 local function Secret(v) return issecretvalue and issecretvalue(v) end
@@ -62,7 +63,18 @@ local function SendPos(force)
     -- Kanal kam in WoW Forever nichts an. Der Zeitstempel macht jede Meldung
     -- einmalig – gleiche Nachrichten verwirft der Empfang sonst 30 s lang.
     local stamp = GetServerTime()
-    if map then ns.QueueLatest("POS", nil, map, x, y, stamp) else ns.QueueLatest("POS", nil, 0, 0, 0, stamp) end
+    if not map then map, x, y = 0, 0, 0 end
+    ns.QueueLatest("POS", nil, map, x, y, stamp)
+    -- Zusätzlich direkt an alle, die gerade fragen und die wir nicht im Kanal
+    -- hören: Rundsendungen von Rängen ohne Gildenchat-Recht kommen sonst nie an,
+    -- ein Flüstern schon (wie die Antwort auf die Versionsabfrage)
+    for who, untilT in pairs(askers) do
+        if untilT < now then
+            askers[who] = nil
+        elseif not (ns.HeardInChannel and ns.HeardInChannel(who)) then
+            ns.QueueLatest("POS", who, map, x, y, stamp)
+        end
+    end
 end
 
 ns.On("POSQ", function(_, sender)
@@ -70,6 +82,7 @@ ns.On("POSQ", function(_, sender)
     stats.askIn, stats.lastAskFrom = stats.askIn + 1, ns.Clean(sender, 40)
     if not Sharing() then return end
     wantedUntil = GetTime() + WANT_FOR
+    askers[sender] = wantedUntil
     -- verteilt antworten, damit nicht alle gleichzeitig senden
     C_Timer.After(0.3 + math.random() * 2, function() SendPos(true) end)
 end)
@@ -77,12 +90,14 @@ end)
 ns.On("POS", function(payload, sender)
     if sender == ns.Me() then return end
     -- für die Anzeige im Chat entschärft (keine Farb-, Link- oder Bildcodes)
-    stats.posIn, stats.lastIn = stats.posIn + 1, ns.Clean(sender, 40) .. ": " .. ns.Clean(payload, 60)
+    stats.posIn, stats.lastIn = stats.posIn + 1,
+        ns.Clean(sender, 40) .. ": " .. ns.Clean((tostring(payload):gsub(SEP, " ")), 60)
     local map, x, y = strsplit(SEP, payload or "")
     map = ns.Num(map, 0, 999999)
     x, y = ns.Num(x, 0, 1000), ns.Num(y, 0, 1000)
     if not map or map == 0 or not x or not y then
-        positions[sender] = nil
+        -- gemeldet, aber ohne Position (Instanz, Teilen aus …): kein Punkt
+        positions[sender] = { none = true, t = GetTime() }
     else
         positions[sender] = { map = map, x = x / 1000, y = y / 1000, t = GetTime() }
     end
@@ -94,7 +109,20 @@ local function Ask()
     if GetTime() - lastAsk < ASK_EVERY then return end
     lastAsk = GetTime()
     stats.asked = stats.asked + 1
-    ns.QueueLatest("POSQ", nil, GetServerTime())
+    local stamp = GetServerTime()
+    ns.QueueLatest("POSQ", nil, stamp)
+    -- Auch direkt an GuildPride-Nutzer, die wir nicht im Kanal hören (höchstens 8):
+    -- kommt die eigene Rundsendung nicht an, hören sie die Anfrage so trotzdem
+    local me, n = ns.Me(), 0
+    for i = 1, GetNumGuildMembers() do
+        local name, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
+        local full = name and ns.Normalize(name)
+        if online and full ~= me and ns.AddonUsers[full] and n < 8
+           and not (ns.HeardInChannel and ns.HeardInChannel(full)) then
+            n = n + 1
+            ns.QueueLatest("POSQ", full, stamp)
+        end
+    end
 end
 
 ---------------------------------------------------------------------
@@ -186,7 +214,7 @@ local function Refresh()
         if now - cacheAt > 2 then cacheAt, cachedGroup, cachedRoster = now, GroupNames(), RosterInfo() end
         local group, roster = cachedGroup, cachedRoster
         for who, p in pairs(positions) do
-            if now - p.t > STALE or not roster[who] then
+            if now - p.t > STALE or not roster[who] or p.none then
                 if now - p.t > STALE then positions[who] = nil end
             elseif not InGroup(group, who) then
                 local x, y = Translate(p.map, p.x, p.y, shown)
@@ -273,14 +301,25 @@ local function Diagnose()
     for who, p in pairs(positions) do
         any = true
         local why
-        if now - p.t > STALE then why = "zu alt"
+        if p.none then
+            P(("  %s: meldet keine Position (Instanz, Teilen aus oder kein Standort), vor %d s"):format(who, math.floor(now - p.t)))
+        elseif now - p.t > STALE then why = "zu alt"
         elseif not roster[who] then why = "nicht in der Gildenliste online gefunden"
         elseif InGroup(group, who) then why = "in deiner Gruppe"
         elseif shown and not Translate(p.map, p.x, p.y, shown) then why = "liegt nicht auf der gezeigten Karte"
         else why = "|cff40ff40wird gezeigt|r" end
-        P(("  %s: %s %.3f / %.3f, vor %d s – %s"):format(who, MapName(p.map), p.x, p.y, math.floor(now - p.t), why))
+        if why then
+            P(("  %s: %s %.3f / %.3f, vor %d s – %s"):format(who, MapName(p.map), p.x, p.y, math.floor(now - p.t), why))
+        end
     end
     if not any then P("  Keine Positionen von anderen bekannt.") end
+    -- Wer hat GuildPride gemeldet, aber nie etwas zur Karte geschickt?
+    for who, v in pairs(ns.Versions or {}) do
+        if not positions[who] then
+            P(("  %s (%s): nichts zur Karte empfangen%s"):format(who, v,
+                roster[who] and "" or " – nicht online in der Gildenliste"))
+        end
+    end
 end
 
 local origSlash = SlashCmdList.GUILDPRIDE

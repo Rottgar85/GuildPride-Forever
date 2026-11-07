@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.1.2
+
+**English**
+- Guild on the world map: guild members whose messages to the whole guild don't arrive (e.g. ranks without guild chat rights) now show up too. Positions and requests also go directly to members who can't be heard in the secured channel
+- `/gp karte` now also lists members who report no position (instance, sharing off) and members with GuildPride from whom nothing arrived for the map
+
+**Deutsch**
+- Gilde auf der Weltkarte: Jetzt erscheinen auch Gildenmitglieder, deren Nachrichten an die ganze Gilde nicht ankommen (z. B. Ränge ohne Gildenchat-Recht). Positionen und Anfragen gehen zusätzlich direkt an Mitglieder, die im abgesicherten Kanal nicht zu hören sind
+- `/gp karte` zeigt jetzt auch, wer keine Position meldet (Instanz, Teilen aus) und von wem mit GuildPride nichts zur Karte angekommen ist
+
 ## 2.1.1
 
 **English**

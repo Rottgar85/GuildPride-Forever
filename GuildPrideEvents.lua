@@ -215,6 +215,7 @@ function ns.DataChannelName() return (DataChannel()) end
 local chanSeen = {}
 function ns.ChannelSeen(who) chanSeen[who] = GetTime() end
 local function InChannel(who) return chanSeen[who] and GetTime() - chanSeen[who] < 300 end
+ns.HeardInChannel = InChannel
 
 local joinReady, joinedName = false, nil
 local function JoinDataChannel()
