@@ -83,7 +83,8 @@ local FALLBACK_ICON = "Interface\\Icons\\INV_Misc_Tournaments_banner_Human"
 local defaults = { sound = true, popup = true, useCustomLogo = false,
                    replaceGuildFrame = true, memberAlerts = true, helpAlerts = true, shareMilestones = true,
                    minimap = true, chatFont = 12, scale = 1, alpha = 1, welcome = false,
-                   publicLFG = true, publicAlerts = false, lfgPublic = false, lfgScope = "all" }
+                   publicLFG = true, publicAlerts = false, lfgPublic = false, lfgScope = "all",
+                   mapShow = true, mapShare = true }
 
 -- Weitere Meilensteine neben LEVEL (Wert ist Text bzw. ID)
 local EXTRA_KINDS = { ACH = true, BOSS = true, MPLUS = true, MOUNT = true }

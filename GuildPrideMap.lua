@@ -1,0 +1,235 @@
+-- GuildPride: Gildenmitglieder mit GuildPride auf der Weltkarte
+-- Blizzard zeigt auf der Karte nur Gruppenmitglieder. Hier schickt jeder mit
+-- GuildPride seine Position über den abgesicherten Gildenkanal ("POS"), und
+-- auf der Weltkarte erscheinen Punkte für alle anderen Gildenmitglieder.
+-- Gesendet wird nur, solange jemand in der Gilde die Karte offen hat: wer sie
+-- öffnet, fragt mit "POSQ" nach, die anderen melden sich dann eine Weile.
+local ADDON, ns = ...
+local L = ns.L
+local SEP = ns.SEP
+
+local STALE     = 45    -- s: ältere Positionen nicht mehr zeigen
+local WANT_FOR  = 40    -- s: so lange nach einer Anfrage senden
+local ASK_EVERY = 20    -- s: bei offener Karte erneut nachfragen
+local STEP      = 3     -- s: frühestens so oft die eigene Position senden
+local BEAT      = 15    -- s: unveränderte Position trotzdem so oft senden
+
+local positions = {}    -- [Name] = { map, x, y, t }  (x, y: 0 … 1)
+local wantedUntil, lastAsk = 0, -999
+local lastMsg, lastSentAt = nil, -999
+
+local function Secret(v) return issecretvalue and issecretvalue(v) end
+local function Sharing() return GuildPrideDB and GuildPrideDB.mapShare ~= false end
+local function Showing() return GuildPrideDB and GuildPrideDB.mapShow ~= false end
+
+---------------------------------------------------------------------
+-- Eigene Position
+---------------------------------------------------------------------
+-- Karte und Position (je 0 … 1000), nil in Instanzen oder ohne Position
+local function MyPosition()
+    if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetPlayerMapPosition) then return end
+    if IsInInstance and IsInInstance() then return end
+    local map = C_Map.GetBestMapForUnit("player")
+    if not map or Secret(map) then return end
+    local pos = C_Map.GetPlayerMapPosition(map, "player")
+    if not pos or Secret(pos) then return end
+    local x, y = pos:GetXY()
+    if not x or Secret(x) or Secret(y) or (x == 0 and y == 0) then return end
+    return map, math.floor(x * 1000 + 0.5), math.floor(y * 1000 + 0.5)
+end
+
+local function SendPos(force)
+    if not IsInGuild() or not ns.QueueLatest then return end
+    local map, x, y = MyPosition()
+    if not Sharing() then map = nil end
+    -- "0" heißt: keine Position (Instanz, Teilen aus) – der Punkt verschwindet
+    local msg = map and (map .. ":" .. x .. ":" .. y) or "0"
+    local now = GetTime()
+    if now - lastSentAt < STEP then return end
+    if not force and msg == lastMsg and now - lastSentAt < BEAT then return end
+    -- ohne Position nur einmal Bescheid sagen, nicht ständig
+    if not map and lastMsg == "0" and not force then return end
+    lastMsg, lastSentAt = msg, now
+    if map then ns.QueueLatest("POS", "@CHANNEL", map, x, y) else ns.QueueLatest("POS", "@CHANNEL", 0) end
+end
+
+ns.On("POSQ", function(_, sender)
+    if sender == ns.Me() or not Sharing() then return end
+    wantedUntil = GetTime() + WANT_FOR
+    -- verteilt antworten, damit nicht alle gleichzeitig senden
+    C_Timer.After(0.3 + math.random() * 2, function() SendPos(true) end)
+end)
+
+ns.On("POS", function(payload, sender)
+    if sender == ns.Me() then return end
+    local map, x, y = strsplit(SEP, payload or "")
+    map = ns.Num(map, 0, 999999)
+    x, y = ns.Num(x, 0, 1000), ns.Num(y, 0, 1000)
+    if not map or map == 0 or not x or not y then
+        positions[sender] = nil
+    else
+        positions[sender] = { map = map, x = x / 1000, y = y / 1000, t = GetTime() }
+    end
+end)
+
+-- Gilde fragen: wer hat GuildPride und ist gerade wo?
+local function Ask()
+    if not IsInGuild() or not Showing() or not ns.Queue then return end
+    if GetTime() - lastAsk < ASK_EVERY then return end
+    lastAsk = GetTime()
+    ns.QueueLatest("POSQ", "@CHANNEL", "1")
+end
+
+---------------------------------------------------------------------
+-- Punkte auf der Weltkarte
+---------------------------------------------------------------------
+local overlay
+local pins = {}
+local cacheAt, cachedGroup, cachedRoster = -999, nil, nil
+
+-- Wer ist in der eigenen Gruppe? Die zeigt Blizzard schon selbst.
+local function GroupNames()
+    local set = {}
+    local raid = IsInRaid()
+    for i = 1, raid and 40 or 4 do
+        local unit = (raid and "raid" or "party") .. i
+        if UnitExists(unit) then
+            local name, extra = UnitFullName(unit)
+            if name and not Secret(name) then
+                set[name] = true
+                if extra and not Secret(extra) and extra ~= "" then set[ns.Normalize(name .. "-" .. extra)] = true end
+            end
+        end
+    end
+    return set
+end
+
+local function InGroup(set, full)
+    return set[full] or set[(full:match("^[^ %-]+")) or full]
+end
+
+-- Klasse, Stufe und Gebiet aus der Gildenliste (nur online)
+local function RosterInfo()
+    local info = {}
+    for i = 1, GetNumGuildMembers() do
+        local name, _, _, level, _, zone, _, _, online, _, class = GetGuildRosterInfo(i)
+        if name and online then info[ns.Normalize(name)] = { level = level, zone = zone, class = class } end
+    end
+    return info
+end
+
+-- Position von einer Karte auf die gerade gezeigte umrechnen (Gebiet → Kontinent …)
+local function Translate(map, x, y, shown)
+    if map == shown then return x, y end
+    if not (C_Map.GetWorldPosFromMapPos and C_Map.GetMapPosFromWorldPos and CreateVector2D) then return end
+    local ok, cont, world = pcall(C_Map.GetWorldPosFromMapPos, map, CreateVector2D(x, y))
+    if not ok or not cont or not world then return end
+    local ok2, _, pos = pcall(C_Map.GetMapPosFromWorldPos, cont, world, shown)
+    if not ok2 or not pos then return end
+    local px, py = pos:GetXY()
+    if not px or px < 0 or px > 1 or py < 0 or py > 1 then return end
+    return px, py
+end
+
+local function PinEnter(pin)
+    if not pin.who then return end
+    GameTooltip:SetOwner(pin, "ANCHOR_RIGHT")
+    local c = pin.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[pin.class]
+    GameTooltip:AddLine(pin.who, c and c.r or 1, c and c.g or 0.82, c and c.b or 0)
+    if pin.level then GameTooltip:AddLine((L["Stufe %s"]):format(pin.level), 1, 1, 1) end
+    if pin.zone and pin.zone ~= "" then GameTooltip:AddLine(pin.zone, 0.8, 0.8, 0.8) end
+    GameTooltip:AddLine(L["Gildenmitglied mit GuildPride"], 0.94, 0.78, 0.55)
+    GameTooltip:Show()
+end
+
+local function NewPin()
+    local pin = CreateFrame("Frame", nil, overlay)
+    pin:SetSize(14, 14)
+    pin:EnableMouse(true)
+    if pin.SetPropagateMouseClicks then pcall(pin.SetPropagateMouseClicks, pin, true) end
+    local mask = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+    pin.ring = pin:CreateTexture(nil, "ARTWORK")
+    pin.ring:SetAllPoints(); pin.ring:SetTexture(mask); pin.ring:SetVertexColor(0, 0, 0, 0.9)
+    pin.dot = pin:CreateTexture(nil, "OVERLAY")
+    pin.dot:SetPoint("CENTER"); pin.dot:SetSize(10, 10); pin.dot:SetTexture(mask)
+    pin:SetScript("OnEnter", PinEnter)
+    pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    return pin
+end
+
+local function Refresh()
+    if not overlay or not WorldMapFrame:IsShown() then return end
+    local shown = WorldMapFrame:GetMapID()
+    local canvas = WorldMapFrame:GetCanvas()
+    local cw, ch = canvas:GetWidth(), canvas:GetHeight()
+    local scale = 1 / (WorldMapFrame:GetCanvasScale() or 1)
+    local now, n = GetTime(), 0
+    if Showing() and shown and cw > 0 then
+        -- Gruppe und Gildenliste nur alle 2 s neu lesen (große Gilden)
+        if now - cacheAt > 2 then cacheAt, cachedGroup, cachedRoster = now, GroupNames(), RosterInfo() end
+        local group, roster = cachedGroup, cachedRoster
+        for who, p in pairs(positions) do
+            if now - p.t > STALE or not roster[who] then
+                if now - p.t > STALE then positions[who] = nil end
+            elseif not InGroup(group, who) then
+                local x, y = Translate(p.map, p.x, p.y, shown)
+                if x then
+                    n = n + 1
+                    local pin = pins[n] or NewPin()
+                    pins[n] = pin
+                    local r = roster[who]
+                    pin.who, pin.level, pin.zone, pin.class = who, r.level, r.zone, r.class
+                    local c = r.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[r.class]
+                    pin.dot:SetVertexColor(c and c.r or 0.94, c and c.g or 0.78, c and c.b or 0.55)
+                    pin:SetScale(scale)
+                    pin:ClearAllPoints()
+                    pin:SetPoint("CENTER", canvas, "TOPLEFT", cw * x / scale, -ch * y / scale)
+                    pin:Show()
+                end
+            end
+        end
+    end
+    for i = n + 1, #pins do pins[i]:Hide(); pins[i].who = nil end
+end
+
+local function SetupMap()
+    if overlay or not (WorldMapFrame and WorldMapFrame.GetCanvas) then return end
+    local canvas = WorldMapFrame:GetCanvas()
+    overlay = CreateFrame("Frame", nil, canvas)
+    overlay:SetAllPoints(canvas)
+    overlay:SetFrameLevel(canvas:GetFrameLevel() + 1500)
+    overlay:EnableMouse(false)
+    local elapsed = 0
+    overlay:SetScript("OnUpdate", function(_, dt)
+        elapsed = elapsed + dt
+        if elapsed < 0.1 then return end
+        elapsed = 0
+        Refresh()
+    end)
+    WorldMapFrame:HookScript("OnShow", function() Ask(); Refresh() end)
+    if WorldMapFrame:IsShown() then Ask() end
+end
+
+---------------------------------------------------------------------
+-- Takt und Ereignisse
+---------------------------------------------------------------------
+C_Timer.NewTicker(STEP, function()
+    local now = GetTime()
+    if now < wantedUntil then SendPos(false) end
+    -- Karte offen: weiter nachfragen, damit die anderen weiter senden
+    if WorldMapFrame and WorldMapFrame:IsShown() then Ask() end
+end)
+
+-- Teilen ausgeschaltet: den eigenen Punkt bei den anderen entfernen
+function ns.MapShareChanged()
+    lastSentAt = -999
+    if not Sharing() then SendPos(true) elseif GetTime() < wantedUntil then SendPos(true) end
+end
+function ns.MapShowChanged() Refresh() end
+
+local f = CreateFrame("Frame")
+f:RegisterEvent("PLAYER_LOGIN")
+f:RegisterEvent("ADDON_LOADED")
+f:SetScript("OnEvent", function(_, event, name)
+    if event == "PLAYER_LOGIN" or name == "Blizzard_WorldMap" then SetupMap() end
+end)

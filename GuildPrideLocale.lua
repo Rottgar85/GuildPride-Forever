@@ -323,6 +323,11 @@ local enUS = {
     ["Gruppenleiter anflüstern"] = "Whisper the group leader",
     ["Im Dungeonbrowser fragt man per Flüstern, ob man mit darf."] = "In the Dungeon Finder you ask by whisper whether you can join.",
     ["Fehlt noch: %s"] = "Still missing: %s",
+    -- Gilde auf der Weltkarte
+    ["Stufe %s"] = "Level %s",
+    ["Gildenmitglied mit GuildPride"] = "Guild member with GuildPride",
+    ["Gildenmitglieder mit GuildPride auf der Weltkarte zeigen"] = "Show guild members with GuildPride on the world map",
+    ["Eigene Position auf der Weltkarte mit der Gilde teilen"] = "Share your position on the world map with your guild",
     ["Öffnet Blizzards Dungeonbrowser. Dein Eintrag in der Gruppensuche bleibt bestehen."] =
         "Opens Blizzard's Dungeon Finder. Your Group Finder listing stays active.",
     ["Der Dungeonbrowser ist gerade nicht verfügbar."] = "The Dungeon Finder is not available right now.",

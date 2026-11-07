@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.1.0
+
+**English**
+- **Guild on the world map**: guild members with GuildPride now show up on the world map as a dot in their class color, even when they are not in your group. Hover a dot for name, level and zone
+- Positions go over the guild's secured channel and only while someone in the guild has the world map open. No position is sent from dungeons and instances
+- Two new settings, both on: **Show guild members with GuildPride on the world map** and **Share your position on the world map with your guild**. Turning sharing off removes your dot for the others right away
+
+**Deutsch**
+- **Gilde auf der Weltkarte**: Gildenmitglieder mit GuildPride erscheinen jetzt als Punkt in ihrer Klassenfarbe auf der Weltkarte, auch wenn sie nicht in deiner Gruppe sind. Mit der Maus über einen Punkt siehst du Name, Stufe und Gebiet
+- Die Positionen gehen über den abgesicherten Gildenkanal und nur, solange jemand in der Gilde die Weltkarte offen hat. Aus Dungeons und Instanzen wird keine Position gesendet
+- Zwei neue Einstellungen, beide an: **Gildenmitglieder mit GuildPride auf der Weltkarte zeigen** und **Eigene Position auf der Weltkarte mit der Gilde teilen**. Schaltest du das Teilen aus, verschwindet dein Punkt bei den anderen sofort
+
 ## 2.0.2
 
 **English**

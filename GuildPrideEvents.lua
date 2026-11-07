@@ -573,6 +573,16 @@ local function Queue(kind, target, ...)
 end
 ns.Queue = Queue
 function ns.QueueLength() return #queue end
+-- Nur der neueste Stand zählt (z. B. die Kartenposition): wartende ältere
+-- Nachrichten derselben Art an dasselbe Ziel fliegen vorher raus
+function ns.QueueLatest(kind, target, ...)
+    local head = kind .. ":"
+    for i = #queue, 1, -1 do
+        local it = queue[i]
+        if it.target == target and it.msg:sub(1, #head) == head then table.remove(queue, i) end
+    end
+    Queue(kind, target, ...)
+end
 
 local function SendEvent(e, target)
     -- rep: Wiederholung in Tagen (7 = jede Woche); ältere Versionen ignorieren das Feld
