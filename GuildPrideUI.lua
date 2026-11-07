@@ -413,7 +413,7 @@ roster:SetWidth(ROSTER_W)
 -- kann den sicheren Klick-Handler ersetzen – dann passiert beim Klick nichts.
 -- Aussehen deshalb selbst gebaut, im Stil der übrigen Knöpfe.
 local secureButtons = {}
-function ns.SecureMacroButton(parent, w, label)
+local function SecureButton(parent, w, label)
     local b = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate")
     b:SetSize(w, 24)
     local bg = b:CreateTexture(nil, "BACKGROUND")
@@ -433,6 +433,21 @@ function ns.SecureMacroButton(parent, w, label)
     -- Einstellung ActionButtonUseKeyDown und der Knopf kann "tot" sein.
     b:RegisterForClicks("AnyDown")
     b:SetAttribute("useOnKeyDown", true)
+    secureButtons[#secureButtons + 1] = b
+    return b
+end
+
+-- Klickt sicher einen Blizzard-Knopf: So öffnet Blizzard sein Fenster selbst,
+-- und unser Addon-Code läuft nicht mit (keine Sperren in dem Fenster).
+function ns.SecureClickButton(parent, w, label, target)
+    local b = SecureButton(parent, w, label)
+    b:SetAttribute("type", "click")
+    b:SetAttribute("clickbutton", target)
+    return b
+end
+
+function ns.SecureMacroButton(parent, w, label)
+    local b = SecureButton(parent, w, label)
     b:SetAttribute("type", "macro")
 
     b:HookScript("OnClick", function(self)
@@ -443,7 +458,6 @@ function ns.SecureMacroButton(parent, w, label)
         -- Nach der Aktion die Gildenliste neu laden
         C_Timer.After(1, function() if C_GuildInfo and C_GuildInfo.GuildRoster then C_GuildInfo.GuildRoster() end end)
     end)
-    secureButtons[#secureButtons + 1] = b
     return b
 end
 

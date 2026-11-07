@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.0.2
+
+**English**
+- Group Finder: new **Dungeon Finder** button that opens Blizzard's own Dungeon Finder. Your Group Finder listing stays active
+- Group Finder: **Search Dungeon Finder** adds groups from Blizzard's Dungeon Finder to the list, marked **[Dungeon Finder]**. Results of a search in Blizzard's window show up there too
+- Dungeon Finder groups: the dots show the roles already in the group (blue tank, green healer, red damage), the line below says if a tank or healer is still missing, and **Whisper** opens a whisper to the group leader
+- Click `[GuildPride]` in front of a GuildPride message in chat to open just that line in a window, selected for copying with Ctrl+C
+
+**Deutsch**
+- Gruppensuche: Neuer Knopf **Dungeonbrowser**, der Blizzards eigenen Dungeonbrowser öffnet. Dein Eintrag in der Gruppensuche bleibt bestehen
+- Gruppensuche: **Browser durchsuchen** holt Gruppen aus Blizzards Dungeonbrowser in die Liste, markiert mit **[Dungeonbrowser]**. Auch die Ergebnisse einer Suche im Blizzard-Fenster erscheinen dort
+- Gruppen aus dem Dungeonbrowser: Die Punkte zeigen, welche Rollen schon dabei sind (blau Tank, grün Heiler, rot DD), darunter steht, ob noch Tank oder Heiler fehlt, und **Anflüstern** öffnet ein Flüstern an den Gruppenleiter
+- Ein Klick auf `[GuildPride]` vor einer GuildPride-Meldung im Chat öffnet genau diese Zeile in einem Fenster, markiert zum Kopieren mit Strg+C
+
 ## 2.0.1
 
 **English**

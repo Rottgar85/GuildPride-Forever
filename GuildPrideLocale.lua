@@ -313,6 +313,26 @@ local enUS = {
     ["Linksklick: Gildenfenster"] = "Left-click: guild window",
     ["Rechtsklick: Einstellungen"] = "Right-click: settings",
     ["Ziehen: verschieben"] = "Drag: move",
+    -- Einzelne GuildPride-Meldung kopieren (Klick auf [GuildPride] im Chat)
+    ["Strg+C kopiert den markierten Text. Mit der Maus kannst du auch nur einen Teil markieren."] =
+        "Ctrl+C copies the selected text. You can also select just a part with the mouse.",
+    ["GuildPride-Meldung kopieren"] = "Copy GuildPride message",
+    ["Diese Meldung ist zu alt und lässt sich nicht mehr kopieren."] = "This message is too old and can no longer be copied.",
+    -- Blizzards Dungeonbrowser
+    ["Dungeonbrowser"] = "Dungeon Finder",
+    ["Gruppenleiter anflüstern"] = "Whisper the group leader",
+    ["Im Dungeonbrowser fragt man per Flüstern, ob man mit darf."] = "In the Dungeon Finder you ask by whisper whether you can join.",
+    ["Fehlt noch: %s"] = "Still missing: %s",
+    ["Öffnet Blizzards Dungeonbrowser. Dein Eintrag in der Gruppensuche bleibt bestehen."] =
+        "Opens Blizzard's Dungeon Finder. Your Group Finder listing stays active.",
+    ["Der Dungeonbrowser ist gerade nicht verfügbar."] = "The Dungeon Finder is not available right now.",
+    ["Browser durchsuchen"] = "Search Dungeon Finder",
+    ["Holt Gruppen aus Blizzards Dungeonbrowser in diese Liste. Du erkennst sie an der Markierung [Dungeonbrowser]."] =
+        "Adds groups from Blizzard's Dungeon Finder to this list. They are marked [Dungeon Finder].",
+    ["Die Suche im Dungeonbrowser ist fehlgeschlagen."] = "The Dungeon Finder search failed.",
+    ["Öffne einmal den Dungeonbrowser und wähle dort eine Kategorie (z. B. Dungeons). Danach sucht dieser Knopf dort neu, und die Gruppen erscheinen hier."] =
+        "Open the Dungeon Finder once and pick a category there (e.g. Dungeons). After that this button searches it again and the groups show up here.",
+    ["Im Dungeonbrowser wurde gerade nichts gefunden."] = "The Dungeon Finder found no groups right now.",
     -- Serverweite Gruppensuche
     ["Serverweit"] = "Server-wide",
     ["Server"] = "Server",

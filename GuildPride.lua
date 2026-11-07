@@ -163,8 +163,16 @@ function ns.IsOfficer()
     return CanEditMOTD and CanEditMOTD()
 end
 
+-- Die letzten Meldungen merken: ein Klick auf [GuildPride] im Chat öffnet
+-- genau diese Zeile zum Kopieren (siehe GuildPrideCopy.lua). Blizzards
+-- "addon:"-Links lösen dabei nur ein Ereignis aus, nichts Geschütztes.
+local printLog, printId, PRINT_KEEP = {}, 0, 200
+ns.printLog = printLog
 local function Print(msg)
-    print("|cffff7d0a[GuildPride]|r " .. msg)
+    printId = printId + 1
+    printLog[printId] = msg
+    printLog[printId - PRINT_KEEP] = nil
+    print(("|cffff7d0a|Haddon:GuildPride:copy:%d|h[GuildPride]|h|r "):format(printId) .. msg)
 end
 
 local function IconString(size)

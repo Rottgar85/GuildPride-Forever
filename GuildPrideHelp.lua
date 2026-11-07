@@ -156,6 +156,14 @@ local ROLES = {
     { key = "D", label = L["DD"],       color = "|cffff6060", spec = "DAMAGER" },
 }
 local ROLE_BY_SPEC = { TANK = "T", HEALER = "H", DAMAGER = "D" }
+-- Farben der Rollen als Zahlen (für die Füllstand-Punkte)
+local ROLE_RGB = { T = { 0.44, 0.66, 1 }, H = { 0.25, 1, 0.25 }, D = { 1, 0.38, 0.38 } }
+
+-- Flüsterzeile an einen Spieler öffnen (neuere Spielversionen: ChatFrameUtil)
+local function SendTell(name)
+    local f = (ChatFrameUtil and ChatFrameUtil.SendTell) or ChatFrame_SendTell
+    if f then f(name) end
+end
 
 local entries = {}   -- [Name-Realm] = { kind, note, level, zone, size, max, needs, role, class, t, seen }
 local publicEntries = {}   -- dasselbe vom ganzen Server (offener Kanal), getrennt von der Gilde
@@ -890,6 +898,31 @@ if ns.GuildKeys then
     end)
 end
 
+-- Blizzards Dungeonbrowser (nur Forever): klickt den Blizzard-Knopf der Menüleiste.
+-- Unser Fenster liegt höher und würde den Browser verdecken, schließt sich also.
+if ns.IS_FOREVER and LFDMicroButton then
+    local bBrowser = ns.SecureClickButton(page, 140, L["Dungeonbrowser"], LFDMicroButton)
+    bBrowser:SetPoint("TOPRIGHT", -2, -52)
+    bBrowser:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L["Dungeonbrowser"], 1, 1, 1)
+        GameTooltip:AddLine(L["Öffnet Blizzards Dungeonbrowser. Dein Eintrag in der Gruppensuche bleibt bestehen."], 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    bBrowser:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    bBrowser:HookScript("OnClick", function()
+        if not LFDMicroButton:IsEnabled() then
+            local reason = LFDMicroButton.GetGroupFinderDisabledTooltip and LFDMicroButton:GetGroupFinderDisabledTooltip()
+            ns.Print(type(reason) == "string" and reason ~= "" and reason or L["Der Dungeonbrowser ist gerade nicht verfügbar."])
+            return
+        end
+        -- Kurz warten: Blizzard lädt das Fenster beim ersten Öffnen erst nach
+        C_Timer.After(0.1, function()
+            if LFGParentFrame and LFGParentFrame:IsShown() and not InCombatLockdown() then GuildPrideFrame:Hide() end
+        end)
+    end)
+end
+
 -- Eigener Status in einer eigenen Zeile unter den Knöpfen
 local status = page:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
 status:SetPoint("TOPLEFT", 6, -82)
@@ -973,8 +1006,13 @@ local function GetRow(i)
     r.tell:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     r.tell:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(L["Linksklick: Beitritt anfragen bzw. einladen"], 1, 1, 1)
-        GameTooltip:AddLine(L["Rechtsklick: anflüstern"], 0.8, 0.8, 0.8)
+        if self.whisperOnly then
+            GameTooltip:SetText(L["Gruppenleiter anflüstern"], 1, 1, 1)
+            GameTooltip:AddLine(L["Im Dungeonbrowser fragt man per Flüstern, ob man mit darf."], 0.8, 0.8, 0.8, true)
+        else
+            GameTooltip:SetText(L["Linksklick: Beitritt anfragen bzw. einladen"], 1, 1, 1)
+            GameTooltip:AddLine(L["Rechtsklick: anflüstern"], 0.8, 0.8, 0.8)
+        end
         GameTooltip:Show()
     end)
     r.tell:HookScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1015,12 +1053,55 @@ local function JoinOrInvite(target, mode)
         ns.Print((L["Beitrittsanfrage an |cffffd100%s|r gesendet."]):format(target))
         return
     end
-    ChatFrame_SendTell(target)
+    SendTell(target)
 end
 
 local function Ago(now, t)
     local m = math.floor((now - t) / 60)
     return m < 1 and L["gerade eben"] or (L["vor %d Min."]):format(m)
+end
+
+-- Ergebnisse aus Blizzards Dungeonbrowser (nur Forever). Blizzard hält nur eine
+-- Ergebnisliste: Auch eine Suche im Blizzard-Fenster landet also hier.
+local BROWSER = (ns.IS_FOREVER and C_LFGList and C_LFGList.Search and C_LFGList.GetSearchResultInfo) and {
+    icon = "Interface\\Icons\\INV_Misc_GroupLooking",
+    max = 40,
+}
+
+-- Während der Chat-Sperre sind die Werte geheim: Der Zugriff scheitert dann im pcall des Aufrufers
+local function BrowserEntry(id, now)
+    local G = C_LFGList
+    local info = G.GetSearchResultInfo(id)
+    if not info or info.isDelisted or info.hasSelf or not info.leaderName then return end
+    local acts = info.activityIDs or {}
+    local act = acts[1] and G.GetActivityInfoTable(acts[1])
+    local leader = G.GetSearchResultLeaderInfo(id) or {}
+    local title = act and act.fullName or L["Dungeonbrowser"]
+    if #acts > 1 then title = title .. (" |cff999999+%d|r"):format(#acts - 1) end
+    local max = act and act.maxNumPlayers or 0
+    -- Rollen in der Gruppe (so zeigt es auch Blizzards Fenster)
+    local counts = G.GetSearchResultMemberCounts and G.GetSearchResultMemberCounts(id)
+    local roles = counts and { T = tonumber(counts.TANK) or 0, H = tonumber(counts.HEALER) or 0,
+                               D = tonumber(counts.DAMAGER) or 0 }
+    return ns.Normalize(info.leaderName), {
+        kind = "group", browser = true, note = title, needs = "", roles = roles,
+        class = leader.classFilename, level = leader.level or 0, zone = leader.areaName or "",
+        t = now - (info.age or 0), size = info.numMembers or 1, max = max > 0 and max or 5,
+    }
+end
+
+local function AddBrowserEntries(list, now)
+    local G = C_LFGList
+    local _, ids = (G.GetFilteredSearchResults or G.GetSearchResults)()
+    local me, added = ns.Me(), 0
+    for _, id in ipairs(ids or {}) do
+        if added >= BROWSER.max then break end
+        local ok, name, e = pcall(BrowserEntry, id, now)
+        if ok and name and name ~= me and not entries[name] and not publicEntries[name] then
+            list[#list + 1] = { name = name, e = e }
+            added = added + 1
+        end
+    end
 end
 
 function page:Refresh()
@@ -1083,7 +1164,13 @@ function page:Refresh()
             end
         end
     end
-    table.sort(list, function(a, b) return a.e.t > b.e.t end)
+    -- Dungeonbrowser: serverweite Gruppen, also bei „Server“ und „Alle“, nicht bei „Gilde“
+    if BROWSER and (not publicOn or scope ~= "guild") then AddBrowserEntries(list, now) end
+    -- Gilde und Server zuerst, die Gruppen aus dem Dungeonbrowser darunter
+    table.sort(list, function(a, b)
+        if (a.e.browser or false) ~= (b.e.browser or false) then return not a.e.browser end
+        return a.e.t > b.e.t
+    end)
     empty:SetShown(#list == 0)
 
     for i = #list + 1, #rows do rows[i]:Hide() end
@@ -1095,8 +1182,9 @@ function page:Refresh()
             local e, t = item.e, TYPES[item.e.kind]
             local c = RAID_CLASS_COLORS[e.class]
             local hex = c and c.colorStr and c.colorStr:sub(3) or "f0c88c"
-            r.icon:SetTexture(t.icon)
-            if item.e.kind == "quest" then r.edge:SetColorTexture(1, 0.82, 0, 1)
+            r.icon:SetTexture(e.browser and BROWSER.icon or t.icon)
+            if e.browser then r.edge:SetColorTexture(0.4, 0.8, 1, 1)
+            elseif item.e.kind == "quest" then r.edge:SetColorTexture(1, 0.82, 0, 1)
             elseif item.e.kind == "key" then r.edge:SetColorTexture(0.64, 0.21, 0.93, 1)
             else r.edge:SetColorTexture(0.44, 0.66, 1, 1) end
             -- Vom Server: Realm zeigen, wenn es ein anderer ist, und Kennzeichen
@@ -1104,6 +1192,8 @@ function page:Refresh()
             if e.public then
                 shown = Ambiguate(item.name, "none")
                 mark = " |cff8fb3ff[" .. L["Server"] .. "]|r"
+            elseif e.browser then
+                mark = " |cff66ccff[" .. L["Dungeonbrowser"] .. "]|r"
             end
             r.name:SetText(("|cff%s%s|r"):format(hex, shown) .. mark
                 .. (e.self and (" |cff999999(" .. L["du"] .. ")|r") or ""))
@@ -1115,7 +1205,11 @@ function page:Refresh()
                 ns.Print((L["%s wird in der Gruppensuche ausgeblendet (/gp server entsperren hebt das auf)."]):format(shown))
                 page:Refresh()
             end)
-            r.info:SetText(("Lvl %d · %s · |cff999999%s|r"):format(e.level, RoleLabel(e.role), e.zone))
+            if e.browser then
+                r.info:SetText((e.level > 0 and ("Lvl %d · "):format(e.level) or "") .. "|cff999999" .. e.zone .. "|r")
+            else
+                r.info:SetText(("Lvl %d · %s · |cff999999%s|r"):format(e.level, RoleLabel(e.role), e.zone))
+            end
             -- Titel: eigener Text (ältere Versionen), sonst Dungeon mit Levelbereich,
             -- sonst die verlinkte Quest, sonst die Art des Eintrags
             local hasQuest = (e.questId or 0) > 0 and (e.questName or "") ~= ""
@@ -1132,16 +1226,30 @@ function page:Refresh()
             local parts = {}
             if hasQuest then parts[#parts + 1] = QuestLink(e.questId, e.questLevel, e.questName) end
             if e.needs ~= "" then parts[#parts + 1] = (L["Sucht noch: %s"]):format(NeedsString(e.needs)) end
+            -- Dungeonbrowser: fehlt der Gruppe noch Tank oder Heiler?
+            if e.roles then
+                local missing = (e.roles.T == 0 and "T" or "") .. (e.roles.H == 0 and "H" or "")
+                if missing ~= "" then parts[#parts + 1] = (L["Fehlt noch: %s"]):format(NeedsString(missing)) end
+            end
             parts[#parts + 1] = "|cff777777" .. Ago(now, e.t) .. "|r"
             r.line2:SetText(table.concat(parts, "  ·  "))
 
             -- Füllstand: bei 5er-Gruppen Punkte, bei Raids nur Zahl
             local showPips = e.max <= 5
+            -- Dungeonbrowser: Punkte nach Rolle färben (Tank, Heiler, DD, dann frei)
+            local pipColors = {}
+            if e.roles then
+                for _, rk in ipairs({ "T", "H", "D" }) do
+                    for _ = 1, e.roles[rk] do pipColors[#pipColors + 1] = ROLE_RGB[rk] end
+                end
+            end
             for p = 1, 5 do
                 local pip = r.pips[p]
                 pip:SetShown(showPips)
                 local c = ns.Theme().ember
-                if p <= e.size then pip:SetColorTexture(c[1], c[2], c[3], 1) else pip:SetColorTexture(0.25, 0.2, 0.18, 1) end
+                if pipColors[p] then pip:SetColorTexture(pipColors[p][1], pipColors[p][2], pipColors[p][3], 1)
+                elseif p <= e.size then pip:SetColorTexture(c[1], c[2], c[3], 1)
+                else pip:SetColorTexture(0.25, 0.2, 0.18, 1) end
             end
             r.count:SetText(e.size <= 1 and L["Allein"] or (L["Gruppe %d/%d"]):format(e.size, e.max))
 
@@ -1152,7 +1260,11 @@ function page:Refresh()
             -- Schlüssel-Angebot: immer anmelden (Beitrittsanfrage an den Schlüsselhalter)
             local mode = (e.kind == "group" and e.size <= 1) and "invite" or "join"
             r.tell:SetShown(not e.self)
-            if inMyGroup then
+            r.tell.whisperOnly = e.browser
+            if e.browser and not inMyGroup then
+                -- Blizzards Dungeonbrowser kennt keine Anmeldung: den Gruppenleiter anflüstern
+                r.tell:SetText(L["Anflüstern"]); r.tell:Enable()
+            elseif inMyGroup then
                 r.tell:SetText(L["In Gruppe"]); r.tell:Disable()
             elseif mode == "join" and e.size >= e.max then
                 r.tell:SetText(L["Voll"]); r.tell:Disable()
@@ -1162,10 +1274,69 @@ function page:Refresh()
                 r.tell:SetText(mode == "invite" and L["Einladen"] or L["Beitreten"]); r.tell:Enable()
             end
             r.tell:SetScript("OnClick", function(_, button)
-                if button == "RightButton" then ChatFrame_SendTell(target) else JoinOrInvite(target, mode) end
+                if button == "RightButton" or e.browser then SendTell(target) else JoinOrInvite(target, mode) end
             end)
         end
     end
+end
+
+-- Suche im Dungeonbrowser: Forever sperrt C_LFGList.Search für Addons („Aktion blockiert“).
+-- Der Knopf klickt deshalb sicher Blizzards „Erneut suchen“ im Dungeonbrowser; das sucht
+-- in der Kategorie, die dort gewählt ist. Ohne Kategorie sucht Blizzard gar nicht.
+if BROWSER then
+    local asked = false
+    local function BlizzardSearchButton()
+        local f = LFGBrowseFrame
+        local cat = f and f.CategoryDropdown and f.CategoryDropdown.GetValue and f.CategoryDropdown:GetValue()
+        if type(cat) == "number" and cat > 0 then return f.RefreshButton end
+    end
+    local bSearch = ns.SecureClickButton(page, 150, L["Browser durchsuchen"], nil)
+    bSearch:SetPoint("TOPRIGHT", -146, -52)
+    bSearch:HookScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L["Browser durchsuchen"], 1, 1, 1)
+        GameTooltip:AddLine(L["Holt Gruppen aus Blizzards Dungeonbrowser in diese Liste. Du erkennst sie an der Markierung [Dungeonbrowser]."], 0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    bSearch:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    -- Vor dem sicheren Klick das Ziel setzen (außerhalb des Kampfs erlaubt)
+    bSearch:SetScript("PreClick", function(self)
+        if InCombatLockdown() then return end
+        local target = BlizzardSearchButton()
+        self:SetAttribute("clickbutton", target)
+        if target then
+            asked = true
+        else
+            ns.Print(L["Öffne einmal den Dungeonbrowser und wähle dort eine Kategorie (z. B. Dungeons). Danach sucht dieser Knopf dort neu, und die Gruppen erscheinen hier."])
+        end
+    end)
+
+    local pending = false
+    local function RefreshSoon()
+        if pending then return end
+        pending = true
+        C_Timer.After(0.3, function()
+            pending = false
+            if page:IsShown() then page:Refresh() end
+        end)
+    end
+    local watch = CreateFrame("Frame")
+    watch:RegisterEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    watch:RegisterEvent("LFG_LIST_SEARCH_RESULT_UPDATED")
+    watch:RegisterEvent("LFG_LIST_SEARCH_FAILED")
+    watch:SetScript("OnEvent", function(_, event)
+        if event ~= "LFG_LIST_SEARCH_RESULT_UPDATED" then
+            if asked then
+                asked = false
+                if event == "LFG_LIST_SEARCH_FAILED" then
+                    ns.Print(L["Die Suche im Dungeonbrowser ist fehlgeschlagen."])
+                elseif (C_LFGList.GetFilteredSearchResults or C_LFGList.GetSearchResults)() == 0 then
+                    ns.Print(L["Im Dungeonbrowser wurde gerade nichts gefunden."])
+                end
+            end
+        end
+        RefreshSoon()
+    end)
 end
 
 -- Beim Öffnen die aktuellen Einträge der anderen anfragen (höchstens einmal pro Minute)
