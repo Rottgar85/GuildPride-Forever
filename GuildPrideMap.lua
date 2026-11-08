@@ -128,8 +128,8 @@ end
 ---------------------------------------------------------------------
 -- Punkte auf der Weltkarte
 ---------------------------------------------------------------------
-local overlay
-local pins = {}
+-- Je Karte (Weltkarte, Gebietskarte Umschalt+M) eine eigene Ebene mit Punkten
+local maps = {}       -- [Kartenrahmen] = { frame, overlay, pins, size }
 local cacheAt, cachedGroup, cachedRoster = -999, nil, nil
 
 -- Wer ist in der eigenen Gruppe? Die zeigt Blizzard schon selbst.
@@ -187,27 +187,42 @@ local function PinEnter(pin)
     GameTooltip:Show()
 end
 
-local function NewPin()
-    local pin = CreateFrame("Frame", nil, overlay)
-    pin:SetSize(14, 14)
+local function NewPin(m)
+    local pin = CreateFrame("Frame", nil, m.overlay)
+    pin:SetSize(m.size, m.size)
     pin:EnableMouse(true)
     if pin.SetPropagateMouseClicks then pcall(pin.SetPropagateMouseClicks, pin, true) end
     local mask = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
     pin.ring = pin:CreateTexture(nil, "ARTWORK")
     pin.ring:SetAllPoints(); pin.ring:SetTexture(mask); pin.ring:SetVertexColor(0, 0, 0, 0.9)
     pin.dot = pin:CreateTexture(nil, "OVERLAY")
-    pin.dot:SetPoint("CENTER"); pin.dot:SetSize(10, 10); pin.dot:SetTexture(mask)
+    pin.dot:SetPoint("CENTER"); pin.dot:SetSize(m.size - 4, m.size - 4); pin.dot:SetTexture(mask)
     pin:SetScript("OnEnter", PinEnter)
     pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
     return pin
 end
 
-local function Refresh()
-    if not overlay or not WorldMapFrame:IsShown() then return end
-    local shown = WorldMapFrame:GetMapID()
-    local canvas = WorldMapFrame:GetCanvas()
+local function AnyMapShown()
+    for frame in pairs(maps) do
+        if frame:IsShown() then return true end
+    end
+    return false
+end
+
+local function Refresh(m)
+    if not m then
+        for _, each in pairs(maps) do Refresh(each) end
+        return
+    end
+    local frame, pins = m.frame, m.pins
+    if not frame:IsShown() then return end
+    local shown = frame:GetMapID()
+    local canvas = frame:GetCanvas()
     local cw, ch = canvas:GetWidth(), canvas:GetHeight()
-    local scale = 1 / (WorldMapFrame:GetCanvasScale() or 1)
+    local scale = 1 / (frame:GetCanvasScale() or 1)
+    -- Blizzard stuft Kartenebenen beim Kartenwechsel neu ein: immer obenauf bleiben
+    local want = canvas:GetFrameLevel() + 1500
+    if m.overlay:GetFrameLevel() < want then m.overlay:SetFrameLevel(want) end
     local now, n = GetTime(), 0
     if Showing() and shown and cw > 0 then
         -- Gruppe und Gildenliste nur alle 2 s neu lesen (große Gilden)
@@ -220,7 +235,7 @@ local function Refresh()
                 local x, y = Translate(p.map, p.x, p.y, shown)
                 if x then
                     n = n + 1
-                    local pin = pins[n] or NewPin()
+                    local pin = pins[n] or NewPin(m)
                     pins[n] = pin
                     local r = roster[who]
                     pin.who, pin.level, pin.zone, pin.class = who, r.level, r.zone, r.class
@@ -237,22 +252,30 @@ local function Refresh()
     for i = n + 1, #pins do pins[i]:Hide(); pins[i].who = nil end
 end
 
-local function SetupMap()
-    if overlay or not (WorldMapFrame and WorldMapFrame.GetCanvas) then return end
-    local canvas = WorldMapFrame:GetCanvas()
-    overlay = CreateFrame("Frame", nil, canvas)
+local function SetupMap(frame, size)
+    if not frame or maps[frame] or not (frame.GetCanvas and frame.GetMapID) then return end
+    local canvas = frame:GetCanvas()
+    if not canvas then return end
+    local overlay = CreateFrame("Frame", nil, canvas)
     overlay:SetAllPoints(canvas)
     overlay:SetFrameLevel(canvas:GetFrameLevel() + 1500)
     overlay:EnableMouse(false)
+    local m = { frame = frame, overlay = overlay, pins = {}, size = size }
+    maps[frame] = m
     local elapsed = 0
     overlay:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + dt
         if elapsed < 0.1 then return end
         elapsed = 0
-        Refresh()
+        Refresh(m)
     end)
-    WorldMapFrame:HookScript("OnShow", function() Ask(); Refresh() end)
-    if WorldMapFrame:IsShown() then Ask() end
+    frame:HookScript("OnShow", function() Ask(); Refresh(m) end)
+    if frame:IsShown() then Ask() end
+end
+
+local function SetupMaps()
+    SetupMap(WorldMapFrame, 14)
+    SetupMap(BattlefieldMapFrame, 12)   -- Gebietskarte (Umschalt+M), wird erst bei Bedarf geladen
 end
 
 ---------------------------------------------------------------------
@@ -262,7 +285,7 @@ C_Timer.NewTicker(STEP, function()
     local now = GetTime()
     if now < wantedUntil then SendPos(false) end
     -- Karte offen: weiter nachfragen, damit die anderen weiter senden
-    if WorldMapFrame and WorldMapFrame:IsShown() then Ask() end
+    if AnyMapShown() then Ask() end
 end)
 
 -- Teilen ausgeschaltet: den eigenen Punkt bei den anderen entfernen
@@ -296,7 +319,25 @@ local function Diagnose()
         stats.askIn, tostring(stats.lastAskFrom), stats.posIn, tostring(stats.lastIn)))
     local shown = WorldMapFrame and WorldMapFrame:GetMapID()
     P("Weltkarte zeigt: " .. (shown and MapName(shown) or "nichts (Karte nie geöffnet)")
-        .. (overlay and "" or "  |cffff4040Kartenebene fehlt|r"))
+        .. ((WorldMapFrame and maps[WorldMapFrame]) and "" or "  |cffff4040Kartenebene fehlt|r"))
+    local zoneMap = BattlefieldMapFrame and maps[BattlefieldMapFrame]
+    P("Gebietskarte (Umschalt+M): " .. (not zoneMap and "noch nicht geladen"
+        or zoneMap.frame:IsShown() and ("offen, zeigt " .. MapName(zoneMap.frame:GetMapID())) or "zu"))
+    local zoneShown = zoneMap and zoneMap.frame:IsShown() and zoneMap.frame:GetMapID()
+    if zoneShown then
+        local canvas = zoneMap.frame:GetCanvas()
+        P(("  Ebene: sichtbar %s, Alpha %.2f, Stufe %d (Karte %d), Größe %d x %d, Maßstab %.2f"):format(
+            tostring(zoneMap.overlay:IsVisible()), zoneMap.overlay:GetEffectiveAlpha(),
+            zoneMap.overlay:GetFrameLevel(), canvas:GetFrameLevel(),
+            canvas:GetWidth(), canvas:GetHeight(), zoneMap.frame:GetCanvasScale() or 0))
+        for _, pin in ipairs(zoneMap.pins) do
+            if pin.who then
+                local px, py = pin:GetCenter()
+                P(("  Punkt %s: sichtbar %s, Bildschirm %s / %s"):format(pin.who, tostring(pin:IsVisible()),
+                    px and math.floor(px) or "?", py and math.floor(py) or "?"))
+            end
+        end
+    end
     local group, roster, now, any = GroupNames(), RosterInfo(), GetTime(), false
     for who, p in pairs(positions) do
         any = true
@@ -306,8 +347,12 @@ local function Diagnose()
         elseif now - p.t > STALE then why = "zu alt"
         elseif not roster[who] then why = "nicht in der Gildenliste online gefunden"
         elseif InGroup(group, who) then why = "in deiner Gruppe"
-        elseif shown and not Translate(p.map, p.x, p.y, shown) then why = "liegt nicht auf der gezeigten Karte"
+        elseif shown and not Translate(p.map, p.x, p.y, shown) then why = "liegt nicht auf der Weltkarte"
         else why = "|cff40ff40wird gezeigt|r" end
+        if zoneShown and not p.none and why ~= "zu alt" then
+            why = why .. (Translate(p.map, p.x, p.y, zoneShown) and ", Gebietskarte: drauf"
+                or ", Gebietskarte: |cffff4040nicht drauf|r")
+        end
         if why then
             P(("  %s: %s %.3f / %.3f, vor %d s – %s"):format(who, MapName(p.map), p.x, p.y, math.floor(now - p.t), why))
         end
@@ -332,5 +377,7 @@ local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")
 f:RegisterEvent("ADDON_LOADED")
 f:SetScript("OnEvent", function(_, event, name)
-    if event == "PLAYER_LOGIN" or name == "Blizzard_WorldMap" then SetupMap() end
+    if event == "PLAYER_LOGIN" or name == "Blizzard_WorldMap" or name == "Blizzard_BattlefieldMap" then
+        SetupMaps()
+    end
 end)

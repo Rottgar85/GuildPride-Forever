@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.2.1
+
+**English**
+- Guild members with GuildPride now also show up on the small **zone map** (Shift+M), not only on the big world map
+- `/gp karte` now also reports on the zone map: whether it is open, which map it shows and whether each member is on it
+
+**Deutsch**
+- Gildenmitglieder mit GuildPride erscheinen jetzt auch auf der kleinen **Gebietskarte** (Umschalt+M), nicht nur auf der großen Weltkarte
+- `/gp karte` zeigt jetzt auch die Gebietskarte an: ob sie offen ist, welche Karte sie zeigt und ob jedes Mitglied darauf liegt
+
 ## 2.2.0
 
 **English**
