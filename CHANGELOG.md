@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.2.2
+
+**English**
+- Guild info: **Edit in Blizzard's window** now opens Blizzard's guild information window right away, ready to edit. Save it there with Blizzard's own button
+
+**Deutsch**
+- Gildeninfo: **Im Blizzard-Fenster bearbeiten** öffnet jetzt sofort Blizzards Gildeninformations-Fenster zum Bearbeiten. Gespeichert wird dort mit Blizzards eigenem Knopf
+
 ## 2.2.1
 
 **English**

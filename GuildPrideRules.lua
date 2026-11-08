@@ -24,9 +24,25 @@ text:SetWidth(620); text:SetJustifyH("LEFT"); text:SetSpacing(4)
 
 local bEdit = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 bEdit:SetSize(220, 24); bEdit:SetPoint("BOTTOMRIGHT", 0, 0); bEdit:SetText(L["Im Blizzard-Fenster bearbeiten"])
+-- Blizzards Gildeninfo-Fenster (Gilden-Reiter im Freundesfenster, Knopf
+-- „Gildeninformation“) gleich mit aufmachen. Gespeichert wird dort mit dem
+-- eigenen Blizzard-Knopf, das Addon schreibt selbst nichts.
+local function OpenInfoEditor()
+    if InCombatLockdown() then return false end
+    local info, button = GuildInfoFrame, GuildFrameGuildInformationButton
+    if not (info and button and button.Click) then return false end
+    if not info:IsShown() then button:Click() end
+    return info:IsShown()
+end
+
 bEdit:SetScript("OnClick", function()
     ns.OpenBlizzardGuild()
-    ns.Print(L["Gildeninfo bearbeiten: im Blizzard-Gildenfenster den Reiter „Info“ öffnen und dort auf „Bearbeiten“ klicken."])
+    -- Das Blizzard-Fenster baut sich erst nach dem Öffnen auf: kurz warten
+    C_Timer.After(0.1, function()
+        if not OpenInfoEditor() then
+            ns.Print(L["Gildeninfo bearbeiten: im Blizzard-Gildenfenster den Reiter „Info“ öffnen und dort auf „Bearbeiten“ klicken."])
+        end
+    end)
 end)
 
 ---------------------------------------------------------------------
