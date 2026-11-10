@@ -115,10 +115,24 @@ end
 
 local Crown   -- unten, braucht IsUnknown
 
-local function Line(t, who, full, hex, text, kind, guid)
+-- Discord-Logo vor Nachrichten, die über Blizzards Discord-Anbindung in den
+-- Gildenchat kommen. Blizzard nutzt dafür den Atlas "UI-ChatIcon-Discord";
+-- fehlt er im Client, steht dort "[Discord]" in Discord-Blau.
+local DISCORD_ATLAS = "UI-ChatIcon-Discord"
+local discordIcon
+local function DiscordIcon()
+    if not discordIcon then
+        local ok = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(DISCORD_ATLAS)
+        discordIcon = ok and ("|A:%s:0:0|a "):format(DISCORD_ATLAS) or "|cff5865f2[Discord]|r "
+    end
+    return discordIcon
+end
+
+local function Line(t, who, full, hex, text, kind, guid, discord)
     local name = full and ("|Hplayer:%s|h|cff%s%s|r|h"):format(full, hex, who) or ("|cff%s%s|r"):format(hex, who)
     -- Rang-Krone nur im Gilden- und Offizierschat: in Communities sagt der Gildenrang nichts aus
     if full and (kind == "GUILD" or kind == "OFFICER") then name = Crown(full, guid) .. name end
+    if discord then name = DiscordIcon() .. name end
     -- Erwähnung: » davor und goldene Schrift
     if MentionsMe(text, who) then
         return ("|cff777777%s|r  |cffffd100»|r %s: |cffffd100%s|r"):format(date("%H:%M", t), name, text)
@@ -288,7 +302,32 @@ local function AuthorName(clubId, a)
     return name
 end
 
--- Server-Nachricht -> gespeicherter Eintrag { t, who, full, hex, text, memberId, guid }
+-- Discord-Absender: Blizzards discordInfo -> Anzeigename, Charakter-Link, Farbe.
+-- Je nach Einstellung des Schreibers sein zuletzt gespielter Charakter
+-- (mit Klassenfarbe und Link) oder sein Discord-Name (ohne Link, Discord-Farbe).
+local DISCORD_NAME_HEX = "e0e3ff"
+local function DiscordAuthor(d)
+    if type(d) ~= "table" or Secret(d.fromDiscord) or d.fromDiscord ~= true then return nil end
+    local globalType = Enum and Enum.DiscordDisplayNameType and Enum.DiscordDisplayNameType.GlobalName or 2
+    local useGlobal = Secret(d.type) or d.type == globalType
+    local char = d.lastOnlineName
+    if not useGlobal and not IsUnknown(char) then
+        local guid = d.lastOnlineGUID
+        local class
+        if not Secret(guid) and type(guid) == "string" and guid ~= "" and GetPlayerInfoByGUID then
+            local ok, _, c = pcall(GetPlayerInfoByGUID, guid)
+            if ok and not Secret(c) then class = c end
+        end
+        return Ambiguate(char, "guild"), char, ClassHex(nil, class)
+    end
+    local g = d.globalName
+    -- Discord-Namen sind frei wählbar: keine Farb- oder Link-Codes durchlassen
+    g = not IsUnknown(g) and g:gsub("|", ""):sub(1, 40) or ""
+    if g == "" then g = "Discord" end
+    return g, nil, DISCORD_NAME_HEX
+end
+
+-- Server-Nachricht -> gespeicherter Eintrag { t, who, full, hex, text, memberId, guid, discord }
 -- allowSecret: geschützter Text (Midnight, z. B. im Schlachtfeld) nur zum
 -- Anzeigen – nicht vergleichen, nicht speichern
 local function ClubEntry(clubId, m, kind, allowSecret)
@@ -306,14 +345,19 @@ local function ClubEntry(clubId, m, kind, allowSecret)
     end
     -- Battle.net-Communities: kein Charaktername -> kein Player-Link
     local link = full and (kind ~= "CLUB" or a.clubType ~= Enum.ClubType.BattleNet) and full or nil
+    local dWho, dFull, dHex = DiscordAuthor(a.discordInfo)
+    if dWho then
+        return { t = t, who = dWho, full = dFull, hex = dHex, text = m.content, memberId = a.memberId,
+                 isSelf = a.isSelf, discord = true }
+    end
     return { t = t, who = full and Ambiguate(full, "guild") or nil, full = link, hex = ClassHex(not Secret(a.classID) and a.classID or nil),
              text = m.content, memberId = a.memberId, guid = a.guid, isSelf = a.isSelf }
 end
 
 local function EntryLine(e, kind)
     -- Ohne Namen: Blizzard liefert keine Namen für Leute, die nicht mehr im Club sind
-    if not e.who then return Line(e.t, L["Ehemaliges Mitglied"], nil, "888888", e.text, kind) end
-    return Line(e.t, e.who, e.full, e.hex, e.text, kind, e.guid)
+    if not e.who then return Line(e.t, L["Ehemaliges Mitglied"], nil, "888888", e.text, kind, nil, e.discord) end
+    return Line(e.t, e.who, e.full, e.hex, e.text, kind, e.guid, e.discord)
 end
 
 -- Verlauf je Kanal lokal merken: der Server liefert nach dem Login oft nur
@@ -370,6 +414,10 @@ local function Remember(cache, entries)
             if Same(cache[i], e) then found = cache[i]; break end
         end
         if found then
+            if e.discord and not found.discord then
+                found.who, found.full, found.hex, found.discord = e.who, e.full, e.hex, true
+                changed = true
+            end
             if not found.who and e.who then
                 found.who, found.full, found.hex = e.who, e.full, e.hex
                 changed = true
@@ -553,7 +601,7 @@ local function Redraw()
     else
         if channel.kind == "CLUB" then return end
         for _, e in ipairs(Store()[channel.kind] or {}) do
-            msgs:AddMessage(Line(e.t, e.who, e.full, ClassHex(nil, e.class), e.text, e.ch))
+            msgs:AddMessage(Line(e.t, e.who, e.full, (e.discord and not e.full) and DISCORD_NAME_HEX or ClassHex(nil, e.class), e.text, e.ch, nil, e.discord))
         end
     end
     msgs:ScrollToBottom()
@@ -784,11 +832,21 @@ if HAS_CLUB then
     local gc = CreateFrame("Frame")
     gc:RegisterEvent("CHAT_MSG_GUILD")
     gc:RegisterEvent("CHAT_MSG_OFFICER")
-    gc:SetScript("OnEvent", function(_, event, text, author, _, _, _, _, _, _, _, _, _, guid)
+    gc:SetScript("OnEvent", function(_, event, text, author, _, _, _, flags, _, _, _, _, _, guid, ...)
         if issecretvalue and (issecretvalue(text) or issecretvalue(author) or issecretvalue(guid)) then return end
         if not GuildPrideDB or type(text) ~= "string" or type(author) ~= "string" or author == "" then return end
         local clubId, streamId = Resolve({ kind = event == "CHAT_MSG_OFFICER" and "OFFICER" or "GUILD" })
         if not clubId then return end
+        -- Discord: Kennzeichen "DISCORD" (6.) bzw. discordInfo (18. Wert)
+        local dWho, dFull, dHex = DiscordAuthor((select(6, ...)))
+        if not dWho and not Secret(flags) and flags == "DISCORD" then
+            dWho, dFull, dHex = (Ambiguate(author, "guild"):gsub("|", "")), nil, DISCORD_NAME_HEX
+        end
+        if dWho then
+            Remember(Cache(clubId, streamId), { { t = GetServerTime(), who = dWho, full = dFull, hex = dHex,
+                text = text, discord = true } })
+            return
+        end
         local _, class = nil, nil
         if guid and guid ~= "" and GetPlayerInfoByGUID then _, class = GetPlayerInfoByGUID(guid) end
         Remember(Cache(clubId, streamId), { { t = GetServerTime(), who = Ambiguate(author, "guild"), full = author,
@@ -797,18 +855,22 @@ if HAS_CLUB then
 else
     f:RegisterEvent("CHAT_MSG_GUILD")
     f:RegisterEvent("CHAT_MSG_OFFICER")
-    f:SetScript("OnEvent", function(_, event, text, author, _, _, _, _, _, _, _, _, _, guid)
+    f:SetScript("OnEvent", function(_, event, text, author, _, _, _, flags, _, _, _, _, _, guid, ...)
         if issecretvalue and (issecretvalue(text) or issecretvalue(author)) then return end
         if not GuildPrideDB then return end
         local ch = event == "CHAT_MSG_OFFICER" and "OFFICER" or "GUILD"
         local list = Store()[ch]
         local _, class = (guid and guid ~= "" and GetPlayerInfoByGUID) and GetPlayerInfoByGUID(guid)
         local e = { t = time(), ch = ch, who = Ambiguate(author, "guild"), full = author, text = text, class = class }
+        local dWho, dFull = DiscordAuthor((select(6, ...)))
+        if dWho or (not Secret(flags) and flags == "DISCORD") then
+            e.who, e.full, e.discord = dWho or (e.who:gsub("|", "")), dFull, true
+        end
         table.insert(list, e)
         while #list > MAX_SAVED do table.remove(list, 1) end
         if ns.Normalize(author) ~= ns.Me() and Ambiguate(author, "guild") ~= UnitName("player") then MarkUnread(ch) end
         if pane:IsVisible() and channel.kind == ch then
-            msgs:AddMessage(Line(e.t, e.who, e.full, ClassHex(nil, e.class), e.text, ch))
+            msgs:AddMessage(Line(e.t, e.who, e.full, (e.discord and not e.full) and DISCORD_NAME_HEX or ClassHex(nil, e.class), e.text, ch, nil, e.discord))
         end
     end)
 end

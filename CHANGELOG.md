@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.2.3
+
+**English**
+- Guild & Chat: messages written in guild chat from **Discord** (Blizzard's Discord link) now show the Discord logo in front of the name, in live chat and in the history. The name is the sender's last played character (class colour, clickable) or their Discord name, depending on their setting
+
+**Deutsch**
+- Gilde & Chat: Nachrichten, die über **Discord** in den Gildenchat geschrieben werden (Blizzards Discord-Anbindung), zeigen jetzt das Discord-Logo vor dem Namen, live und im Verlauf. Als Name steht je nach Einstellung des Schreibers sein zuletzt gespielter Charakter (Klassenfarbe, anklickbar) oder sein Discord-Name
+
 ## 2.2.2
 
 **English**
