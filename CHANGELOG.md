@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.2.4
+
+**English**
+- Fixed a Lua error (`GuildPride.lua:669: attempt to index local 'ourName'`) that came up for every GuildPride message in the guild's secured channel. Because of it, data sent over the channel was never processed – syncing (world map, milestones, group finder) should now be more reliable. Everyone in the guild should update
+
+**Deutsch**
+- Lua-Fehler behoben (`GuildPride.lua:669: attempt to index local 'ourName'`), der bei jeder GuildPride-Nachricht im abgesicherten Gildenkanal kam. Dadurch wurden Daten über den Kanal nie verarbeitet – der Abgleich (Weltkarte, Meilensteine, Gruppensuche) sollte jetzt zuverlässiger laufen. Bitte alle in der Gilde aktualisieren
+
 ## 2.2.3
 
 **English**

@@ -663,9 +663,11 @@ f:SetScript("OnEvent", function(_, event, ...)
         -- Kanal: nur unser abgesicherter Gildenkanal zählt, keine anderen Kanäle
         if channel == "CHANNEL" then
             local _, _, _, _, _, _, localID, chanName = ...
-            local ourId, ourName = ns.DataChannelId and ns.DataChannelId()
+            -- Direkt aufrufen: "a and f()" gäbe nur den ersten Rückgabewert weiter
+            local ourId, ourName
+            if ns.DataChannelId then ourId, ourName = ns.DataChannelId() end
             if not ourId or IsSecret(localID) or IsSecret(chanName) then return end
-            local nameOk = type(chanName) == "string" and chanName ~= ""
+            local nameOk = type(chanName) == "string" and chanName ~= "" and type(ourName) == "string"
                 and chanName:lower():find(ourName:lower(), 1, true) ~= nil
             if not nameOk and localID ~= ourId then return end
         end
