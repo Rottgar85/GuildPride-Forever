@@ -1411,6 +1411,8 @@ local options = {
     { key = "minimap",       label = L["Minimap-Knopf anzeigen"],
       changed = function() if ns.UpdateMinimap then ns.UpdateMinimap() end end },
     { key = "welcome",       label = L["Neue Mitglieder automatisch im Gildenchat begrüßen"] },
+    { key = "discordBridge", label = L["Discord-Anbindung nutzen (Events, Anmeldungen, DKP an Discord)"] },
+    { key = "discordLinked", label = L["Mein Discord ist mit WoW verknüpft (Optionen > Soziales)"] },
 }
 -- Serverweite Gruppensuche: in Classic-Clients nicht möglich, Schalter weglassen
 for i = #options, 1, -1 do

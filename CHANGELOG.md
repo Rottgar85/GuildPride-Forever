@@ -5,10 +5,12 @@
 **Deutsch**
 - Neu: DKP-Verfall – Knopf „Verfall -10 %“ im DKP-Fenster senkt alle positiven Stände (mit Rückfrage, lässt sich zurücknehmen)
 - Neu: Level-Meilensteine, Bosskills und Schlüssel gehen zusätzlich an Discord (GameBot: Kanal für Gilden-News)
+- Die Discord-Anbindung ist jetzt freiwillig: Beim ersten Login fragt GuildPride einmal, ob du sie nutzen willst und ob dein Discord verknüpft ist. Beides lässt sich jederzeit in den Einstellungen ein- und ausschalten
 
 **English**
 - New: DKP decay – the "Decay -10 %" button in the DKP window lowers all positive standings (asks first, can be undone)
 - New: level milestones, boss kills and keystones are also sent to Discord (GameBot: guild news channel)
+- The Discord bridge is now opt-in: on first login GuildPride asks once whether you want to use it and whether your Discord is linked. Both can be switched on or off any time in the settings
 
 ## 2.3.0
 

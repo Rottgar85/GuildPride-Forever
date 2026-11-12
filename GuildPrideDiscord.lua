@@ -21,12 +21,23 @@ ns.Discord = Discord
 local function Secret(v) return issecretvalue and issecretvalue(v) or false end
 local function Clean(s, max) return (tostring(s or ""):gsub("[%c|]", "")):sub(1, max or 200) end
 
+-- Einstellungen: an/aus und "verknüpft" stehen als normale Schalter in den
+-- GuildPride-Einstellungen (GuildPrideDB.discordBridge / .discordLinked).
+-- Alles andere (Weg, Rohzeilen, Hinweis) liegt in GuildPrideDB.discord.
 local function Opt()
     GuildPrideDB.discord = GuildPrideDB.discord or {}
     local o = GuildPrideDB.discord
-    if o.enabled == nil then o.enabled = true end
+    -- Testversionen hatten "enabled"/"linked" hier: einmal übernehmen
+    if o.linked ~= nil and GuildPrideDB.discordLinked == nil then
+        GuildPrideDB.discordLinked = o.linked
+        if o.linked then GuildPrideDB.discordBridge = true end
+    end
+    o.linked, o.enabled = nil, nil
     return o
 end
+
+local function Enabled() return GuildPrideDB and GuildPrideDB.discordBridge == true end
+Discord.Enabled = Enabled
 
 ---------------------------------------------------------------------
 -- Erkennen
@@ -39,7 +50,8 @@ end
 -- (ein Aufruf löst "Aktion blockiert" aus), daher zählt nur die Einstellung
 -- /gp discord verknuepft.
 function Discord.IsLinked()
-    return Opt().linked == true
+    Opt()
+    return GuildPrideDB.discordLinked == true
 end
 
 -- Kurze, für alle gleiche Event-Nummer aus der langen Event-ID
@@ -126,7 +138,7 @@ end
 -- Eine Zeile nach Discord bringen: selbst (verknüpft) oder über ein Mitglied
 function Discord.Post(text, now)
     local o = Opt()
-    if not o.enabled or not IsInGuild() then return end
+    if not Enabled() or not IsInGuild() then return end
     text = TAG .. " " .. Clean(text, 250)
     if Discord.IsLinked() then
         Enqueue(text)
@@ -143,7 +155,7 @@ end
 -- Bitte eines unverknüpften Mitglieds: kurz zufällig warten, dann übernehmen,
 -- falls es noch niemand getan hat (gesendet wird mit der nächsten Aktion)
 ns.On("DRL", function(payload, sender)
-    if not Opt().enabled or not Discord.IsLinked() or sender == ns.Me() then return end
+    if not Enabled() or not Discord.IsLinked() or sender == ns.Me() then return end
     if not ns.IsGuildMember(sender) or not ns.IsBridgeLine(payload) then return end
     local text = payload:sub(1, 255)
     C_Timer.After(math.random() * 4, function()
@@ -222,9 +234,9 @@ SlashCmdList.GUILDPRIDE = function(arg)
     local cmd, rest = strtrim(arg or ""):lower():match("^(%S+)%s*(.*)$")
     if cmd ~= "discord" then return slash(arg) end
     local o = Opt()
-    if rest == "an" or rest == "on" then o.enabled = true
-    elseif rest == "aus" or rest == "off" then o.enabled = false
-    elseif rest == "verknuepft" or rest == "verknüpft" or rest == "linked" then o.linked = not Discord.IsLinked()
+    if rest == "an" or rest == "on" then GuildPrideDB.discordBridge = true
+    elseif rest == "aus" or rest == "off" then GuildPrideDB.discordBridge = false
+    elseif rest == "verknuepft" or rest == "verknüpft" or rest == "linked" then GuildPrideDB.discordLinked = not Discord.IsLinked()
     elseif rest == "roh" or rest == "raw" then o.showRaw = not o.showRaw
     elseif rest == "gilde" or rest == "guild" then o.via = "guild"
     elseif rest == "stream" then o.via = "stream"
@@ -236,9 +248,41 @@ SlashCmdList.GUILDPRIDE = function(arg)
     end
     local stream = DiscordStream() and L["eigener Discord-Kanal"] or L["Gildenchat"]
     ns.Print(("Discord: %s · %s: %s · %s: %s · %s · %s: %d"):format(
-        o.enabled and L["an"] or L["aus"],
+        Enabled() and L["an"] or L["aus"],
         L["verknüpft"], Discord.IsLinked() and L["ja"] or L["nein"],
         L["Weg"], o.via == "stream" and stream or L["Gildenchat"],
         o.showRaw and L["Zeilen sichtbar"] or L["Zeilen ausgeblendet"],
         L["wartend"], #queue))
 end
+
+---------------------------------------------------------------------
+-- Einmalige Frage beim ersten Login in einer Gilde
+---------------------------------------------------------------------
+StaticPopupDialogs["GUILDPRIDE_DISCORD_ASK"] = {
+    text = L["GuildPride kann Events, Anmeldungen und DKP über Blizzards Discord-Verknüpfung an den Discord deiner Gilde schicken.\n\nDiscord-Anbindung nutzen?\n(Später jederzeit in den GuildPride-Einstellungen änderbar.)"],
+    button1 = YES, button2 = NO,
+    OnAccept = function()
+        GuildPrideDB.discordBridge = true
+        StaticPopup_Show("GUILDPRIDE_DISCORD_LINKED")
+    end,
+    OnCancel = function() GuildPrideDB.discordBridge = false end,
+    timeout = 0, whileDead = true, hideOnEscape = false,
+}
+StaticPopupDialogs["GUILDPRIDE_DISCORD_LINKED"] = {
+    text = L["Hast du dein Discord in WoW verknüpft (Optionen > Soziales > Discord)?\n\nNur dann sendet GuildPride selbst, sonst gibt ein Gildenmitglied deine Anmeldungen weiter."],
+    button1 = YES, button2 = NO,
+    OnAccept = function() GuildPrideDB.discordLinked = true end,
+    OnCancel = function() GuildPrideDB.discordLinked = false end,
+    timeout = 0, whileDead = true, hideOnEscape = false,
+}
+local ask = CreateFrame("Frame")
+ask:RegisterEvent("PLAYER_LOGIN")
+ask:SetScript("OnEvent", function()
+    C_Timer.After(12, function()
+        if not GuildPrideDB or not IsInGuild() then return end
+        Opt()
+        if GuildPrideDB.discordBridge == nil and not InCombatLockdown() then
+            StaticPopup_Show("GUILDPRIDE_DISCORD_ASK")
+        end
+    end)
+end)
