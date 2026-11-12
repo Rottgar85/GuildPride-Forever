@@ -10,6 +10,12 @@ World of Warcraft addon for WoW Forever only · Author: Rottgar85 · CurseForge 
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub: milestones, events, guild info, a group finder, guild chat and member management in one place. Works for any guild: the window automatically shows your guild name and your faction logo (Horde or Alliance). English and German.
 
+### NEW in 2.3: Discord & DKP
+
+- **Discord sync** – uses Blizzard's own guild chat Discord link. Events, sign-ups (with role and class) and declines from GuildPride show up in your Discord as raid events with a live roster – no extra program, no import strings. Players without a linked Discord are relayed by a linked guildmate.
+- **DKP** – `/gp dkp`: officers award points to the whole raid, a group or a target with one click (attendance, boss kills), deduct loot at a fixed price and can undo their last booking. **Every player sees DKP in the tooltip** when hovering over a player. Bookings are also posted to Discord, with `/dkp` standings and a leaderboard.
+- **Setup for Discord:** your guild leader links the guild to a Discord channel (Guild & Communities → Guild Settings → Discord Settings, ideally with *Separate Discord chat*) and invites **GameBot** (dashboard: https://gamerbot.duckdns.org – log in with Discord, add the bot, open *WoW Bridge*, pick an event channel). Everyone with a linked Discord types `/gp discord linked` once in game and `/wow link Name` in Discord.
+
 ### Features
 - **New guild window**: opens with **J** or the guild button in the micro menu. Your guild name at the top, your faction logo on the left. `/gp blizzard` switches back to Blizzard's window
 - **Milestones with badges**: when a member reaches level 10, 20, 30 … 90, every guildmate with GuildPride sees an animated pop-up with a badge. Missed milestones are fetched from other members at login
@@ -61,6 +67,12 @@ Copy the `GuildPrideForever` folder to `World of Warcraft/_forever_/Interface/Ad
 ## Deutsch
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt: Meilensteine, Events, Gildeninfo, Gruppensuche, Gildenchat und Mitgliederverwaltung an einem Ort. Funktioniert für jede Gilde: Das Fenster zeigt automatisch euren Gildennamen und das Logo eurer Fraktion (Horde oder Allianz). Deutsch und Englisch.
+
+### NEU in 2.3: Discord & DKP
+
+- **Discord-Anbindung** – nutzt Blizzards eigene Gildenchat-Discord-Verknüpfung. Events, Anmeldungen (mit Rolle und Klasse) und Absagen aus GuildPride erscheinen in eurem Discord als Raid-Events mit Live-Aufstellung – ohne Zusatzprogramm, ohne Import-Strings. Spieler ohne verknüpftes Discord leitet ein verknüpftes Gildenmitglied weiter.
+- **DKP** – `/gp dkp`: Offiziere buchen Punkte mit einem Klick an den ganzen Raid, die Gruppe oder ein Ziel (Anwesenheit, Boss-Kills), ziehen Loot zum festen Preis ab und können die letzte Buchung zurücknehmen. **Alle sehen die DKP im Tooltip**, wenn sie mit der Maus über einen Spieler fahren. Buchungen landen zusätzlich in Discord, mit `/dkp`-Stand und Rangliste.
+- **Einrichtung für Discord:** Die Gildenleitung verknüpft die Gilde mit einem Discord-Kanal (Gilde & Communitys → Gildeneinstellungen → Discord-Einstellungen, am besten mit *Discord-Chat getrennt*) und lädt **GameBot** ein (Dashboard: https://gamerbot.duckdns.org – mit Discord anmelden, Bot hinzufügen, *WoW-Brücke* öffnen, Event-Kanal wählen). Wer Discord verknüpft hat, gibt im Spiel einmal `/gp discord verknuepft` und in Discord `/wow link Name` ein.
 
 ### Funktionen
 - **Neues Gildenfenster**: öffnet sich mit **J** oder über den Gildenknopf in der Mikroleiste. Oben euer Gildenname, links das Logo eurer Fraktion. `/gp blizzard` schaltet zurück zum Blizzard-Fenster
