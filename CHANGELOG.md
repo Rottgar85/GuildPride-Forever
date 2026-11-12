@@ -1,5 +1,8 @@
 # GuildPride Changelog
 
+## 2.3.0-beta4
+- Neu: DKP (`/gp dkp`). Offiziere buchen Punkte an Raid, Gruppe oder Ziel, ziehen Loot ab und können die letzte Buchung zurücknehmen. Alle sehen den Stand im Spieler-Tooltip. Buchungen gehen zusätzlich an Discord (GameBot: `/dkp`)
+
 ## 2.3.0-beta3
 - Behoben: Absage und erneute Zusage kamen nicht in Discord an (zu lange Sperre gegen doppelte Zeilen)
 - Standardweg ist jetzt der Gildenchat (Blizzards Discord-Stream leitet Addon-Zeilen nicht weiter)

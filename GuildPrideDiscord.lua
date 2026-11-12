@@ -105,13 +105,16 @@ end
 function Discord.Flush()
     if #queue == 0 or InCombatLockdown() then return end
     if not IsInGuild() then wipe(queue); return end
-    local item = table.remove(queue, 1)
-    -- Hat es inzwischen schon jemand anderes gesendet?
-    if not Seen(item) then
-        MarkSeen(item)
-        SendNow(item)
+    -- Bis zu drei Zeilen pro Aktion (lange DKP-Buchungen sind mehrteilig)
+    for _ = 1, 3 do
+        local item = table.remove(queue, 1)
+        if not item then break end
+        -- Hat es inzwischen schon jemand anderes gesendet?
+        if not Seen(item) then
+            MarkSeen(item)
+            SendNow(item)
+        end
     end
-    -- Höchstens eine Zeile pro Aktion; der Rest folgt mit der nächsten
 end
 
 local function Enqueue(text)
