@@ -333,6 +333,7 @@ end
 local function ClubEntry(clubId, m, kind, allowSecret)
     if not m or m.destroyed or not m.content then return end
     if Secret(m.content) and not allowSecret then return end
+    if ns.HideBridgeLine and ns.HideBridgeLine(m.content) then return end
     local a = m.author or {}
     local full = AuthorName(clubId, a)
     local epoch = m.messageId and m.messageId.epoch
@@ -835,6 +836,7 @@ if HAS_CLUB then
     gc:SetScript("OnEvent", function(_, event, text, author, _, _, _, flags, _, _, _, _, _, guid, ...)
         if issecretvalue and (issecretvalue(text) or issecretvalue(author) or issecretvalue(guid)) then return end
         if not GuildPrideDB or type(text) ~= "string" or type(author) ~= "string" or author == "" then return end
+        if ns.HideBridgeLine and ns.HideBridgeLine(text) then return end
         local clubId, streamId = Resolve({ kind = event == "CHAT_MSG_OFFICER" and "OFFICER" or "GUILD" })
         if not clubId then return end
         -- Discord: Kennzeichen "DISCORD" (6.) bzw. discordInfo (18. Wert)
@@ -858,6 +860,7 @@ else
     f:SetScript("OnEvent", function(_, event, text, author, _, _, _, flags, _, _, _, _, _, guid, ...)
         if issecretvalue and (issecretvalue(text) or issecretvalue(author)) then return end
         if not GuildPrideDB then return end
+        if ns.HideBridgeLine and ns.HideBridgeLine(text) then return end
         local ch = event == "CHAT_MSG_OFFICER" and "OFFICER" or "GUILD"
         local list = Store()[ch]
         local _, class = (guid and guid ~= "" and GetPlayerInfoByGUID) and GetPlayerInfoByGUID(guid)

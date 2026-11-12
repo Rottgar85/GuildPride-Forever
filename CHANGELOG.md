@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.3.0-beta3
+- Behoben: Absage und erneute Zusage kamen nicht in Discord an (zu lange Sperre gegen doppelte Zeilen)
+- Standardweg ist jetzt der Gildenchat (Blizzards Discord-Stream leitet Addon-Zeilen nicht weiter)
+
+## 2.3.0-beta2
+- Behoben: Meldung „WoW hat eine Aktion blockiert (GuildPrideDiscord.lua:44)“
+
+## 2.3.0-beta1
+- Neu: Discord-Brücke (Test). Events und Anmeldungen gehen als lesbare `[GP]`-Zeilen über Blizzards Gildenchat-Discord-Verknüpfung an Discord, wo GameBot sie einträgt
+- Nicht verknüpfte Spieler senden nicht selbst, ein verknüpftes Mitglied mit GuildPride gibt ihre Zeilen weiter
+- `[GP]`-Zeilen werden im Chat ausgeblendet; `/gp discord` zeigt den Status, `/gp discord test`, `/gp discord verknuepft`, `/gp discord roh`
+
 ## 2.2.4
 
 **English**

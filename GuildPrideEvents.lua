@@ -769,6 +769,7 @@ local function CreateEvent(title, t, desc, rep)
     if not e then return end
     ApplyEvent(e.id, t, Clean(title, 40), Clean(desc, 120), Me(), Now(), nil, nil, rep)
     SendEvent(e)
+    if ns.Discord then ns.Discord.EventCreated(e) end
     ns.RefreshUI()
 end
 
@@ -798,6 +799,7 @@ end
 local function DeleteEvent(e)
     ApplyDelete(e.id, Now())
     SendDelete(e)
+    if ns.Discord then ns.Discord.EventDeleted(e) end
     ns.RefreshUI()
 end
 
@@ -818,6 +820,7 @@ local function SignUp(e, status)
     ApplySign(e.id, Me(), status, Now(), status ~= "no" and MyRole() or nil)
     SendSign(e.id, Me(), e.signups[Me()])
     ns.TellCreator(e.creator, function(who) SendSign(e.id, Me(), e.signups[Me()], who) end)
+    if ns.Discord then ns.Discord.SignedUp(e, e.signups[Me()]) end
     ns.RefreshUI()
 end
 
