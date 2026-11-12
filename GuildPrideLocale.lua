@@ -69,7 +69,6 @@ local enUS = {
     ["Sicherung vom %s wiederherstellen? Der jetzige Stand wird vorher gesichert, danach lädt das Interface neu."] = "Restore the backup from %s? The current state is backed up first, then the interface reloads.",
     ["Sichert alles (Einstellungen, DKP, Events, Umfragen, Verlauf, Twinks). Wöchentlich automatisch. Gegen Datenverlust zusätzlich die Datei WTF\\Account\\…\\SavedVariables\\GuildPrideForever.lua kopieren."] = "Backs up everything (settings, DKP, events, polls, history, alts). Automatic once a week. To guard against data loss, also copy the file WTF\\Account\\…\\SavedVariables\\GuildPrideForever.lua.",
     ["Planen"] = "Plan",
-    ["Allgemein"] = "General",
     ["Hinweise"] = "Notifications",
     ["Teilen"] = "Sharing",
     ["Twinks"] = "Alts",
