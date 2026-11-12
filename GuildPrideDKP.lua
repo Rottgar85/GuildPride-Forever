@@ -25,8 +25,23 @@ local cache
 function DKP.Standings()
     if cache then return cache end
     cache = {}
-    for _, tx in pairs(Book()) do
-        if not tx.x and tx.n then
+    -- In zeitlicher Reihenfolge: Verfall wirkt auf den Stand zu seinem Zeitpunkt
+    local list = {}
+    for id, tx in pairs(Book()) do if not tx.x then list[#list + 1] = { id, tx } end end
+    table.sort(list, function(a, b)
+        if (a[2].t or 0) ~= (b[2].t or 0) then return (a[2].t or 0) < (b[2].t or 0) end
+        -- gleiche Sekunde: Verfall nach den Buchungen
+        local da, db = a[2].k == "decay", b[2].k == "decay"
+        if da ~= db then return db end
+        return a[1] < b[1]
+    end)
+    for _, it in ipairs(list) do
+        local tx = it[2]
+        if tx.k == "decay" then
+            for name, pts in pairs(cache) do
+                if pts > 0 then cache[name] = math.floor(pts * (100 - (tx.d or 0)) / 100) end
+            end
+        elseif tx.n then
             for _, name in ipairs(tx.n) do cache[name] = (cache[name] or 0) + (tx.d or 0) end
         end
     end
@@ -43,10 +58,10 @@ function DKP.Of(name) return DKP.Standings()[name] end
 -- Abgleich
 ---------------------------------------------------------------------
 local function SendTx(id, tx, target)
-    ns.Queue("DKP", target, id, tx.d, tx.r, tx.by, tx.t, tx.x and 1 or 0, table.concat(tx.n or {}, ","))
+    ns.Queue("DKP", target, id, tx.d, tx.r, tx.by, tx.t, tx.x and 1 or 0, table.concat(tx.n or {}, ","), tx.k or "")
 end
 
-local function Apply(id, d, r, by, t, x, names)
+local function Apply(id, d, r, by, t, x, names, k)
     if id == "" or not d or not names then return end
     local book = Book()
     local cur = book[id]
@@ -54,7 +69,7 @@ local function Apply(id, d, r, by, t, x, names)
         if x and not cur.x then cur.x = true; Changed() end
         return
     end
-    book[id] = { d = d, r = r, by = by, t = t, x = x or nil, n = names }
+    book[id] = { d = d, r = r, by = by, t = t, x = x or nil, n = names, k = (k == "decay") and k or nil }
     Changed()
 end
 
@@ -67,7 +82,9 @@ ns.On("DKP", function(payload, sender)
         n = Clean(n, 60)
         if n ~= "" and #names < 80 then names[#names + 1] = n end
     end
-    Apply(Clean(a[1], 20), d, Clean(a[3], 60), Clean(a[4], 60), ns.Stamp(a[5]), a[6] == "1", names)
+    local k = a[8] == "decay" and "decay" or nil
+    if k and (not d or d < 1 or d > 50) then return end
+    Apply(Clean(a[1], 20), d, Clean(a[3], 60), Clean(a[4], 60), ns.Stamp(a[5]), a[6] == "1", names, k)
 end)
 
 local function SendAll(target)
@@ -122,6 +139,20 @@ function DKP.Award(names, d, reason)
     ns.Print((L["DKP gebucht: %+d %s für %d Spieler"]):format(d, r, #names))
 end
 
+-- Verfall: alle positiven Stände um pct Prozent senken
+function DKP.Decay(pct)
+    if not CanManage() then ns.Print(L["Nur Offiziere dürfen DKP buchen."]); return end
+    pct = math.floor(tonumber(pct) or 0)
+    if pct < 1 or pct > 50 then return end
+    local id = NewId()
+    Apply(id, pct, L["Verfall"], ns.Me(), Now(), false, {}, "decay")
+    seq = seq + 1
+    Book()[id].s = seq
+    SendTx(id, Book()[id])
+    if ns.Discord then ns.Discord.Post(("DKP #%s Verfall -%d%%"):format(id, pct), true) end
+    ns.Print((L["DKP-Verfall: -%d%% für alle"]):format(pct))
+end
+
 function DKP.Undo()
     if not CanManage() then return end
     local lastId, last
@@ -134,7 +165,7 @@ function DKP.Undo()
     Changed()
     SendTx(lastId, last)
     if ns.Discord then ns.Discord.Post(("DKP #%s zurückgenommen"):format(lastId), true) end
-    ns.Print((L["Zurückgenommen: %+d %s"]):format(last.d, last.r or ""))
+    ns.Print((L["Zurückgenommen: %+d %s"]):format(last.k == "decay" and -last.d or last.d, last.r or ""))
 end
 
 -- Alle im Raid bzw. in der Gruppe (inkl. mir)
@@ -268,8 +299,10 @@ local function Build()
     end)
     bLoot:SetPoint("TOPRIGHT", 0, -68)
 
-    local bUndo = Button(box, L["Letzte Buchung zurücknehmen"], 316, function() DKP.Undo() end)
+    local bUndo = Button(box, L["Letzte Buchung zurücknehmen"], 150, function() DKP.Undo() end)
     bUndo:SetPoint("TOPLEFT", 0, -98)
+    local bDecay = Button(box, L["Verfall -10 %"], 150, function() StaticPopup_Show("GUILDPRIDE_DKP_DECAY") end)
+    bDecay:SetPoint("TOPRIGHT", 0, -98)
 
     local hint = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     hint:SetPoint("TOPLEFT", 0, -126); hint:SetWidth(316); hint:SetJustifyH("LEFT")
@@ -299,6 +332,13 @@ function DKP.Toggle()
     DKP.Refresh()
     ns.Queue("DKPQ", nil, "1")
 end
+
+StaticPopupDialogs["GUILDPRIDE_DKP_DECAY"] = {
+    text = L["Alle positiven DKP-Stände um 10 % senken?"],
+    button1 = YES, button2 = NO,
+    OnAccept = function() DKP.Decay(10) end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
 
 local slash = SlashCmdList.GUILDPRIDE
 SlashCmdList.GUILDPRIDE = function(arg)

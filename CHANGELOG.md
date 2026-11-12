@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.4.0
+
+**Deutsch**
+- Neu: DKP-Verfall – Knopf „Verfall -10 %“ im DKP-Fenster senkt alle positiven Stände (mit Rückfrage, lässt sich zurücknehmen)
+- Neu: Level-Meilensteine, Bosskills und Schlüssel gehen zusätzlich an Discord (GameBot: Kanal für Gilden-News)
+
+**English**
+- New: DKP decay – the "Decay -10 %" button in the DKP window lowers all positive standings (asks first, can be undone)
+- New: level milestones, boss kills and keystones are also sent to Discord (GameBot: guild news channel)
+
 ## 2.3.0
 
 **Deutsch**

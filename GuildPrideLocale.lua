@@ -291,6 +291,10 @@ local enUS = {
     ["Letzte Buchung zurücknehmen"] = "Undo last booking",
     ["Loot: Item als Grund eintragen, Preis als Punkte, Spieler anvisieren."] = "Loot: enter the item as reason, the price as points, target the player.",
     ["Noch keine DKP-Buchungen."] = "No DKP bookings yet.",
+    ["Verfall"] = "Decay",
+    ["DKP-Verfall: -%d%% für alle"] = "DKP decay: -%d%% for everyone",
+    ["Verfall -10 %"] = "Decay -10 %",
+    ["Alle positiven DKP-Stände um 10 % senken?"] = "Lower all positive DKP standings by 10 %?",
     -- 1.10: Suche, Sortierung, Inaktive
     ["Suchen …"] = "Search …",
     ["Name"] = "Name",
