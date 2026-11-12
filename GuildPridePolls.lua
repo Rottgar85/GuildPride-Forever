@@ -153,7 +153,24 @@ local function CreatePoll(question, opts, duration)
     ApplyPoll(id, Now(), Now(), Me(), false, duration > 0 and Now() + duration or 0, Clean(question, 80), opts)
     if not DB()[id] then return end
     SendPoll(DB()[id])
+    -- An Discord: Frage und Antworten (abgestimmt wird im Spiel)
+    local p = DB()[id]
+    if ns.Discord then
+        local word = ns.IS_GERMAN and "Umfrage" or "Poll"
+        ns.Discord.Post(("%s #%s: %s – %s"):format(word, ns.Discord.ShortId(id), p.question, table.concat(p.opts, " | ")), true)
+    end
     ns.RefreshUI()
+end
+
+-- Ergebnis an Discord, wenn eine Umfrage geschlossen wird
+local function PostResult(p)
+    if not ns.Discord or not p or not p.opts then return end
+    local counts = {}
+    for _, v in pairs(p.votes or {}) do local c = tonumber(v.c); if c then counts[c] = (counts[c] or 0) + 1 end end
+    local parts = {}
+    for i, o in ipairs(p.opts) do parts[#parts + 1] = ("%s: %d"):format(o, counts[i] or 0) end
+    ns.Discord.Post(("%s #%s %s: %s"):format(ns.IS_GERMAN and "Umfrage" or "Poll", ns.Discord.ShortId(p.id),
+        ns.IS_GERMAN and "Ergebnis" or "result", table.concat(parts, " | ")), true)
 end
 
 local function SetClosed(p, closed)
@@ -162,6 +179,7 @@ local function SetClosed(p, closed)
     if not closed and ends > 0 and Now() >= ends then ends = 0 end
     ApplyPoll(p.id, math.max(Now(), p.ver + 1), p.t, p.creator, closed, ends, p.question, p.opts)
     SendPoll(p)
+    if closed then PostResult(p) end
     ns.RefreshUI()
 end
 
@@ -300,7 +318,7 @@ function page:Refresh()
     local counts, total, names = {}, 0, {}
     for name, v in pairs(p.votes) do
         if p.opts[v.c] then
-            counts[v.c] = (counts[v.c] or 0) + 1
+            local c = tonumber(v.c); if c then counts[c] = (counts[c] or 0) + 1 end
             total = total + 1
             names[v.c] = names[v.c] or {}
             table.insert(names[v.c], Ambiguate(name, "guild"))
