@@ -3,12 +3,18 @@
 ## 2.4.0
 
 **Deutsch**
+- Neu: Bieterrunde für Loot – im DKP-Fenster Item und Mindestgebot eintragen, „Bieterrunde (30 s)“ klicken. Alle in der Gruppe bieten im Bieterfenster, der Höchstbietende zahlt automatisch
+- Neu: Raid-Zusammenfassung – Instanz, Dauer, Bosse und Spieler werden mitgeschrieben; „Raid-Zusammenfassung“ (oder `/gp raid`) schickt sie an Discord, GameBot ergänzt vergebene DKP und Loot
+- Discord-Zeilen sind auf englischen Clients englisch, GameBot versteht beide Sprachen
 - Neu: DKP-Verfall – Knopf „Verfall -10 %“ im DKP-Fenster senkt alle positiven Stände (mit Rückfrage, lässt sich zurücknehmen)
 - Neu: Level-Meilensteine, Bosskills und Schlüssel gehen zusätzlich an Discord (GameBot: Kanal für Gilden-News)
 - Neu: kurze Einführung in fünf Schritten beim ersten Start (wieder öffnen mit `/gp intro`)
 - Die Discord-Anbindung ist jetzt freiwillig: Die Einführung fragt am Ende, ob du sie nutzen willst und ob dein Discord verknüpft ist. Beides lässt sich jederzeit in den Einstellungen ein- und ausschalten
 
 **English**
+- New: loot bidding – enter item and minimum bid in the DKP window and click “Bidding (30 s)”. Everyone in the group bids in the bid window, the highest bidder pays automatically
+- New: raid summary – instance, duration, bosses and players are recorded; “Raid summary” (or `/gp raid`) sends it to Discord, GameBot adds awarded DKP and loot
+- Discord lines are English on English clients, GameBot understands both languages
 - New: DKP decay – the "Decay -10 %" button in the DKP window lowers all positive standings (asks first, can be undone)
 - New: level milestones, boss kills and keystones are also sent to Discord (GameBot: guild news channel)
 - New: short five-step introduction on first start (reopen with `/gp intro`)

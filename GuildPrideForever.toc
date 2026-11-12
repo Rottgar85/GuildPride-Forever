@@ -16,6 +16,7 @@ GuildPrideCopy.lua
 GuildPrideEvents.lua
 GuildPrideDiscord.lua
 GuildPrideDKP.lua
+GuildPrideRaid.lua
 GuildPrideIntro.lua
 GuildPrideMembers.lua
 GuildPrideRules.lua

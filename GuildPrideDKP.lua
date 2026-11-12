@@ -129,6 +129,8 @@ function DKP.Award(names, d, reason)
     if not CanManage() then ns.Print(L["Nur Offiziere dürfen DKP buchen."]); return end
     d = math.floor(tonumber(d) or 0)
     if d == 0 or #names == 0 then return end
+    reason = tostring(reason or "")
+    reason = reason:gsub("|c%x%x%x%x%x%x%x%x|H.-|h%[(.-)%]|h|r", "%1")   -- Item-Links -> Name
     local id, r = NewId(), Clean(reason, 40)
     if r == "" then r = d > 0 and L["Bonus"] or L["Abzug"] end
     Apply(id, d, r, ns.Me(), Now(), false, names)
@@ -149,7 +151,7 @@ function DKP.Decay(pct)
     seq = seq + 1
     Book()[id].s = seq
     SendTx(id, Book()[id])
-    if ns.Discord then ns.Discord.Post(("DKP #%s Verfall -%d%%"):format(id, pct), true) end
+    if ns.Discord then ns.Discord.Post(("DKP #%s %s -%d%%"):format(id, ns.IS_GERMAN and "Verfall" or "Decay", pct), true) end
     ns.Print((L["DKP-Verfall: -%d%% für alle"]):format(pct))
 end
 
@@ -164,7 +166,7 @@ function DKP.Undo()
     last.x = true
     Changed()
     SendTx(lastId, last)
-    if ns.Discord then ns.Discord.Post(("DKP #%s zurückgenommen"):format(lastId), true) end
+    if ns.Discord then ns.Discord.Post(("DKP #%s %s"):format(lastId, ns.IS_GERMAN and "zurückgenommen" or "undone"), true) end
     ns.Print((L["Zurückgenommen: %+d %s"]):format(last.k == "decay" and -last.d or last.d, last.r or ""))
 end
 
@@ -234,7 +236,7 @@ end
 
 local function Build()
     win = CreateFrame("Frame", "GuildPrideDKPFrame", UIParent, "BasicFrameTemplateWithInset")
-    win:SetSize(340, 470)
+    win:SetSize(340, 520)
     win:SetPoint("CENTER")
     win:SetMovable(true)
     win:EnableMouse(true)
@@ -249,7 +251,7 @@ local function Build()
 
     local scroll = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 12, -30)
-    scroll:SetPoint("BOTTOMRIGHT", -32, 175)
+    scroll:SetPoint("BOTTOMRIGHT", -32, 225)
     local content = CreateFrame("Frame", nil, scroll)
     content:SetSize(280, 10)
     scroll:SetScrollChild(content)
@@ -263,7 +265,7 @@ local function Build()
     local box = CreateFrame("Frame", nil, win)
     box:SetPoint("BOTTOMLEFT", 12, 10)
     box:SetPoint("BOTTOMRIGHT", -12, 10)
-    box:SetHeight(160)
+    box:SetHeight(210)
     win.officer = box
 
     local lAmt = box:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -304,9 +306,23 @@ local function Build()
     local bDecay = Button(box, L["Verfall -10 %"], 150, function() StaticPopup_Show("GUILDPRIDE_DKP_DECAY") end)
     bDecay:SetPoint("TOPRIGHT", 0, -98)
 
+    local bAuction = Button(box, L["Bieterrunde (30 s)"], 150, function()
+        if ns.Raid then ns.Raid.Start(reason(), amount()) end
+    end)
+    bAuction:SetPoint("TOPLEFT", 0, -128)
+    local bSummary = Button(box, L["Raid-Zusammenfassung"], 150, function()
+        if ns.Raid then ns.Raid.SendSummary() end
+    end)
+    bSummary:SetPoint("TOPRIGHT", 0, -128)
+
     local hint = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hint:SetPoint("TOPLEFT", 0, -126); hint:SetWidth(316); hint:SetJustifyH("LEFT")
-    hint:SetText(L["Loot: Item als Grund eintragen, Preis als Punkte, Spieler anvisieren."])
+    hint:SetPoint("TOPLEFT", 0, -158); hint:SetWidth(316); hint:SetJustifyH("LEFT")
+    hint:SetText(L["Loot: Item als Grund eintragen (oder mit Umschalt+Klick verlinken), Preis bzw. Mindestgebot als Punkte. „Loot an Ziel“ für festen Preis, „Bieterrunde“ zum Bieten."])
+
+    -- Umschalt+Klick auf ein Item fügt den Link ins Feld "Grund / Item" ein
+    hooksecurefunc("ChatEdit_InsertLink", function(link)
+        if link and win.reason:HasFocus() then win.reason:Insert(link) end
+    end)
 
     if ns.SkinAll then pcall(ns.SkinAll, win) end
 end

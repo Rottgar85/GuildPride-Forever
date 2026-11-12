@@ -253,7 +253,7 @@ local function Broadcast(kind, value)
     if ShowMilestone then ShowMilestone(ns.Me(), kind, value) end
     -- Wichtige Meilensteine zusätzlich nach Discord (Erfolge/Reittiere wären zu viele)
     if ns.Discord and ns.DescribeMilestone and (kind == "LEVEL" or kind == "BOSS" or kind == "MPLUS") then
-        ns.Discord.Post(("Meilenstein: %s %s"):format(Ambiguate(ns.Me(), "guild"), ns.DescribeMilestone(kind, value)))
+        ns.Discord.Post(((ns.IS_GERMAN and "Meilenstein" or "Milestone") .. ": %s %s"):format(Ambiguate(ns.Me(), "guild"), ns.DescribeMilestone(kind, value)))
     end
 end
 

@@ -195,8 +195,11 @@ end
 ---------------------------------------------------------------------
 -- Inhalte: Events und Anmeldungen
 ---------------------------------------------------------------------
-local ROLE_TEXT = { TANK = "Tank", HEALER = "Heiler", DAMAGER = "DD" }
-local STATUS_TEXT = { yes = "Zusage", maybe = "Vielleicht", no = "Absage" }
+-- Feste Wörter, die GameBot erkennt (Deutsch oder Englisch je nach Spielsprache)
+local DE = ns.IS_GERMAN
+Discord.DE = DE
+local ROLE_TEXT = DE and { TANK = "Tank", HEALER = "Heiler", DAMAGER = "DD" } or { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS" }
+local STATUS_TEXT = DE and { yes = "Zusage", maybe = "Vielleicht", no = "Absage" } or { yes = "Attending", maybe = "Maybe", no = "Declined" }
 
 local function Name(full) return Ambiguate(full or "", "guild") end
 
@@ -204,15 +207,15 @@ local function When(t) return date("%d.%m. %H:%M", t) end
 
 function Discord.EventCreated(e)
     if not e or not e.title then return end
-    local line = ("Neues Event #%s: %s – %s (t=%d%s)"):format(Discord.ShortId(e.id), Clean(e.title, 40),
-        When(e.t), e.t, (e.rep and e.rep > 0) and ", wöchentlich" or "")
+    local line = ((DE and "Neues Event" or "New event") .. " #%s: %s – %s (t=%d%s)"):format(Discord.ShortId(e.id), Clean(e.title, 40),
+        When(e.t), e.t, (e.rep and e.rep > 0) and (DE and ", wöchentlich" or ", weekly") or "")
     if e.desc and e.desc ~= "" then line = line .. " – " .. Clean(e.desc, 80) end
     Discord.Post(line, true)
 end
 
 function Discord.EventDeleted(e)
     if not e or not e.title then return end
-    Discord.Post(("Event abgesagt #%s: %s"):format(Discord.ShortId(e.id), Clean(e.title, 40)), true)
+    Discord.Post(((DE and "Event abgesagt" or "Event cancelled") .. " #%s: %s"):format(Discord.ShortId(e.id), Clean(e.title, 40)), true)
 end
 
 function Discord.SignedUp(e, s)
