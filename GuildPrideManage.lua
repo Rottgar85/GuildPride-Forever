@@ -15,6 +15,7 @@ local CMD = {
     leader  = ns.SlashCmd("GUILD_LEADER", "/gleader"),
 }
 local InviteToGroup = (C_PartyInfo and C_PartyInfo.InviteUnit) or InviteUnit
+local AddAltMenu
 
 ---------------------------------------------------------------------
 -- Rechte
@@ -368,6 +369,56 @@ end
 ---------------------------------------------------------------------
 -- Rechtsklick-Menü (Gilde und Community)
 ---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- Twinks (GuildPrideAusweis.lua): eigenen Main festlegen; Gildenleitung und
+-- Offiziere ordnen Twinks von Hand zu (für Spieler ohne GuildPride)
+---------------------------------------------------------------------
+StaticPopupDialogs["GUILDPRIDE_ALT_OF"] = {
+    text = L["%s ist ein Twink von … (Name des Mains)"],
+    button1 = OKAY, button2 = CANCEL,
+    hasEditBox = true,
+    OnShow = function(self) local eb = self.editBox or self.EditBox; eb:SetText(""); eb:SetFocus() end,
+    OnAccept = function(self, twink)
+        local typed = strtrim((self.editBox or self.EditBox):GetText() or "")
+        if typed == "" then return end
+        -- eingegebenen Namen in der Gildenliste suchen (ohne Groß/klein)
+        local main
+        for i = 1, GetNumGuildMembers() do
+            local name = GetGuildRosterInfo(i)
+            if name and (Ambiguate(name, "none"):lower() == typed:lower() or ns.FullName(name):lower() == typed:lower()) then
+                main = ns.FullName(name)
+                break
+            end
+        end
+        if not main then ns.Print((L["%s ist nicht in der Gilde."]):format(typed)) return end
+        if ns.SetAltManual(twink, main) then
+            ns.Print((L["%s ist jetzt Twink von %s."]):format(Ambiguate(twink, "guild"), Ambiguate(main, "guild")))
+        end
+    end,
+    EditBoxOnEnterPressed = function(self)
+        local p = self:GetParent()
+        StaticPopupDialogs["GUILDPRIDE_ALT_OF"].OnAccept(p, p.data); p:Hide()
+    end,
+    EditBoxOnEscapePressed = function(self) self:GetParent():Hide() end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+
+AddAltMenu = function(root, m)
+    if not (m.full and ns.MainOf) then return end
+    local mine = ns.Ausweis and ns.IsMyChar and ns.IsMyChar(m.full)
+    if mine and ns.MainOf(m.full) ~= m.full then
+        root:CreateButton(L["Als Main festlegen"], function() ns.SetMyMain(m.full) end)
+    end
+    if ns.CanSetAlts and ns.CanSetAlts() and not m.isSelf then
+        root:CreateButton(L["Twink von … festlegen"], function()
+            StaticPopup_Show("GUILDPRIDE_ALT_OF", Ambiguate(m.full, "guild"), nil, m.full)
+        end)
+        if ns.IsManualAlt(m.full) then
+            root:CreateButton(L["Twink-Zuordnung lösen"], function() ns.ClearAltManual(m.full) end)
+        end
+    end
+end
+
 function ns.MemberMenu(owner, m)
     if not (MenuUtil and MenuUtil.CreateContextMenu) then
         if m.full and m.online and not m.isSelf then ChatFrame_SendTell(m.full) end
@@ -404,6 +455,7 @@ function ns.MemberMenu(owner, m)
         end
         if m.guild then
             root:CreateDivider()
+            AddAltMenu(root, m)
             root:CreateButton(L["Details und Verwaltung …"], function() ns.ShowMemberPanel(m) end)
         elseif m.clubId then
             AddClubManagement(root, m)

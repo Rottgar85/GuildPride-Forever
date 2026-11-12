@@ -84,7 +84,7 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    replaceGuildFrame = true, memberAlerts = true, helpAlerts = true, shareMilestones = true,
                    minimap = true, chatFont = 12, scale = 1, alpha = 1, welcome = false,
                    publicLFG = true, publicAlerts = false, lfgPublic = false, lfgScope = "all",
-                   mapShow = true, mapShare = true }
+                   mapShow = true, mapShare = true, ausweisAuto = true, groupAlts = true, compactMenu = true }
 
 -- Weitere Meilensteine neben LEVEL (Wert ist Text bzw. ID)
 local EXTRA_KINDS = { ACH = true, BOSS = true, MPLUS = true, MOUNT = true }
@@ -219,6 +219,11 @@ local function IsMember(name)
     return guildMembers[name] ~= nil
 end
 function ns.IsGuildMember(name) return name ~= nil and IsMember(Normalize(name)) end
+-- Rangnummer eines Gildenmitglieds (0 = Gildenleitung), nil wenn unbekannt
+function ns.RankIndexOf(name)
+    if not name or not IsMember(Normalize(name)) then return nil end
+    return guildMembers[Normalize(name)] - 1
+end
 
 ns.IconString = IconString
 ns.Print = Print
@@ -473,7 +478,7 @@ local MP_MAX = 100
 
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
-local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true }
+local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true, AUSQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender
@@ -720,6 +725,10 @@ SlashCmdList.GUILDPRIDE = function(arg)
     elseif arg:match("^einladen%f[%A]") or arg:match("^invite%f[%A]") then
         local name = raw:match("^%S+%s+(%S+)")
         if name and ns.InviteToGuild then ns.InviteToGuild(name) else Print(L["Bitte einen Charakternamen eingeben."]) end
+    elseif arg == "backup" or arg == "sicherung" then
+        if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end
+    elseif arg == "ausweis" or arg == "id" then
+        if ns.AusweisCommand then ns.AusweisCommand() end
     elseif arg == "werben" or arg == "recruit" then
         if ns.PostRecruitText then ns.PostRecruitText() end
     elseif arg == "optionen" or arg == "options" then
@@ -730,6 +739,6 @@ SlashCmdList.GUILDPRIDE = function(arg)
             InterfaceOptionsFrame_OpenToCategory(ns.SettingsPanel)   -- zweimal: alter Blizzard-Fehler
         end
     else
-        Print(L["Befehle: /gp (Fenster) · sound · popup · blizzard · einladen <Name> · werben · optionen · badge <Level> · version · kanal · server"])
+        Print(L["Befehle: /gp (Fenster) · sound · popup · blizzard · einladen <Name> · werben · optionen · badge <Level> · version · kanal · server · ausweis · sicherung"])
     end
 end

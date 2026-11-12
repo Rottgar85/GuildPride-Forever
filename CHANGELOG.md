@@ -1,5 +1,23 @@
 # GuildPride Changelog
 
+## 2.5.0 (in Arbeit)
+
+**Deutsch**
+- Neu: Twinks werden automatisch erkannt. Jeder Spieler mit GuildPride meldet für alle seine Charaktere denselben Ausweis-Code. Der BattleTag verlässt dabei nie deinen PC, gesendet wird nur ein daraus berechneter Code, der in jeder Gilde anders ist
+- Neu: Mitgliederliste zeigt jeden Spieler einmal, Twinks mit „+3“ zum Aufklappen. Spielt jemand einen Twink, steht „spielt Name (Level)“ beim Main
+- Neu: Inaktive zählen je Spieler: Wer mit irgendeinem Charakter da war, gilt nicht als inaktiv
+- Neu: Rechtsklick „Als Main festlegen“ (eigene Charaktere); Gildenleitung und Offiziere können Twinks von Spielern ohne GuildPride von Hand zuordnen
+- Neu: `/gp ausweis` zeigt deinen Code (nie den BattleTag); beides in den Einstellungen abschaltbar
+- Neu: Datensicherung per Knopfdruck (Einstellungen › „Datensicherung …“ oder `/gp sicherung`): sichert alle GuildPride-Daten, die letzten 5 Stände, einmal pro Woche automatisch, Wiederherstellen mit einem Klick
+
+**English**
+- New: alts are detected automatically. Everyone with GuildPride reports the same player ID for all their characters. Your BattleTag never leaves your PC; only a code derived from it is sent, and it differs per guild
+- New: the member list shows each player once, alts collapse under "+3". If someone plays an alt, the main shows "playing name (level)"
+- New: inactivity counts per player
+- New: right-click "Set as main" (own characters); guild master and officers can link alts of players without GuildPride by hand
+- New: `/gp id` shows your code (never the BattleTag); both can be turned off in the settings
+- New: one-click backup (Settings › "Backup …" or `/gp backup`): backs up all GuildPride data, keeps the last 5, automatic once a week, one-click restore
+
 ## 2.4.0
 
 **Deutsch**

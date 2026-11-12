@@ -4,7 +4,7 @@
 ## Notes-deDE: Gildenfenster, Meilensteine, Events, Gildeninfo und Gildenchat für deine Gilde
 ## Author: Rottgar85
 ## Version: 2.4.0
-## SavedVariables: GuildPrideDB
+## SavedVariables: GuildPrideDB, GuildPrideBackupDB
 ## IconTexture: Interface\AddOns\GuildPrideForever\Media\logo_small
 ## X-Curse-Project-ID: 1788777
 
@@ -14,6 +14,8 @@ GuildPride.lua
 GuildPrideUI.lua
 GuildPrideCopy.lua
 GuildPrideEvents.lua
+GuildPrideAusweis.lua
+GuildPrideBackup.lua
 GuildPrideDiscord.lua
 GuildPrideDKP.lua
 GuildPrideRaid.lua
