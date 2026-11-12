@@ -355,7 +355,6 @@ local enUS = {
     ["Discord-Anbindung"] = "Discord bridge",
     ["GuildPride kann Events, Anmeldungen, DKP und Meilensteine über Blizzards Discord-Verknüpfung an den Discord deiner Gilde schicken. Dort trägt der Bot GameBot alles ein.\n\nDafür muss die Gildenleitung die Gilde mit einem Discord-Kanal verknüpfen und GameBot einladen (gamerbot.duckdns.org). Beides kannst du später jederzeit in den GuildPride-Einstellungen ändern."] = "GuildPride can send events, sign-ups, DKP and milestones to your guild's Discord via Blizzard's Discord link. The bot GameBot records everything there.\n\nYour guild leadership has to link the guild to a Discord channel and invite GameBot (gamerbot.duckdns.org). You can change both any time in the GuildPride settings.",
     ["Weiter"] = "Next",
-    ["Fertig"] = "Done",
     ["Discord-Anbindung nutzen"] = "Use Discord bridge",
     ["Mein Discord ist mit WoW verknüpft (Optionen > Soziales > Discord)"] = "My Discord is linked to WoW (Options > Social > Discord)",
     ["Zurück"] = "Back",
@@ -403,7 +402,6 @@ local enUS = {
     -- Events: wöchentlich, Anwesenheit
     ["Jede Woche wiederholen"] = "Repeat every week",
     ["jede Woche"] = "every week",
-    ["Anwesenheit"] = "Attendance",
     ["Anwesenheit erfassen"] = "Record attendance",
     ["Anwesenheit für |cffffd100%s|r erfasst (%d da)."] = "Attendance for |cffffd100%s|r recorded (%d present).",
     ["Du bist in keiner Gruppe – Anwesenheit kann nicht erfasst werden."] = "You are not in a group – attendance cannot be recorded.",
