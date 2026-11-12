@@ -254,35 +254,3 @@ SlashCmdList.GUILDPRIDE = function(arg)
         o.showRaw and L["Zeilen sichtbar"] or L["Zeilen ausgeblendet"],
         L["wartend"], #queue))
 end
-
----------------------------------------------------------------------
--- Einmalige Frage beim ersten Login in einer Gilde
----------------------------------------------------------------------
-StaticPopupDialogs["GUILDPRIDE_DISCORD_ASK"] = {
-    text = L["GuildPride kann Events, Anmeldungen und DKP über Blizzards Discord-Verknüpfung an den Discord deiner Gilde schicken.\n\nDiscord-Anbindung nutzen?\n(Später jederzeit in den GuildPride-Einstellungen änderbar.)"],
-    button1 = YES, button2 = NO,
-    OnAccept = function()
-        GuildPrideDB.discordBridge = true
-        StaticPopup_Show("GUILDPRIDE_DISCORD_LINKED")
-    end,
-    OnCancel = function() GuildPrideDB.discordBridge = false end,
-    timeout = 0, whileDead = true, hideOnEscape = false,
-}
-StaticPopupDialogs["GUILDPRIDE_DISCORD_LINKED"] = {
-    text = L["Hast du dein Discord in WoW verknüpft (Optionen > Soziales > Discord)?\n\nNur dann sendet GuildPride selbst, sonst gibt ein Gildenmitglied deine Anmeldungen weiter."],
-    button1 = YES, button2 = NO,
-    OnAccept = function() GuildPrideDB.discordLinked = true end,
-    OnCancel = function() GuildPrideDB.discordLinked = false end,
-    timeout = 0, whileDead = true, hideOnEscape = false,
-}
-local ask = CreateFrame("Frame")
-ask:RegisterEvent("PLAYER_LOGIN")
-ask:SetScript("OnEvent", function()
-    C_Timer.After(12, function()
-        if not GuildPrideDB or not IsInGuild() then return end
-        Opt()
-        if GuildPrideDB.discordBridge == nil and not InCombatLockdown() then
-            StaticPopup_Show("GUILDPRIDE_DISCORD_ASK")
-        end
-    end)
-end)
