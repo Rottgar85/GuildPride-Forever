@@ -3,6 +3,7 @@
 ## 2.4.0
 
 **Deutsch**
+- Neu: Drop-Liste im DKP-Fenster – epische Items, die im Raid droppen, erscheinen automatisch bei allen mit GuildPride. Anklicken übernimmt das Item zum Vergeben; danach steht der Gewinner mit Preis daneben
 - Neu: Bieterrunde für Loot – im DKP-Fenster Item und Mindestgebot eintragen, „Bieterrunde (30 s)“ klicken. Alle in der Gruppe bieten im Bieterfenster, der Höchstbietende zahlt automatisch
 - Neu: Raid-Zusammenfassung – Instanz, Dauer, Bosse und Spieler werden mitgeschrieben; „Raid-Zusammenfassung“ (oder `/gp raid`) schickt sie an Discord, GameBot ergänzt vergebene DKP und Loot
 - Discord-Zeilen sind auf englischen Clients englisch, GameBot versteht beide Sprachen
@@ -12,6 +13,7 @@
 - Die Discord-Anbindung ist jetzt freiwillig: Die Einführung fragt am Ende, ob du sie nutzen willst und ob dein Discord verknüpft ist. Beides lässt sich jederzeit in den Einstellungen ein- und ausschalten
 
 **English**
+- New: drop list in the DKP window – epic items dropping in the raid show up automatically for everyone with GuildPride. Click one to assign it; the winner and price are shown next to it afterwards
 - New: loot bidding – enter item and minimum bid in the DKP window and click “Bidding (30 s)”. Everyone in the group bids in the bid window, the highest bidder pays automatically
 - New: raid summary – instance, duration, bosses and players are recorded; “Raid summary” (or `/gp raid`) sends it to Discord, GameBot adds awarded DKP and loot
 - Discord lines are English on English clients, GameBot understands both languages

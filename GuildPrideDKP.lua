@@ -125,7 +125,7 @@ local function PostDiscord(id, d, r, names)
 end
 
 local seq = 0
-function DKP.Award(names, d, reason)
+function DKP.Award(names, d, reason, dropId)
     if not CanManage() then ns.Print(L["Nur Offiziere dürfen DKP buchen."]); return end
     d = math.floor(tonumber(d) or 0)
     if d == 0 or #names == 0 then return end
@@ -139,6 +139,7 @@ function DKP.Award(names, d, reason)
     SendTx(id, Book()[id])
     PostDiscord(id, d, r, names)
     ns.Print((L["DKP gebucht: %+d %s für %d Spieler"]):format(d, r, #names))
+    if dropId and d < 0 and #names == 1 then DKP.MarkDrop(dropId, names[1], -d) end
 end
 
 -- Verfall: alle positiven Stände um pct Prozent senken
@@ -214,6 +215,90 @@ if TooltipDataProcessor and Enum.TooltipDataType then
 end
 
 ---------------------------------------------------------------------
+-- Drops: epische (und bessere) Items aus dem Raid, für alle mit GuildPride
+-- gleich. Der Offizier klickt einen Drop an, vergibt ihn ("Loot an Ziel" oder
+-- Bieterrunde) und der Gewinner steht danach mit Preis in der Liste.
+---------------------------------------------------------------------
+local MIN_QUALITY = 4   -- episch
+local function Drops() return ns.GuildTable("drops") end   -- Liste { id, link, t, winner, price }
+
+local function LinkQuality(link)
+    local q = link and C_Item and C_Item.GetItemQualityByID and select(1, C_Item.GetItemQualityByID(link))
+    if not q and link and GetItemInfo then q = select(3, GetItemInfo(link)) end
+    if not q and link then
+        -- Farbe im Link: ff a335ee = episch, ff ff8000 = legendär
+        local c = link:match("|c(%x%x%x%x%x%x%x%x)")
+        if c == "ffa335ee" then q = 4 elseif c == "ffff8000" then q = 5 end
+    end
+    return q
+end
+
+local function AddDrop(id, link, t)
+    local list = Drops()
+    for _, d in ipairs(list) do if d.id == id then return end end
+    table.insert(list, 1, { id = id, link = link, t = t })
+    while #list > 40 do table.remove(list) end
+    if DKP.Refresh then DKP.Refresh() end
+end
+
+-- Gleicher Drop bei mehreren Mitgliedern: gleiche ID aus Link + Minute
+local function DropId(link)
+    local item = link:match("item:(%d+)") or "0"
+    return item .. "-" .. math.floor(GetServerTime() / 120)
+end
+
+local function SawDrop(link)
+    if type(link) ~= "string" or Secret(link) or not link:find("item:") then return end
+    if (LinkQuality(link) or 0) < MIN_QUALITY then return end
+    if not IsInGroup() then return end
+    local id = DropId(link)
+    for _, d in ipairs(Drops()) do if d.id == id and d.link == link then return end end
+    AddDrop(id, link, GetServerTime())
+    ns.Queue("DRP", nil, id, link)
+end
+
+ns.On("DRP", function(payload, sender)
+    if sender == ns.Me() or not ns.IsGuildMember(sender) then return end
+    local id, link = strsplit(SEP, payload)
+    if id and link and link:find("item:") and #link < 300 then AddDrop(Clean(id, 30), link, GetServerTime()) end
+end)
+
+function DKP.MarkDrop(id, winner, price, fromOther)
+    for _, d in ipairs(Drops()) do
+        if d.id == id then
+            d.winner, d.price = winner, price
+            if not fromOther then ns.Queue("DRW", nil, id, winner, price) end
+            if DKP.Refresh then DKP.Refresh() end
+            return
+        end
+    end
+end
+ns.On("DRW", function(payload, sender)
+    if sender == ns.Me() then return end
+    local id, winner, price = strsplit(SEP, payload)
+    DKP.MarkDrop(Clean(id, 30), Clean(winner, 60), ns.Num(price, 0, 100000) or 0, true)
+end)
+
+local dropFrame = CreateFrame("Frame")
+dropFrame:RegisterEvent("LOOT_OPENED")
+dropFrame:RegisterEvent("START_LOOT_ROLL")
+pcall(dropFrame.RegisterEvent, dropFrame, "ENCOUNTER_LOOT_RECEIVED")
+dropFrame:SetScript("OnEvent", function(_, event, ...)
+    if not GuildPrideDB or not IsInGuild() then return end
+    if event == "LOOT_OPENED" then
+        for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
+            SawDrop(GetLootSlotLink and GetLootSlotLink(i))
+        end
+    elseif event == "START_LOOT_ROLL" then
+        local rollID = ...
+        SawDrop(GetLootRollItemLink and GetLootRollItemLink(rollID))
+    elseif event == "ENCOUNTER_LOOT_RECEIVED" then
+        local _, _, link = ...
+        SawDrop(link)
+    end
+end)
+
+---------------------------------------------------------------------
 -- Fenster: /gp dkp
 ---------------------------------------------------------------------
 local win
@@ -236,7 +321,7 @@ end
 
 local function Build()
     win = CreateFrame("Frame", "GuildPrideDKPFrame", UIParent, "BasicFrameTemplateWithInset")
-    win:SetSize(340, 520)
+    win:SetSize(600, 520)
     win:SetPoint("CENTER")
     win:SetMovable(true)
     win:EnableMouse(true)
@@ -251,7 +336,7 @@ local function Build()
 
     local scroll = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 12, -30)
-    scroll:SetPoint("BOTTOMRIGHT", -32, 225)
+    scroll:SetPoint("BOTTOMRIGHT", win, "BOTTOMLEFT", 270, 225)
     local content = CreateFrame("Frame", nil, scroll)
     content:SetSize(280, 10)
     scroll:SetScrollChild(content)
@@ -261,10 +346,21 @@ local function Build()
     win.list:SetJustifyH("LEFT")
     win.content = content
 
+    -- Rechte Seite: Drops
+    local dTitle = win:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    dTitle:SetPoint("TOPLEFT", 300, -30); dTitle:SetText(L["Drops (anklicken zum Vergeben)"])
+    local dScroll = CreateFrame("ScrollFrame", nil, win, "UIPanelScrollFrameTemplate")
+    dScroll:SetPoint("TOPLEFT", 300, -48)
+    dScroll:SetPoint("BOTTOMRIGHT", -32, 12)
+    local dContent = CreateFrame("Frame", nil, dScroll)
+    dContent:SetSize(260, 10)
+    dScroll:SetScrollChild(dContent)
+    win.dContent, win.dRows = dContent, {}
+
     -- Offiziers-Bereich
     local box = CreateFrame("Frame", nil, win)
     box:SetPoint("BOTTOMLEFT", 12, 10)
-    box:SetPoint("BOTTOMRIGHT", -12, 10)
+    box:SetWidth(316)
     box:SetHeight(210)
     win.officer = box
 
@@ -297,7 +393,7 @@ local function Build()
         local n = DKP.TargetName()
         if not n then ns.Print(L["Bitte zuerst einen Spieler anvisieren."]); return end
         local a = math.abs(amount())
-        DKP.Award({ n }, -a, L["Loot"] .. " " .. reason())
+        DKP.Award({ n }, -a, L["Loot"] .. " " .. reason(), DKP.selectedDrop)
     end)
     bLoot:SetPoint("TOPRIGHT", 0, -68)
 
@@ -339,6 +435,48 @@ function DKP.Refresh()
     win.list:SetText(#lines > 0 and table.concat(lines, "\n") or L["Noch keine DKP-Buchungen."])
     win.content:SetHeight(win.list:GetStringHeight() + 10)
     win.officer:SetShown(CanManage())
+
+    -- Drops
+    local list = Drops()
+    for i, d in ipairs(list) do
+        local row = win.dRows[i]
+        if not row then
+            row = CreateFrame("Button", nil, win.dContent)
+            row:SetSize(260, 30)
+            row:SetPoint("TOPLEFT", 0, -(i - 1) * 32)
+            row.hl = row:CreateTexture(nil, "BACKGROUND")
+            row.hl:SetAllPoints(); row.hl:SetColorTexture(1, 0.82, 0, 0.18)
+            row.item = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            row.item:SetPoint("TOPLEFT", 4, -2); row.item:SetWidth(252); row.item:SetJustifyH("LEFT")
+            row.who = row:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+            row.who:SetPoint("TOPLEFT", 4, -16); row.who:SetWidth(252); row.who:SetJustifyH("LEFT")
+            row:SetScript("OnEnter", function(self)
+                if not self.link then return end
+                GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+                pcall(GameTooltip.SetHyperlink, GameTooltip, self.link)
+                GameTooltip:Show()
+            end)
+            row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            row:SetScript("OnClick", function(self)
+                if IsModifiedClick("CHATLINK") and self.link then ChatEdit_InsertLink(self.link) return end
+                DKP.selectedDrop = self.dropId
+                win.reason:SetText(self.link or "")
+                DKP.Refresh()
+            end)
+            win.dRows[i] = row
+        end
+        row.link, row.dropId = d.link, d.id
+        row.item:SetText(d.link)
+        if d.winner then
+            row.who:SetText(("|cff40ff40→ %s|r  (%d DKP)"):format(Short(d.winner), d.price or 0))
+        else
+            row.who:SetText(L["noch nicht vergeben"])
+        end
+        row.hl:SetShown(DKP.selectedDrop == d.id)
+        row:Show()
+    end
+    for i = #list + 1, #win.dRows do win.dRows[i]:Hide() end
+    win.dContent:SetHeight(math.max(10, #list * 32))
 end
 
 function DKP.Toggle()

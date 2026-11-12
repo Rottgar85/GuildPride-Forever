@@ -107,7 +107,7 @@ function Raid.Start(item, min)
     if item == "" then ns.Print(L["Bitte das Item als Grund eintragen."]); return end
     min = math.max(0, math.floor(tonumber(min) or 0))
     local id = tostring(math.random(100000, 999999))
-    cur = { id = id, item = item, min = min, ends = GetServerTime() + DURATION, by = ns.Me() }
+    cur = { id = id, item = item, min = min, ends = GetServerTime() + DURATION, by = ns.Me(), drop = ns.DKP and ns.DKP.selectedDrop }
     bids = {}
     ns.Queue("AUC", nil, id, item, min, cur.ends, cur.by)
     ShowBidWin()
@@ -146,7 +146,7 @@ function Raid.Finish(id)
     local a = cur
     cur, bids = nil, nil
     if a.high and a.highBy then
-        ns.DKP.Award({ a.highBy }, -a.high, L["Loot"] .. " " .. a.item)
+        ns.DKP.Award({ a.highBy }, -a.high, L["Loot"] .. " " .. a.item, a.drop)
         ns.Queue("AUE", nil, id, a.highBy, a.high, a.item)
         ns.Print((L["%s geht an %s für %d DKP."]):format(a.item, Short(a.highBy), a.high))
     else
