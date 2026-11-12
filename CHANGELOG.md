@@ -1,19 +1,16 @@
 # GuildPride Changelog
 
-## 2.3.0-beta4
+## 2.3.0
+
+**Deutsch**
+- Neu: Discord-Anbindung über Blizzards Gildenchat-Discord-Verknüpfung. Events, Anmeldungen (mit Rolle und Klasse) und Absagen gehen als lesbare `[GP]`-Zeilen an Discord, wo GameBot sie als Raid-Events einträgt. Spieler ohne verknüpftes Discord werden von einem verknüpften Mitglied weitergeleitet. Einmalig `/gp discord verknuepft` eingeben, wenn dein Discord verknüpft ist; `/gp discord` zeigt den Status
 - Neu: DKP (`/gp dkp`). Offiziere buchen Punkte an Raid, Gruppe oder Ziel, ziehen Loot ab und können die letzte Buchung zurücknehmen. Alle sehen den Stand im Spieler-Tooltip. Buchungen gehen zusätzlich an Discord (GameBot: `/dkp`)
+- `[GP]`-Zeilen werden im Chat ausgeblendet
 
-## 2.3.0-beta3
-- Behoben: Absage und erneute Zusage kamen nicht in Discord an (zu lange Sperre gegen doppelte Zeilen)
-- Standardweg ist jetzt der Gildenchat (Blizzards Discord-Stream leitet Addon-Zeilen nicht weiter)
-
-## 2.3.0-beta2
-- Behoben: Meldung „WoW hat eine Aktion blockiert (GuildPrideDiscord.lua:44)“
-
-## 2.3.0-beta1
-- Neu: Discord-Brücke (Test). Events und Anmeldungen gehen als lesbare `[GP]`-Zeilen über Blizzards Gildenchat-Discord-Verknüpfung an Discord, wo GameBot sie einträgt
-- Nicht verknüpfte Spieler senden nicht selbst, ein verknüpftes Mitglied mit GuildPride gibt ihre Zeilen weiter
-- `[GP]`-Zeilen werden im Chat ausgeblendet; `/gp discord` zeigt den Status, `/gp discord test`, `/gp discord verknuepft`, `/gp discord roh`
+**English**
+- New: Discord bridge via Blizzard's guild chat Discord link. Events, sign-ups (with role and class) and declines are sent to Discord as readable `[GP]` lines, where GameBot turns them into raid events. Players without a linked Discord are relayed by a linked guildmate. Type `/gp discord linked` once if your Discord is linked; `/gp discord` shows the status
+- New: DKP (`/gp dkp`). Officers award points to the raid, group or target, deduct loot and can undo their last booking. Everyone sees standings in the player tooltip. Bookings are also sent to Discord (GameBot: `/dkp`)
+- `[GP]` lines are hidden in chat
 
 ## 2.2.4
 

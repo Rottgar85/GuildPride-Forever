@@ -3,7 +3,7 @@
 ## Notes: Guild window, milestones, events, guild info and guild chat for your guild
 ## Notes-deDE: Gildenfenster, Meilensteine, Events, Gildeninfo und Gildenchat für deine Gilde
 ## Author: Rottgar85
-## Version: 2.3.0-beta4
+## Version: 2.3.0
 ## SavedVariables: GuildPrideDB
 ## IconTexture: Interface\AddOns\GuildPrideForever\Media\logo_small
 ## X-Curse-Project-ID: 1788777
