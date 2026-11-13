@@ -3,7 +3,7 @@
 --   rail  = "Icon-Leiste" (schmale Leiste mit Symbolen, mehr Platz, flach)
 --   book  = "Gildenbuch"  (aufgeschlagenes Buch auf hellem Pergament: links eine
 --                          feste Seite mit Aushang, Feldzug und Chronik, rechts
---                          die jeweilige Seite, Lesezeichen als Menü rechts außen)
+--                          die jeweilige Seite, Register-Reiter als Menü rechts)
 -- Das Layout ändert Rahmen, Menü und Hintergrund; die Seiten selbst und die
 -- Farben (Style) bleiben gleich und lassen sich frei kombinieren. Im Gildenbuch
 -- wird die Schrift zu dunkler Tinte (GuildPrideInk.lua). Umschalten ohne /reload.
@@ -68,12 +68,6 @@ local function Gradient(tex, orient, a, b)
     tex:SetColorTexture((a[1] + b[1]) / 2, (a[2] + b[2]) / 2, (a[3] + b[3]) / 2, (a[4] + b[4]) / 2)
 end
 
--- Senkrechte Aufschrift: ein Buchstabe je Zeile (UTF-8-sicher)
-local function Vertical(s)
-    local out = {}
-    for ch in tostring(s or ""):gmatch("[%z\1-\127\194-\244][\128-\191]*") do out[#out + 1] = ch end
-    return table.concat(out, "\n")
-end
 
 ---------------------------------------------------------------------
 -- Gildenbuch: alle Teile (nur dort sichtbar)
@@ -296,11 +290,16 @@ local function TabExtras(tab)
     tab.gpDot = tab:CreateTexture(nil, "OVERLAY")
     tab.gpDot:SetSize(8, 8); tab.gpDot:SetPoint("TOPRIGHT", -5, -5)
     tab.gpDot:SetColorTexture(1, 0.55, 0.25, 1)
+    -- Aufschrift der Register-Reiter im Gildenbuch (waagerecht, gut lesbar)
     tab.gpVert = tab:CreateFontString(nil, "OVERLAY", "GPFont_Ribbon")
-    tab.gpVert:SetPoint("CENTER", 4, 0)
-    tab.gpVert:SetJustifyH("CENTER")
-    tab.gpVert:SetSpacing(0)
-    tab.gpVert.gpNoInk = true   -- helle Schrift auf farbigem Band
+    tab.gpVert:SetPoint("LEFT", 18, 0)
+    tab.gpVert:SetJustifyH("LEFT")
+    tab.gpVert:SetShadowOffset(1, -1)
+    tab.gpVert.gpNoInk = true   -- helle Schrift auf farbigem Reiter
+    tab.gpEdge = tab:CreateTexture(nil, "OVERLAY")
+    tab.gpEdge:SetPoint("TOPRIGHT"); tab.gpEdge:SetPoint("BOTTOMRIGHT"); tab.gpEdge:SetWidth(2)
+    tab.gpEdge:SetColorTexture(0, 0, 0, 0.35)
+    tab.gpEdge:Hide()
     -- Name als Tooltip (Icon-Leiste und Lesezeichen)
     tab:HookScript("OnEnter", function(self)
         if Current().key == "forge" then return end
@@ -330,7 +329,7 @@ local lastTop = 0
 function ns.LayoutTab(tab, index, bottom)
     TabExtras(tab)
     local l = Current()
-    tab.gpIcon:Hide(); tab.gpMark:Hide(); tab.gpDot:Hide(); tab.gpVert:Hide()
+    tab.gpIcon:Hide(); tab.gpMark:Hide(); tab.gpDot:Hide(); tab.gpVert:Hide(); tab.gpEdge:Hide()
     tab.text:Show()
     tab.text:ClearAllPoints()
     if l.key == "rail" then
@@ -346,14 +345,15 @@ function ns.LayoutTab(tab, index, bottom)
         end
         return true
     elseif l.key == "book" then
-        -- Lesezeichen: ragen rechts aus dem Buch, Aufschrift senkrecht
-        tab:SetSize(40, 74)
+        -- Register-Reiter: ragen rechts aus dem Buch, Aufschrift waagerecht
+        tab:SetSize(82, 32)
         tab.text:Hide()
-        tab.gpVert:SetText(Vertical(ShortLabel(tab)))
+        tab.gpVert:SetText(ShortLabel(tab))
         tab.gpVert:Show()
+        tab.gpEdge:Show()
         if not bottom then lastTop = index end
         local slot = bottom and (lastTop + 1 + index) or index
-        tab:SetPoint("TOPLEFT", frame, "TOPRIGHT", -8, -40 - slot * 80 - (bottom and 12 or 0))
+        tab:SetPoint("TOPLEFT", frame, "TOPRIGHT", -14, -54 - slot * 38 - (bottom and 16 or 0))
         return true
     end
     tab:SetSize(l.side - 16, 36)
@@ -375,8 +375,8 @@ function ns.LayoutMarkTab(tab, on)
         local c = RIBBONS[tab.key] or RIBBON_DEFAULT
         local f = on and 1 or 0.72
         tab.bgTex:SetColorTexture(c[1] * f, c[2] * f, c[3] * f, 1)
-        tab:SetWidth(on and 50 or 40)
-        tab.gpVert:SetTextColor(0.98, 0.94, 0.86, on and 1 or 0.85)
+        tab:SetWidth(on and 94 or 82)   -- der aktive Reiter ragt weiter heraus
+        tab.gpVert:SetTextColor(0.98, 0.94, 0.86, on and 1 or 0.82)
         if ns.Ink then ns.Ink.Soon() end
     end
 end

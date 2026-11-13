@@ -24,7 +24,7 @@ do
     Make("GPFont_Button",      "Heading.ttf",   12, 1.00, 0.82, 0.55)
     Make("GPFont_ButtonOff",   "Heading.ttf",   12, 0.50, 0.45, 0.42)
     Make("GPFont_ButtonActive", "Heading.ttf",  12, 0.94, 0.78, 0.55)   -- aktiver Umschalter
-    Make("GPFont_Ribbon",      "Heading.ttf",   10, 0.97, 0.92, 0.82)   -- Lesezeichen im Gildenbuch
+    Make("GPFont_Ribbon",      "Heading.ttf",   11, 0.97, 0.92, 0.82)   -- Register-Reiter im Gildenbuch
     Make("GPFont_Text",        "Text.ttf",      12, 0.92, 0.90, 0.88)
     Make("GPFont_TextBold",    "TextBold.ttf",  12, 0.94, 0.78, 0.55)
     Make("GPFont_TextSmall",   "Text.ttf",      11, 0.92, 0.90, 0.88)
