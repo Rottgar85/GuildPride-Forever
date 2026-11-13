@@ -12,8 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: luacheck installieren
-        run: sudo apt-get update && sudo apt-get install -y lua-check lua5.1
+        run: sudo apt-get update && sudo apt-get install -y lua-check lua5.1 liblua5.1-0-dev
       - name: Lua-Code pruefen
         run: luacheck . --no-color
+      - name: Lua kompilieren (u. a. Grenze 200 lokale Variablen)
+        run: for f in *.lua; do luac5.1 -p "$f" || exit 1; done
       - name: Tests (Sicherheitsregeln, Ausweis, DKP, Sicherung)
         run: lua5.1 tests/run.lua

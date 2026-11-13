@@ -1611,17 +1611,6 @@ local settings = CreateFrame("Frame", nil, settingsScroll)
 settings:SetSize(640, 1)
 settingsScroll:SetScrollChild(settings)
 
--- Suche oben: passende Einstellungen hervorheben, andere abblenden,
--- zur ersten passenden springen (Inhalt wird unten nach "options" gefüllt)
-local settingsSearch = CreateFrame("EditBox", nil, settingsPage, "InputBoxTemplate")
-settingsSearch:SetSize(220, 22); settingsSearch:SetPoint("TOPLEFT", 10, -2)
-settingsSearch:SetAutoFocus(false)
-local settingsSearchHint = settingsSearch:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
-settingsSearchHint:SetPoint("LEFT", 4, 0)
-settingsSearchHint:SetText(L["Einstellung suchen …"])
-settingsSearch:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
-settingsSearch:SetScript("OnEnterPressed", settingsSearch.ClearFocus)
-
 -- Style-Auswahl ganz oben: ein Knopf je Style, der aktive ist hervorgehoben
 local styleLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
 styleLabel:SetPoint("TOPLEFT", 4, -4)
@@ -1715,6 +1704,18 @@ for i, opt in ipairs(options) do
   end
 end
 
+do
+-- Suche oben: passende Einstellungen hervorheben, andere abblenden,
+-- zur ersten passenden springen (Inhalt wird unten nach "options" gefüllt)
+local settingsSearch = CreateFrame("EditBox", nil, settingsPage, "InputBoxTemplate")
+settingsSearch:SetSize(220, 22); settingsSearch:SetPoint("TOPLEFT", 10, -2)
+settingsSearch:SetAutoFocus(false)
+local settingsSearchHint = settingsSearch:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
+settingsSearchHint:SetPoint("LEFT", 4, 0)
+settingsSearchHint:SetText(L["Einstellung suchen …"])
+settingsSearch:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+settingsSearch:SetScript("OnEnterPressed", settingsSearch.ClearFocus)
+
 settingsSearch:SetScript("OnTextChanged", function(self)
     local q = strtrim(self:GetText() or ""):lower()
     settingsSearchHint:SetShown(q == "")
@@ -1739,6 +1740,7 @@ settingsSearch:SetScript("OnTextChanged", function(self)
         settingsScroll:SetVerticalScroll(math.min(range, math.max(0, -first.y - 40)))
     end
 end)
+end
 
 local blizzBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
 blizzBtn:SetSize(220, 26)
@@ -1746,11 +1748,13 @@ blizzBtn:SetPoint("TOPLEFT", 4, OPT_Y - (#options * 30) - 8)
 blizzBtn:SetText(L["Blizzard-Gildenfenster öffnen"])
 blizzBtn:SetScript("OnClick", function() ns.OpenBlizzardGuild() end)
 
+do
 local backupBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
 backupBtn:SetSize(180, 26)
 backupBtn:SetPoint("LEFT", blizzBtn, "RIGHT", 10, 0)
 backupBtn:SetText(L["Datensicherung …"])
 backupBtn:SetScript("OnClick", function() if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end end)
+end
 
 -- Begrüßungstext (GuildPrideMembers.lua), {name} = neues Mitglied
 local welcomeY = OPT_Y - (#options * 30) - 46
@@ -1803,6 +1807,7 @@ Stepper(L["Chat-Schrift"], lookY - 56, "chatFont", 1, 10, 18, function(v) return
 
 -- Ecke unten rechts: ziehen vergrößert/verkleinert das ganze Fenster
 -- (alles wächst mit, auch die Schrift). Die linke obere Ecke bleibt stehen.
+do   -- eigener Block (Grenze von 200 lokalen Variablen)
 local SCALE_MIN, SCALE_MAX = 0.6, 2
 local grip = CreateFrame("Button", nil, frame)
 grip:SetSize(18, 18)
@@ -1854,6 +1859,7 @@ grip:SetScript("OnMouseUp", function(self)
     GuildPrideDB.scale = math.floor(frame:GetScale() * 100 + 0.5) / 100
     ShowSteppers()
 end)
+end
 
 local lookFrame = CreateFrame("Frame")
 lookFrame:RegisterEvent("PLAYER_LOGIN")
@@ -2082,6 +2088,7 @@ end
 ---------------------------------------------------------------------
 -- Blizzard-Gildenfenster ersetzen
 ---------------------------------------------------------------------
+do   -- eigener Block: Lua erlaubt nur 200 lokale Variablen je Datei-Ebene
 local bypass = false
 local blockUntil = 0   -- Blizzard-Fenster bis zu diesem Zeitpunkt sofort wieder schließen
 
@@ -2137,6 +2144,7 @@ if ToggleGuildFrame then
         C_Timer.After(0, HideBlizzardGuild)
         ns.ToggleUI()
     end)
+end
 end
 
 -- Für andere Module freigeben
