@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.7.0
+
+**Deutsch**
+- Neu: Handwerker-Verzeichnis (eigener Reiter „Berufe“): wer welchen Beruf auf welcher Stufe hat und welche Rezepte er kann, mit Suche nach Name, Beruf oder Rezept. Berufe meldet GuildPride automatisch, Rezepte nach einmaligem Öffnen des Berufsfensters
+- Neu: Gildenziele (Reiter Übersicht › Ziele): gemeinsame Ziele mit Fortschrittsbalken – Mitgliederzahl, Spieler auf einer Stufe oder eigene Ziele, die Offiziere von Hand weiterzählen. Erreichte Ziele werden gefeiert und auf Wunsch nach Discord gemeldet
+- Neu: Schwarzes Brett (Verwaltung): Offiziere hängen eine Mitteilung aus, jedes Mitglied sieht sie einmal als Fenster, danach in der Übersicht; auf Wunsch auch in Discord. `/gp brett` zeigt sie erneut
+- Neu: Beitrittsanfragen in der Gruppensuche: „Beitreten“ schickt Rolle, Klasse und Stufe, der Gruppenleiter lädt mit einem Klick ein oder lehnt ab – auch serverweit
+
+**English**
+- New: crafters directory (own "Professions" tab): who has which profession at which skill and which recipes, searchable by name, profession or recipe. Professions are shared automatically, recipes after opening your profession window once
+- New: guild goals (Overview › Goals): shared goals with progress bars – member count, players at a level or custom goals officers count up by hand. Reached goals are celebrated and can be posted to Discord
+- New: notice board (Management): officers post a notice, every member sees it once as a window and then in the overview; optionally in Discord too. `/gp board` shows it again
+- New: join requests in the group finder: "Join" sends your role, class and level, the group leader invites or declines with one click – also server-wide
+
 ## 2.6.1
 
 **Deutsch**

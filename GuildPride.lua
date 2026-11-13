@@ -535,14 +535,16 @@ local function IsSecret(v) return issecretvalue and issecretvalue(v) or false en
 local multipart = {}   -- ["Sender:id"] = { n, got, parts, t }
 -- Arten, die Rechte voraussetzen oder Identität beweisen: nie per Weiterleitung
 local NO_RELAY = { DKP = true, DRW = true, ALT = true, AUS = true, AUSX = true, AUSL = true,
-                   AUC = true, AUH = true, AUE = true, CKY = true, DEL = true, JHL = true, LAY = true, RCP = true, APK = true }
+                   AUC = true, AUH = true, AUE = true, CKY = true, DEL = true, JHL = true, LAY = true, RCP = true, APK = true,
+                   CRF = true, CRR = true, GOL = true, BRD = true, LFJ = true, LFJA = true }
 local recent, recentSweep = {}, 0   -- zuletzt empfangene Nachrichten (gegen Doppelte)
 local forwarded = {}   -- ["Name:id"] = Zeit, gegen doppelte Weiterleitungen
 local MP_MAX = 100
 
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
-local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true }
+local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
+               CRQ = true, CRRQ = true, GOQ = true, BRQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender
@@ -757,6 +759,13 @@ f:SetScript("OnEvent", function(_, event, ...)
             local nameOk = type(chanName) == "string" and chanName ~= "" and type(ourName) == "string"
                 and chanName:lower():find(ourName:lower(), 1, true) ~= nil
             if not nameOk and localID ~= ourId then return end
+        end
+        -- Beitrittsanfrage aus der serverweiten Gruppensuche (und Antwort darauf):
+        -- per Flüstern, auch von Fremden – nur an die Gruppensuche, nie Dispatch
+        if channel == "WHISPER" and not IsMember(sender)
+           and (message:sub(1, 4) == "LFJ:" or message:sub(1, 5) == "LFJA:") then
+            if ns.OnPublicJoin then ns.OnPublicJoin(message, sender) end
+            return
         end
         -- Flüstern und Kanäle kann jeder auf dem Server benutzen:
         -- nur Nachrichten von Gildenmitgliedern annehmen

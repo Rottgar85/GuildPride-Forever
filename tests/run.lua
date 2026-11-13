@@ -20,8 +20,13 @@ W.Load("GuildPrideDKP.lua")
 W.Load("GuildPrideHistory.lua")
 W.Load("GuildPrideRoster.lua")
 W.Load("GuildPrideRecruit.lua")
+W.Load("GuildPrideCrafts.lua")
+W.Load("GuildPrideGoals.lua")
+W.Load("GuildPrideBoard.lua")
 W.Start()
 local ns = W.ns
+ns.FormatDate = ns.FormatDate or function() return "" end
+ns.FormatDay = ns.FormatDay or function() return "" end
 
 local passed, failed = 0, 0
 local function test(name, fn)
@@ -243,6 +248,106 @@ test("Bewerbung: Offizier empfängt und speichert", function()
     eq(app.a[1], "Magier 60")
 end)
 
+
+---------------------------------------------------------------------
+test("Berufe: Mitglied meldet eigene Berufe und Rezepte", function()
+    local v = W.server
+    W.Receive("Anna", msg("CRF", v, "Schneiderei~285~300;Verzauberkunst~150~225"))
+    local e = ns.GuildTable("crafts")["Anna"]
+    eq(e ~= nil, true)
+    eq(#e.profs, 2)
+    eq(e.profs[1].n, "Schneiderei"); eq(e.profs[1].l, 285)
+    W.Receive("Anna", msg("CRR", v, "Schneiderei", "2s,zz,1"))
+    eq(#e.rec["Schneiderei"], 3)
+    eq(e.rec["Schneiderei"][1], tonumber("2s", 36))
+end)
+
+test("Berufe: Rezepte nur zum bekannten Stand und Beruf", function()
+    local e = ns.GuildTable("crafts")["Anna"]
+    W.Receive("Anna", msg("CRR", e.v + 5, "Schneiderei", "aa"))
+    eq(#e.rec["Schneiderei"], 3, "falscher Stand")
+    W.Receive("Anna", msg("CRR", e.v, "Alchemie", "aa"))
+    eq(e.rec["Alchemie"], nil, "fremder Beruf")
+end)
+
+test("Berufe: weitergeleitet oder von Fremden verworfen", function()
+    W.Receive("Bert", msg("FWD", "Carl", "9", msg("CRF", W.server, "Alchemie~300~300")))
+    eq(ns.GuildTable("crafts")["Carl"], nil, "weitergeleitet")
+    W.Receive("Fremd", msg("CRF", W.server, "Alchemie~300~300"), "WHISPER")
+    eq(ns.GuildTable("crafts")["Fremd"], nil, "kein Mitglied")
+end)
+
+test("Berufe: Suche nach Beruf und Name", function()
+    eq(#ns.Crafts.Search("schnei"), 1)
+    eq(#ns.Crafts.Search("anna"), 2)
+    eq(#ns.Crafts.Search(""), 2)
+end)
+
+---------------------------------------------------------------------
+local function goal(id, ver, title, progress)
+    return msg("GOL", id, ver, "manual", 10, 0, progress or 0, 0, title)
+end
+
+test("Gildenziele: nur von Offizieren", function()
+    W.Receive("Anna", goal("Anna-1-1", W.server, "Falsch"))
+    eq(ns.GuildTable("goals")["Anna-1-1"], nil)
+    W.Receive("Anna", goal("Offi-1-1", W.server, "Auch falsch"))
+    eq(ns.GuildTable("goals")["Offi-1-1"], nil, "Mitglied allein")
+    W.Receive("Offi", goal("Offi-1-1", W.server, "Onyxia"))
+    eq(ns.GuildTable("goals")["Offi-1-1"].title, "Onyxia")
+end)
+
+test("Gildenziele: Ziel eines Nicht-Offiziers wird nie angenommen", function()
+    W.Receive("Offi", goal("Anna-2-2", W.server, "Unterschoben"))
+    eq(ns.GuildTable("goals")["Anna-2-2"], nil)
+end)
+
+test("Gildenziele: Fortschritt und Erreichen", function()
+    local g = ns.GuildTable("goals")["Offi-1-1"]
+    W.Receive("Offi", goal("Offi-1-1", W.server + 1, "Onyxia", 10))
+    eq(ns.Goals.Progress(g), 10)
+    eq(g.doneAt ~= nil, true)
+end)
+
+---------------------------------------------------------------------
+local function board(id, author, text)
+    return msg("BRD", id, W.server, author, W.server, 0, text)
+end
+
+test("Schwarzes Brett: nur Offiziere hängen aus", function()
+    W.Receive("Anna", board("Anna-1-1", "Anna", "Freibier"))
+    eq(ns.Board.Current(), nil)
+    W.Receive("Offi", board("Anna-1-2", "Anna", "Freibier"))
+    eq(ns.Board.Current(), nil, "Verfasser kein Offizier")
+    W.Receive("Offi", board("Offi-1-1", "Offi", "Raid |cffff0000heute|r 20 Uhr"))
+    local b = ns.Board.Current()
+    eq(b ~= nil, true)
+    eq(b.text:find("|", 1, true), nil, "Codes entfernt")
+end)
+
+test("Schwarzes Brett: älterer Stand überschreibt nicht", function()
+    W.Receive("Offi", msg("BRD", "Offi-0-0", W.server - 500, "Offi", W.server - 500, 0, "Alt"))
+    eq(ns.Board.Current().id, "Offi-1-1")
+end)
+
+---------------------------------------------------------------------
+test("Beitrittsanfrage: Flüstern von Fremden nur an die Gruppensuche", function()
+    local got
+    ns.OnPublicJoin = function(m, s) got = { m = m, s = s } end
+    W.Receive("Fremd", msg("LFJ", "T", "WARRIOR", 60), "WHISPER")
+    eq(got and got.s, "Fremd")
+    got = nil
+    W.Receive("Fremd", goal("Offi-9-9", W.server, "Fremd"), "WHISPER")
+    eq(ns.GuildTable("goals")["Offi-9-9"], nil, "andere Arten von Fremden verworfen")
+    eq(got, nil)
+end)
+
+test("Beitrittsanfrage: weitergeleitet verworfen", function()
+    local got = false
+    ns.Handlers["LFJ"] = { function() got = true end }
+    W.Receive("Bert", msg("FWD", "Carl", "10", msg("LFJ", "T", "WARRIOR", 60)))
+    eq(got, false)
+end)
 ---------------------------------------------------------------------
 test("Datensicherung: sichern und Daten bleiben", function()
     W.Load("GuildPrideBackup.lua")

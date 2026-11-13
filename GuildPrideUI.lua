@@ -140,9 +140,11 @@ content:SetPoint("BOTTOMRIGHT", -14, 14)
 -- Kompaktes Menü: mehrere Reiter teilen sich einen Platz in der Seitenleiste,
 -- oben auf der Seite schaltet eine Leiste zwischen ihnen um. Schlüssel = feste
 -- Standard-Ordnung der Reiter (10 Übersicht, 30 Events, 40 Gruppensuche,
--- 50 Umfragen, 60 Meilensteine). Der erste Schlüssel ist der Gastgeber.
+-- 50 Umfragen, 60 Meilensteine, 65 Ziele). Berufe (55) und Gildeninfo (70)
+-- haben eigene Plätze.
+-- Der erste Schlüssel ist der Gastgeber.
 local GROUPS = {
-    { host = "10", label = L["Übersicht"], keys = { "10", "60" } },
+    { host = "10", label = L["Übersicht"], keys = { "10", "60", "65" } },
     { host = "30", label = L["Planen"],    keys = { "30", "40", "50" } },
 }
 local groupOf = {}
@@ -561,7 +563,9 @@ function overview:Refresh()
     tiles[3].value:SetText(week)
 
     local text = ns.GuildMOTD()
-    motd:SetText(text ~= "" and text or L["|cff888888Keine Nachricht gesetzt.|r"])
+    text = text ~= "" and text or L["|cff888888Keine Nachricht gesetzt.|r"]
+    local board = ns.BoardText and ns.BoardText()
+    motd:SetText(board and (text .. "\n\n" .. board) or text)
     weekText:SetText(WeekSummary())
     local lines = {}
     local log = ns.GuildLog()
