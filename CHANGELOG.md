@@ -7,12 +7,14 @@
 - Neu: Bei einem epischen Drop im Raid zeigt GuildPride, wer in der Gruppe ihn sich wünscht
 - Neu: Knopf am Blizzard-Gildenfenster, der GuildPride öffnet (Umschalt+Ziehen verschiebt ihn, abschaltbar in den Einstellungen)
 - Neu: Eintrag für Titan Panel, ChocolateBar und andere Infoleisten (zeigt, wie viele Mitglieder online sind)
+- Gildenbuch: Das Fenster eines Mitglieds (mit Öffentlicher Notiz und Offiziersnotiz) und die Detailbereiche bei Events und Umfragen waren dunkel, die Schrift darauf kaum lesbar. Sie sind jetzt heller Zettel mit dunkler Schrift
 
 **English**
 - New: wishlist (tab "Wishlist" under Plan, /gp wish). Mark items as normal, high or BiS; the item tooltip shows who in the guild wants the item (with their DKP)
 - New: on an epic drop in a raid GuildPride shows who in the group wishes for it
 - New: button on Blizzard's guild window that opens GuildPride (shift-drag moves it, can be switched off in the settings)
 - New: entry for Titan Panel, ChocolateBar and other info bars (shows how many members are online)
+- Guild book: the member window (public note and officer note) and the detail areas of events and polls were dark with barely readable text. They are now light paper with dark text
 
 ## 2.8.2
 

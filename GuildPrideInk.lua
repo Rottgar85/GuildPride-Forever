@@ -146,6 +146,23 @@ function ns.DarkBg(tex, alpha, kind)
     return tex
 end
 
+-- Dunkle Flächen aus einem Backdrop (Mitglieds-Fenster, Detailbereiche):
+-- im Buch wird eine undurchsichtige Fläche zu hellem Papier, eine
+-- halbdurchsichtige zum selben leichten Braunton wie die Kästen oben.
+local PAPER = { 0.91, 0.86, 0.75, 0.98 }
+local panels = setmetatable({}, { __mode = "k" })
+local function PaintPanel(f, spec)
+    if not f.SetBackdropColor then return end
+    local c = Ink.on and (spec.solid and PAPER or BOX) or spec.raw
+    f:SetBackdropColor(c[1], c[2], c[3], c[4])
+end
+function ns.DarkPanel(f, r, g, b, a)
+    a = a or 1
+    panels[f] = { raw = { r, g, b, a }, solid = a >= 0.9 }
+    PaintPanel(f, panels[f])
+    return f
+end
+
 ---------------------------------------------------------------------
 -- Eingabefelder: im Buch heller Zettel mit dunkler Tinte
 ---------------------------------------------------------------------
@@ -219,6 +236,7 @@ function Ink.Set(on)
     for fs in pairs(hooked) do Apply(fs) end
     for eb in pairs(fields) do ApplyField(eb) end
     for tex, spec in pairs(darkBgs) do PaintBg(tex, spec) end
+    for f, spec in pairs(panels) do PaintPanel(f, spec) end
 end
 
 -- Jede Sekunde neue Schriften erfassen (Ink.Soon nach Aktualisierungen: GuildPrideLayout.lua)

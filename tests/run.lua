@@ -512,6 +512,21 @@ test("Tinte: helle Farben werden dunkel, dunkle bleiben", function()
     Ink.on = false
     eq(Ink.Text("|cffffd100Gold|r"), "|cffffd100Gold|r", "aus = unverändert")
 end)
+test("Tinte: dunkle Flächen werden im Buch hell", function()
+    local Ink = ns.Ink
+    local got
+    local panel = { SetBackdropColor = function(_, r, g, b, a) got = { r, g, b, a } end }
+    Ink.Set(false)
+    ns.DarkPanel(panel, 0.07, 0.05, 0.04, 0.97)
+    eq(got[1], 0.07, "aus: Originalfarbe")
+    Ink.Set(true)
+    eq(got[1] > 0.8 and got[2] > 0.8, true, "an: helles Papier")
+    local box = { SetBackdropColor = function(_, r) got = { r } end }
+    ns.DarkPanel(box, 0, 0, 0, 0.35)
+    eq(got[1] > 0.3 and got[1] < 0.6, true, "halbdurchsichtig: Braunton")
+    Ink.Set(false)
+    eq(got[1], 0, "wieder dunkel")
+end)
 ---------------------------------------------------------------------
 test("Datensicherung: sichern und Daten bleiben", function()
     W.Load("GuildPrideBackup.lua")
