@@ -56,5 +56,5 @@ client.on('messageCreate', async (msg) => {
 });
 ```
 
-Sobald ich den Bot-Code habe, baue ich das direkt ein, inklusive der
-Dashboard-Einstellung für die Offiziersrollen.
+Umgesetzt in GameBot (`src/wowbridge.js`, Nov. 2026): Regeln 1–5. Ohne
+eingestellte Offiziersrolle dürfen nur Mitglieder mit „Server verwalten“ DKP buchen.
