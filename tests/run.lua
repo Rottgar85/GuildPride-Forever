@@ -155,12 +155,13 @@ end)
 
 ---------------------------------------------------------------------
 test("Verlauf: Beitritt merken, erneuter Beitritt erkannt", function()
-    ns.HistoryJoin("Anna", W.server - 100 * 86400)
+    local t0 = W.server - 100 * 86400
+    ns.HistoryJoin("Anna", t0)
     ns.HistoryLeave("Anna", W.server - 50 * 86400)
     eq(ns.HistoryRejoinText("Anna") ~= nil, true)
     ns.HistoryJoin("Anna", W.server)
     eq(#ns.HistoryOf("Anna").joins, 2)
-    eq(ns.HistoryOf("Anna").first, W.server - 100 * 86400)
+    eq(ns.HistoryOf("Anna").first, t0)
     eq(ns.HistoryOf("Anna").left, nil)
 end)
 
@@ -168,9 +169,10 @@ test("Verlauf: fremde Liste nur von Offizieren", function()
     local fake = "Bert=" .. (W.server - 900 * 86400) .. "=0=" .. (W.server - 900 * 86400) .. "="
     W.Receive("Carl", msg("JHL", fake), "WHISPER")
     eq(ns.HistoryOf("Bert") == nil or ns.HistoryOf("Bert").first ~= W.server - 900 * 86400, true)
-    local real = "Bert=" .. (W.server - 10 * 86400) .. "=0=" .. (W.server - 10 * 86400) .. "="
+    local t = W.server - 10 * 86400
+    local real = "Bert=" .. t .. "=0=" .. t .. "="
     W.Receive("Offi", msg("JHL", real), "WHISPER")
-    eq(ns.HistoryOf("Bert").first, W.server - 10 * 86400)
+    eq(ns.HistoryOf("Bert").first, t)
 end)
 
 test("Raid-Aufstellung: nur von Offizieren angenommen", function()

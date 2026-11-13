@@ -103,6 +103,7 @@ function IsInRaid() return false end
 function IsInGroup() return false end
 function UnitExists() return false end
 function time() return W.server end
+date = os.date
 
 -- Diese Globalen gibt es im Test nicht (nil statt Alles-Objekt): sonst wären
 -- z. B. alle Werte "geheim" oder Tabellen würden für Zahlen gehalten
