@@ -3,7 +3,9 @@
 -- Jeder meldet nur seine eigenen Charaktere; die Gilde merkt sich den letzten Stand
 -- (auch wenn jemand offline ist).
 --   CRF: ver, berufe        berufe = "Name~Stufe~Max;Name~Stufe~Max"
---   CRR: ver, beruf, ids    ids = Rezept-IDs (Zauber-IDs) zur Basis 36, mit Komma getrennt
+--   CRR: ver, beruf, ids, link   ids = Rezept-IDs (Zauber-IDs) zur Basis 36, mit Komma
+--                                 getrennt; link = Daten des Berufs-Links ("trade:…"), mit
+--                                 dem andere das Berufsfenster des Spielers öffnen können
 --   CRQ: jemand öffnet den Reiter -> alle antworten per Flüstern mit CRF (klein)
 --   CRRQ: Rezepte eines Spielers anfragen (nur wenn sein Stand neuer ist)
 -- Nur der Spieler selbst darf über seinen Charakter berichten (keine Weiterleitung).
@@ -20,6 +22,14 @@ local function Me() return ns.Me() end
 local function Now() return GetServerTime() end
 -- Trennzeichen der Nachricht (~ ; ,) und Codes aus fremden Texten entfernen
 local function Clean(s, max) return (tostring(s or ""):gsub("[%c|~;,]", "")):sub(1, max) end
+
+-- Datenteil eines Berufs-Links ("trade:Player-…:…"); nur dieser wird geteilt
+local function LinkData(link)
+    local data = type(link) == "string" and link:match("|H(trade:[^|]+)|h") or link
+    if type(data) ~= "string" or #data > 160 or not data:match("^trade:Player%-[%w%-]+:[%d:%-]+$") then return nil end
+    return data
+end
+Crafts.LinkData = LinkData
 
 local function B36(n)
     local chars, out = "0123456789abcdefghijklmnopqrstuvwxyz", ""
@@ -74,7 +84,8 @@ local function ReadOpenRecipes()
     end
     if #ids == 0 then return end
     table.sort(ids)
-    return Clean(prof, 30), ids
+    local link = T.GetTradeSkillListLink and LinkData(T.GetTradeSkillListLink())
+    return Clean(prof, 30), ids, link
 end
 
 ---------------------------------------------------------------------
@@ -100,24 +111,26 @@ local function SendRecipes(target)
     for prof, ids in pairs(e.rec) do
         local parts = {}
         for i, id in ipairs(ids) do parts[i] = B36(id) end
-        ns.Queue("CRR", target, e.v, prof, table.concat(parts, ","))
+        ns.Queue("CRR", target, e.v, prof, table.concat(parts, ","), e.links and e.links[prof] or "")
     end
 end
 
 -- Eigenen Stand aktualisieren; geändert (oder 3 Tage nicht gemeldet) -> an die Gilde
-local function UpdateMine(prof, ids)
+local function UpdateMine(prof, ids, link)
     if not IsInGuild() or not GuildPrideDB then return end
     local me = Me()
     local e = DB()[me] or { v = 0, profs = {}, rec = {} }
-    local before = ProfString(e) .. "#" .. (prof and table.concat(e.rec[prof] or {}, ",") or "")
+    e.links = e.links or {}
+    local function State() return ProfString(e) .. "#" .. (prof and (table.concat(e.rec[prof] or {}, ",") .. (e.links[prof] or "")) or "") end
+    local before = State()
     local profs = ReadProfessions()
     if #profs > 0 then e.profs = profs end
-    if prof then e.rec[prof] = ids end
+    if prof then e.rec[prof] = ids; e.links[prof] = link or e.links[prof] end
     -- Rezepte von Berufen, die man nicht mehr hat, verwerfen
     local have = {}
     for _, p in ipairs(e.profs) do have[p.n] = true end
-    for p in pairs(e.rec) do if not have[p] and #e.profs > 0 then e.rec[p] = nil end end
-    local after = ProfString(e) .. "#" .. (prof and table.concat(e.rec[prof] or {}, ",") or "")
+    for p in pairs(e.rec) do if not have[p] and #e.profs > 0 then e.rec[p] = nil; e.links[p] = nil end end
+    local after = State()
     DB()[me] = e
     if before == after and e.v > 0 and Now() - (e.sent or 0) < 3 * 86400 then return end
     if before ~= after or e.v == 0 then e.v = math.max(Now(), e.v + 1) end
@@ -127,7 +140,7 @@ local function UpdateMine(prof, ids)
     if prof and before ~= after then
         local parts = {}
         for i, id in ipairs(ids) do parts[i] = B36(id) end
-        ns.Queue("CRR", nil, e.v, prof, table.concat(parts, ","))
+        ns.Queue("CRR", nil, e.v, prof, table.concat(parts, ","), e.links[prof] or "")
     end
     if ns.RefreshUI then ns.RefreshUI() end
 end
@@ -167,9 +180,9 @@ ns.On("CRF", function(payload, sender)
     if #profs == 0 then return end
     local old = e and e.rec or {}
     -- Rezepte nur behalten, solange der Beruf noch da ist
-    local rec = {}
-    for _, p in ipairs(profs) do rec[p.n] = old[p.n] end
-    DB()[sender] = { v = ver, profs = profs, rec = rec }
+    local rec, links = {}, {}
+    for _, p in ipairs(profs) do rec[p.n] = old[p.n]; links[p.n] = e and e.links and e.links[p.n] end
+    DB()[sender] = { v = ver, profs = profs, rec = rec, links = links }
     -- Neuerer Stand: Rezepte gezielt nachfragen (einmal je Version), außer sie
     -- kommen ohnehin gleich hinterher (Rundsendung nach einer Änderung)
     if askedRecipes[sender] ~= ver then
@@ -184,7 +197,7 @@ end)
 
 ns.On("CRR", function(payload, sender)
     if not Accept(sender) then return end
-    local ver, prof, list = strsplit(SEP, payload)
+    local ver, prof, list, link = strsplit(SEP, payload)
     ver, prof = ns.Stamp(ver), Clean(prof, 30)
     local e = DB()[sender]
     -- Nur zu einem bekannten Stand und einem seiner Berufe
@@ -199,6 +212,8 @@ ns.On("CRR", function(payload, sender)
         if #ids >= MAX_RECIPES then break end
     end
     e.rec[prof] = ids
+    e.links = e.links or {}
+    e.links[prof] = LinkData(link)   -- nur gültige Berufs-Links
     e.got = true
     if ns.RefreshUI then ns.RefreshUI() end
 end)
@@ -264,6 +279,18 @@ function Crafts.Search(text)
     return rows
 end
 
+-- Berufsfenster eines Spielers öffnen (über seinen geteilten Berufs-Link)
+function Crafts.OpenProfession(data, prof)
+    data = LinkData(data)
+    if not data then return false end
+    local link = ("|cffffd000|H%s|h[%s]|h|r"):format(data, prof or "")
+    if SetItemRef then
+        local ok = pcall(SetItemRef, data, link, "LeftButton")
+        if ok then return true end
+    end
+    return false
+end
+
 -- Baumansicht: Charaktere mit ihren Berufen; bei einer Suche nur Treffer
 -- (Name, Beruf oder Rezept) und automatisch aufgeklappt
 function Crafts.Tree(text)
@@ -275,7 +302,7 @@ function Crafts.Tree(text)
             local c = { name = name, profs = {}, auto = false }
             for _, p in ipairs(e.profs) do
                 local all = e.rec[p.n] or {}
-                local entry = { n = p.n, l = p.l, m = p.m, count = #all, ids = all }
+                local entry = { n = p.n, l = p.l, m = p.m, count = #all, ids = all, link = e.links and e.links[p.n] }
                 if nameHit or p.n:lower():find(text, 1, true) then
                     c.profs[#c.profs + 1] = entry
                     if not nameHit then c.auto = true end
@@ -317,8 +344,8 @@ ev:SetScript("OnEvent", function(_, event)
     else
         -- Berufsfenster: kurz warten, bis die Liste vollständig ist
         C_Timer.After(1, function()
-            local ok, prof, ids = pcall(ReadOpenRecipes)
-            if ok and prof then pcall(UpdateMine, prof, ids) end
+            local ok, prof, ids, link = pcall(ReadOpenRecipes)
+            if ok and prof then pcall(UpdateMine, prof, ids, link) end
         end)
     end
 end)
@@ -337,7 +364,7 @@ local ph = search:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
 ph:SetPoint("LEFT", 4, 0); ph:SetText(L["Name, Beruf oder Rezept suchen …"])
 local info = page:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
 info:SetPoint("LEFT", search, "RIGHT", 12, 0); info:SetWidth(330); info:SetJustifyH("LEFT")
-info:SetText(L["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf die Rezepte. Rezepte erscheinen, wenn der Spieler sein Berufsfenster einmal geöffnet hat."])
+info:SetText(L["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf öffnet sein Berufsfenster. Dafür muss der Spieler seins einmal geöffnet haben."])
 
 local holder = CreateFrame("Frame", nil, page)
 holder:SetPoint("TOPLEFT", 0, -36); holder:SetPoint("BOTTOMRIGHT")
@@ -407,12 +434,28 @@ function page:Refresh()
                 local prow = Row(n, PROF_INDENT)
                 prow.left:SetText((p.count > 0 and (popen and "▾ " or "▸ ") or "   ") .. p.n)
                 prow.mid:SetText(("|cffffd18c%d|r|cff999999 / %d|r"):format(p.l or 0, p.m or 0))
-                prow.right:SetText(p.count > 0 and (L["%d Rezepte"]):format(p.count) or L["Rezepte unbekannt"])
-                prow:SetScript("OnMouseUp", function()
+                -- Klick: Berufsfenster des Spielers (geteilter Link); sonst bzw.
+                -- Rechtsklick: Rezeptliste hier aufklappen
+                local countText = p.count > 0 and (L["%d Rezepte"]):format(p.count) or L["Rezepte unbekannt"]
+                prow.right:SetText(p.link and ("|cffffd100" .. L["Berufsfenster öffnen"] .. "|r  ·  " .. countText) or countText)
+                prow:SetScript("OnMouseUp", function(_, button)
+                    if button ~= "RightButton" and p.link and Crafts.OpenProfession(p.link, p.n) then return end
                     if p.count == 0 then return end
                     openProf[key] = not popen
                     page:Refresh()
                 end)
+                prow:SetScript("OnEnter", function(self)
+                    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                    GameTooltip:SetText(("%s – %s"):format(Ambiguate(c.name, "guild"), p.n))
+                    if p.link then
+                        GameTooltip:AddLine(L["Klick: sein Berufsfenster mit allen Rezepten öffnen"], 1, 1, 1, true)
+                        if p.count > 0 then GameTooltip:AddLine(L["Rechtsklick: Rezeptliste hier aufklappen"], 0.7, 0.7, 0.7, true) end
+                    else
+                        GameTooltip:AddLine(L["Das Berufsfenster ist erst verfügbar, wenn der Spieler seins einmal mit dem neuen GuildPride geöffnet hat."], 0.7, 0.7, 0.7, true)
+                    end
+                    GameTooltip:Show()
+                end)
+                prow:SetScript("OnLeave", GameTooltip_Hide)
                 if popen then
                     local recs = {}
                     for _, id in ipairs(p.ids) do recs[#recs + 1] = { id = id, name = RecipeName(id) or ("#" .. id) } end

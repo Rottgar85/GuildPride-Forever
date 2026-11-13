@@ -263,6 +263,15 @@ test("Berufe: Mitglied meldet eigene Berufe und Rezepte", function()
     eq(e.rec["Schneiderei"][1], tonumber("2s", 36))
 end)
 
+test("Berufe: Berufs-Link wird geteilt, falsche verworfen", function()
+    local e = ns.GuildTable("crafts")["Anna"]
+    W.Receive("Anna", msg("CRR", e.v, "Schneiderei", "2s,zz,1", "trade:Player-6937-0016743F:197:300"))
+    eq(e.links["Schneiderei"], "trade:Player-6937-0016743F:197:300")
+    W.Receive("Anna", msg("CRR", e.v, "Schneiderei", "2s,zz,1", "item:123:0:0"))
+    eq(e.links["Schneiderei"], nil, "kein Berufs-Link")
+    eq(ns.Crafts.LinkData("|cffffd000|Htrade:Player-1-ABC:164:75|h[Schmiedekunst]|h|r"), "trade:Player-1-ABC:164:75")
+end)
+
 test("Berufe: Rezepte nur zum bekannten Stand und Beruf", function()
     local e = ns.GuildTable("crafts")["Anna"]
     W.Receive("Anna", msg("CRR", e.v + 5, "Schneiderei", "aa"))
