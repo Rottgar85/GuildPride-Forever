@@ -60,7 +60,7 @@ copyBox:SetFontObject(GPFont_Text)
 copyBox:SetWidth(620)
 copyScroll:SetScrollChild(copyBox)
 local copyBg = copyScroll:CreateTexture(nil, "BACKGROUND")
-copyBg:SetAllPoints(); copyBg:SetColorTexture(0, 0, 0, 0.45)
+copyBg:SetAllPoints(); ns.DarkBg(copyBg, 0.45, "field")
 
 local bCopy = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
 bCopy:SetSize(140, 24)

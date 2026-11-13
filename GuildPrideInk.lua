@@ -8,7 +8,8 @@
 --   - Ausgenommen: Bereiche mit gpNoInk (dunkle Einlagen wie der Chat),
 --     Schrift auf Knöpfen mit eigenem Hintergrund, Eingabefelder.
 --   - Dunkle, halbdurchsichtige Kästen (ns.DarkBg) werden auf Papier zu
---     einem hellen Braunton.
+--     einem hellen Braunton, Eingabeflächen zu hellen Zetteln.
+--   - Eingabefelder bekommen im Buch einen hellen Zettel und dunkle Schrift.
 local ADDON, ns = ...
 
 local Ink = { on = false }
@@ -129,6 +130,51 @@ local function Install(fs)
     if Ink.on then Apply(fs) end
 end
 
+---------------------------------------------------------------------
+-- Dunkle Kästen und Eingabefelder
+---------------------------------------------------------------------
+local FIELD = { 0.95, 0.91, 0.82, 1 }      -- Eingabefläche im Buch: heller Zettel
+local BOX = { 0.45, 0.31, 0.16, 0.14 }     -- sonstige dunkle Kästen: leichter Braunton
+local function PaintBg(tex, spec)
+    local c = Ink.on and (spec.field and FIELD or BOX) or { 0, 0, 0, spec.a }
+    tex:SetColorTexture(c[1], c[2], c[3], c[4])
+end
+-- kind = "field": Hintergrund eines Eingabefelds (wird im Buch hell)
+function ns.DarkBg(tex, alpha, kind)
+    darkBgs[tex] = { a = alpha or 0.45, field = kind == "field" }
+    PaintBg(tex, darkBgs[tex])
+    return tex
+end
+
+---------------------------------------------------------------------
+-- Eingabefelder: im Buch heller Zettel mit dunkler Tinte
+---------------------------------------------------------------------
+local fields = setmetatable({}, { __mode = "k" })
+local function ApplyField(eb)
+    local f = fields[eb]
+    -- mehrzeilige Felder liegen auf einem eigenen Kasten (ns.DarkBg ... "field")
+    local paper = Ink.on and not eb:IsMultiLine()
+    f.bg:SetShown(paper); f.edge:SetShown(paper)
+    if Ink.on then
+        eb:SetTextColor(0.15, 0.10, 0.06)
+    else
+        eb:SetTextColor(f.r, f.g, f.b, f.a or 1)
+    end
+end
+
+local function InstallField(eb)
+    if fields[eb] then return end
+    local r, g, b, a = eb:GetTextColor()
+    local bg = eb:CreateTexture(nil, "BACKGROUND", nil, 3)
+    bg:SetPoint("TOPLEFT", -6, 2); bg:SetPoint("BOTTOMRIGHT", 2, -2)
+    bg:SetColorTexture(FIELD[1], FIELD[2], FIELD[3], 1)
+    local edge = eb:CreateTexture(nil, "BACKGROUND", nil, 2)
+    edge:SetPoint("TOPLEFT", bg, "TOPLEFT", -1, 1); edge:SetPoint("BOTTOMRIGHT", bg, "BOTTOMRIGHT", 1, -1)
+    edge:SetColorTexture(0.55, 0.43, 0.26, 1)
+    fields[eb] = { bg = bg, edge = edge, r = r, g = g, b = b, a = a }
+    ApplyField(eb)
+end
+
 -- Schrift auf einem Knopf mit eigenem (dunklem) Hintergrund bleibt hell
 local function OnDarkButton(fs)
     local p = fs:GetParent()
@@ -141,7 +187,10 @@ local function Walk(f)
     for _, r in ipairs({ f:GetRegions() }) do
         if r:IsObjectType("FontString") and not r.gpNoInk and not OnDarkButton(r) then Install(r) end
     end
-    for _, c in ipairs({ f:GetChildren() }) do Walk(c) end
+    for _, c in ipairs({ f:GetChildren() }) do
+        if c:IsObjectType("EditBox") and not c.gpNoInk then InstallField(c) end
+        Walk(c)
+    end
 end
 
 function Ink.Walk()
@@ -157,15 +206,6 @@ function Ink.Soon()
 end
 
 ---------------------------------------------------------------------
--- Dunkle Kästen
----------------------------------------------------------------------
-function ns.DarkBg(tex, alpha)
-    darkBgs[tex] = alpha or 0.45
-    if Ink.on then tex:SetColorTexture(0.45, 0.31, 0.16, 0.14) else tex:SetColorTexture(0, 0, 0, darkBgs[tex]) end
-    return tex
-end
-
----------------------------------------------------------------------
 -- An/aus
 ---------------------------------------------------------------------
 function Ink.Set(on)
@@ -177,9 +217,8 @@ function Ink.Set(on)
     Ink.on = on
     if on then Ink.Walk() end
     for fs in pairs(hooked) do Apply(fs) end
-    for tex, a in pairs(darkBgs) do
-        if on then tex:SetColorTexture(0.45, 0.31, 0.16, 0.14) else tex:SetColorTexture(0, 0, 0, a) end
-    end
+    for eb in pairs(fields) do ApplyField(eb) end
+    for tex, spec in pairs(darkBgs) do PaintBg(tex, spec) end
 end
 
 -- Jede Sekunde neue Schriften erfassen (Ink.Soon nach Aktualisierungen: GuildPrideLayout.lua)
