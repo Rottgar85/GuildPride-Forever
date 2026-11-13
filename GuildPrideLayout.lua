@@ -36,6 +36,7 @@ local ICONS = {
     ["20"] = "Interface\\Icons\\INV_Letter_15",
     ["30"] = "Interface\\Icons\\INV_Misc_PocketWatch_01",
     ["40"] = "Interface\\Icons\\Ability_Warrior_BattleShout",
+    ["45"] = "Interface\\Icons\\INV_Misc_Bag_10",
     ["50"] = "Interface\\Icons\\INV_Misc_Note_01",
     ["55"] = "Interface\\Icons\\Trade_BlackSmithing",
     ["60"] = "Interface\\Icons\\INV_Misc_Coin_02",
@@ -47,13 +48,13 @@ local ICONS = {
 -- Lesezeichen im Gildenbuch: Farbe und kurze Aufschrift
 local RIBBONS = {
     ["10"] = { 0.61, 0.18, 0.13 }, ["20"] = { 0.36, 0.43, 0.23 }, ["30"] = { 0.18, 0.33, 0.44 },
-    ["40"] = { 0.18, 0.33, 0.44 }, ["50"] = { 0.18, 0.33, 0.44 }, ["55"] = { 0.54, 0.35, 0.12 },
+    ["40"] = { 0.18, 0.33, 0.44 }, ["45"] = { 0.18, 0.33, 0.44 }, ["50"] = { 0.18, 0.33, 0.44 }, ["55"] = { 0.54, 0.35, 0.12 },
     ["60"] = { 0.61, 0.18, 0.13 }, ["65"] = { 0.61, 0.18, 0.13 }, ["70"] = { 0.36, 0.24, 0.37 },
     ["80"] = { 0.29, 0.29, 0.29 }, ["90"] = { 0.30, 0.20, 0.12 },
 }
 local RIBBON_DEFAULT = { 0.40, 0.27, 0.15 }
 local SHORT = {
-    ["10"] = L["START"], ["20"] = L["GILDE"], ["30"] = L["PLANEN"], ["40"] = L["SUCHE"], ["50"] = L["UMFRAGE"],
+    ["10"] = L["START"], ["20"] = L["GILDE"], ["30"] = L["PLANEN"], ["40"] = L["SUCHE"], ["45"] = L["WÜNSCHE"], ["50"] = L["UMFRAGE"],
     ["55"] = L["BERUFE"], ["60"] = L["CHRONIK"], ["65"] = L["ZIELE"], ["70"] = L["INFO"], ["80"] = L["RAT"],
     ["90"] = L["OPTION"],
 }

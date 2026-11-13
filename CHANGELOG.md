@@ -1,5 +1,33 @@
 # GuildPride Changelog
 
+## 2.9.0
+
+**Deutsch**
+- Neu: Wunschliste (Reiter „Wünsche“ unter Planen, /gp wunsch). Items mit Stufe normal, hoch oder BiS markieren; im Item-Tooltip steht, wer in der Gilde das Item sucht (mit DKP-Stand)
+- Neu: Bei einem epischen Drop im Raid zeigt GuildPride, wer in der Gruppe ihn sich wünscht
+- Neu: Knopf am Blizzard-Gildenfenster, der GuildPride öffnet (Umschalt+Ziehen verschiebt ihn, abschaltbar in den Einstellungen)
+- Neu: Eintrag für Titan Panel, ChocolateBar und andere Infoleisten (zeigt, wie viele Mitglieder online sind)
+- Gildenbuch: Das Fenster eines Mitglieds (mit Öffentlicher Notiz und Offiziersnotiz) und die Detailbereiche bei Events und Umfragen waren dunkel, die Schrift darauf kaum lesbar. Sie sind jetzt heller Zettel mit dunkler Schrift
+- Klassisch und Icon-Leiste: dunkle Flächen (Mitglieds-Fenster, Detailbereiche, Kacheln, Mitgliederliste, Chat) sind nicht mehr fast schwarz, sondern ein warmes Dunkelbraun
+
+**English**
+- New: wishlist (tab "Wishlist" under Plan, /gp wish). Mark items as normal, high or BiS; the item tooltip shows who in the guild wants the item (with their DKP)
+- New: on an epic drop in a raid GuildPride shows who in the group wishes for it
+- New: button on Blizzard's guild window that opens GuildPride (shift-drag moves it, can be switched off in the settings)
+- New: entry for Titan Panel, ChocolateBar and other info bars (shows how many members are online)
+- Guild book: the member window (public note and officer note) and the detail areas of events and polls were dark with barely readable text. They are now light paper with dark text
+- Classic and icon bar: dark areas (member window, detail areas, tiles, member list, chat) are no longer almost black but a warm dark brown
+
+## 2.8.2
+
+**Deutsch**
+- Berufe: Die Liste zeigt jetzt alle Gildenmitglieder mit ihren Berufen, auch ohne GuildPride (Beruf und Stufe aus der Gildenliste des Spiels)
+- Berufe: Klick auf einen Beruf eines Mitglieds ohne GuildPride fragt sein Berufsfenster beim Spiel an
+
+**English**
+- Professions: the list now shows every guild member with their professions, even without GuildPride (profession and skill from the game's guild list)
+- Professions: clicking a profession of a member without GuildPride requests their profession window from the game
+
 ## 2.8.1
 
 **Deutsch**

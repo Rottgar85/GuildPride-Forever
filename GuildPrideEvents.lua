@@ -932,7 +932,7 @@ local detail = CreateFrame("Frame", nil, page, "BackdropTemplate")
 detail:SetPoint("TOPLEFT", 0, -ROWS * 25 - 8)
 detail:SetPoint("BOTTOMRIGHT", 0, 34)
 detail:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
-detail:SetBackdropColor(0, 0, 0, 0.35)
+ns.DarkPanel(detail, 0.20, 0.16, 0.13, 0.40)
 
 local dTitle = detail:CreateFontString(nil, "OVERLAY", "GPFont_Large")
 dTitle:SetPoint("TOPLEFT", 8, -8)

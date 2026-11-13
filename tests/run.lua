@@ -23,6 +23,7 @@ W.Load("GuildPrideRecruit.lua")
 W.Load("GuildPrideCrafts.lua")
 W.Load("GuildPrideGoals.lua")
 W.Load("GuildPrideBoard.lua")
+W.Load("GuildPrideWishlist.lua")
 W.Load("GuildPrideInk.lua")
 W.Start()
 local ns = W.ns
@@ -309,6 +310,62 @@ test("Berufe: Suche nach Beruf und Name", function()
     eq(tree[1].auto, true, "Treffer aufgeklappt")
 end)
 
+test("Berufe: auch Mitglieder ohne GuildPride aus der Gildenliste", function()
+    local oldRoster = W.roster
+    W.roster = { { "Anna", 2 }, { "Dora", 3 }, { "Emil", 3, 60, false } }
+    for _, m in ipairs(oldRoster) do W.roster[#W.roster + 1] = m end
+    local rows = {   -- id, zugeklappt, Symbol, Überschrift, …, Name, Name-Realm, …, Stufe
+        { 164, true, 136241, "Schmiedekunst" },
+        { 2933, true, nil, "Test Profession [DNT]" },
+        { 197, true, 136249, "Schneiderei" },
+    }
+    local members = { [164] = { { "Dora", 280 }, { "Emil", 150 } }, [197] = { { "Anna", 285 } } }
+    local open, offline, expanded, collapsed = {}, false, 0, 0
+    local function list()
+        local out = {}
+        for _, h in ipairs(rows) do
+            out[#out + 1] = { h[1], not open[h[1]], h[3], h[4] }
+            if open[h[1]] then
+                for _, m in ipairs(members[h[1]] or {}) do
+                    if offline or m[1] ~= "Emil" then
+                        out[#out + 1] = { h[1], nil, nil, nil, nil, nil, nil, m[1], m[1] .. "-Realm", "Krieger", true, "Zone", m[2] }
+                    end
+                end
+            end
+        end
+        return out
+    end
+    GetNumGuildTradeSkill = function() return #list() end
+    GetGuildTradeSkillInfo = function(i) local r = list()[i]; if r then return unpack(r, 1, 13) end end
+    ExpandGuildTradeSkillHeader = function(id) open[id] = true; expanded = expanded + 1 end
+    CollapseGuildTradeSkillHeader = function(id) open[id] = nil; collapsed = collapsed + 1 end
+    GetGuildRosterShowOffline = function() return offline end
+    SetGuildRosterShowOffline = function(v) offline = v end
+
+    eq(ns.Crafts.ReadGuild(), true)
+    eq(expanded, 3); eq(collapsed, 3, "danach wieder zugeklappt")
+    eq(offline, false, "Offline-Anzeige zurückgesetzt")
+    local db = ns.GuildTable("craftsRoster")
+    eq(db["Emil"] ~= nil, true, "Offline-Mitglied gelesen")
+    eq(db["Dora"][1].n, "Schmiedekunst"); eq(db["Dora"][1].l, 280); eq(db["Dora"][1].id, 164)
+
+    W.Advance(6)   -- Gildenliste neu einlesen lassen
+    local tree = ns.Crafts.Tree("")
+    local byName = {}
+    for _, c in ipairs(tree) do byName[c.name] = c end
+    eq(byName["Anna"].roster, nil, "Addon-Nutzer behält seine Daten")
+    eq(byName["Anna"].profs[1].skill, 197, "Berufs-ID aus der Gildenliste")
+    eq(byName["Dora"].roster, true)
+    eq(byName["Dora"].profs[1].count, 0)
+    eq(#ns.Crafts.Tree("schmiede"), 2, "Suche findet Mitglieder ohne Addon")
+
+    GetNumGuildTradeSkill, GetGuildTradeSkillInfo = nil, nil
+    ExpandGuildTradeSkillHeader, CollapseGuildTradeSkillHeader, SetGuildRosterShowOffline = nil, nil, nil
+    GetGuildRosterShowOffline = function() return true end
+    eq(ns.Crafts.ReadGuild(), false, "ohne Spielfunktion nichts")
+    wipe(db); W.roster = oldRoster; W.Advance(6)
+end)
+
 ---------------------------------------------------------------------
 local function goal(id, ver, title, progress)
     return msg("GOL", id, ver, "manual", 10, 0, progress or 0, 0, title)
@@ -376,6 +433,73 @@ test("Beitrittsanfrage: weitergeleitet verworfen", function()
 end)
 
 ---------------------------------------------------------------------
+test("Wunschliste: kodieren und begrenzen", function()
+    local W2 = ns.Wish
+    local s = W2.Encode({ [19019] = 3, [16309] = 1 })
+    eq(s, "cl1:1,eob:3")
+    local d = W2.Decode(s .. ",zz:9,abc,0:2")
+    eq(d[19019], 3); eq(d[16309], 1)
+    eq(W2.Count(d), 2, "kaputte Einträge verworfen")
+    eq(W2.ItemID("|cffa335ee|Hitem:19019::::::::60:::::|h[Donnerzorn]|h|r"), 19019)
+    eq(W2.ItemID("abc"), nil)
+end)
+
+test("Wunschliste: eigene Liste ändern und senden", function()
+    local W2 = ns.Wish
+    W.sent = {}
+    eq(W2.Set(19019, 2), true)
+    eq(W2.Set(19019, 2), false, "unverändert")
+    eq(W2.Mine().i[19019], 2)
+    W2.Cycle(19019); eq(W2.Mine().i[19019], 3)
+    W2.Cycle(19019); eq(W2.Mine().i[19019], 1)
+    W.Advance(5)
+    local found
+    for _, m in ipairs(W.sent) do if m.kind == "WSH" then found = m end end
+    eq(found ~= nil, true, "Liste an die Gilde")
+    eq(found.target, nil)
+    eq(W2.Set(19019, 0), true)
+    eq(W2.Mine().i[19019], nil, "entfernt")
+end)
+
+test("Wunschliste: nur die eigene Liste, direkt und von Mitgliedern", function()
+    local db = ns.GuildTable("wish")
+    W.Receive("Anna", msg("WSH", W.server, "eob:3,cl1:1"))
+    eq(db["Anna"].i[19019], 3)
+    W.Receive("Anna", msg("WSH", W.server - 100, "eob:1"))
+    eq(db["Anna"].i[19019], 3, "älterer Stand überschreibt nicht")
+    W.Receive("Bert", msg("FWD", "Carl", "9", msg("WSH", W.server, "eob:3")))
+    eq(db["Carl"], nil, "weitergeleitet")
+    W.Receive("Fremd", msg("WSH", W.server, "eob:3"), "WHISPER")
+    eq(db["Fremd"], nil, "kein Mitglied")
+    W.Receive("Bert", msg("WSH", W.server, "eob:1"))
+    local who = ns.Wish.Who(19019)
+    eq(#who, 2); eq(who[1].name, "Anna", "BiS zuerst"); eq(who[2].name, "Bert")
+    local items = ns.Wish.GuildItems()
+    eq(items[1].id, 19019); eq(items[1].count, 2); eq(items[1].top, 3)
+end)
+
+test("Wunschliste: Tooltip und Drop-Hinweis", function()
+    local lines = {}
+    local tip = { AddLine = function(_, t) lines[#lines + 1] = t end,
+                  AddDoubleLine = function(_, a, b) lines[#lines + 1] = a .. "|" .. b end }
+    ns.Wish.AddTooltipLines(tip, 19019)
+    eq(#lines, 3, "Kopfzeile + zwei Namen")
+    eq(lines[2]:find("Anna", 1, true) ~= nil, true)
+    lines = {}
+    ns.Wish.AddTooltipLines(tip, 4711)
+    eq(#lines, 0, "niemand sucht es")
+    -- Drop: nur wer in der Gruppe ist
+    local old = ns.DKP.GroupNames
+    ns.DKP.GroupNames = function() return { "Bert" } end
+    local text = ns.Wish.DropText("|Hitem:19019|h")
+    eq(text:find("Bert", 1, true) ~= nil, true)
+    eq(text:find("Anna", 1, true), nil, "nicht in der Gruppe")
+    ns.DKP.GroupNames = function() return {} end
+    eq(ns.Wish.DropText("|Hitem:19019|h"), nil)
+    ns.DKP.GroupNames = old
+    ns.GuildTable("wish")["Anna"], ns.GuildTable("wish")["Bert"] = nil, nil
+end)
+
 test("Tinte: helle Farben werden dunkel, dunkle bleiben", function()
     local Ink = ns.Ink
     Ink.on = true
@@ -387,6 +511,21 @@ test("Tinte: helle Farben werden dunkel, dunkle bleiben", function()
     eq(t:find("|r und ", 1, true) ~= nil, true, "Text bleibt")
     Ink.on = false
     eq(Ink.Text("|cffffd100Gold|r"), "|cffffd100Gold|r", "aus = unverändert")
+end)
+test("Tinte: dunkle Flächen werden im Buch hell", function()
+    local Ink = ns.Ink
+    local got
+    local panel = { SetBackdropColor = function(_, r, g, b, a) got = { r, g, b, a } end }
+    Ink.Set(false)
+    ns.DarkPanel(panel, 0.07, 0.05, 0.04, 0.97)
+    eq(got[1], 0.07, "aus: Originalfarbe")
+    Ink.Set(true)
+    eq(got[1] > 0.8 and got[2] > 0.8, true, "an: helles Papier")
+    local box = { SetBackdropColor = function(_, r) got = { r } end }
+    ns.DarkPanel(box, 0, 0, 0, 0.35)
+    eq(got[1] > 0.3 and got[1] < 0.6, true, "halbdurchsichtig: Braunton")
+    Ink.Set(false)
+    eq(got[1], 0, "wieder dunkel")
 end)
 ---------------------------------------------------------------------
 test("Datensicherung: sichern und Daten bleiben", function()

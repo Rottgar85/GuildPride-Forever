@@ -18,7 +18,7 @@ dlg:SetBackdrop({
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
     edgeSize = 16, insets = { left = 4, right = 4, top = 4, bottom = 4 },
 })
-dlg:SetBackdropColor(0.05, 0.04, 0.03, 0.95)
+dlg:SetBackdropColor(0.15, 0.12, 0.10, 0.95)
 dlg:Hide()
 tinsert(UISpecialFrames, "GuildPrideCopyFrame")   -- ESC schließt
 
@@ -38,7 +38,7 @@ box:SetFontObject(GPFont_Text)
 box:SetWidth(580)
 scroll:SetScrollChild(box)
 local boxBg = scroll:CreateTexture(nil, "BACKGROUND")
-boxBg:SetAllPoints(); boxBg:SetColorTexture(0, 0, 0, 0.45)
+boxBg:SetAllPoints(); boxBg:SetColorTexture(0.16, 0.12, 0.09, 0.45)
 
 local hint = dlg:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
 hint:SetPoint("BOTTOMLEFT", 14, 18)
