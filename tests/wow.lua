@@ -87,13 +87,18 @@ function GetGuildRosterShowOffline() return true end
 function GuildControlGetNumRanks() return 5 end
 function GuildControlGetRankName(i) return "Rang" .. (i - 1) end
 function CanEditMOTD() return W.canMotd end
+function W.Whisper(from, text) W.Advance(1); W.Fire("CHAT_MSG_WHISPER", text, from) end
 function BNGetInfo() return 1, W.battletag end
 C_GuildInfo = {
     GuildRoster = function() end,
     -- Rang 0 und 1 (rankOrder 1 und 2) dürfen die Gildennachricht ändern
     GuildControlGetRankFlags = function(rankOrder) return { [9] = rankOrder <= 2 } end,
 }
-C_ChatInfo = { RegisterAddonMessagePrefix = function() end }
+W.whispers = {}
+C_ChatInfo = {
+    RegisterAddonMessagePrefix = function() end,
+    SendChatMessage = function(text, kind, _, to) if kind == "WHISPER" then W.whispers[#W.whispers + 1] = { to = to, text = text } end end,
+}
 SlashCmdList = {}
 UISpecialFrames = {}
 StaticPopupDialogs = {}
@@ -103,6 +108,7 @@ function IsInRaid() return false end
 function IsInGroup() return false end
 function UnitExists() return false end
 function time() return W.server end
+date = os.date
 
 -- Diese Globalen gibt es im Test nicht (nil statt Alles-Objekt): sonst wären
 -- z. B. alle Werte "geheim" oder Tabellen würden für Zahlen gehalten

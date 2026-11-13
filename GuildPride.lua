@@ -535,14 +535,14 @@ local function IsSecret(v) return issecretvalue and issecretvalue(v) or false en
 local multipart = {}   -- ["Sender:id"] = { n, got, parts, t }
 -- Arten, die Rechte voraussetzen oder Identität beweisen: nie per Weiterleitung
 local NO_RELAY = { DKP = true, DRW = true, ALT = true, AUS = true, AUSX = true, AUSL = true,
-                   AUC = true, AUH = true, AUE = true, CKY = true, DEL = true }
+                   AUC = true, AUH = true, AUE = true, CKY = true, DEL = true, JHL = true, LAY = true, RCP = true, APK = true }
 local recent, recentSweep = {}, 0   -- zuletzt empfangene Nachrichten (gegen Doppelte)
 local forwarded = {}   -- ["Name:id"] = Zeit, gegen doppelte Weiterleitungen
 local MP_MAX = 100
 
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
-local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true, AUSQ = true }
+local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender
@@ -806,6 +806,8 @@ SlashCmdList.GUILDPRIDE = function(arg)
         if ns.ErrorReport then ns.ErrorReport() end
     elseif arg == "fehler löschen" or arg == "errors clear" then
         if ns.ClearErrors then ns.ClearErrors() end
+    elseif arg == "bewerbungen" or arg == "applications" then
+        if ns.ToggleApps then ns.ToggleApps() end
     elseif arg == "backup" or arg == "sicherung" then
         if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end
     elseif arg == "ausweis" or arg == "id" then
@@ -820,6 +822,6 @@ SlashCmdList.GUILDPRIDE = function(arg)
             InterfaceOptionsFrame_OpenToCategory(ns.SettingsPanel)   -- zweimal: alter Blizzard-Fehler
         end
     else
-        Print(L["Befehle: /gp (Fenster) · sound · popup · blizzard · einladen <Name> · werben · optionen · badge <Level> · version · kanal · server · ausweis · sicherung · fehler"])
+        Print(L["Befehle: /gp (Fenster) · sound · popup · blizzard · einladen <Name> · werben · optionen · badge <Level> · version · kanal · server · ausweis · sicherung · fehler · bewerbungen"])
     end
 end

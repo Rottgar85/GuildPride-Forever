@@ -127,6 +127,14 @@ local function SkinAll()
 end
 ns.SkinAll = SkinAll
 
+-- Eigene Zusatzfenster (Sicherung, DKP-Protokoll, Aufstellung, Bewerbungen):
+-- Knöpfe und Eingabefelder im GuildPride-Design
+function ns.SkinWindow(f)
+    if not f then return end
+    SkinDialog(f)
+    Walk(f)
+end
+
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:SetScript("OnEvent", function()

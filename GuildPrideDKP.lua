@@ -559,6 +559,7 @@ local function BuildLog()
     logWin.content:SetSize(560, 10)
     scroll:SetScrollChild(logWin.content)
     logWin.rows = {}
+    if ns.SkinWindow then pcall(ns.SkinWindow, logWin) end
 end
 
 local function LogRow(i)

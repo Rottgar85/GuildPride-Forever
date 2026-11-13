@@ -17,6 +17,9 @@ W.roster = {
 W.Load("GuildPride.lua")
 W.Load("GuildPrideAusweis.lua")
 W.Load("GuildPrideDKP.lua")
+W.Load("GuildPrideHistory.lua")
+W.Load("GuildPrideRoster.lua")
+W.Load("GuildPrideRecruit.lua")
 W.Start()
 local ns = W.ns
 
@@ -149,6 +152,95 @@ end)
 test("Weiterleitung: Ausweis-Meldung für fremden Charakter verworfen", function()
     W.Receive("Bert", msg("FWD", "Ohne", "5", msg("AUS", CODE_B, "", 1)))
     eq(ns.MainOf("Ohne"), ns.MainOf("Anna"), "Zuordnung unverändert")
+end)
+
+---------------------------------------------------------------------
+test("Verlauf: Beitritt merken, erneuter Beitritt erkannt", function()
+    local t0 = W.server - 100 * 86400
+    ns.HistoryJoin("Anna", t0)
+    ns.HistoryLeave("Anna", W.server - 50 * 86400)
+    eq(ns.HistoryRejoinText("Anna") ~= nil, true)
+    ns.HistoryJoin("Anna", W.server)
+    eq(#ns.HistoryOf("Anna").joins, 2)
+    eq(ns.HistoryOf("Anna").first, t0)
+    eq(ns.HistoryOf("Anna").left, nil)
+end)
+
+test("Verlauf: fremde Liste nur von Offizieren", function()
+    local fake = "Bert=" .. (W.server - 900 * 86400) .. "=0=" .. (W.server - 900 * 86400) .. "="
+    W.Receive("Carl", msg("JHL", fake), "WHISPER")
+    eq(ns.HistoryOf("Bert") == nil or ns.HistoryOf("Bert").first ~= W.server - 900 * 86400, true)
+    local t = W.server - 10 * 86400
+    local real = "Bert=" .. t .. "=0=" .. t .. "="
+    W.Receive("Offi", msg("JHL", real), "WHISPER")
+    eq(ns.HistoryOf("Bert").first, t)
+end)
+
+test("Raid-Aufstellung: nur von Offizieren angenommen", function()
+    ns.GuildTable("events")["Offi-1-1"] = { id = "Offi-1-1", title = "Raid", signups = {} }
+    W.Receive("Anna", msg("LAY", "Offi-1-1", "Anna=11;Bert=12"))
+    eq(ns.GuildTable("events")["Offi-1-1"].layout, nil)
+    W.Receive("Offi", msg("LAY", "Offi-1-1", "Anna=11;Bert=12;Boese=99"))
+    local lay = ns.GuildTable("events")["Offi-1-1"].layout
+    eq(lay.Anna, 11); eq(lay.Bert, 12); eq(lay.Boese, nil, "ungültiger Platz")
+end)
+
+---------------------------------------------------------------------
+test("Bewerbung: geschlossen -> freundliche Absage, kein Gespräch", function()
+    W.whispers = {}
+    W.Whisper("Fremd", "!bewerben")
+    eq(#W.whispers, 1)
+    eq(W.whispers[1].to, "Fremd")
+end)
+
+test("Bewerbung: Steckbrief nur von Offizieren", function()
+    W.Receive("Anna", msg("RCP", W.server + 1, 1, "Heiler", "Mi 20 Uhr", "Deutsch", "Nett"))
+    eq(ns.RecruitOpen(), false)
+    W.Receive("Offi", msg("RCP", W.server, 1, "Heiler", "Mi 20 Uhr", "Deutsch", "Nett"))
+    eq(ns.RecruitOpen(), true)
+end)
+
+test("Bewerbung: Gespräch per Flüstern ohne Addon", function()
+    W.whispers, W.sent = {}, {}
+    W.Whisper("Fremd", "!bewerben")
+    for i = 1, 4 do W.Whisper("Fremd", "Antwort " .. i .. " |cffff0000bunt|r") end
+    local box = ns.GuildTable("appOutbox")
+    local app
+    for _, a in pairs(box) do app = a end
+    eq(app ~= nil, true, "Bewerbung im Ausgang")
+    eq(app.name, "Fremd")
+    eq(app.a[4]:find("|", 1, true), nil, "Codes entfernt")
+    eq(#W.whispers, 6, "Begrüßung + 4 Fragen + Dank")
+end)
+
+test("Bewerbung: zweite am selben Tag abgelehnt", function()
+    W.whispers = {}
+    W.Whisper("Fremd", "!bewerben")
+    eq(#W.whispers, 1)
+end)
+
+test("Bewerbung: Gildenmitglieder werden ignoriert", function()
+    W.whispers = {}
+    W.Whisper("Anna", "!bewerben")
+    eq(#W.whispers, 0)
+end)
+
+test("Bewerbung: Bestätigung nur von Offizieren", function()
+    local box = ns.GuildTable("appOutbox")
+    local id = next(box)
+    W.Receive("Anna", msg("APK", id), "WHISPER")
+    eq(box[id] ~= nil, true)
+    W.Receive("Offi", msg("APK", id), "WHISPER")
+    eq(box[id], nil)
+end)
+
+test("Bewerbung: Offizier empfängt und speichert", function()
+    W.canMotd = true
+    W.Receive("Bert", msg("APP", "Zweit-1", "Zweit", W.server, "Bert", "Magier 60", "DD", "abends", "Hallo"), "WHISPER")
+    local app = ns.GuildTable("apps")["Zweit-1"]
+    W.canMotd = false
+    eq(app ~= nil, true)
+    eq(app.a[1], "Magier 60")
 end)
 
 ---------------------------------------------------------------------

@@ -1025,6 +1025,14 @@ bInvite:SetPoint("RIGHT", bNote, "LEFT", -6, 0)
 bInvite:SetText(L["Alle Zugesagten einladen"])
 bInvite:SetScript("OnClick", function() if Sel() then InviteAttendees(Sel()) end end)
 
+-- Raid-Aufstellung (GuildPrideRoster.lua): Offiziere teilen ein, alle sehen sie
+local bRoster = CreateFrame("Button", nil, detail, "UIPanelButtonTemplate")
+bRoster:SetSize(130, 22)
+-- oben rechts unter "Meine Rolle" (unten ist die Knopfreihe schon voll)
+bRoster:SetPoint("TOPRIGHT", detail, "TOPRIGHT", -8, -34)
+bRoster:SetText(L["Aufstellung …"])
+bRoster:SetScript("OnClick", function() if Sel() and ns.ShowRoster then ns.ShowRoster(Sel()) end end)
+
 ---------------------------------------------------------------------
 -- Anwesenheit: wer zugesagt hat und wer wirklich in der Gruppe war.
 -- Nur lokal gespeichert, je Gilde: ["id:t"] = { title, t, yes, present }
@@ -1198,6 +1206,7 @@ function page:Refresh()
     dDesc:SetText(descText)
     bNote:SetShown(CanManage())
     bInvite:SetShown(CanManage())
+    bRoster:SetShown(e ~= nil and not attendView and (CanManage() or (e.layout ~= nil and next(e.layout) ~= nil)))
 
     local myRole = MyRole()
     for key, b in pairs(roleBtns) do

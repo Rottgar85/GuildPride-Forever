@@ -172,6 +172,7 @@ local function ShowSwitchBar(g, selectedTab)
                 b = CreateFrame("Button", nil, switchBar, "UIPanelButtonTemplate")
                 b:SetSize(130, 24)
                 b:SetPoint("LEFT", (n - 1) * 136, 0)
+                if ns.SkinButton then ns.SkinButton(b) end   -- GuildPride-Design statt Blizzard-Rot
                 switchBar.buttons[n] = b
             end
             local e = GuildPrideDB and GuildPrideDB.menu and GuildPrideDB.menu[t.key]
@@ -179,7 +180,9 @@ local function ShowSwitchBar(g, selectedTab)
             local name = t.key ~= g.host and e and type(e.name) == "string" and e.name ~= "" and e.name or t.defaultLabel
             b:SetText(name .. (t.badge and (" |cffff8c40" .. t.badge .. "|r") or ""))
             b:SetScript("OnClick", function() PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB); SelectTabFwd(t.id) end)
-            if t == selectedTab then b:LockHighlight() else b:UnlockHighlight() end
+            -- aktive Unterseite wie im Chat/Liste-Umschalter hervorheben
+            if b.gpBg then b.gpBg:SetTexture(MEDIA .. (t == selectedTab and "nav_active" or "nav")) end
+            b:SetNormalFontObject(t == selectedTab and GPFont_Normal or GPFont_Button)
             b:Show()
         end
     end
@@ -240,7 +243,10 @@ end
 -- Einstellungen (ab Ordnung 90) bleiben immer sichtbar und unten
 local function IsFixed(tab) return tab.defaultOrder >= 90 end
 
+-- Reiter nur für Offiziere (wer die Gildennachricht ändern darf), z. B. Verwaltung
+local function OfficerOK(tab) return not tab.officerOnly or (CanEditMOTD and CanEditMOTD()) and true or false end
 local function TabHidden(tab)
+    if not OfficerOK(tab) then return true end
     if IsFixed(tab) then return false end
     local e = MenuEntry(tab)
     return e and e.hide and true or false
@@ -269,7 +275,7 @@ end
 local function MenuTabs()
     local list = {}
     for _, tab in ipairs(tabs) do
-        if not IsFixed(tab) and not IsGuest(tab) then
+        if not IsFixed(tab) and not IsGuest(tab) and OfficerOK(tab) then
             local e = MenuEntry(tab)
             tab.order = e and tonumber(e.order) or tab.defaultOrder
             list[#list + 1] = tab
@@ -379,6 +385,12 @@ local function AddTab(label, order)
     page.tabId = id
     LayoutTabs()
     return page
+end
+
+-- Reiter nur für Offiziere zeigen
+function ns.SetTabOfficerOnly(page)
+    local tab = tabs[page.tabId]
+    if tab then tab.officerOnly = true; LayoutTabs() end
 end
 
 -- Zusatz hinter dem Reiternamen, z. B. ungelesene Nachrichten "(3)"
@@ -1499,6 +1511,8 @@ local function RosterTooltip(row)
     else GameTooltip:AddLine(m.last or L["offline"], 0.5, 0.5, 0.5) end
     if m.note and m.note ~= "" then GameTooltip:AddLine(m.note, 0.6, 0.6, 0.6, true) end
     if ns.KeyTooltip and m.full then ns.KeyTooltip(GameTooltip, m.full) end
+    local since = m.guild and ns.HistoryLine and ns.HistoryLine(m.full)
+    if since then GameTooltip:AddLine(since, 0.6, 0.6, 0.6) end
     ns.AddAltLines(GameTooltip, m)
     GameTooltip:Show()
 end
@@ -1600,17 +1614,6 @@ local settings = CreateFrame("Frame", nil, settingsScroll)
 settings:SetSize(640, 1)
 settingsScroll:SetScrollChild(settings)
 
--- Suche oben: passende Einstellungen hervorheben, andere abblenden,
--- zur ersten passenden springen (Inhalt wird unten nach "options" gefüllt)
-local settingsSearch = CreateFrame("EditBox", nil, settingsPage, "InputBoxTemplate")
-settingsSearch:SetSize(220, 22); settingsSearch:SetPoint("TOPLEFT", 10, -2)
-settingsSearch:SetAutoFocus(false)
-local settingsSearchHint = settingsSearch:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
-settingsSearchHint:SetPoint("LEFT", 4, 0)
-settingsSearchHint:SetText(L["Einstellung suchen …"])
-settingsSearch:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
-settingsSearch:SetScript("OnEnterPressed", settingsSearch.ClearFocus)
-
 -- Style-Auswahl ganz oben: ein Knopf je Style, der aktive ist hervorgehoben
 local styleLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
 styleLabel:SetPoint("TOPLEFT", 4, -4)
@@ -1704,6 +1707,18 @@ for i, opt in ipairs(options) do
   end
 end
 
+do
+-- Suche oben: passende Einstellungen hervorheben, andere abblenden,
+-- zur ersten passenden springen (Inhalt wird unten nach "options" gefüllt)
+local settingsSearch = CreateFrame("EditBox", nil, settingsPage, "InputBoxTemplate")
+settingsSearch:SetSize(220, 22); settingsSearch:SetPoint("TOPLEFT", 10, -2)
+settingsSearch:SetAutoFocus(false)
+local settingsSearchHint = settingsSearch:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
+settingsSearchHint:SetPoint("LEFT", 4, 0)
+settingsSearchHint:SetText(L["Einstellung suchen …"])
+settingsSearch:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+settingsSearch:SetScript("OnEnterPressed", settingsSearch.ClearFocus)
+
 settingsSearch:SetScript("OnTextChanged", function(self)
     local q = strtrim(self:GetText() or ""):lower()
     settingsSearchHint:SetShown(q == "")
@@ -1728,6 +1743,7 @@ settingsSearch:SetScript("OnTextChanged", function(self)
         settingsScroll:SetVerticalScroll(math.min(range, math.max(0, -first.y - 40)))
     end
 end)
+end
 
 local blizzBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
 blizzBtn:SetSize(220, 26)
@@ -1735,11 +1751,13 @@ blizzBtn:SetPoint("TOPLEFT", 4, OPT_Y - (#options * 30) - 8)
 blizzBtn:SetText(L["Blizzard-Gildenfenster öffnen"])
 blizzBtn:SetScript("OnClick", function() ns.OpenBlizzardGuild() end)
 
+do
 local backupBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
 backupBtn:SetSize(180, 26)
 backupBtn:SetPoint("LEFT", blizzBtn, "RIGHT", 10, 0)
 backupBtn:SetText(L["Datensicherung …"])
 backupBtn:SetScript("OnClick", function() if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end end)
+end
 
 -- Begrüßungstext (GuildPrideMembers.lua), {name} = neues Mitglied
 local welcomeY = OPT_Y - (#options * 30) - 46
@@ -1785,82 +1803,79 @@ local function Stepper(label, y, key, step, min, max, fmt, apply)
 end
 local lookY = welcomeY - 56
 local function Pct(v) return ("%d %%"):format(math.floor((v or 1) * 100 + 0.5)) end
-Stepper(L["Fenstergröße"], lookY, "scale", 0.05, 0.7, 1.3, Pct, ApplyLook)
+Stepper(L["Fenstergröße"], lookY, "scale", 0.05, 0.6, 2, Pct, ApplyLook)
 Stepper(L["Deckkraft"], lookY - 28, "alpha", 0.05, 0.5, 1, Pct, ApplyLook)
 Stepper(L["Chat-Schrift"], lookY - 56, "chatFont", 1, 10, 18, function(v) return ("%d pt"):format(v or 12) end,
     function(v) if ns.SetChatFont then ns.SetChatFont(v) end end)
+
+-- Ecke unten rechts: ziehen vergrößert/verkleinert das ganze Fenster
+-- (alles wächst mit, auch die Schrift). Die linke obere Ecke bleibt stehen.
+do   -- eigener Block (Grenze von 200 lokalen Variablen)
+local SCALE_MIN, SCALE_MAX = 0.6, 2
+local grip = CreateFrame("Button", nil, frame)
+grip:SetSize(18, 18)
+grip:SetPoint("BOTTOMRIGHT", -3, 3)
+grip:SetFrameLevel(frame:GetFrameLevel() + 50)
+grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+grip:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(L["Ziehen: Fenster größer oder kleiner"])
+    GameTooltip:AddLine(L["Rechtsklick: zurück auf 100 %"], 0.7, 0.7, 0.7)
+    GameTooltip:Show()
+end)
+grip:SetScript("OnLeave", GameTooltip_Hide)
+local function KeepTopLeft(left, top, scale)
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left / scale, top / scale)
+end
+local function ShowSteppers() for _, st in ipairs(steppers) do st.Show() end end
+grip:RegisterForClicks("RightButtonUp")
+grip:SetScript("OnClick", function()
+    local sc = frame:GetScale()
+    local left, top = frame:GetLeft() * sc, frame:GetTop() * sc
+    GuildPrideDB.scale = 1
+    frame:SetScale(1)
+    KeepTopLeft(left, top, 1)
+    ShowSteppers()
+end)
+grip:SetScript("OnMouseDown", function(self, button)
+    if button ~= "LeftButton" then return end
+    local sc = frame:GetScale()
+    -- Lage in UIParent-Einheiten (unabhängig von der eigenen Skalierung)
+    local left, top = frame:GetLeft() * sc, frame:GetTop() * sc
+    local uiScale = UIParent:GetEffectiveScale()
+    self:SetScript("OnUpdate", function()
+        local cx, cy = GetCursorPosition()
+        cx, cy = cx / uiScale, cy / uiScale
+        local new = math.max((cx - left) / W, (top - cy) / H)
+        new = math.max(SCALE_MIN, math.min(SCALE_MAX, new))
+        if math.abs(new - frame:GetScale()) > 0.005 then
+            frame:SetScale(new)
+            KeepTopLeft(left, top, new)
+        end
+    end)
+end)
+grip:SetScript("OnMouseUp", function(self)
+    self:SetScript("OnUpdate", nil)
+    GuildPrideDB.scale = math.floor(frame:GetScale() * 100 + 0.5) / 100
+    ShowSteppers()
+end)
+end
 
 local lookFrame = CreateFrame("Frame")
 lookFrame:RegisterEvent("PLAYER_LOGIN")
 lookFrame:SetScript("OnEvent", ApplyLook)
 
--- Werbetext: gespeichert und auf Knopfdruck in die Chat-Eingabe gelegt.
--- Abschicken (und Kanal wählen, z. B. "/2 ") macht der Spieler selbst.
+-- Werbetext, Bewerbungen und Notiz-Vorlagen: Reiter "Verwaltung" (GuildPrideAdmin.lua)
 local baseY = lookY - 96
-local recruitLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
-recruitLabel:SetPoint("TOPLEFT", 4, baseY)
-recruitLabel:SetText(L["Werbetext (z. B. „/2 Gilde XY sucht …“)"])
-local recruitBox = CreateFrame("EditBox", nil, settings, "InputBoxTemplate")
-recruitBox:SetSize(470, 22); recruitBox:SetPoint("TOPLEFT", 10, baseY - 18)
-recruitBox:SetAutoFocus(false); recruitBox:SetMaxLetters(250)
-recruitBox:SetScript("OnTextChanged", function(self, user)
-    if user then GuildPrideDB.recruitText = self:GetText() end
-end)
-recruitBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-recruitBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-
-function ns.PostRecruitText()
-    local t = GuildPrideDB.recruitText
-    if not t or strtrim(t) == "" then ns.Print(L["Noch kein Werbetext gespeichert (Einstellungen)."]); return end
-    if ChatFrame_OpenChat then ChatFrame_OpenChat(t) end
-    ns.Print(L["Werbetext steht in der Chat-Eingabe – mit Enter abschicken."])
-end
-local recruitBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
-recruitBtn:SetSize(150, 24); recruitBtn:SetPoint("LEFT", recruitBox, "RIGHT", 8, 0)
-recruitBtn:SetText(L["In den Chat legen"])
-recruitBtn:SetScript("OnClick", function() ns.PostRecruitText() end)
-
--- Notiz-Vorlagen: eine pro Zeile, nutzbar im Mitglieder-Rechtsklick
-local tplLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
-tplLabel:SetPoint("TOPLEFT", 4, baseY - 52)
-tplLabel:SetText(L["Notiz-Vorlagen (eine pro Zeile, {datum} = heute)"])
-local tplScroll = ns.NewScroll(settings)
-tplScroll:SetPoint("TOPLEFT", 10, baseY - 72)
-tplScroll:SetSize(600, 64)
-local tplBg = tplScroll:CreateTexture(nil, "BACKGROUND")
-tplBg:SetPoint("TOPLEFT", -4, 4); tplBg:SetPoint("BOTTOMRIGHT", 4, -4)
-tplBg:SetColorTexture(0, 0, 0, 0.45)
-local tplBox = CreateFrame("EditBox", nil, tplScroll)
-tplBox:SetMultiLine(true); tplBox:SetAutoFocus(false)
-tplBox:SetFontObject(GPFont_TextSmall); tplBox:SetWidth(590)
-tplScroll:SetScrollChild(tplBox)
-tplScroll:EnableMouse(true)
-tplScroll:SetScript("OnMouseDown", function() tplBox:SetFocus() end)
-tplBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-tplBox:SetScript("OnTextChanged", function(self, user)
-    if not user then return end
-    local list = {}
-    for line in (self:GetText() .. "\n"):gmatch("([^\n]*)\n") do
-        line = strtrim(line)
-        if line ~= "" then list[#list + 1] = line:sub(1, 120) end
-    end
-    GuildPrideDB.noteTemplates = list
-end)
-
--- Vorlagen mit eingesetztem Datum (für GuildPrideManage.lua)
-function ns.NoteTemplates()
-    local out = {}
-    for _, t in ipairs(GuildPrideDB.noteTemplates or {}) do
-        out[#out + 1] = (t:gsub("{datum}", date("%d.%m.%Y")):gsub("{date}", date("%Y-%m-%d")))
-    end
-    return out
-end
 
 -- Menü anpassen: Reiter zeigen/ausblenden, umbenennen, verschieben, Startreiter.
 -- Die Zeilen entstehen erst beim ersten Öffnen, weil andere Dateien ihre
 -- Reiter nach dieser Datei anlegen.
 local MENU_ROWS = 10
-local menuY = baseY - 160
+local menuY = baseY
 Section(settings, L["Menü anpassen"], nil, menuY)
 local menuHint = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
 menuHint:SetPoint("TOPLEFT", 4, menuY - 26)
@@ -1994,8 +2009,6 @@ function settingsPage:Refresh()
         local w = GuildPrideDB.welcomeText
         welcomeBox:SetText((w and w ~= "") and w or (ns.WELCOME_DEFAULT or ""))
     end
-    if not recruitBox:HasFocus() then recruitBox:SetText(GuildPrideDB.recruitText or "") end
-    if not tplBox:HasFocus() then tplBox:SetText(table.concat(GuildPrideDB.noteTemplates or {}, "\n")) end
 end
 ns.SettingsPage = settingsPage
 
@@ -2078,6 +2091,7 @@ end
 ---------------------------------------------------------------------
 -- Blizzard-Gildenfenster ersetzen
 ---------------------------------------------------------------------
+do   -- eigener Block: Lua erlaubt nur 200 lokale Variablen je Datei-Ebene
 local bypass = false
 local blockUntil = 0   -- Blizzard-Fenster bis zu diesem Zeitpunkt sofort wieder schließen
 
@@ -2133,6 +2147,7 @@ if ToggleGuildFrame then
         C_Timer.After(0, HideBlizzardGuild)
         ns.ToggleUI()
     end)
+end
 end
 
 -- Für andere Module freigeben
