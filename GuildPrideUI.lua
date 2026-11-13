@@ -140,12 +140,12 @@ content:SetPoint("BOTTOMRIGHT", -14, 14)
 -- Kompaktes Menü: mehrere Reiter teilen sich einen Platz in der Seitenleiste,
 -- oben auf der Seite schaltet eine Leiste zwischen ihnen um. Schlüssel = feste
 -- Standard-Ordnung der Reiter (10 Übersicht, 30 Events, 40 Gruppensuche,
--- 50 Umfragen, 60 Meilensteine, 65 Ziele, 70 Gildeninfo, 75 Berufe).
+-- 50 Umfragen, 60 Meilensteine, 65 Ziele). Berufe (55) und Gildeninfo (70)
+-- haben eigene Plätze.
 -- Der erste Schlüssel ist der Gastgeber.
 local GROUPS = {
     { host = "10", label = L["Übersicht"], keys = { "10", "60", "65" } },
     { host = "30", label = L["Planen"],    keys = { "30", "40", "50" } },
-    { host = "70", label = L["Gildeninfo"], keys = { "70", "75" } },
 }
 local groupOf = {}
 for _, g in ipairs(GROUPS) do for _, k in ipairs(g.keys) do groupOf[k] = g end end
