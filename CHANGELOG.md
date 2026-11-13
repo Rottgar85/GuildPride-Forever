@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.8.0
+
+**Deutsch**
+- Neu: das **Gildenbuch** als neues Aussehen – ein aufgeschlagenes Buch auf Pergament. Links eine feste Seite mit Aushang vom Schwarzen Brett, nächstem Feldzug (mit Zusagen) und der Chronik der Woche, rechts die jeweilige Seite, Register-Reiter als Menü. Ist jetzt Standard; das bisherige Aussehen gibt es weiter unter Einstellungen › Layout › „Klassisch“, dazu neu „Icon-Leiste“ (schmale Leiste mit Symbolen). Frei kombinierbar mit jedem Style, Wechsel ohne /reload
+- Berufe: übersichtliche Liste – pro Spieler eine Zeile mit Berufssymbolen, Stufen im Tooltip. Klick auf einen Beruf öffnet das **Berufsfenster des Spielers** mit allen Rezepten (sobald er seins einmal mit dieser Version geöffnet hat), Rechtsklick zeigt die Rezeptliste im Addon
+- Behoben: die automatische Begrüßung neuer Mitglieder wurde von WoW blockiert („Aktion blockiert“); sie geht jetzt beim nächsten Tastendruck raus
+
+**English**
+- New: the **Guild book** look – an open book on parchment. Left page: notice board, next campaign (with sign-ups) and this week's chronicle; right page: the current page; register tabs as menu. Now the default; the previous look is still available under Settings › Layout › "Classic", plus the new "Icon bar". Combine freely with any style, switches without /reload
+- Professions: compact list – one row per player with profession icons, skill levels in the tooltip. Clicking a profession opens the **player's profession window** with all recipes (once they have opened theirs with this version); right-click shows the recipe list in the addon
+- Fixed: the automatic welcome for new members was blocked by WoW ("action blocked"); it is now sent on your next key press
+
 ## 2.7.0
 
 **Deutsch**

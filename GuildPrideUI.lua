@@ -36,6 +36,8 @@ Paint(bg, "tex")
 local function Line(p1, p2, size)
     local t = frame:CreateTexture(nil, "BORDER")
     Paint(t, "accent")
+    frame.gpBorder = frame.gpBorder or {}
+    tinsert(frame.gpBorder, t)   -- für die Layouts (GuildPrideLayout.lua)
     t:SetPoint(p1); t:SetPoint(p2)
     if p1:find("LEFT") and p2:find("LEFT") or p1:find("RIGHT") and p2:find("RIGHT") then t:SetWidth(size) else t:SetHeight(size) end
 end
@@ -57,6 +59,8 @@ for _, c in ipairs(corners) do
     t:SetTexture(MEDIA .. "corner")
     t:SetTexCoord(c[2], c[3], c[4], c[5])
     Paint(t, "tex")
+    frame.gpCorners = frame.gpCorners or {}
+    tinsert(frame.gpCorners, t)
 end
 
 -- Seitenleiste
@@ -87,7 +91,8 @@ local FACTION_LOGO = {
 local function UpdateCrest()
     local logo = FACTION_LOGO[UnitFactionGroup("player") or ""]
     factionLogo:SetTexture(logo or (MEDIA .. "logo"))
-    factionLogo:SetSize(logo and 104 or 84, logo and 104 or 84)
+    local size = ns.CrestSize and ns.CrestSize(logo ~= nil) or (logo and 104 or 84)   -- Layout bestimmt die Größe
+    factionLogo:SetSize(size, size)
 end
 
 local versionText = frame:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
@@ -184,7 +189,7 @@ local function ShowSwitchBar(g, selectedTab)
             b:SetScript("OnClick", function() PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB); SelectTabFwd(t.id) end)
             -- aktive Unterseite wie im Chat/Liste-Umschalter hervorheben
             if b.gpBg then b.gpBg:SetTexture(MEDIA .. (t == selectedTab and "nav_active" or "nav")) end
-            b:SetNormalFontObject(t == selectedTab and GPFont_Normal or GPFont_Button)
+            b:SetNormalFontObject(t == selectedTab and GPFont_ButtonActive or GPFont_Button)
             b:Show()
         end
     end
@@ -202,6 +207,7 @@ local function MarkTabs()
         tab.bgTex:SetTexture(MEDIA .. (on and "nav_active" or "nav"))
         if on then tab.text:SetTextColor(t.button[1], t.button[2], t.button[3])
         else tab.text:SetTextColor(0.82, 0.79, 0.76) end
+        if ns.LayoutMarkTab then ns.LayoutMarkTab(tab, on) end
     end
 end
 ns.OnThemeChanged(MarkTabs)
@@ -303,7 +309,7 @@ local function LayoutTabs()
             tab:Hide()
         else
             tab:Show()
-            tab:SetPoint("TOPLEFT", 10, -168 - top * 40)
+            if not (ns.LayoutTab and ns.LayoutTab(tab, top, false)) then tab:SetPoint("TOPLEFT", 10, -168 - top * 40) end
             top = top + 1
         end
     end
@@ -312,7 +318,7 @@ local function LayoutTabs()
             tab:ClearAllPoints()
             ApplyTabText(tab)
             tab:Show()
-            tab:SetPoint("BOTTOMLEFT", 10, 34 + bottom * 40)
+            if not (ns.LayoutTab and ns.LayoutTab(tab, bottom, true)) then tab:SetPoint("BOTTOMLEFT", 10, 34 + bottom * 40) end
             bottom = bottom + 1
         end
     end
@@ -479,7 +485,7 @@ local function Tile(i, label)
     local f = CreateFrame("Frame", nil, overview)
     f:SetSize(196, 64)
     f:SetPoint("TOPLEFT", (i - 1) * 210, -4)
-    local b = f:CreateTexture(nil, "BACKGROUND"); b:SetAllPoints(); b:SetColorTexture(0, 0, 0, 0.45)
+    local b = f:CreateTexture(nil, "BACKGROUND"); b:SetAllPoints(); ns.DarkBg(b, 0.45)
     local edge = f:CreateTexture(nil, "BORDER"); edge:SetPoint("TOPLEFT"); edge:SetPoint("BOTTOMLEFT"); edge:SetWidth(3)
     Paint(edge, "ember")
     f.value = f:CreateFontString(nil, "OVERLAY", "GPFont_Huge")
@@ -598,6 +604,7 @@ chatPane:SetPoint("BOTTOMRIGHT", -(ROSTER_W + 10), 0)
 
 -- Kompakte Mitgliederliste neben dem Chat
 local roster = CreateFrame("Frame", nil, community)
+roster.gpNoInk = true   -- dunkle Einlage auch im Gildenbuch
 roster:SetPoint("TOPRIGHT", 0, -32)
 roster:SetPoint("BOTTOMRIGHT", 0, 0)
 roster:SetWidth(ROSTER_W)
@@ -1652,7 +1659,7 @@ colorBtn:SetSize(170, 22); colorBtn:SetPoint("TOPLEFT", 4, -50)
 colorBtn:SetText(L["Eigene Farbe wählen …"])
 colorBtn:SetScript("OnClick", function() ns.PickCustomColor() end)
 
-local OPT_Y = -80
+local OPT_Y = -134   -- darüber: Style, eigene Farbe, Layout (GuildPrideLayout.lua)
 local options = {
     { header = L["Allgemein"] },
     { key = "replaceGuildFrame", label = L["Dieses Fenster statt Blizzard-Gildenfenster (J)"] },
@@ -2155,6 +2162,11 @@ end
 end
 
 -- Für andere Module freigeben
+-- Teile des Fensters für die wählbaren Layouts (GuildPrideLayout.lua)
+ns.UIParts = { frame = frame, bg = bg, side = side, header = header, crestGlow = crestGlow,
+    factionLogo = factionLogo, versionText = versionText, title = title, subtitle = subtitle,
+    pageTitle = pageTitle, close = close, content = content, tabs = tabs, settings = settings,
+    LayoutTabs = LayoutTabs, MarkTabs = MarkTabs }
 ns.AddTab = AddTab
 ns.SelectTab = SelectTab
 ns.CreateList = CreateList

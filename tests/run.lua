@@ -23,6 +23,7 @@ W.Load("GuildPrideRecruit.lua")
 W.Load("GuildPrideCrafts.lua")
 W.Load("GuildPrideGoals.lua")
 W.Load("GuildPrideBoard.lua")
+W.Load("GuildPrideInk.lua")
 W.Start()
 local ns = W.ns
 ns.FormatDate = ns.FormatDate or function() return "" end
@@ -262,6 +263,24 @@ test("Berufe: Mitglied meldet eigene Berufe und Rezepte", function()
     eq(e.rec["Schneiderei"][1], tonumber("2s", 36))
 end)
 
+test("Berufe: Symbole werden mitgeschickt, Ersatz nach Namen", function()
+    W.Receive("Bert", msg("CRF", W.server + 5, "Bergbau~150~225;Alchemie~100~150", "136248;abc"))
+    local e = ns.GuildTable("crafts")["Bert"]
+    eq(e.profs[1].i, 136248)
+    eq(e.profs[2].i, nil, "ungültiges Symbol verworfen")
+    eq(ns.Crafts.Icon(e.profs[2]):find("Trade_Alchemy", 1, true) ~= nil, true, "Ersatz nach Name")
+    ns.GuildTable("crafts")["Bert"] = nil
+end)
+
+test("Berufe: Berufs-Link wird geteilt, falsche verworfen", function()
+    local e = ns.GuildTable("crafts")["Anna"]
+    W.Receive("Anna", msg("CRR", e.v, "Schneiderei", "2s,zz,1", "trade:Player-6937-0016743F:197:300"))
+    eq(e.links["Schneiderei"], "trade:Player-6937-0016743F:197:300")
+    W.Receive("Anna", msg("CRR", e.v, "Schneiderei", "2s,zz,1", "item:123:0:0"))
+    eq(e.links["Schneiderei"], nil, "kein Berufs-Link")
+    eq(ns.Crafts.LinkData("|cffffd000|Htrade:Player-1-ABC:164:75|h[Schmiedekunst]|h|r"), "trade:Player-1-ABC:164:75")
+end)
+
 test("Berufe: Rezepte nur zum bekannten Stand und Beruf", function()
     local e = ns.GuildTable("crafts")["Anna"]
     W.Receive("Anna", msg("CRR", e.v + 5, "Schneiderei", "aa"))
@@ -281,6 +300,13 @@ test("Berufe: Suche nach Beruf und Name", function()
     eq(#ns.Crafts.Search("schnei"), 1)
     eq(#ns.Crafts.Search("anna"), 2)
     eq(#ns.Crafts.Search(""), 2)
+    local tree = ns.Crafts.Tree("")
+    eq(#tree, 1, "ein Charakter")
+    eq(#tree[1].profs, 2)
+    eq(tree[1].auto, false, "ohne Suche zugeklappt")
+    tree = ns.Crafts.Tree("verzau")
+    eq(#tree[1].profs, 1, "nur der passende Beruf")
+    eq(tree[1].auto, true, "Treffer aufgeklappt")
 end)
 
 ---------------------------------------------------------------------
@@ -347,6 +373,20 @@ test("Beitrittsanfrage: weitergeleitet verworfen", function()
     ns.Handlers["LFJ"] = { function() got = true end }
     W.Receive("Bert", msg("FWD", "Carl", "10", msg("LFJ", "T", "WARRIOR", 60)))
     eq(got, false)
+end)
+
+---------------------------------------------------------------------
+test("Tinte: helle Farben werden dunkel, dunkle bleiben", function()
+    local Ink = ns.Ink
+    Ink.on = true
+    local r, g, b = Ink.Color(0.92, 0.90, 0.88)
+    eq(r < 0.3 and g < 0.3 and b < 0.3, true, "heller Text -> dunkle Tinte")
+    eq((Ink.Color(0.1, 0.2, 0.1)), 0.1, "dunkel bleibt")
+    local t = Ink.Text("|cffffd100Gold|r und |cff40ff40grün|r")
+    eq(t:find("ffd100", 1, true), nil, "Gold umgerechnet")
+    eq(t:find("|r und ", 1, true) ~= nil, true, "Text bleibt")
+    Ink.on = false
+    eq(Ink.Text("|cffffd100Gold|r"), "|cffffd100Gold|r", "aus = unverändert")
 end)
 ---------------------------------------------------------------------
 test("Datensicherung: sichern und Daten bleiben", function()

@@ -615,6 +615,7 @@ local PICK_H, PICK_W = 20, 290
 local function MakePicker(anchor, top)
     local p = CreateFrame("Frame", nil, page)
     p:SetFrameStrata("DIALOG")
+    p.gpNoInk = true
     p:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
     p:SetWidth(PICK_W + 30)
     p:EnableMouse(true)
