@@ -157,6 +157,9 @@ end
 ns.On("DRL", function(payload, sender)
     if not Enabled() or not Discord.IsLinked() or sender == ns.Me() then return end
     if not ns.IsGuildMember(sender) or not ns.IsBridgeLine(payload) then return end
+    -- DKP-Zeilen nur von Offizieren weitergeben (sonst könnte jeder über uns
+    -- gefälschte Buchungen an den Discord-Bot schicken)
+    if payload:sub(#TAG + 2, #TAG + 4) == "DKP" and not ns.IsOfficerName(sender) then return end
     local text = payload:sub(1, 255)
     C_Timer.After(math.random() * 4, function()
         if not Seen(text) then Enqueue(text) end

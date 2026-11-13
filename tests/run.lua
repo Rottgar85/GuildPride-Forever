@@ -1,0 +1,166 @@
+-- GuildPride-Tests: lua5.1 tests/run.lua (aus dem Hauptordner)
+-- Prüft vor allem die Sicherheitsregeln für Addon-Nachrichten.
+package.path = "./tests/?.lua;" .. package.path
+local W = require("wow")
+local SEP = "\031"
+
+W.roster = {
+    { "Tester", 3 },   -- ich
+    { "Gm", 0 },       -- Gildenleitung
+    { "Offi", 1 },     -- Offizier (darf Gildennachricht ändern)
+    { "Anna", 3 },
+    { "Bert", 3 },
+    { "Carl", 3 },
+    { "Ohne", 3 },     -- ohne GuildPride
+}
+
+W.Load("GuildPride.lua")
+W.Load("GuildPrideAusweis.lua")
+W.Load("GuildPrideDKP.lua")
+W.Start()
+local ns = W.ns
+
+local passed, failed = 0, 0
+local function test(name, fn)
+    local ok, err = pcall(fn)
+    if ok then passed = passed + 1; print("ok    " .. name)
+    else failed = failed + 1; print("FEHLER " .. name .. ": " .. tostring(err)) end
+end
+local function eq(a, b, msg) if a ~= b then error((msg or "") .. " erwartet " .. tostring(b) .. ", ist " .. tostring(a), 2) end end
+local function msg(kind, ...) return kind .. ":" .. table.concat({ ... }, SEP) end
+
+---------------------------------------------------------------------
+test("Offiziere: Ränge mit Recht 'Gildennachricht ändern'", function()
+    eq(ns.IsOfficerName("Gm"), true)
+    eq(ns.IsOfficerName("Offi"), true)
+    eq(ns.IsOfficerName("Anna"), false)
+    eq(ns.IsOfficerName("Fremder"), false)
+end)
+
+---------------------------------------------------------------------
+test("Ausweis: 14 Zeichen, gleich bleibend, ohne BattleTag", function()
+    local a = ns.Ausweis()
+    eq(#a, 14)
+    eq(a, ns.Ausweis())
+    eq(a:find("Tester", 1, true), nil)
+    eq(a:match("^[0-9a-z]+$") ~= nil, true)
+end)
+
+test("Ausweis: andere Gilde ergibt anderen Code", function()
+    local a = ns.Ausweis()
+    local old = GetGuildInfo
+    GetGuildInfo = function() return "Anderegilde", "Rang", 3, "Realm" end
+    local b = ns.Ausweis()
+    GetGuildInfo = old
+    eq(a ~= b, true)
+end)
+
+local CODE_A = "aaaaaaaaaaaaaa"
+local CODE_B = "bbbbbbbbbbbbbb"
+
+test("Ausweis: zwei Charaktere mit gleichem Code werden ein Spieler", function()
+    W.Receive("Anna", msg("AUS", CODE_A, "", 1))
+    W.Receive("Bert", msg("AUS", CODE_A, "", 1))
+    local groups = ns.AltGroups()
+    local main = ns.MainOf("Bert")
+    eq(ns.MainOf("Anna"), main)
+    eq(#groups[main], 1)
+end)
+
+test("Ausweis: wer meinen Code benutzt, wird als umstritten markiert", function()
+    W.sent = {}
+    W.Receive("Carl", msg("AUS", ns.Ausweis(), "", 1))
+    eq(ns.IsDisputed("Carl"), true)
+    eq(ns.MainOf("Carl"), "Carl")
+    local found = false
+    for _, s in ipairs(W.sent) do if s.kind == "AUSX" then found = true end end
+    eq(found, true, "AUSX gesendet")
+end)
+
+test("Ausweis: fremde Liste von einem Mitglied allein zählt nicht", function()
+    W.Receive("Anna", msg("AUSL", "Ohne=" .. CODE_B .. "="), "WHISPER")
+    eq(ns.MainOf("Ohne"), "Ohne")
+    eq(ns.IsMyChar("Ohne"), false)
+end)
+
+test("Ausweis: fremde Liste zählt, wenn zwei Mitglieder sie gleich melden", function()
+    W.Receive("Bert", msg("AUSL", "Ohne=" .. CODE_A .. "="), "WHISPER")
+    W.Receive("Carl", msg("AUSL", "Ohne=" .. CODE_A .. "="), "WHISPER")
+    eq(ns.MainOf("Ohne"), ns.MainOf("Anna"))
+end)
+
+test("Twink von Hand: nur Offiziere", function()
+    W.Receive("Anna", msg("ALT", "Carl", "Gm", W.server))
+    eq(ns.IsManualAlt("Carl"), false)
+    W.Receive("Offi", msg("ALT", "Carl", "Gm", W.server))
+    eq(ns.IsManualAlt("Carl"), true)
+    eq(ns.MainOf("Carl"), "Gm")
+    eq(ns.IsDisputed("Carl"), false, "Offizier löst Streit")
+end)
+
+---------------------------------------------------------------------
+local T0 = W.server
+local function dkp(id, d, by, names, void)
+    return msg("DKP", id, d, "Test", by, T0, void and 1 or 0, names, "")
+end
+
+test("DKP: Nicht-Offizier allein kann nicht buchen", function()
+    W.Receive("Anna", dkp("fake01", 500, "Anna", "Anna"))
+    eq(ns.DKP.Of("Anna"), nil)
+end)
+
+test("DKP: Offizier bucht direkt", function()
+    W.Receive("Offi", dkp("ok0001", 10, "Offi", "Bert"))
+    eq(ns.DKP.Of("Bert"), 10)
+end)
+
+test("DKP: Abgleich über zwei verschiedene Mitglieder", function()
+    W.Receive("Anna", dkp("sync01", 7, "Offi", "Carl"))
+    eq(ns.DKP.Of("Carl"), nil, "erst nach zweiter Meldung")
+    W.Receive("Bert", dkp("sync01", 7, "Offi", "Carl"))
+    eq(ns.DKP.Of("Carl"), 7)
+end)
+
+test("DKP: Nicht-Offizier kann keine Buchung zurücknehmen", function()
+    W.Receive("Anna", dkp("ok0001", 10, "Offi", "Bert", true))
+    eq(ns.DKP.Of("Bert"), 10)
+end)
+
+---------------------------------------------------------------------
+test("Weiterleitung: angeblich vom Offizier wird verworfen", function()
+    local inner = dkp("fwd001", 99, "Offi", "Anna")
+    W.Receive("Bert", msg("FWD", "Offi", "1", inner))
+    eq(ns.DKP.Of("Anna"), nil)
+end)
+
+test("Weiterleitung: DKP auch von Nicht-Offizier-Absender verworfen", function()
+    W.Receive("Bert", msg("FWD", "Carl", "2", dkp("fwd002", 5, "Carl", "Carl")))
+    W.Receive("Anna", msg("FWD", "Carl", "3", dkp("fwd002", 5, "Carl", "Carl")))
+    eq(ns.DKP.Of("Carl"), 7, "unverändert")
+end)
+
+test("Weiterleitung: zusammengesetzte (MP) DKP-Nachricht verworfen", function()
+    local inner = dkp("fwd003", 50, "Offi", "Anna")
+    local part = msg("MP", "77", 1, 1, inner)
+    W.Receive("Bert", msg("FWD", "Carl", "4", part))
+    eq(ns.DKP.Of("Anna"), nil)
+end)
+
+test("Weiterleitung: Ausweis-Meldung für fremden Charakter verworfen", function()
+    W.Receive("Bert", msg("FWD", "Ohne", "5", msg("AUS", CODE_B, "", 1)))
+    eq(ns.MainOf("Ohne"), ns.MainOf("Anna"), "Zuordnung unverändert")
+end)
+
+---------------------------------------------------------------------
+test("Datensicherung: sichern und Daten bleiben", function()
+    W.Load("GuildPrideBackup.lua")
+    GuildPrideDB.testWert = 42
+    eq(ns.BackupNow("Hand"), true)
+    eq(#GuildPrideBackupDB.snaps, 1)
+    eq(GuildPrideBackupDB.snaps[1].data.testWert, 42)
+    GuildPrideDB.testWert = 1
+    eq(GuildPrideBackupDB.snaps[1].data.testWert, 42, "Kopie, keine Referenz")
+end)
+
+print(("\n%d bestanden, %d fehlgeschlagen"):format(passed, failed))
+if failed > 0 then os.exit(1) end

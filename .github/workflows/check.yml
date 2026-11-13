@@ -12,6 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: luacheck installieren
-        run: sudo apt-get update && sudo apt-get install -y lua-check
+        run: sudo apt-get update && sudo apt-get install -y lua-check lua5.1
       - name: Lua-Code pruefen
         run: luacheck . --no-color
+      - name: Tests (Sicherheitsregeln, Ausweis, DKP, Sicherung)
+        run: lua5.1 tests/run.lua

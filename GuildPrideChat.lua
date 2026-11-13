@@ -131,7 +131,12 @@ end
 local function Line(t, who, full, hex, text, kind, guid, discord)
     local name = full and ("|Hplayer:%s|h|cff%s%s|r|h"):format(full, hex, who) or ("|cff%s%s|r"):format(hex, who)
     -- Rang-Krone nur im Gilden- und Offizierschat: in Communities sagt der Gildenrang nichts aus
-    if full and (kind == "GUILD" or kind == "OFFICER") then name = Crown(full, guid) .. name end
+    if full and (kind == "GUILD" or kind == "OFFICER") then
+        name = Crown(full, guid) .. name
+        -- Twink: Main klein dahinter (GuildPrideAusweis.lua)
+        local main = ns.MainOf and GuildPrideDB and GuildPrideDB.groupAlts ~= false and ns.MainOf(full)
+        if main and main ~= full then name = name .. ("|cff777777 (%s)|r"):format(Ambiguate(main, "guild")) end
+    end
     if discord then name = DiscordIcon() .. name end
     -- Erwähnung: » davor und goldene Schrift
     if MentionsMe(text, who) then

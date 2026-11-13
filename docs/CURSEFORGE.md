@@ -8,6 +8,16 @@
 
 ## 🇬🇧 English
 
+### NEW in 2.5: automatic alts, leaner menu, backup
+
+- **Alts detected automatically** – everyone with GuildPride reports the same player ID for all their characters, no matter which character joins the guild. The member list shows each player once, alts collapse under **+3**, and "playing *Alt* (level)" shows on the main. **Your BattleTag stays private:** it never leaves your PC, the guild only sees a code derived from it (different in every guild). Officers can link alts of players without the addon by hand.
+- **Inactivity per player** – the "inactive" filter only lists players whose *every* character has been away.
+- **Leaner menu** – 5 tabs instead of 8 (*Overview* + Milestones, *Plan* = Events, Group finder, Polls), settings in sections with a search box. The old layout is one checkbox away.
+- **One-click backup** – saves all GuildPride data, keeps the last 5, automatic once a week, one-click restore.
+- **DKP log** – every entry with who, when, how much and why; officers can undo any single entry.
+- **Hardened sync** – only officers can book DKP, only creators or officers can change events and polls, forged relays are rejected. Covered by automated tests.
+- **Error report** – `/gp errors` shows a report to copy and send.
+
 ### NEW in 2.3: Discord & DKP
 
 - **Discord sync** – uses Blizzard's own guild chat Discord link. Events, sign-ups (with role and class) and declines from GuildPride show up in your Discord as raid events with a live roster – no extra program, no import strings. Players without a linked Discord are relayed by a linked guildmate.
@@ -55,6 +65,11 @@
 | `/gp version` | who in the guild uses which version |
 | `/gp channel` | status of the secured channel (officers: `/gp channel new` creates a new key) |
 | `/gp server` | turn the server-wide group finder on/off (`/gp server unblock` shows hidden players again, `/gp server status` shows channel and messages) |
+| `/gp id` | show your player ID code (never your BattleTag) |
+| `/gp backup` | open the backup window |
+| `/gp errors` | error report to copy |
+| `/gp dkp` | DKP window (with *Log …*) |
+| `/gp news` | show what's new |
 | `/gp badge 30` | preview a milestone pop-up |
 
 ### Feedback
@@ -66,6 +81,16 @@ Bug reports and ideas are very welcome in the comments here. Please include the 
 ## 🇩🇪 Deutsch
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt: Übersicht, Gilde & Chat, Events, Gruppensuche, Umfragen, Meilensteine und Gildeninfo an einem Ort. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
+
+### NEU in 2.5: Twinks automatisch, schlankeres Menü, Datensicherung
+
+- **Twinks automatisch erkannt** – jeder mit GuildPride meldet für alle seine Charaktere denselben Ausweis, egal mit welchem Charakter er der Gilde beitritt. Die Mitgliederliste zeigt jeden Spieler einmal, Twinks klappen mit **+3** auf, beim Main steht „spielt *Twink* (Level)“. **Dein BattleTag bleibt privat:** Er verlässt nie deinen PC, die Gilde sieht nur einen daraus berechneten Code (in jeder Gilde ein anderer). Twinks von Spielern ohne Addon ordnen Offiziere von Hand zu.
+- **Inaktiv je Spieler** – der Filter „Inaktive“ zeigt nur Spieler, deren *alle* Charaktere weg waren.
+- **Schlankeres Menü** – 5 statt 8 Reiter (*Übersicht* + Meilensteine, *Planen* = Events, Gruppensuche, Umfragen), Einstellungen in Abschnitten mit Suchfeld. Das alte Menü ist einen Haken entfernt.
+- **Datensicherung per Knopfdruck** – sichert alle GuildPride-Daten, die letzten 5 Stände, einmal pro Woche automatisch, Wiederherstellen mit einem Klick.
+- **DKP-Protokoll** – jede Buchung mit Wer, Wann, Wie viel und Warum; Offiziere nehmen jede einzelne Buchung zurück.
+- **Abgleich abgesichert** – DKP buchen nur Offiziere, Events und Umfragen ändern nur Ersteller oder Offiziere, gefälschte Weiterleitungen werden verworfen. Mit automatischen Tests geprüft.
+- **Fehlerbericht** – `/gp fehler` zeigt einen Bericht zum Kopieren und Melden.
 
 ### NEU in 2.3: Discord & DKP
 
@@ -114,6 +139,11 @@ Bug reports and ideas are very welcome in the comments here. Please include the 
 | `/gp version` | wer in der Gilde welche Version nutzt |
 | `/gp kanal` | Stand des abgesicherten Kanals (Offiziere: `/gp kanal neu` erzeugt einen neuen Schlüssel) |
 | `/gp server` | serverweite Gruppensuche an/aus (`/gp server entsperren` zeigt ausgeblendete Spieler wieder, `/gp server status` zeigt Kanal und Nachrichten) |
+| `/gp ausweis` | deinen Ausweis-Code zeigen (nie den BattleTag) |
+| `/gp sicherung` | Fenster Datensicherung öffnen |
+| `/gp fehler` | Fehlerbericht zum Kopieren |
+| `/gp dkp` | DKP-Fenster (mit *Protokoll …*) |
+| `/gp neu` | Neuerungen anzeigen |
 | `/gp badge 30` | Meilenstein-Popup testen |
 
 ### Feedback

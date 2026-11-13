@@ -84,7 +84,7 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    replaceGuildFrame = true, memberAlerts = true, helpAlerts = true, shareMilestones = true,
                    minimap = true, chatFont = 12, scale = 1, alpha = 1, welcome = false,
                    publicLFG = true, publicAlerts = false, lfgPublic = false, lfgScope = "all",
-                   mapShow = true, mapShare = true }
+                   mapShow = true, mapShare = true, ausweisAuto = true, groupAlts = true, compactMenu = true }
 
 -- Weitere Meilensteine neben LEVEL (Wert ist Text bzw. ID)
 local EXTRA_KINDS = { ACH = true, BOSS = true, MPLUS = true, MOUNT = true }
@@ -219,6 +219,72 @@ local function IsMember(name)
     return guildMembers[name] ~= nil
 end
 function ns.IsGuildMember(name) return name ~= nil and IsMember(Normalize(name)) end
+---------------------------------------------------------------------
+-- Vertrauen bei Addon-Nachrichten
+-- Ein manipuliertes Addon kann beliebige Nachrichten schicken. Die Regeln:
+-- * Offiziere = Ränge, die die Gildennachricht ändern dürfen (sonst Rang 0 und 1).
+-- * Weitergeleitete Nachrichten (FWD) sind nie "direkt vom Urheber": wer
+--   weiterleitet, könnte den Absender erfunden haben. ns.Forwarded ist dann
+--   der Name des Weiterleiters.
+-- * Daten über andere (Abgleich) von Nicht-Offizieren zählen erst, wenn zwei
+--   verschiedene Mitglieder genau dasselbe melden (ns.Confirmed).
+---------------------------------------------------------------------
+ns.OFFICER_MAX_RANK = 1
+ns.Forwarded = nil
+-- Kommt die Nachricht wirklich direkt von "name"?
+function ns.IsDirect(sender, name) return not ns.Forwarded and sender == name end
+
+local confirms, confirmCount = {}, 0
+function ns.Confirmed(key, sender)
+    local who = ns.Forwarded or sender
+    local set = confirms[key]
+    if not set then
+        if confirmCount >= 20000 then wipe(confirms); confirmCount = 0 end
+        set = {}
+        confirms[key] = set
+        confirmCount = confirmCount + 1
+    end
+    set[who] = true
+    local n = 0
+    for _ in pairs(set) do n = n + 1; if n >= 2 then return true end end
+    return false
+end
+
+-- Rangnummer eines Gildenmitglieds (0 = Gildenleitung), nil wenn unbekannt
+function ns.RankIndexOf(name)
+    if not name or not IsMember(Normalize(name)) then return nil end
+    return guildMembers[Normalize(name)] - 1
+end
+-- Welche Ränge sind "Offiziere"? Wer die Gildennachricht ändern darf (Rangrecht 9,
+-- "Set MOTD") – dasselbe Recht, das GuildPride für DKP und Verwaltung verlangt.
+-- Liefert das Spiel die Rechte nicht (gesperrt oder fehlt), gelten Rang 0 und 1.
+local officerRanks, officerRanksAt = nil, 0
+local function OfficerRanks()
+    if officerRanks and GetTime() - officerRanksAt < 60 then return officerRanks end
+    officerRanksAt = GetTime()
+    local get = C_GuildInfo and C_GuildInfo.GuildControlGetRankFlags
+    local num = GuildControlGetNumRanks and GuildControlGetNumRanks() or 0
+    if not get or num == 0 then officerRanks = nil return nil end
+    local set = { [0] = true }   -- Gildenleitung immer
+    for r = 1, num - 1 do
+        local ok, flags = pcall(get, r + 1)
+        if not ok or type(flags) ~= "table" then officerRanks = nil return nil end
+        if flags[9] == true then set[r] = true end
+    end
+    officerRanks = set
+    return set
+end
+function ns.IsOfficerRank(r)
+    if r == nil then return false end
+    local set = OfficerRanks()
+    if set then return set[r] == true end
+    return r <= ns.OFFICER_MAX_RANK
+end
+-- Offizier oder Gildenleitung? Weitergeleitet zählt nie als Offizier.
+function ns.IsOfficerName(name)
+    if ns.Forwarded then return false end
+    return ns.IsOfficerRank(ns.RankIndexOf(name))
+end
 
 ns.IconString = IconString
 ns.Print = Print
@@ -467,13 +533,16 @@ local function IsSecret(v) return issecretvalue and issecretvalue(v) or false en
 -- Addon-Nachrichten verteilen; mehrteilige ("MP") erst zusammensetzen
 ---------------------------------------------------------------------
 local multipart = {}   -- ["Sender:id"] = { n, got, parts, t }
+-- Arten, die Rechte voraussetzen oder Identität beweisen: nie per Weiterleitung
+local NO_RELAY = { DKP = true, DRW = true, ALT = true, AUS = true, AUSX = true, AUSL = true,
+                   AUC = true, AUH = true, AUE = true, CKY = true, DEL = true }
 local recent, recentSweep = {}, 0   -- zuletzt empfangene Nachrichten (gegen Doppelte)
 local forwarded = {}   -- ["Name:id"] = Zeit, gegen doppelte Weiterleitungen
 local MP_MAX = 100
 
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
-local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true }
+local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true, AUSQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender
@@ -489,6 +558,8 @@ end
 local function Dispatch(message, sender)
     local kind, value = message:match("^(%u+):(.+)$")
     if not kind then return end
+    -- auch zusammengesetzte (MP) weitergeleitete Nachrichten prüfen
+    if ns.Forwarded and NO_RELAY[kind] then return end
     if ASKS[kind] and TooManyAsks(kind, sender) then return end
     if kind == "RLY" then
         -- Ein Mitglied ohne Gildenchat-Recht bittet uns, an die Gilde weiterzugeben
@@ -503,12 +574,22 @@ local function Dispatch(message, sender)
     if kind == "FWD" then
         local origin, id, msg = value:match("^([^\031]+)\031([^\031]+)\031(.+)$")
         if not origin or not guildMembers[origin] or msg:match("^FWD:") or msg:match("^RLY:") then return end
+        -- Offiziere dürfen im Gildenchat schreiben und brauchen keine Weiterleitung:
+        -- eine angebliche Weiterleitung von ihnen ist gefälscht
+        if ns.IsOfficerRank(guildMembers[origin] - 1) then return end
+        -- Nachrichten, die Rechte voraussetzen, nie weitergeleitet annehmen
+        local inner = msg:match("^(%u+):")
+        if inner and NO_RELAY[inner] then return end
         local now, key = GetTime(), origin .. ":" .. id
         for k, t in pairs(forwarded) do if now - t > 120 then forwarded[k] = nil end end
         if forwarded[key] then return end
         forwarded[key] = now
         ns.AddonUsers[origin] = true
-        Dispatch(msg, origin)
+        local outer = ns.Forwarded
+        ns.Forwarded = Normalize(sender)
+        local ok, err = pcall(Dispatch, msg, origin)
+        ns.Forwarded = outer
+        if not ok then geterrorhandler()(err) end
         return
     end
     if kind == "MP" then
@@ -520,7 +601,8 @@ local function Dispatch(message, sender)
         for k, b in pairs(multipart) do
             if now - b.t > 60 then multipart[k] = nil else count = count + 1 end
         end
-        local key = sender .. ":" .. id
+        -- weitergeleitete Teile getrennt halten: kein Mischen mit echten Teilen
+        local key = (ns.Forwarded and ("F>" .. ns.Forwarded .. ">") or "") .. sender .. ":" .. id
         local buf = multipart[key]
         if not buf then
             -- Gegen Speicherfluten: nur begrenzt viele halbfertige Nachrichten
@@ -720,6 +802,14 @@ SlashCmdList.GUILDPRIDE = function(arg)
     elseif arg:match("^einladen%f[%A]") or arg:match("^invite%f[%A]") then
         local name = raw:match("^%S+%s+(%S+)")
         if name and ns.InviteToGuild then ns.InviteToGuild(name) else Print(L["Bitte einen Charakternamen eingeben."]) end
+    elseif arg == "fehler" or arg == "errors" then
+        if ns.ErrorReport then ns.ErrorReport() end
+    elseif arg == "fehler löschen" or arg == "errors clear" then
+        if ns.ClearErrors then ns.ClearErrors() end
+    elseif arg == "backup" or arg == "sicherung" then
+        if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end
+    elseif arg == "ausweis" or arg == "id" then
+        if ns.AusweisCommand then ns.AusweisCommand() end
     elseif arg == "werben" or arg == "recruit" then
         if ns.PostRecruitText then ns.PostRecruitText() end
     elseif arg == "optionen" or arg == "options" then
@@ -730,6 +820,6 @@ SlashCmdList.GUILDPRIDE = function(arg)
             InterfaceOptionsFrame_OpenToCategory(ns.SettingsPanel)   -- zweimal: alter Blizzard-Fehler
         end
     else
-        Print(L["Befehle: /gp (Fenster) · sound · popup · blizzard · einladen <Name> · werben · optionen · badge <Level> · version · kanal · server"])
+        Print(L["Befehle: /gp (Fenster) · sound · popup · blizzard · einladen <Name> · werben · optionen · badge <Level> · version · kanal · server · ausweis · sicherung · fehler"])
     end
 end

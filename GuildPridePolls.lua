@@ -117,6 +117,12 @@ ns.On("POL", function(payload, sender)
     -- Fremde Werte prüfen: ID und Ersteller ohne Codes, Versionen nicht in der Zukunft
     local id = Clean(a[1], 80)
     if id == "" or #opts < 2 then return end
+    -- Eine Umfrage gehört dem, dessen Name vorne in der ID steht. Direkt von ihm
+    -- oder von Offizieren: sofort; Abgleich über andere: erst bei zwei gleichen Meldungen.
+    local author = id:match("^(.+)%-%d+%-%d+$")
+    if not author or Clean(a[4], 60) ~= author then return end
+    if not (ns.IsDirect(sender, author) or ns.IsOfficerName(sender))
+       and not ns.Confirmed("POL\030" .. payload, sender) then return end
     if a[5] == "2" then
         local p = GetOrStub(id)
         local ver = ns.Stamp(a[2])
@@ -136,6 +142,8 @@ ns.On("VOT", function(payload, sender)
     -- Nur gültige Antwortnummern und nur Stimmen von Gildenmitgliedern
     if id == "" or name == "" or not c or c < 1 or c > MAX_OPTS or v == 0 then return end
     if not ns.IsGuildMember(name) then return end
+    -- Fremde Stimme (Abgleich): erst, wenn zwei verschiedene Mitglieder sie gleich melden
+    if not ns.IsDirect(sender, name) and not ns.Confirmed("VOT\030" .. payload, sender) then return end
     ApplyVote(id, name, c, v)
     if ns.RefreshUI then ns.RefreshUI() end
 end)

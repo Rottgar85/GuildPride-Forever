@@ -137,10 +137,63 @@ local content = CreateFrame("Frame", nil, frame)
 content:SetPoint("TOPLEFT", SIDEBAR + 14, -HEADER - 12)
 content:SetPoint("BOTTOMRIGHT", -14, 14)
 
+-- Kompaktes Menü: mehrere Reiter teilen sich einen Platz in der Seitenleiste,
+-- oben auf der Seite schaltet eine Leiste zwischen ihnen um. Schlüssel = feste
+-- Standard-Ordnung der Reiter (10 Übersicht, 30 Events, 40 Gruppensuche,
+-- 50 Umfragen, 60 Meilensteine). Der erste Schlüssel ist der Gastgeber.
+local GROUPS = {
+    { host = "10", label = L["Übersicht"], keys = { "10", "60" } },
+    { host = "30", label = L["Planen"],    keys = { "30", "40", "50" } },
+}
+local groupOf = {}
+for _, g in ipairs(GROUPS) do for _, k in ipairs(g.keys) do groupOf[k] = g end end
+local function Compact() return not GuildPrideDB or GuildPrideDB.compactMenu ~= false end
+local function GroupOf(tab) return tab and Compact() and groupOf[tab.key] or nil end
+-- Reiter, der im kompakten Menü keinen eigenen Platz in der Seitenleiste hat
+local function IsGuest(tab) local g = GroupOf(tab); return g ~= nil and g.host ~= tab.key end
+local function TabByKey(key) for _, t in ipairs(tabs) do if t.key == key then return t end end end
+
+-- Umschaltleiste oben auf gruppierten Seiten
+local switchBar = CreateFrame("Frame", nil, content)
+switchBar:SetPoint("TOPLEFT"); switchBar:SetPoint("TOPRIGHT")
+switchBar:SetHeight(26)
+switchBar:Hide()
+switchBar.buttons = {}
+local TabHiddenFwd, SelectTabFwd
+local function ShowSwitchBar(g, selectedTab)
+    if not g then switchBar:Hide() return end
+    local n = 0
+    for _, key in ipairs(g.keys) do
+        local t = TabByKey(key)
+        if t and not TabHiddenFwd(t) then
+            n = n + 1
+            local b = switchBar.buttons[n]
+            if not b then
+                b = CreateFrame("Button", nil, switchBar, "UIPanelButtonTemplate")
+                b:SetSize(130, 24)
+                b:SetPoint("LEFT", (n - 1) * 136, 0)
+                switchBar.buttons[n] = b
+            end
+            local e = GuildPrideDB and GuildPrideDB.menu and GuildPrideDB.menu[t.key]
+            -- Gastgeber: dessen eigener Name (der umbenannte gilt für die ganze Gruppe)
+            local name = t.key ~= g.host and e and type(e.name) == "string" and e.name ~= "" and e.name or t.defaultLabel
+            b:SetText(name .. (t.badge and (" |cffff8c40" .. t.badge .. "|r") or ""))
+            b:SetScript("OnClick", function() PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB); SelectTabFwd(t.id) end)
+            if t == selectedTab then b:LockHighlight() else b:UnlockHighlight() end
+            b:Show()
+        end
+    end
+    for i = n + 1, #switchBar.buttons do switchBar.buttons[i]:Hide() end
+    switchBar:SetShown(n > 1)
+    return n > 1
+end
+
 local function MarkTabs()
     local t = ns.Theme()
+    local sel = tabs[frame.selected or 0]
+    local selGroup = GroupOf(sel)
     for i, tab in ipairs(tabs) do
-        local on = i == frame.selected
+        local on = i == frame.selected or (selGroup ~= nil and selGroup.host == tab.key)
         tab.bgTex:SetTexture(MEDIA .. (on and "nav_active" or "nav"))
         if on then tab.text:SetTextColor(t.button[1], t.button[2], t.button[3])
         else tab.text:SetTextColor(0.82, 0.79, 0.76) end
@@ -149,12 +202,28 @@ end
 ns.OnThemeChanged(MarkTabs)
 
 local function SelectTab(id)
-    for i, page in ipairs(pages) do page:SetShown(i == id) end
+    local tab = tabs[id]
+    local g = GroupOf(tab)
+    local bar = ShowSwitchBar(g, tab)
+    for i, page in ipairs(pages) do
+        if i == id then
+            page:ClearAllPoints()
+            if bar then
+                page:SetPoint("TOPLEFT", 0, -32); page:SetPoint("BOTTOMRIGHT")
+            else
+                page:SetAllPoints()
+            end
+        end
+        page:SetShown(i == id)
+    end
     frame.selected = id
+    if g then g.last = tab.key end
     MarkTabs()
-    pageTitle:SetText(tabs[id] and tabs[id].label or "")
+    local host = g and TabByKey(g.host)
+    pageTitle:SetText(host and host.label or (tab and tab.label) or "")
     if pages[id] and pages[id].Refresh then pages[id]:Refresh() end
 end
+SelectTabFwd = SelectTab
 
 -- Eigene Menü-Einstellungen: GuildPrideDB.menu[Schlüssel] = { hide, name, order }
 -- Schlüssel ist die feste Standard-Ordnung des Reiters (z. B. "30" = Events)
@@ -176,19 +245,31 @@ local function TabHidden(tab)
     local e = MenuEntry(tab)
     return e and e.hide and true or false
 end
+TabHiddenFwd = TabHidden
 
 local function ApplyTabText(tab)
     local e = MenuEntry(tab)
     local name = e and type(e.name) == "string" and e.name ~= "" and e.name or nil
-    tab.label = name or tab.defaultLabel
-    tab.text:SetText(tab.label .. (tab.badge and ("  |cffff8c40" .. tab.badge .. "|r") or ""))
+    local g = GroupOf(tab)
+    local badge = tab.badge
+    if g and g.host == tab.key then
+        -- Gastgeber: Gruppenname, Hinweis eines beliebigen Mitglieds
+        for _, key in ipairs(g.keys) do
+            local t = TabByKey(key)
+            if not badge and t and t.badge and not TabHidden(t) then badge = t.badge end
+        end
+    end
+    -- Standardname, wie er gerade gilt (Gastgeber im kompakten Menü: Gruppenname)
+    tab.shownDefault = (g and g.host == tab.key) and g.label or tab.defaultLabel
+    tab.label = name or tab.shownDefault
+    tab.text:SetText(tab.label .. (badge and ("  |cffff8c40" .. badge .. "|r") or ""))
 end
 
 -- Reiter in Anzeige-Reihenfolge (ohne Einstellungen)
 local function MenuTabs()
     local list = {}
     for _, tab in ipairs(tabs) do
-        if not IsFixed(tab) then
+        if not IsFixed(tab) and not IsGuest(tab) then
             local e = MenuEntry(tab)
             tab.order = e and tonumber(e.order) or tab.defaultOrder
             list[#list + 1] = tab
@@ -206,6 +287,7 @@ ns.MenuTabs = MenuTabs
 -- unten in der Seitenleiste
 local function LayoutTabs()
     local top, bottom = 0, 0
+    for _, tab in ipairs(tabs) do if IsGuest(tab) then tab:Hide() end end
     for _, tab in ipairs(MenuTabs()) do
         tab:ClearAllPoints()
         ApplyTabText(tab)
@@ -250,7 +332,7 @@ function ns.MenuChanged()
     LayoutTabs()
     local cur = tabs[frame.selected or 0]
     if cur and TabHidden(cur) then SelectTab(StartTabId()) end
-    if cur and not TabHidden(cur) then pageTitle:SetText(cur.label) end
+    if cur and not TabHidden(cur) then SelectTab(cur.id) end
 end
 
 -- order: Platz in der Seitenleiste (kleiner = weiter oben)
@@ -281,6 +363,16 @@ local function AddTab(label, order)
     tab.id = id
     tab:SetScript("OnClick", function()
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+        -- Gruppe: zuletzt benutzte Unterseite (falls noch sichtbar)
+        local g = GroupOf(tab)
+        local last = g and g.last and TabByKey(g.last)
+        if last and not TabHidden(last) then SelectTab(last.id) return end
+        if g and TabHidden(tab) then
+            for _, key in ipairs(g.keys) do
+                local t = TabByKey(key)
+                if t and not TabHidden(t) then SelectTab(t.id) return end
+            end
+        end
         SelectTab(id)
     end)
     tabs[id] = tab
@@ -295,6 +387,10 @@ function ns.SetTabBadge(page, text)
     if not tab then return end
     tab.badge = text
     ApplyTabText(tab)
+    local g = GroupOf(tab)
+    local host = g and TabByKey(g.host)
+    if host and host ~= tab then ApplyTabText(host) end
+    if g and switchBar:IsShown() and GroupOf(tabs[frame.selected or 0]) == g then ShowSwitchBar(g, tabs[frame.selected]) end
 end
 
 -- Abschnitts-Überschrift mit Kupferlinie
@@ -1149,12 +1245,108 @@ local function SortValue(m, key)
     if key == "name" then return Plain(m.name):lower() end
     if key == "level" then return -(m.level or 0) end
     if key == "rank" then return m.rankIndex or m.role or 99 end
+    if m.alts then return m.groupOnline and -1 or (m.groupHours or 0) end
     return m.online and -1 or (m.hours or 0)
+end
+
+---------------------------------------------------------------------
+-- Twinks: Charaktere eines Spielers (GuildPrideAusweis.lua) zu einer Zeile
+-- zusammenfassen. m.alts = Twinks, m.groupOnline = irgendein Charakter online,
+-- m.groupHours = kürzeste Abwesenheit, m.playing = online gespielter Twink.
+---------------------------------------------------------------------
+local expanded = {}   -- [Main] = true: Twinks aufgeklappt
+ns.ExpandedAlts = expanded
+
+local GroupedMemberData
+local function GroupingOn() return ns.AltGroups and GuildPrideDB.groupAlts ~= false end
+
+local function GroupAlts(data)
+    local groups, byFull, mains = ns.AltGroups(), {}, {}
+    for _, m in ipairs(data) do byFull[m.full] = m end
+    for _, m in ipairs(data) do
+        local alts = groups[m.full]
+        if alts then
+            m.alts, m.playing = {}, nil
+            m.groupOnline, m.groupHours = m.online, m.online and 0 or (m.hours or 0)
+            for _, name in ipairs(alts) do
+                local a = byFull[name]
+                if a then
+                    a.isAlt, a.mainName = true, m.name
+                    m.alts[#m.alts + 1] = a
+                    if a.online then
+                        m.groupOnline, m.groupHours = true, 0
+                        if not m.online and not m.playing then m.playing = a end
+                    else
+                        m.groupHours = math.min(m.groupHours, a.hours or 0)
+                    end
+                end
+            end
+            mains[#mains + 1] = m
+        end
+    end
+    return mains
+end
+
+-- Tooltip: alle Twinks mit Level und Status
+function ns.AddAltLines(tt, m)
+    if not (m and m.alts and #m.alts > 0) then return end
+    tt:AddLine(" ")
+    tt:AddLine(L["Twinks:"], 0.94, 0.78, 0.55)
+    for _, a in ipairs(m.alts) do
+        local c = CLASS_COLORS[a.class] or NORMAL_FONT_COLOR
+        tt:AddDoubleLine(("%s (%d)"):format(a.name, a.level or 0),
+            a.online and L["online"] or (a.last or L["offline"]),
+            c.r, c.g, c.b, a.online and 0.25 or 0.5, a.online and 1 or 0.5, a.online and 0.25 or 0.5)
+    end
+end
+
+local function GroupMatches(m, q)
+    if Matches(m, q) then return true end
+    for _, a in ipairs(m.alts or {}) do if Matches(a, q) then return true end end
+    return false
+end
+
+-- Wie MemberData, aber eine Zeile je Spieler. Inaktiv zählt je Spieler: Wer mit
+-- irgendeinem Charakter da war, ist nicht inaktiv. Im Inaktiv-Filter stehen
+-- alle Charaktere inaktiver Spieler einzeln in der Liste (für das Entfernen).
+-- Rückgabe: Liste, Spieler gesamt, Spieler online, Charaktere gesamt
+GroupedMemberData = function(opts, inactive, withOffline)
+    local all = GuildData(true)
+    local mains = GroupAlts(all)
+    local total, online = #mains, 0
+    for _, m in ipairs(mains) do if m.groupOnline then online = online + 1 end end
+    local q, keep = strtrim(opts.query or ""):lower(), {}
+    for _, m in ipairs(mains) do
+        if GroupMatches(m, q) and (withOffline or m.groupOnline)
+                and (inactive == 0 or (not m.groupOnline and m.groupHours >= inactive * 24
+                     and not (opts.skip and opts.skip[m.rank or ""]))) then
+            keep[#keep + 1] = m
+        end
+    end
+    local key = opts.sort or "last"
+    table.sort(keep, function(a, b)
+        local va, vb = SortValue(a, key), SortValue(b, key)
+        if va ~= vb then if opts.desc then return va > vb end return va < vb end
+        if a.groupOnline ~= b.groupOnline then return a.groupOnline end
+        return Plain(a.name):lower() < Plain(b.name):lower()
+    end)
+    local out = {}
+    for _, m in ipairs(keep) do
+        out[#out + 1] = m
+        if inactive > 0 then
+            for _, a in ipairs(m.alts) do
+                if not (opts.skip and opts.skip[a.rank or ""]) then out[#out + 1] = a end
+            end
+        elseif expanded[m.full] and not opts.noExpand then
+            for _, a in ipairs(m.alts) do out[#out + 1] = a end
+        end
+    end
+    return out, total, online, #all
 end
 
 -- Mitglieder der aktuellen Quelle
 -- opts: offline (auch Offline), query (Suche), inactive (Tage, nur Offline ab da),
---       sort/desc (Spalte und Richtung, Standard "last")
+--       sort/desc (Spalte und Richtung, Standard "last"), noExpand (Twinks nie aufklappen)
 local function MemberData(opts)
     opts = opts or {}
     -- Community nicht mehr vorhanden (verlassen) -> zurück zur Gilde
@@ -1162,6 +1354,10 @@ local function MemberData(opts)
     local inactive = opts.inactive or 0
     local withOffline = opts.offline or inactive > 0 or opts.filter
     local data, total, online
+    -- Gilde mit Twink-Gruppen (nicht bei fälligen Beförderungen: die gelten je Charakter)
+    if not source and not opts.filter and GroupingOn() then
+        return GroupedMemberData(opts, inactive, withOffline)
+    end
     if source then data, total, online = ClubData(source, GuildNames(), withOffline) else data, total, online = GuildData(withOffline) end
     local q, keep = strtrim(opts.query or ""):lower(), {}
     for _, m in ipairs(data) do
@@ -1219,11 +1415,15 @@ function members:Refresh()
     MarkSort()
 
     local s = GuildPrideDB.memberSort or {}
-    local data, total, online = MemberData({ offline = showOffline, sort = s.key, desc = s.desc,
+    local data, total, online, chars = MemberData({ offline = showOffline, sort = s.key, desc = s.desc,
                                              query = searchBox:GetText(), inactive = inactiveDays,
                                              skip = inactiveDays > 0 and SkippedRanks() or nil,
                                              filter = promoteMode and ns.PromoteTarget or nil })
-    countText:SetText((L["%d online · %d offline"]):format(online, total - online))
+    if chars then
+        countText:SetText((L["%d Spieler online · %d offline (%d Charaktere)"]):format(online, total - online, chars))
+    else
+        countText:SetText((L["%d online · %d offline"]):format(online, total - online))
+    end
     if promoteMode then UpdateAction("promote", data)
     else UpdateAction("kick", canInactive and inactiveDays > 0 and data or nil) end
     for i, m in ipairs(data) do
@@ -1234,16 +1434,54 @@ function members:Refresh()
             RowClicks(row)
         end
         row.data = m
-        local alpha = m.online and 1 or 0.55   -- Offline-Mitglieder gedimmt
-        row.left:SetText(CrownedName(m))
+        local active = m.online or (m.alts and m.groupOnline)
+        local alpha = active and 1 or 0.55   -- Offline-Mitglieder gedimmt
+        if m.isAlt then
+            row.left:SetText("    |cff777777└|r " .. CrownedName(m))
+        else
+            row.left:SetText(CrownedName(m))
+        end
         row.left:SetAlpha(alpha); row.mid:SetAlpha(alpha)
+        -- Knopf "+3" hinter dem Namen: Twinks auf- und zuklappen
+        if not row.gpToggle then
+            local t = CreateFrame("Button", nil, row)
+            t:SetSize(28, 16)
+            t:SetPoint("LEFT", row.left, "RIGHT", 6, 0)
+            t.text = t:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+            t.text:SetAllPoints()
+            t:SetScript("OnClick", function(self)
+                local d = self:GetParent().data
+                if not d then return end
+                ns.ExpandedAlts[d.full] = not ns.ExpandedAlts[d.full] or nil
+                RefreshMembers()
+            end)
+            t:SetScript("OnEnter", function(self)
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:AddLine(ns.ExpandedAlts[self:GetParent().data.full] and L["Twinks zuklappen"] or L["Twinks zeigen"])
+                GameTooltip:Show()
+            end)
+            t:SetScript("OnLeave", GameTooltip_Hide)
+            row.gpToggle = t
+        end
+        local nAlts = m.alts and #m.alts or 0
+        row.gpToggle:SetShown(nAlts > 0 and inactiveDays == 0)
+        if nAlts > 0 then
+            row.gpToggle.text:SetText((expanded[m.full] and "−" or "+") .. nAlts)
+        end
         local mid = (m.level and m.level > 0) and ("Lvl %d · %s"):format(m.level, m.rank or "") or (m.rank or "")
         if source and m.inGuild then mid = mid .. "  |cff999999(" .. L["Gilde"] .. ")|r" end
         local key = ns.KeyText and m.full and ns.KeyText(m.full)
         if key then mid = mid .. "  " .. key end
         if m.note and m.note ~= "" then mid = mid .. "  |cff888888" .. m.note .. "|r" end
+        if m.isAlt and ns.IsNewLink and ns.CanSetAlts and ns.CanSetAlts() and ns.IsNewLink(m.full) then
+            mid = mid .. "  |cffffd100" .. L["neu verknüpft"] .. "|r"
+        end
         row.mid:SetText(mid)
-        row.right:SetText(m.online and ("|cff40ff40●|r " .. (m.zone or "")) or ("|cff777777" .. (m.last or "") .. "|r"))
+        if m.playing then
+            row.right:SetText(("|cff40ff40●|r " .. L["spielt %s (%d)"]):format(m.playing.name, m.playing.level or 0))
+        else
+            row.right:SetText(m.online and ("|cff40ff40●|r " .. (m.zone or "")) or ("|cff777777" .. (m.last or "") .. "|r"))
+        end
     end
     memberList:Finish(#data)
 end
@@ -1261,13 +1499,14 @@ local function RosterTooltip(row)
     else GameTooltip:AddLine(m.last or L["offline"], 0.5, 0.5, 0.5) end
     if m.note and m.note ~= "" then GameTooltip:AddLine(m.note, 0.6, 0.6, 0.6, true) end
     if ns.KeyTooltip and m.full then ns.KeyTooltip(GameTooltip, m.full) end
+    ns.AddAltLines(GameTooltip, m)
     GameTooltip:Show()
 end
 
 function roster:Refresh()
     rosterOffline:SetChecked(showOffline)
     UpdateRosterInvite()
-    local data, total, online = MemberData({ offline = showOffline })
+    local data, total, online = MemberData({ offline = showOffline, noExpand = true })
     rosterCount:SetText((L["%d online · %d offline"]):format(online, total - online))
     for i, m in ipairs(data) do
         local row = rosterList:GetRow(i)
@@ -1281,8 +1520,10 @@ function roster:Refresh()
             row:SetScript("OnLeave", GameTooltip_Hide)
         end
         row.data = m
-        local alpha = m.online and 1 or 0.55
-        row.left:SetText((m.online and "|cff40ff40●|r " or "|cff555555●|r ") .. CrownedName(m))
+        local active = m.online or (m.alts and m.groupOnline)
+        local alpha = active and 1 or 0.55
+        row.left:SetText((active and "|cff40ff40●|r " or "|cff555555●|r ") .. CrownedName(m)
+            .. ((m.alts and #m.alts > 0) and (" |cff999999+" .. #m.alts .. "|r") or ""))
         row.left:SetAlpha(alpha)
         row.right:SetText((m.level and m.level > 0) and m.level or "")
     end
@@ -1353,11 +1594,22 @@ end)
 local settingsPage = AddTab(L["Einstellungen"], 90)
 -- Die Seite ist länger als das Fenster: Inhalt in einem Scrollbereich
 local settingsScroll = ns.NewScroll(settingsPage)
-settingsScroll:SetPoint("TOPLEFT", 0, 0)
+settingsScroll:SetPoint("TOPLEFT", 0, -30)
 settingsScroll:SetPoint("BOTTOMRIGHT", -26, 0)
 local settings = CreateFrame("Frame", nil, settingsScroll)
 settings:SetSize(640, 1)
 settingsScroll:SetScrollChild(settings)
+
+-- Suche oben: passende Einstellungen hervorheben, andere abblenden,
+-- zur ersten passenden springen (Inhalt wird unten nach "options" gefüllt)
+local settingsSearch = CreateFrame("EditBox", nil, settingsPage, "InputBoxTemplate")
+settingsSearch:SetSize(220, 22); settingsSearch:SetPoint("TOPLEFT", 10, -2)
+settingsSearch:SetAutoFocus(false)
+local settingsSearchHint = settingsSearch:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
+settingsSearchHint:SetPoint("LEFT", 4, 0)
+settingsSearchHint:SetText(L["Einstellung suchen …"])
+settingsSearch:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+settingsSearch:SetScript("OnEnterPressed", settingsSearch.ClearFocus)
 
 -- Style-Auswahl ganz oben: ein Knopf je Style, der aktive ist hervorgehoben
 local styleLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
@@ -1395,24 +1647,34 @@ colorBtn:SetScript("OnClick", function() ns.PickCustomColor() end)
 
 local OPT_Y = -80
 local options = {
+    { header = L["Allgemein"] },
     { key = "replaceGuildFrame", label = L["Dieses Fenster statt Blizzard-Gildenfenster (J)"] },
+    { key = "compactMenu",   label = L["Kompaktes Menü (Übersicht + Meilensteine, Events + Gruppensuche + Umfragen zusammen)"],
+      changed = function() if ns.MenuChanged then ns.MenuChanged() end end },
+    { key = "minimap",       label = L["Minimap-Knopf anzeigen"],
+      changed = function() if ns.UpdateMinimap then ns.UpdateMinimap() end end },
+    { header = L["Hinweise"] },
     { key = "popup",         label = L["Meilenstein-Popups anzeigen"] },
     { key = "sound",         label = L["Sounds abspielen"] },
     { key = "memberAlerts",  label = L["Warnung bei Beitritt / Austritt"] },
     { key = "helpAlerts",    label = L["Hinweis, wenn jemand Gruppe / Quest-Hilfe sucht"] },
-    { key = "publicLFG",     label = L["Serverweite Gruppensuche (alle mit GuildPride, gleiche Spielversion)"], public = true,
-      changed = function() if ns.PublicLFGChanged then ns.PublicLFGChanged() end end },
-    { key = "publicAlerts",  label = L["Hinweis auch bei Einträgen vom Server"], public = true },
+    { header = L["Teilen"] },
     { key = "shareMilestones", label = L["Eigene Erfolge, Bosse, M+ und Reittiere mit der Gilde teilen"] },
     { key = "mapShow",       label = L["Gildenmitglieder mit GuildPride auf der Weltkarte zeigen"],
       changed = function() if ns.MapShowChanged then ns.MapShowChanged() end end },
     { key = "mapShare",      label = L["Eigene Position auf der Weltkarte mit der Gilde teilen"],
       changed = function() if ns.MapShareChanged then ns.MapShareChanged() end end },
-    { key = "minimap",       label = L["Minimap-Knopf anzeigen"],
-      changed = function() if ns.UpdateMinimap then ns.UpdateMinimap() end end },
+    { key = "publicLFG",     label = L["Serverweite Gruppensuche (alle mit GuildPride, gleiche Spielversion)"], public = true,
+      changed = function() if ns.PublicLFGChanged then ns.PublicLFGChanged() end end },
+    { key = "publicAlerts",  label = L["Hinweis auch bei Einträgen vom Server"], public = true },
+    { header = L["Gilde"] },
     { key = "welcome",       label = L["Neue Mitglieder automatisch im Gildenchat begrüßen"] },
     { key = "discordBridge", label = L["Discord-Anbindung nutzen (Events, Anmeldungen, DKP an Discord)"] },
     { key = "discordLinked", label = L["Mein Discord ist mit WoW verknüpft (Optionen > Soziales)"] },
+    { header = L["Twinks"] },
+    { key = "ausweisAuto",   label = L["Meine Charaktere automatisch verknüpfen (BattleTag bleibt privat)"] },
+    { key = "groupAlts",     label = L["Twinks in der Mitgliederliste unter dem Main zusammenfassen"],
+      changed = function() if ns.RefreshUI then ns.RefreshUI() end end },
 }
 -- Serverweite Gruppensuche: in Classic-Clients nicht möglich, Schalter weglassen
 for i = #options, 1, -1 do
@@ -1424,6 +1686,13 @@ local function SetOption(opt, on)
 end
 local checks = {}
 for i, opt in ipairs(options) do
+  if opt.header then
+    -- Abschnitts-Überschrift statt Haken
+    local h = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
+    h:SetPoint("TOPLEFT", 4, OPT_Y - (i - 1) * 30 - 8)
+    h:SetText(opt.header)
+    opt.fs, opt.y = h, OPT_Y - (i - 1) * 30
+  else
     local cb = CreateFrame("CheckButton", nil, settings, "UICheckButtonTemplate")
     cb:SetPoint("TOPLEFT", 0, OPT_Y - (i - 1) * 30)
     local label = settings:CreateFontString(nil, "OVERLAY", "GPFont_Text")
@@ -1431,13 +1700,46 @@ for i, opt in ipairs(options) do
     label:SetText(opt.label)
     cb:SetScript("OnClick", function(self) SetOption(opt, self:GetChecked()) end)
     checks[opt.key] = cb
+    opt.fs, opt.cb, opt.y = label, cb, OPT_Y - (i - 1) * 30
+  end
 end
+
+settingsSearch:SetScript("OnTextChanged", function(self)
+    local q = strtrim(self:GetText() or ""):lower()
+    settingsSearchHint:SetShown(q == "")
+    local first
+    for _, opt in ipairs(options) do
+        if opt.fs then
+            local text = (opt.label or opt.header or ""):lower()
+            local hit = q ~= "" and text:find(q, 1, true) ~= nil
+            local a = (q == "" or hit) and 1 or 0.3
+            opt.fs:SetAlpha(a)
+            if opt.cb then opt.cb:SetAlpha(a) end
+            if hit and not opt.header then
+                opt.fs:SetTextColor(1, 0.82, 0.2)
+                if not first then first = opt end
+            elseif not opt.header then
+                opt.fs:SetTextColor(0.92, 0.90, 0.88)
+            end
+        end
+    end
+    if first then
+        local range = settingsScroll:GetVerticalScrollRange() or 0
+        settingsScroll:SetVerticalScroll(math.min(range, math.max(0, -first.y - 40)))
+    end
+end)
 
 local blizzBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
 blizzBtn:SetSize(220, 26)
 blizzBtn:SetPoint("TOPLEFT", 4, OPT_Y - (#options * 30) - 8)
 blizzBtn:SetText(L["Blizzard-Gildenfenster öffnen"])
 blizzBtn:SetScript("OnClick", function() ns.OpenBlizzardGuild() end)
+
+local backupBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+backupBtn:SetSize(180, 26)
+backupBtn:SetPoint("LEFT", blizzBtn, "RIGHT", 10, 0)
+backupBtn:SetText(L["Datensicherung …"])
+backupBtn:SetScript("OnClick", function() if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end end)
 
 -- Begrüßungstext (GuildPrideMembers.lua), {name} = neues Mitglied
 local welcomeY = OPT_Y - (#options * 30) - 46
@@ -1612,7 +1914,7 @@ local function BuildMenuRow(i)
         local tab = row.tab
         if not user or not tab then return end
         local text = strtrim(((self:GetText() or ""):gsub("|", "")))
-        MenuEntry(tab, true).name = (text ~= "" and text ~= tab.defaultLabel) and text or nil
+        MenuEntry(tab, true).name = (text ~= "" and text ~= (tab.shownDefault or tab.defaultLabel)) and text or nil
         ns.MenuChanged()
     end)
     row.name:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
@@ -1667,7 +1969,8 @@ function RefreshMenuRows()
         for _, w in ipairs(row.widgets) do w:Show() end
         row.show:SetChecked(not TabHidden(tab))
         if not row.name:HasFocus() then row.name:SetText(tab.label) end
-        row.orig:SetText(tab.label ~= tab.defaultLabel and ("(" .. tab.defaultLabel .. ")") or "")
+        local def = tab.shownDefault or tab.defaultLabel
+        row.orig:SetText(tab.label ~= def and ("(" .. def .. ")") or "")
         row.up:SetEnabled(i > 1)
         row.down:SetEnabled(i < #list)
         row.start:SetChecked(startKey == tab.key)
@@ -1706,6 +2009,11 @@ if (Settings and Settings.RegisterCanvasLayoutCategory) or InterfaceOptions_AddC
     title:SetText("GuildPride")
     local panelChecks = {}
     for i, opt in ipairs(options) do
+      if opt.header then
+        local h = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        h:SetPoint("TOPLEFT", 20, -44 - (i - 1) * 32 - 8)
+        h:SetText(opt.header)
+      else
         local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
         cb:SetPoint("TOPLEFT", 16, -44 - (i - 1) * 32)
         local label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -1713,6 +2021,7 @@ if (Settings and Settings.RegisterCanvasLayoutCategory) or InterfaceOptions_AddC
         label:SetText(opt.label)
         cb:SetScript("OnClick", function(self) SetOption(opt, self:GetChecked()) end)
         panelChecks[opt.key] = cb
+      end
     end
     local open = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     open:SetSize(220, 26)
