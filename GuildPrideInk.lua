@@ -55,10 +55,10 @@ function Ink.Color(r, g, b)
     local h, s, l = ToHSL(r, g, b)
     if s < 0.22 then
         -- neutral: Haupttext fast schwarzbraun, gedämpfter Text heller
-        if l > 0.72 then return 0.20, 0.14, 0.09 end
-        return 0.40, 0.31, 0.22
+        if l > 0.72 then return 0.15, 0.10, 0.06 end
+        return 0.27, 0.20, 0.13
     end
-    return FromHSL(h, math.min(s, 0.85), 0.26)
+    return FromHSL(h, math.min(s, 0.85), 0.23)
 end
 
 local function MapHex(hex)

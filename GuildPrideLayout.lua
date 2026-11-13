@@ -133,13 +133,13 @@ local function BookGeometry(l)
     leftPage:SetPoint("TOPLEFT", lpX, -COVER); leftPage:SetPoint("BOTTOMLEFT", lpX, COVER); leftPage:SetWidth(LPAGE)
     rightPage:ClearAllPoints()
     rightPage:SetPoint("TOPLEFT", rpX, -COVER); rightPage:SetPoint("BOTTOMRIGHT", -COVER, COVER)
-    -- Pergament: oben heller, unten leicht gealtert
-    Gradient(leftPage, "VERTICAL", { 0.86, 0.79, 0.65, 1 }, { 0.94, 0.89, 0.78, 1 })
-    Gradient(rightPage, "VERTICAL", { 0.86, 0.79, 0.65, 1 }, { 0.94, 0.89, 0.78, 1 })
+    -- Pergament (etwas dunkler, gealtert): oben heller, unten dunkler
+    Gradient(leftPage, "VERTICAL", { 0.74, 0.66, 0.52, 1 }, { 0.84, 0.77, 0.63, 1 })
+    Gradient(rightPage, "VERTICAL", { 0.74, 0.66, 0.52, 1 }, { 0.84, 0.77, 0.63, 1 })
     -- Falz in der Mitte und Wölbung der Seiten zum Rücken hin
     crease:ClearAllPoints()
     crease:SetPoint("TOPLEFT", lpX + LPAGE, -COVER); crease:SetPoint("BOTTOMLEFT", lpX + LPAGE, COVER)
-    crease:SetWidth(GUTTER); Gradient(crease, "HORIZONTAL", { 0.62, 0.52, 0.38, 1 }, { 0.70, 0.60, 0.45, 1 })
+    crease:SetWidth(GUTTER); Gradient(crease, "HORIZONTAL", { 0.50, 0.40, 0.28, 1 }, { 0.58, 0.48, 0.35, 1 })
     shadowL:ClearAllPoints()
     shadowL:SetPoint("TOPRIGHT", leftPage, "TOPRIGHT"); shadowL:SetPoint("BOTTOMRIGHT", leftPage, "BOTTOMRIGHT"); shadowL:SetWidth(34)
     Gradient(shadowL, "HORIZONTAL", { 0.35, 0.24, 0.12, 0 }, { 0.35, 0.24, 0.12, 0.45 })
@@ -159,7 +159,7 @@ local function BookGeometry(l)
     end
     -- Seitenkanten (Papierstapel) außen links, rechts und unten
     for i = 1, 3 do
-        local c = { 0.80, 0.72, 0.57, 1.0 - i * 0.22 }
+        local c = { 0.70, 0.61, 0.46, 1.0 - i * 0.22 }
         local t = stacks[i]
         t:ClearAllPoints()
         t:SetPoint("TOPRIGHT", leftPage, "TOPLEFT", -(i * 3 - 2), -(i * 2)); t:SetPoint("BOTTOMRIGHT", leftPage, "BOTTOMLEFT", -(i * 3 - 2), i * 2)
@@ -190,9 +190,9 @@ local function BookGeometry(l)
     rule1:SetColorTexture(0.55, 0.42, 0.24, 0.8)
     -- Aushang
     noteBox:ClearAllPoints(); noteBox:SetPoint("TOPLEFT", 22, -112); noteBox:SetPoint("TOPRIGHT", -22, -112); noteBox:SetHeight(138)
-    noteBox:SetColorTexture(0.97, 0.94, 0.86, 1)
+    noteBox:SetColorTexture(0.86, 0.79, 0.66, 1)
     noteEdge:ClearAllPoints(); noteEdge:SetPoint("TOPLEFT", noteBox, "TOPLEFT", -1, 1); noteEdge:SetPoint("BOTTOMRIGHT", noteBox, "BOTTOMRIGHT", 1, -1)
-    noteEdge:SetColorTexture(0.72, 0.60, 0.39, 1)
+    noteEdge:SetColorTexture(0.55, 0.43, 0.26, 1)
     noteHead:ClearAllPoints(); noteHead:SetPoint("TOPLEFT", noteBox, "TOPLEFT", 10, -10)
     noteText:ClearAllPoints(); noteText:SetPoint("TOPLEFT", noteHead, "BOTTOMLEFT", 0, -6)
     noteText:SetHeight(84); noteText:SetJustifyV("TOP")
