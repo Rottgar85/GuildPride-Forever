@@ -1499,6 +1499,8 @@ local function RosterTooltip(row)
     else GameTooltip:AddLine(m.last or L["offline"], 0.5, 0.5, 0.5) end
     if m.note and m.note ~= "" then GameTooltip:AddLine(m.note, 0.6, 0.6, 0.6, true) end
     if ns.KeyTooltip and m.full then ns.KeyTooltip(GameTooltip, m.full) end
+    local since = m.guild and ns.HistoryLine and ns.HistoryLine(m.full)
+    if since then GameTooltip:AddLine(since, 0.6, 0.6, 0.6) end
     ns.AddAltLines(GameTooltip, m)
     GameTooltip:Show()
 end
@@ -1785,10 +1787,64 @@ local function Stepper(label, y, key, step, min, max, fmt, apply)
 end
 local lookY = welcomeY - 56
 local function Pct(v) return ("%d %%"):format(math.floor((v or 1) * 100 + 0.5)) end
-Stepper(L["Fenstergröße"], lookY, "scale", 0.05, 0.7, 1.3, Pct, ApplyLook)
+Stepper(L["Fenstergröße"], lookY, "scale", 0.05, 0.6, 2, Pct, ApplyLook)
 Stepper(L["Deckkraft"], lookY - 28, "alpha", 0.05, 0.5, 1, Pct, ApplyLook)
 Stepper(L["Chat-Schrift"], lookY - 56, "chatFont", 1, 10, 18, function(v) return ("%d pt"):format(v or 12) end,
     function(v) if ns.SetChatFont then ns.SetChatFont(v) end end)
+
+-- Ecke unten rechts: ziehen vergrößert/verkleinert das ganze Fenster
+-- (alles wächst mit, auch die Schrift). Die linke obere Ecke bleibt stehen.
+local SCALE_MIN, SCALE_MAX = 0.6, 2
+local grip = CreateFrame("Button", nil, frame)
+grip:SetSize(18, 18)
+grip:SetPoint("BOTTOMRIGHT", -3, 3)
+grip:SetFrameLevel(frame:GetFrameLevel() + 50)
+grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+grip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+grip:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(L["Ziehen: Fenster größer oder kleiner"])
+    GameTooltip:AddLine(L["Rechtsklick: zurück auf 100 %"], 0.7, 0.7, 0.7)
+    GameTooltip:Show()
+end)
+grip:SetScript("OnLeave", GameTooltip_Hide)
+local function KeepTopLeft(left, top, scale)
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left / scale, top / scale)
+end
+local function ShowSteppers() for _, st in ipairs(steppers) do st.Show() end end
+grip:RegisterForClicks("RightButtonUp")
+grip:SetScript("OnClick", function()
+    local sc = frame:GetScale()
+    local left, top = frame:GetLeft() * sc, frame:GetTop() * sc
+    GuildPrideDB.scale = 1
+    frame:SetScale(1)
+    KeepTopLeft(left, top, 1)
+    ShowSteppers()
+end)
+grip:SetScript("OnMouseDown", function(self, button)
+    if button ~= "LeftButton" then return end
+    local sc = frame:GetScale()
+    -- Lage in UIParent-Einheiten (unabhängig von der eigenen Skalierung)
+    local left, top = frame:GetLeft() * sc, frame:GetTop() * sc
+    local uiScale = UIParent:GetEffectiveScale()
+    self:SetScript("OnUpdate", function()
+        local cx, cy = GetCursorPosition()
+        cx, cy = cx / uiScale, cy / uiScale
+        local new = math.max((cx - left) / W, (top - cy) / H)
+        new = math.max(SCALE_MIN, math.min(SCALE_MAX, new))
+        if math.abs(new - frame:GetScale()) > 0.005 then
+            frame:SetScale(new)
+            KeepTopLeft(left, top, new)
+        end
+    end)
+end)
+grip:SetScript("OnMouseUp", function(self)
+    self:SetScript("OnUpdate", nil)
+    GuildPrideDB.scale = math.floor(frame:GetScale() * 100 + 0.5) / 100
+    ShowSteppers()
+end)
 
 local lookFrame = CreateFrame("Frame")
 lookFrame:RegisterEvent("PLAYER_LOGIN")

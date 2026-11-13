@@ -15,7 +15,9 @@ GuildPride.lua
 GuildPrideUI.lua
 GuildPrideCopy.lua
 GuildPrideEvents.lua
+GuildPrideRoster.lua
 GuildPrideAusweis.lua
+GuildPrideHistory.lua
 GuildPrideBackup.lua
 GuildPrideDiscord.lua
 GuildPrideDKP.lua

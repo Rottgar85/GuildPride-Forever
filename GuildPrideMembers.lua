@@ -47,11 +47,14 @@ dismiss:SetPoint("TOPRIGHT", -2, -2)
 dismiss:SetScript("OnClick", function() toast:Hide() end)
 
 local hideTimer
+local rejoinNote   -- "War schon Mitglied …" für den nächsten Beitritts-Hinweis
 local function ShowToast(kind, name)
     local short = Ambiguate(name, "guild")
     if kind == "join" then
         headline:SetText(L["|cff40ff40Neues Gildenmitglied!|r"])
-        line:SetText((L["|cffffd100%s|r ist der Gilde beigetreten.\nSag Hallo!"]):format(short))
+        line:SetText((L["|cffffd100%s|r ist der Gilde beigetreten.\nSag Hallo!"]):format(short)
+            .. (rejoinNote and ("\n|cffaaaaaa" .. rejoinNote .. "|r") or ""))
+        rejoinNote = nil
         icon:SetTexture("Interface\\AddOns\\GuildPrideForever\\Media\\logo")
     else
         headline:SetText(L["|cffff4040Mitglied hat die Gilde verlassen|r"])
@@ -115,6 +118,8 @@ f:SetScript("OnEvent", function(_, _, msg)
 
     local name = JOIN and msg:match(JOIN)
     if name then
+        if ns.HistoryRejoinText then rejoinNote = ns.HistoryRejoinText(ns.Normalize(name)) end
+        if ns.HistoryJoin then ns.HistoryJoin(ns.Normalize(name)) end
         if ns.ResetRankSince then ns.ResetRankSince(name) end
         if Ambiguate(name, "none") ~= UnitName("player") then
             Welcome(name)
@@ -122,6 +127,8 @@ f:SetScript("OnEvent", function(_, _, msg)
         end
         return
     end
+    local gone = (LEAVE and msg:match(LEAVE)) or (KICK and select(1, msg:match(KICK)))
+    if gone and ns.HistoryLeave then ns.HistoryLeave(ns.Normalize(gone)) end
     if GuildPrideDB.memberAlerts == false then return end
     name = LEAVE and msg:match(LEAVE)
     if name then ShowToast("leave", name); return end

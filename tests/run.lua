@@ -17,6 +17,8 @@ W.roster = {
 W.Load("GuildPride.lua")
 W.Load("GuildPrideAusweis.lua")
 W.Load("GuildPrideDKP.lua")
+W.Load("GuildPrideHistory.lua")
+W.Load("GuildPrideRoster.lua")
 W.Start()
 local ns = W.ns
 
@@ -149,6 +151,35 @@ end)
 test("Weiterleitung: Ausweis-Meldung für fremden Charakter verworfen", function()
     W.Receive("Bert", msg("FWD", "Ohne", "5", msg("AUS", CODE_B, "", 1)))
     eq(ns.MainOf("Ohne"), ns.MainOf("Anna"), "Zuordnung unverändert")
+end)
+
+---------------------------------------------------------------------
+test("Verlauf: Beitritt merken, erneuter Beitritt erkannt", function()
+    ns.HistoryJoin("Anna", W.server - 100 * 86400)
+    ns.HistoryLeave("Anna", W.server - 50 * 86400)
+    eq(ns.HistoryRejoinText("Anna") ~= nil, true)
+    ns.HistoryJoin("Anna", W.server)
+    eq(#ns.HistoryOf("Anna").joins, 2)
+    eq(ns.HistoryOf("Anna").first, W.server - 100 * 86400)
+    eq(ns.HistoryOf("Anna").left, nil)
+end)
+
+test("Verlauf: fremde Liste nur von Offizieren", function()
+    local fake = "Bert=" .. (W.server - 900 * 86400) .. "=0=" .. (W.server - 900 * 86400) .. "="
+    W.Receive("Carl", msg("JHL", fake), "WHISPER")
+    eq(ns.HistoryOf("Bert") == nil or ns.HistoryOf("Bert").first ~= W.server - 900 * 86400, true)
+    local real = "Bert=" .. (W.server - 10 * 86400) .. "=0=" .. (W.server - 10 * 86400) .. "="
+    W.Receive("Offi", msg("JHL", real), "WHISPER")
+    eq(ns.HistoryOf("Bert").first, W.server - 10 * 86400)
+end)
+
+test("Raid-Aufstellung: nur von Offizieren angenommen", function()
+    ns.GuildTable("events")["Offi-1-1"] = { id = "Offi-1-1", title = "Raid", signups = {} }
+    W.Receive("Anna", msg("LAY", "Offi-1-1", "Anna=11;Bert=12"))
+    eq(ns.GuildTable("events")["Offi-1-1"].layout, nil)
+    W.Receive("Offi", msg("LAY", "Offi-1-1", "Anna=11;Bert=12;Boese=99"))
+    local lay = ns.GuildTable("events")["Offi-1-1"].layout
+    eq(lay.Anna, 11); eq(lay.Bert, 12); eq(lay.Boese, nil, "ungültiger Platz")
 end)
 
 ---------------------------------------------------------------------
