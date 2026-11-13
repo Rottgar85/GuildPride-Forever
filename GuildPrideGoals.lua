@@ -33,7 +33,8 @@ local function RosterCount(minLevel)
 end
 
 function Goals.Progress(g)
-    if g.kind == "members" then return math.min(RosterCount(), g.target) end
+    -- Gesamtzahl direkt vom Spiel (die Liste enthält Offline-Mitglieder nur, wenn sie eingeblendet sind)
+    if g.kind == "members" then return math.min((GetNumGuildMembers()) or RosterCount(), g.target) end
     if g.kind == "level" then return math.min(RosterCount(g.param), g.target) end
     return math.min(g.progress or 0, g.target)
 end
