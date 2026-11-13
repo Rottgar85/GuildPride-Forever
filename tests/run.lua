@@ -19,6 +19,7 @@ W.Load("GuildPrideAusweis.lua")
 W.Load("GuildPrideDKP.lua")
 W.Load("GuildPrideHistory.lua")
 W.Load("GuildPrideRoster.lua")
+W.Load("GuildPrideRecruit.lua")
 W.Start()
 local ns = W.ns
 
@@ -182,6 +183,64 @@ test("Raid-Aufstellung: nur von Offizieren angenommen", function()
     W.Receive("Offi", msg("LAY", "Offi-1-1", "Anna=11;Bert=12;Boese=99"))
     local lay = ns.GuildTable("events")["Offi-1-1"].layout
     eq(lay.Anna, 11); eq(lay.Bert, 12); eq(lay.Boese, nil, "ungültiger Platz")
+end)
+
+---------------------------------------------------------------------
+test("Bewerbung: geschlossen -> freundliche Absage, kein Gespräch", function()
+    W.whispers = {}
+    W.Whisper("Fremd", "!bewerben")
+    eq(#W.whispers, 1)
+    eq(W.whispers[1].to, "Fremd")
+end)
+
+test("Bewerbung: Steckbrief nur von Offizieren", function()
+    W.Receive("Anna", msg("RCP", W.server + 1, 1, "Heiler", "Mi 20 Uhr", "Deutsch", "Nett"))
+    eq(ns.RecruitOpen(), false)
+    W.Receive("Offi", msg("RCP", W.server, 1, "Heiler", "Mi 20 Uhr", "Deutsch", "Nett"))
+    eq(ns.RecruitOpen(), true)
+end)
+
+test("Bewerbung: Gespräch per Flüstern ohne Addon", function()
+    W.whispers, W.sent = {}, {}
+    W.Whisper("Fremd", "!bewerben")
+    for i = 1, 4 do W.Whisper("Fremd", "Antwort " .. i .. " |cffff0000bunt|r") end
+    local box = ns.GuildTable("appOutbox")
+    local app
+    for _, a in pairs(box) do app = a end
+    eq(app ~= nil, true, "Bewerbung im Ausgang")
+    eq(app.name, "Fremd")
+    eq(app.a[4]:find("|", 1, true), nil, "Codes entfernt")
+    eq(#W.whispers, 6, "Begrüßung + 4 Fragen + Dank")
+end)
+
+test("Bewerbung: zweite am selben Tag abgelehnt", function()
+    W.whispers = {}
+    W.Whisper("Fremd", "!bewerben")
+    eq(#W.whispers, 1)
+end)
+
+test("Bewerbung: Gildenmitglieder werden ignoriert", function()
+    W.whispers = {}
+    W.Whisper("Anna", "!bewerben")
+    eq(#W.whispers, 0)
+end)
+
+test("Bewerbung: Bestätigung nur von Offizieren", function()
+    local box = ns.GuildTable("appOutbox")
+    local id = next(box)
+    W.Receive("Anna", msg("APK", id), "WHISPER")
+    eq(box[id] ~= nil, true)
+    W.Receive("Offi", msg("APK", id), "WHISPER")
+    eq(box[id], nil)
+end)
+
+test("Bewerbung: Offizier empfängt und speichert", function()
+    W.canMotd = true
+    W.Receive("Bert", msg("APP", "Zweit-1", "Zweit", W.server, "Bert", "Magier 60", "DD", "abends", "Hallo"), "WHISPER")
+    local app = ns.GuildTable("apps")["Zweit-1"]
+    W.canMotd = false
+    eq(app ~= nil, true)
+    eq(app.a[1], "Magier 60")
 end)
 
 ---------------------------------------------------------------------

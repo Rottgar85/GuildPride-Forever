@@ -1868,6 +1868,9 @@ recruitBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
 function ns.PostRecruitText()
     local t = GuildPrideDB.recruitText
     if not t or strtrim(t) == "" then ns.Print(L["Noch kein Werbetext gespeichert (Einstellungen)."]); return end
+    -- Bewerbungen offen: Hinweis "!bewerben" anhängen (Chatgrenze 255 Zeichen)
+    local suffix = ns.RecruitSuffix and ns.RecruitSuffix() or ""
+    if suffix ~= "" and not t:find("!bewerben", 1, true) and not t:find("!apply", 1, true) then t = t:sub(1, 255 - #suffix) .. suffix end
     if ChatFrame_OpenChat then ChatFrame_OpenChat(t) end
     ns.Print(L["Werbetext steht in der Chat-Eingabe – mit Enter abschicken."])
 end
@@ -1875,6 +1878,10 @@ local recruitBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
 recruitBtn:SetSize(150, 24); recruitBtn:SetPoint("LEFT", recruitBox, "RIGHT", 8, 0)
 recruitBtn:SetText(L["In den Chat legen"])
 recruitBtn:SetScript("OnClick", function() ns.PostRecruitText() end)
+local appsBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+appsBtn:SetSize(130, 24); appsBtn:SetPoint("LEFT", recruitBtn, "RIGHT", 6, 0)
+appsBtn:SetText(L["Bewerbungen …"])
+appsBtn:SetScript("OnClick", function() if ns.ToggleApps then ns.ToggleApps() end end)
 
 -- Notiz-Vorlagen: eine pro Zeile, nutzbar im Mitglieder-Rechtsklick
 local tplLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
