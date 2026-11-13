@@ -650,6 +650,13 @@ local enUS = {
     ["|cffffd100%s|r möchte deiner Gruppe beitreten."] = "|cffffd100%s|r wants to join your group.",
     ["|cffffd100%s|r hat deine Anfrage angenommen – die Einladung kommt."] = "|cffffd100%s|r accepted your request – the invite is on its way.",
     ["|cffffd100%s|r hat deine Anfrage abgelehnt."] = "|cffffd100%s|r declined your request.",
+    -- Layouts
+    ["Layout"] = "Layout",
+    ["Klassisch"] = "Classic",
+    ["Icon-Leiste"] = "Icon bar",
+    ["Gildenbuch"] = "Guild book",
+    ["DAS BUCH DER GILDE"] = "THE GUILD CHRONICLE",
+    ["Aufbau des Fensters – frei kombinierbar mit dem Style"] = "Window layout – combine freely with the style",
 }
 
 -- Fehlende Übersetzung -> deutscher Text als Rückfall

@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.8.0
+
+**Deutsch**
+- Neu: wählbares Layout (Einstellungen › Layout): „Klassisch“ (wie bisher), „Icon-Leiste“ (schmale Leiste mit Symbolen, mehr Platz) und „Gildenbuch“ (Ledereinband, Lesezeichen-Bänder, dunkle Seiten). Frei kombinierbar mit jedem Style, Wechsel sofort ohne /reload
+
+**English**
+- New: selectable layout (Settings › Layout): "Classic" (as before), "Icon bar" (slim bar with icons, more room) and "Guild book" (leather binding, ribbon bookmarks, dark pages). Combine freely with any style, switches instantly without /reload
+
 ## 2.7.0
 
 **Deutsch**
