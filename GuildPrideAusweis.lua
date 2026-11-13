@@ -20,7 +20,6 @@ local ADDON, ns = ...
 local L = ns.L
 local SEP = ns.SEP or "\031"
 local PROTO = 1
-local OFFICER_MAX_RANK = 1      -- 0 = Gildenleitung, 1 = Offiziere
 local NEW_LINK_DAYS = 7         -- so lange gilt eine automatische Verknüpfung als "neu"
 
 ---------------------------------------------------------------------
@@ -246,7 +245,7 @@ end
 
 function ns.CanSetAlts()
     local _, _, my = GetGuildInfo("player")
-    return my ~= nil and my <= OFFICER_MAX_RANK
+    return ns.IsOfficerRank(my)
 end
 
 -- Offizier/Gildenleitung: Twink von Hand zuordnen (main = nil löst die Zuordnung)

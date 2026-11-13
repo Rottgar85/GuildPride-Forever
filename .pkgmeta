@@ -11,6 +11,7 @@ ignore:
   - .githooks
   - .tools
   - docs
+  - tests
   - "*.zip"
 
 manual-changelog:

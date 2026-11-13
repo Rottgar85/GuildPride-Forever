@@ -416,8 +416,11 @@ local function Build()
     end)
     bSummary:SetPoint("TOPRIGHT", 0, -128)
 
+    local bLog = Button(box, L["Protokoll …"], 150, function() DKP.ToggleLog() end)
+    bLog:SetPoint("TOPLEFT", 0, -158)
+
     local hint = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    hint:SetPoint("TOPLEFT", 0, -158); hint:SetWidth(316); hint:SetJustifyH("LEFT")
+    hint:SetPoint("TOPLEFT", 0, -188); hint:SetWidth(316); hint:SetJustifyH("LEFT")
     hint:SetText(L["Loot: Item als Grund eintragen (oder mit Umschalt+Klick verlinken), Preis bzw. Mindestgebot als Punkte. „Loot an Ziel“ für festen Preis, „Bieterrunde“ zum Bieten."])
 
     -- Umschalt+Klick auf ein Item fügt den Link ins Feld "Grund / Item" ein
@@ -490,6 +493,140 @@ function DKP.Toggle()
     win:Show()
     DKP.Refresh()
     ns.Queue("DKPQ", nil, "1")
+end
+
+---------------------------------------------------------------------
+-- Protokoll: jede Buchung mit Wer, Wann, Wie viel, Warum und für wen.
+-- Offiziere können jede einzelne Buchung zurücknehmen (nicht nur die letzte).
+---------------------------------------------------------------------
+function DKP.Void(id)
+    if not CanManage() then ns.Print(L["Nur Offiziere dürfen DKP buchen."]); return end
+    local tx = Book()[id]
+    if not tx or tx.x then return end
+    tx.x = true
+    Changed()
+    SendTx(id, tx)
+    if ns.Discord then ns.Discord.Post(("DKP #%s %s"):format(id, ns.IS_GERMAN and "zurückgenommen" or "undone"), true) end
+    ns.Print((L["Zurückgenommen: %+d %s"]):format(tx.k == "decay" and -tx.d or tx.d, tx.r or ""))
+    if DKP.RefreshLog then DKP.RefreshLog() end
+end
+
+StaticPopupDialogs["GUILDPRIDE_DKP_VOID"] = {
+    text = L["Diese Buchung zurücknehmen?\n%s"],
+    button1 = YES, button2 = NO,
+    OnAccept = function(_, id) DKP.Void(id) end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+
+local logWin
+local LOG_ROWS, LOG_ROW_H = 300, 22
+
+local function LogLine(tx)
+    local pts = tx.k == "decay" and ("-%d %%"):format(tx.d or 0) or ("%+d"):format(tx.d or 0)
+    local color = tx.x and "|cff777777" or ((tx.k == "decay" or (tx.d or 0) < 0) and "|cffff8060" or "|cff60ff60")
+    local who = tx.k == "decay" and L["alle"] or (#(tx.n or {}) == 1 and Short(tx.n[1]) or (L["%d Spieler"]):format(#(tx.n or {})))
+    return ("%s  %s%s|r  %s  |cffcccccc%s|r  |cff999999%s %s|r%s"):format(
+        date("%d.%m. %H:%M", tx.t or 0), color, pts, who, tx.r or "", L["von"], Short(tx.by),
+        tx.x and ("  |cffff4040" .. L["zurückgenommen"] .. "|r") or "")
+end
+
+local function BuildLog()
+    logWin = CreateFrame("Frame", "GuildPrideDKPLogFrame", UIParent, "BasicFrameTemplateWithInset")
+    logWin:SetSize(620, 460)
+    logWin:SetPoint("CENTER", 40, -20)
+    logWin:SetFrameStrata("DIALOG")
+    logWin:SetMovable(true); logWin:EnableMouse(true)
+    logWin:RegisterForDrag("LeftButton")
+    logWin:SetScript("OnDragStart", logWin.StartMoving)
+    logWin:SetScript("OnDragStop", logWin.StopMovingOrSizing)
+    tinsert(UISpecialFrames, "GuildPrideDKPLogFrame")
+    local title = logWin:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    title:SetPoint("TOP", 0, -5)
+    title:SetText(L["DKP-Protokoll"])
+
+    logWin.search = CreateFrame("EditBox", nil, logWin, "InputBoxTemplate")
+    logWin.search:SetSize(200, 20); logWin.search:SetPoint("TOPLEFT", 16, -30)
+    logWin.search:SetAutoFocus(false)
+    logWin.search:SetScript("OnTextChanged", function() DKP.RefreshLog() end)
+    logWin.search:SetScript("OnEscapePressed", logWin.search.ClearFocus)
+    local sl = logWin:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    sl:SetPoint("LEFT", logWin.search, "RIGHT", 8, 0)
+    sl:SetText(L["Suche: Name, Grund oder Offizier"])
+
+    local scroll = CreateFrame("ScrollFrame", nil, logWin, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 12, -56); scroll:SetPoint("BOTTOMRIGHT", -32, 12)
+    logWin.content = CreateFrame("Frame", nil, scroll)
+    logWin.content:SetSize(560, 10)
+    scroll:SetScrollChild(logWin.content)
+    logWin.rows = {}
+end
+
+local function LogRow(i)
+    local row = logWin.rows[i]
+    if row then return row end
+    row = CreateFrame("Frame", nil, logWin.content)
+    row:SetSize(560, LOG_ROW_H)
+    row:SetPoint("TOPLEFT", 0, -(i - 1) * LOG_ROW_H)
+    row:EnableMouse(true)
+    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.text:SetPoint("LEFT", 4, 0); row.text:SetPoint("RIGHT", -96, 0)
+    row.text:SetJustifyH("LEFT"); row.text:SetWordWrap(false)
+    row.void = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    row.void:SetSize(90, 18); row.void:SetPoint("RIGHT")
+    row.void:SetText(L["Zurücknehmen"])
+    row.void:SetScript("OnClick", function()
+        if row.id then StaticPopup_Show("GUILDPRIDE_DKP_VOID", LogLine(Book()[row.id]), nil, row.id) end
+    end)
+    -- Tooltip: alle Spieler der Buchung
+    row:SetScript("OnEnter", function(self)
+        local tx = self.id and Book()[self.id]
+        if not tx or not tx.n or #tx.n == 0 then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(("#%s  %s"):format(self.id, tx.r or ""))
+        for _, n in ipairs(tx.n) do GameTooltip:AddLine(Short(n), 1, 1, 1) end
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", GameTooltip_Hide)
+    logWin.rows[i] = row
+    return row
+end
+
+function DKP.RefreshLog()
+    if not (logWin and logWin:IsShown()) then return end
+    local q = strtrim(logWin.search:GetText() or ""):lower()
+    local list = {}
+    for id, tx in pairs(Book()) do
+        local hay = ((tx.r or "") .. " " .. (tx.by or "") .. " " .. table.concat(tx.n or {}, " ")):lower()
+        if q == "" or hay:find(q, 1, true) then list[#list + 1] = { id = id, tx = tx } end
+    end
+    table.sort(list, function(a, b)
+        if (a.tx.t or 0) ~= (b.tx.t or 0) then return (a.tx.t or 0) > (b.tx.t or 0) end
+        return a.id > b.id
+    end)
+    local n = math.min(#list, LOG_ROWS)
+    local can = CanManage()
+    for i = 1, n do
+        local row, it = LogRow(i), list[i]
+        row.id = it.id
+        row.text:SetText(LogLine(it.tx))
+        row.void:SetShown(can and not it.tx.x)
+        row:Show()
+    end
+    for i = n + 1, #logWin.rows do logWin.rows[i]:Hide() end
+    logWin.content:SetHeight(math.max(10, n * LOG_ROW_H))
+end
+
+function DKP.ToggleLog()
+    if not logWin then BuildLog() end
+    logWin:SetShown(not logWin:IsShown())
+    DKP.RefreshLog()
+end
+
+-- Neue oder geänderte Buchungen: Protokoll mitziehen
+local refresh = DKP.Refresh
+DKP.Refresh = function(...)
+    if refresh then refresh(...) end
+    if DKP.RefreshLog then DKP.RefreshLog() end
 end
 
 StaticPopupDialogs["GUILDPRIDE_DKP_DECAY"] = {

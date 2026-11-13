@@ -222,7 +222,7 @@ function ns.IsGuildMember(name) return name ~= nil and IsMember(Normalize(name))
 ---------------------------------------------------------------------
 -- Vertrauen bei Addon-Nachrichten
 -- Ein manipuliertes Addon kann beliebige Nachrichten schicken. Die Regeln:
--- * Offiziere = Rang 0 (Gildenleitung) und 1 (Offiziere) laut Gildenliste.
+-- * Offiziere = Ränge, die die Gildennachricht ändern dürfen (sonst Rang 0 und 1).
 -- * Weitergeleitete Nachrichten (FWD) sind nie "direkt vom Urheber": wer
 --   weiterleitet, könnte den Absender erfunden haben. ns.Forwarded ist dann
 --   der Name des Weiterleiters.
@@ -255,11 +255,35 @@ function ns.RankIndexOf(name)
     if not name or not IsMember(Normalize(name)) then return nil end
     return guildMembers[Normalize(name)] - 1
 end
+-- Welche Ränge sind "Offiziere"? Wer die Gildennachricht ändern darf (Rangrecht 9,
+-- "Set MOTD") – dasselbe Recht, das GuildPride für DKP und Verwaltung verlangt.
+-- Liefert das Spiel die Rechte nicht (gesperrt oder fehlt), gelten Rang 0 und 1.
+local officerRanks, officerRanksAt = nil, 0
+local function OfficerRanks()
+    if officerRanks and GetTime() - officerRanksAt < 60 then return officerRanks end
+    officerRanksAt = GetTime()
+    local get = C_GuildInfo and C_GuildInfo.GuildControlGetRankFlags
+    local num = GuildControlGetNumRanks and GuildControlGetNumRanks() or 0
+    if not get or num == 0 then officerRanks = nil return nil end
+    local set = { [0] = true }   -- Gildenleitung immer
+    for r = 1, num - 1 do
+        local ok, flags = pcall(get, r + 1)
+        if not ok or type(flags) ~= "table" then officerRanks = nil return nil end
+        if flags[9] == true then set[r] = true end
+    end
+    officerRanks = set
+    return set
+end
+function ns.IsOfficerRank(r)
+    if r == nil then return false end
+    local set = OfficerRanks()
+    if set then return set[r] == true end
+    return r <= ns.OFFICER_MAX_RANK
+end
 -- Offizier oder Gildenleitung? Weitergeleitet zählt nie als Offizier.
 function ns.IsOfficerName(name)
     if ns.Forwarded then return false end
-    local r = ns.RankIndexOf(name)
-    return r ~= nil and r <= ns.OFFICER_MAX_RANK
+    return ns.IsOfficerRank(ns.RankIndexOf(name))
 end
 
 ns.IconString = IconString
@@ -552,7 +576,7 @@ local function Dispatch(message, sender)
         if not origin or not guildMembers[origin] or msg:match("^FWD:") or msg:match("^RLY:") then return end
         -- Offiziere dürfen im Gildenchat schreiben und brauchen keine Weiterleitung:
         -- eine angebliche Weiterleitung von ihnen ist gefälscht
-        if guildMembers[origin] - 1 <= ns.OFFICER_MAX_RANK then return end
+        if ns.IsOfficerRank(guildMembers[origin] - 1) then return end
         -- Nachrichten, die Rechte voraussetzen, nie weitergeleitet annehmen
         local inner = msg:match("^(%u+):")
         if inner and NO_RELAY[inner] then return end
