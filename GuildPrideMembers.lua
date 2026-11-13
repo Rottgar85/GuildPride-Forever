@@ -94,18 +94,40 @@ local function Locked()
     return C_ChatInfo and C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown()
 end
 
+-- Forever lässt Gildenchat nur direkt aus einer Spieleraktion zu (sonst
+-- "Aktion blockiert"). Die Begrüßung wartet deshalb und geht beim nächsten
+-- Tastendruck außerhalb des Kampfes raus – sofern niemand schneller war.
+local pendingWelcome = {}   -- { short, text, t }
+
+local function SendPendingWelcome()
+    if #pendingWelcome == 0 or InCombatLockdown() or Locked() then return end
+    local w = table.remove(pendingWelcome, 1)
+    if not IsInGuild() or GetTime() - w.t > 120 then return end
+    if welcomed[w.short] and GetTime() - welcomed[w.short] < 60 then return end
+    welcomed[w.short] = GetTime()
+    ns.Queue("WEL", nil, w.short)
+    local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+    pcall(SendChat, w.text, "GUILD")
+end
+
+local welcomeKeys = CreateFrame("Frame", nil, UIParent)
+welcomeKeys:SetPropagateKeyboardInput(true)
+welcomeKeys:SetScript("OnKeyDown", function()
+    if #pendingWelcome > 0 then SendPendingWelcome() end
+end)
+welcomeKeys:EnableKeyboard(true)
+
 local function Welcome(name)
     if not GuildPrideDB.welcome then return end
     local short = Ambiguate(name, "none")
     C_Timer.After(2 + math.random() * 6, function()
         if welcomed[short] and GetTime() - welcomed[short] < 60 then return end
-        if Locked() or not IsInGuild() then return end
-        welcomed[short] = GetTime()
-        ns.Queue("WEL", nil, short)
+        if not IsInGuild() then return end
         local text = strtrim(GuildPrideDB.welcomeText or "")
         if text == "" then text = ns.WELCOME_DEFAULT end
-        local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-        SendChat((text:gsub("{name}", Ambiguate(name, "guild"))), "GUILD")
+        for _, w in ipairs(pendingWelcome) do if w.short == short then return end end
+        pendingWelcome[#pendingWelcome + 1] = { short = short, t = GetTime(),
+            text = (text:gsub("{name}", Ambiguate(name, "guild"))) }
     end)
 end
 
