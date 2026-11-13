@@ -240,7 +240,10 @@ end
 -- Einstellungen (ab Ordnung 90) bleiben immer sichtbar und unten
 local function IsFixed(tab) return tab.defaultOrder >= 90 end
 
+-- Reiter nur für Offiziere (wer die Gildennachricht ändern darf), z. B. Verwaltung
+local function OfficerOK(tab) return not tab.officerOnly or (CanEditMOTD and CanEditMOTD()) and true or false end
 local function TabHidden(tab)
+    if not OfficerOK(tab) then return true end
     if IsFixed(tab) then return false end
     local e = MenuEntry(tab)
     return e and e.hide and true or false
@@ -269,7 +272,7 @@ end
 local function MenuTabs()
     local list = {}
     for _, tab in ipairs(tabs) do
-        if not IsFixed(tab) and not IsGuest(tab) then
+        if not IsFixed(tab) and not IsGuest(tab) and OfficerOK(tab) then
             local e = MenuEntry(tab)
             tab.order = e and tonumber(e.order) or tab.defaultOrder
             list[#list + 1] = tab
@@ -379,6 +382,12 @@ local function AddTab(label, order)
     page.tabId = id
     LayoutTabs()
     return page
+end
+
+-- Reiter nur für Offiziere zeigen
+function ns.SetTabOfficerOnly(page)
+    local tab = tabs[page.tabId]
+    if tab then tab.officerOnly = true; LayoutTabs() end
 end
 
 -- Zusatz hinter dem Reiternamen, z. B. ungelesene Nachrichten "(3)"
@@ -1850,80 +1859,14 @@ local lookFrame = CreateFrame("Frame")
 lookFrame:RegisterEvent("PLAYER_LOGIN")
 lookFrame:SetScript("OnEvent", ApplyLook)
 
--- Werbetext: gespeichert und auf Knopfdruck in die Chat-Eingabe gelegt.
--- Abschicken (und Kanal wählen, z. B. "/2 ") macht der Spieler selbst.
+-- Werbetext, Bewerbungen und Notiz-Vorlagen: Reiter "Verwaltung" (GuildPrideAdmin.lua)
 local baseY = lookY - 96
-local recruitLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
-recruitLabel:SetPoint("TOPLEFT", 4, baseY)
-recruitLabel:SetText(L["Werbetext (z. B. „/2 Gilde XY sucht …“)"])
-local recruitBox = CreateFrame("EditBox", nil, settings, "InputBoxTemplate")
-recruitBox:SetSize(470, 22); recruitBox:SetPoint("TOPLEFT", 10, baseY - 18)
-recruitBox:SetAutoFocus(false); recruitBox:SetMaxLetters(250)
-recruitBox:SetScript("OnTextChanged", function(self, user)
-    if user then GuildPrideDB.recruitText = self:GetText() end
-end)
-recruitBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-recruitBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-
-function ns.PostRecruitText()
-    local t = GuildPrideDB.recruitText
-    if not t or strtrim(t) == "" then ns.Print(L["Noch kein Werbetext gespeichert (Einstellungen)."]); return end
-    -- Bewerbungen offen: Hinweis "!bewerben" anhängen (Chatgrenze 255 Zeichen)
-    local suffix = ns.RecruitSuffix and ns.RecruitSuffix() or ""
-    if suffix ~= "" and not t:find("!bewerben", 1, true) and not t:find("!apply", 1, true) then t = t:sub(1, 255 - #suffix) .. suffix end
-    if ChatFrame_OpenChat then ChatFrame_OpenChat(t) end
-    ns.Print(L["Werbetext steht in der Chat-Eingabe – mit Enter abschicken."])
-end
-local recruitBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
-recruitBtn:SetSize(150, 24); recruitBtn:SetPoint("LEFT", recruitBox, "RIGHT", 8, 0)
-recruitBtn:SetText(L["In den Chat legen"])
-recruitBtn:SetScript("OnClick", function() ns.PostRecruitText() end)
-local appsBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
-appsBtn:SetSize(130, 24); appsBtn:SetPoint("LEFT", recruitBtn, "RIGHT", 6, 0)
-appsBtn:SetText(L["Bewerbungen …"])
-appsBtn:SetScript("OnClick", function() if ns.ToggleApps then ns.ToggleApps() end end)
-
--- Notiz-Vorlagen: eine pro Zeile, nutzbar im Mitglieder-Rechtsklick
-local tplLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
-tplLabel:SetPoint("TOPLEFT", 4, baseY - 52)
-tplLabel:SetText(L["Notiz-Vorlagen (eine pro Zeile, {datum} = heute)"])
-local tplScroll = ns.NewScroll(settings)
-tplScroll:SetPoint("TOPLEFT", 10, baseY - 72)
-tplScroll:SetSize(600, 64)
-local tplBg = tplScroll:CreateTexture(nil, "BACKGROUND")
-tplBg:SetPoint("TOPLEFT", -4, 4); tplBg:SetPoint("BOTTOMRIGHT", 4, -4)
-tplBg:SetColorTexture(0, 0, 0, 0.45)
-local tplBox = CreateFrame("EditBox", nil, tplScroll)
-tplBox:SetMultiLine(true); tplBox:SetAutoFocus(false)
-tplBox:SetFontObject(GPFont_TextSmall); tplBox:SetWidth(590)
-tplScroll:SetScrollChild(tplBox)
-tplScroll:EnableMouse(true)
-tplScroll:SetScript("OnMouseDown", function() tplBox:SetFocus() end)
-tplBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-tplBox:SetScript("OnTextChanged", function(self, user)
-    if not user then return end
-    local list = {}
-    for line in (self:GetText() .. "\n"):gmatch("([^\n]*)\n") do
-        line = strtrim(line)
-        if line ~= "" then list[#list + 1] = line:sub(1, 120) end
-    end
-    GuildPrideDB.noteTemplates = list
-end)
-
--- Vorlagen mit eingesetztem Datum (für GuildPrideManage.lua)
-function ns.NoteTemplates()
-    local out = {}
-    for _, t in ipairs(GuildPrideDB.noteTemplates or {}) do
-        out[#out + 1] = (t:gsub("{datum}", date("%d.%m.%Y")):gsub("{date}", date("%Y-%m-%d")))
-    end
-    return out
-end
 
 -- Menü anpassen: Reiter zeigen/ausblenden, umbenennen, verschieben, Startreiter.
 -- Die Zeilen entstehen erst beim ersten Öffnen, weil andere Dateien ihre
 -- Reiter nach dieser Datei anlegen.
 local MENU_ROWS = 10
-local menuY = baseY - 160
+local menuY = baseY
 Section(settings, L["Menü anpassen"], nil, menuY)
 local menuHint = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
 menuHint:SetPoint("TOPLEFT", 4, menuY - 26)
@@ -2057,8 +2000,6 @@ function settingsPage:Refresh()
         local w = GuildPrideDB.welcomeText
         welcomeBox:SetText((w and w ~= "") and w or (ns.WELCOME_DEFAULT or ""))
     end
-    if not recruitBox:HasFocus() then recruitBox:SetText(GuildPrideDB.recruitText or "") end
-    if not tplBox:HasFocus() then tplBox:SetText(table.concat(GuildPrideDB.noteTemplates or {}, "\n")) end
 end
 ns.SettingsPage = settingsPage
 

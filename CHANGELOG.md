@@ -6,12 +6,14 @@
 - Neu: Beitrittsdatum und Verlauf je Mitglied (Beitritte, Austritte, Rangwechsel); Hinweis, wenn jemand schon einmal in der Gilde war
 - Neu: Raid-Aufstellung zu jedem Event: 8 Gruppen, Ziehen oder Anklicken, automatisch einteilen, Eingeteilte einladen, Gruppen im Raid ordnen, an die Gilde senden
 - Neu: Gildenfenster über die Ecke unten rechts vergrößern (60–200 %)
+- Neu: Reiter „Verwaltung“ nur für Offiziere: Bewerbungen, Werbetext, DKP, Notiz-Vorlagen und Gildenkanal an einem Ort. Die Einstellungen enthalten nur noch persönliche Optionen
 - Neu: Bewerbungen – auch ohne Addon: Bewerber flüstern einem Mitglied „!bewerben“ und beantworten vier Fragen, „!info“ zeigt den Steckbrief. Offiziere sehen alles unter `/gp bewerbungen`
 
 **English**
 - New: join date and history per member (joins, leaves, rank changes); notice when someone was a member before
 - New: raid roster for every event: 8 groups, drag or click, auto-assign, invite assigned players, arrange raid groups, send to guild
 - New: resize the guild window with the bottom-right corner (60–200 %)
+- New: "Management" tab for officers only: applications, recruiting text, DKP, note templates and guild channel in one place. Settings now only hold personal options
 - New: applications – even without the addon: applicants whisper "!apply" to any member and answer four questions, "!info" shows the guild profile. Officers see everything under `/gp applications`
 
 ## 2.5.0

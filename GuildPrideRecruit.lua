@@ -205,6 +205,7 @@ function ns.ReceiveApp(payload, sender, local_)
         ns.Print((L["Neue Bewerbung von |cffffd100%s|r – /gp bewerbungen"]):format(Ambiguate(name, "none")))
         if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.READY_CHECK) end
         if ns.RefreshApps then ns.RefreshApps() end
+        if ns.AdminPage and ns.AdminPage.Refresh then ns.AdminPage:Refresh() end
     end
     if local_ then Outbox()[id] = nil else ns.Queue("APK", sender, id) end   -- Bestätigung
 end
