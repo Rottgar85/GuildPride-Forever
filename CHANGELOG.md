@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.6.1
+
+**Deutsch**
+- GuildPride gibt es jetzt auch auf Wago Addons
+- Discord: Absagen im Spiel erscheinen im Discord-Event als „Abwesend“ (mit aktuellem GameBot)
+
+**English**
+- GuildPride is now also available on Wago Addons
+- Discord: declining in game shows as "Absent" in the Discord event (with the current GameBot)
+
 ## 2.6.0
 
 **Deutsch**
