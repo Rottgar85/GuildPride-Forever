@@ -657,6 +657,9 @@ local enUS = {
     ["Gildenbuch"] = "Guild book",
     ["DAS BUCH DER GILDE"] = "THE GUILD CHRONICLE",
     ["Aufbau des Fensters – frei kombinierbar mit dem Style"] = "Window layout – combine freely with the style",
+    ["Rezepte unbekannt"] = "recipes unknown",
+    ["Shift-Klick: in den Chat"] = "Shift-click: link in chat",
+    ["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf die Rezepte. Rezepte erscheinen, wenn der Spieler sein Berufsfenster einmal geöffnet hat."] = "Click a name to show professions, click a profession to show recipes. Recipes appear once the player has opened their profession window.",
 }
 
 -- Fehlende Übersetzung -> deutscher Text als Rückfall
