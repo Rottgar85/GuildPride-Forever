@@ -172,6 +172,7 @@ local function ShowSwitchBar(g, selectedTab)
                 b = CreateFrame("Button", nil, switchBar, "UIPanelButtonTemplate")
                 b:SetSize(130, 24)
                 b:SetPoint("LEFT", (n - 1) * 136, 0)
+                if ns.SkinButton then ns.SkinButton(b) end   -- GuildPride-Design statt Blizzard-Rot
                 switchBar.buttons[n] = b
             end
             local e = GuildPrideDB and GuildPrideDB.menu and GuildPrideDB.menu[t.key]
@@ -179,7 +180,9 @@ local function ShowSwitchBar(g, selectedTab)
             local name = t.key ~= g.host and e and type(e.name) == "string" and e.name ~= "" and e.name or t.defaultLabel
             b:SetText(name .. (t.badge and (" |cffff8c40" .. t.badge .. "|r") or ""))
             b:SetScript("OnClick", function() PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB); SelectTabFwd(t.id) end)
-            if t == selectedTab then b:LockHighlight() else b:UnlockHighlight() end
+            -- aktive Unterseite wie im Chat/Liste-Umschalter hervorheben
+            if b.gpBg then b.gpBg:SetTexture(MEDIA .. (t == selectedTab and "nav_active" or "nav")) end
+            b:SetNormalFontObject(t == selectedTab and GPFont_Normal or GPFont_Button)
             b:Show()
         end
     end

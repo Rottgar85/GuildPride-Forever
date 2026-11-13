@@ -183,6 +183,7 @@ local function Build()
     win.hint = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     win.hint:SetPoint("BOTTOMLEFT", 14, 40); win.hint:SetWidth(150); win.hint:SetJustifyH("LEFT")
     win.hint:SetText(L["Ziehen oder anklicken. Rechtsklick auf einen Platz: entfernen."])
+    if ns.SkinWindow then pcall(ns.SkinWindow, win) end
 end
 
 Refresh = function()

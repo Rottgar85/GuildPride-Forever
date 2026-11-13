@@ -127,6 +127,7 @@ local function Build()
     win.empty = win:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
     win.empty:SetPoint("TOPLEFT", 18, -52)
     win.empty:SetText(L["Noch keine Sicherung vorhanden."])
+    if ns.SkinWindow then pcall(ns.SkinWindow, win) end
 end
 
 function ns.RefreshBackupWindow()
