@@ -1,6 +1,6 @@
 # GuildPride Changelog
 
-## 2.6.0 (in Arbeit)
+## 2.6.0
 
 **Deutsch**
 - Neu: Beitrittsdatum und Verlauf je Mitglied (Beitritte, Austritte, Rangwechsel); Hinweis, wenn jemand schon einmal in der Gilde war
