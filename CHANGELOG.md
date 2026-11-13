@@ -8,6 +8,9 @@
 - Neu: Inaktive zählen je Spieler: Wer mit irgendeinem Charakter da war, gilt nicht als inaktiv
 - Neu: Rechtsklick „Als Main festlegen“ (eigene Charaktere); Gildenleitung und Offiziere können Twinks von Spielern ohne GuildPride von Hand zuordnen
 - Neu: `/gp ausweis` zeigt deinen Code (nie den BattleTag); beides in den Einstellungen abschaltbar
+- Neu: DKP-Protokoll (im DKP-Fenster „Protokoll …“): jede Buchung mit Wer, Wann, Wie viel und Warum, durchsuchbar; Offiziere nehmen jede einzelne Buchung zurück
+- Neu: Abgleich abgesichert: DKP nur von Offizieren (Ränge, die die Gildennachricht ändern dürfen), Events und Umfragen ändern nur Ersteller oder Offiziere, gefälschte Weiterleitungen werden verworfen
+- Neu: Fehlerbericht zum Kopieren (`/gp fehler`), Suchfeld in den Einstellungen, Tour mit den Neuerungen (`/gp neu`), im Gildenchat steht bei Twinks der Main dahinter
 - Neu: Datensicherung per Knopfdruck (Einstellungen › „Datensicherung …“ oder `/gp sicherung`): sichert alle GuildPride-Daten, die letzten 5 Stände, einmal pro Woche automatisch, Wiederherstellen mit einem Klick
 
 **English**
@@ -16,6 +19,9 @@
 - New: inactivity counts per player
 - New: right-click "Set as main" (own characters); guild master and officers can link alts of players without GuildPride by hand
 - New: `/gp id` shows your code (never the BattleTag); both can be turned off in the settings
+- New: DKP log ("Log …" in the DKP window): every entry with who, when, how much and why, searchable; officers can undo any single entry
+- New: hardened sync: DKP only from officers (ranks allowed to set the MOTD), events and polls only changed by their creator or officers, forged relays are rejected
+- New: error report to copy (`/gp errors`), search box in the settings, tour of what's new (`/gp news`), alts show their main in guild chat
 - New: one-click backup (Settings › "Backup …" or `/gp backup`): backs up all GuildPride data, keeps the last 5, automatic once a week, one-click restore
 
 ## 2.4.0
