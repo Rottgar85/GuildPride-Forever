@@ -104,8 +104,16 @@ end
 -- (Chat, Mitglieder …). Wir fügen nur einen eigenen Rahmen hinzu und ändern
 -- nichts an Blizzards Fenster. Umschalt+Ziehen verschiebt ihn senkrecht.
 ---------------------------------------------------------------------
+-- Je nach Client: Communities (Retail/MoP), GuildFrame (Cata/Wrath) oder der
+-- Gilden-Reiter im Freundesfenster (Era, Anniversary, Forever)
+local CANDIDATES = { "CommunitiesFrame", "GuildFrame", "FriendsFrame" }
 local gtab, gHost
-local function Host() return CommunitiesFrame or GuildFrame end
+local function Host()
+    for _, n in ipairs(CANDIDATES) do
+        local f = _G[n]
+        if f and f.GetRight then return f, n end
+    end
+end
 
 -- Unterkante der Blizzard-Seitenreiter rechts am Fenster (falls vorhanden)
 local function SideTabsBottom(host)
@@ -150,7 +158,7 @@ local function BuildTab(host)
     ic:SetAllPoints(); ic:SetTexture(ns.MEDIA .. "logo")
     gtab:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
     gtab:SetScript("OnClick", function(_, button)
-        if not InCombatLockdown() and host:IsShown() and HideUIPanel then pcall(HideUIPanel, host) end
+        if not InCombatLockdown() and gHost and gHost:IsShown() and HideUIPanel then pcall(HideUIPanel, gHost) end
         if not ns.GuildFrame:IsShown() or button == "RightButton" then Click(button) end
     end)
     gtab:SetScript("OnDragStart", function(self) if IsShiftKeyDown() then self:SetScript("OnUpdate", TabDrag) end end)
@@ -162,16 +170,32 @@ local function BuildTab(host)
         GameTooltip:Show()
     end)
     gtab:SetScript("OnLeave", GameTooltip_Hide)
-    -- Blizzards Reiter stehen erst nach dem Anzeigen fest
-    host:HookScript("OnShow", function() C_Timer.After(0, function() ns.UpdateGuildTab() end) end)
+end
+
+-- Blizzards eigene Reiter stehen erst fest, wenn das Fenster offen ist:
+-- jedes in Frage kommende Fenster einmal beim Anzeigen nachmessen lassen
+local hookedHosts = {}
+local function HookHosts()
+    for _, n in ipairs(CANDIDATES) do
+        local f = _G[n]
+        if f and f.HookScript and not hookedHosts[f] then
+            hookedHosts[f] = true
+            f:HookScript("OnShow", function() C_Timer.After(0, function() ns.UpdateGuildTab() end) end)
+        end
+    end
 end
 
 function ns.UpdateGuildTab()
     local host = Host()
     if not host or not GuildPrideDB then return end
+    HookHosts()
     if not gtab then
         if GuildPrideDB.guildTab == false then return end
         BuildTab(host)
+    elseif host ~= gHost then
+        -- Das richtige Fenster ist erst jetzt geladen (z. B. Communities): umhängen
+        gHost = host
+        gtab:SetParent(host)
     end
     gtab:SetShown(GuildPrideDB.guildTab ~= false and IsInGuild())
     PlaceTab()
@@ -188,9 +212,30 @@ f:SetScript("OnEvent", function(_, event, name)
         SetupBroker()
         ns.UpdateGuildTab()
     elseif event == "ADDON_LOADED" then
-        if name == "Blizzard_Communities" or name == "Blizzard_GuildUI" then ns.UpdateGuildTab() end
+        -- Blizzards Gildenfenster wird bei Bedarf nachgeladen
+        if type(name) == "string" and name:find("^Blizzard_") then ns.UpdateGuildTab() end
     elseif broker and not textPending then
         textPending = true
         C_Timer.After(2, function() textPending = false; broker.text = BrokerText() end)
     end
 end)
+
+-- /gp gknopf: zeigt, an welchem Fenster der Knopf hängt (zum Suchen von Fehlern)
+local slash = SlashCmdList.GUILDPRIDE
+SlashCmdList.GUILDPRIDE = function(arg)
+    local cmd = strtrim(arg or ""):lower()
+    if cmd == "gknopf" or cmd == "guildtab" then
+        local host, name = Host()
+        ns.UpdateGuildTab()
+        ns.Print(("Gildenfenster: %s · Knopf: %s · angezeigt: %s · Fenster offen: %s"):format(
+            name or "keins", gtab and "ja" or "nein",
+            (gtab and gtab:IsShown()) and "ja" or "nein",
+            (host and host:IsShown()) and "ja" or "nein"))
+        if gtab then
+            local l, b = gtab:GetLeft(), gtab:GetBottom()
+            ns.Print(("Position: %s / %s"):format(l and math.floor(l) or "?", b and math.floor(b) or "?"))
+        end
+        return
+    end
+    return slash(arg)
+end
