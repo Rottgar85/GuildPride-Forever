@@ -36,7 +36,7 @@ box.gpNoInk = true   -- bleibt im Gildenbuch eine dunkle Einlage (GuildPrideInk.
 box:SetPoint("TOPLEFT", 0, 0)
 box:SetPoint("BOTTOMRIGHT", 0, 40)
 local boxBg = box:CreateTexture(nil, "BACKGROUND")
-boxBg:SetAllPoints(); boxBg:SetColorTexture(0, 0, 0, 0.45)
+boxBg:SetAllPoints(); boxBg:SetColorTexture(0.16, 0.12, 0.09, 0.45)
 local boxEdge = box:CreateTexture(nil, "BORDER")
 boxEdge:SetPoint("TOPLEFT"); boxEdge:SetPoint("BOTTOMLEFT"); boxEdge:SetWidth(3)
 ns.Paint(boxEdge, "ember")

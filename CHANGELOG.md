@@ -8,6 +8,7 @@
 - Neu: Knopf am Blizzard-Gildenfenster, der GuildPride öffnet (Umschalt+Ziehen verschiebt ihn, abschaltbar in den Einstellungen)
 - Neu: Eintrag für Titan Panel, ChocolateBar und andere Infoleisten (zeigt, wie viele Mitglieder online sind)
 - Gildenbuch: Das Fenster eines Mitglieds (mit Öffentlicher Notiz und Offiziersnotiz) und die Detailbereiche bei Events und Umfragen waren dunkel, die Schrift darauf kaum lesbar. Sie sind jetzt heller Zettel mit dunkler Schrift
+- Klassisch und Icon-Leiste: dunkle Flächen (Mitglieds-Fenster, Detailbereiche, Kacheln, Mitgliederliste, Chat) sind nicht mehr fast schwarz, sondern ein warmes Dunkelbraun
 
 **English**
 - New: wishlist (tab "Wishlist" under Plan, /gp wish). Mark items as normal, high or BiS; the item tooltip shows who in the guild wants the item (with their DKP)
@@ -15,6 +16,7 @@
 - New: button on Blizzard's guild window that opens GuildPride (shift-drag moves it, can be switched off in the settings)
 - New: entry for Titan Panel, ChocolateBar and other info bars (shows how many members are online)
 - Guild book: the member window (public note and officer note) and the detail areas of events and polls were dark with barely readable text. They are now light paper with dark text
+- Classic and icon bar: dark areas (member window, detail areas, tiles, member list, chat) are no longer almost black but a warm dark brown
 
 ## 2.8.2
 

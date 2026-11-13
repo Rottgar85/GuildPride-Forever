@@ -135,8 +135,11 @@ end
 ---------------------------------------------------------------------
 local FIELD = { 0.95, 0.91, 0.82, 1 }      -- Eingabefläche im Buch: heller Zettel
 local BOX = { 0.45, 0.31, 0.16, 0.14 }     -- sonstige dunkle Kästen: leichter Braunton
+-- In den dunklen Styles (Klassisch, Icon-Leiste) kein hartes Schwarz, sondern
+-- ein warmes Dunkelbraun: dieselbe Tiefe, aber nicht mehr so düster
+local DARK = { 0.16, 0.12, 0.09 }
 local function PaintBg(tex, spec)
-    local c = Ink.on and (spec.field and FIELD or BOX) or { 0, 0, 0, spec.a }
+    local c = Ink.on and (spec.field and FIELD or BOX) or { DARK[1], DARK[2], DARK[3], spec.a }
     tex:SetColorTexture(c[1], c[2], c[3], c[4])
 end
 -- kind = "field": Hintergrund eines Eingabefelds (wird im Buch hell)

@@ -75,7 +75,7 @@ panel:SetPoint("TOPRIGHT", page, "TOPRIGHT", 0, -30)
 panel:SetFrameLevel(page:GetFrameLevel() + 20)
 panel:EnableMouse(true)
 panel:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
-ns.DarkPanel(panel, 0.07, 0.05, 0.04, 0.97)
+ns.DarkPanel(panel, 0.17, 0.14, 0.11, 0.96)
 ns.Paint(panel, "accent")
 panel:Hide()
 

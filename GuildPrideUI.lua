@@ -827,7 +827,7 @@ local memberList = CreateList(listHolder, 24)
 
 -- Kompakte Liste: Kopf mit Anzahl und "Offline zeigen", darunter die Namen
 local rosterBg = roster:CreateTexture(nil, "BACKGROUND")
-rosterBg:SetAllPoints(); rosterBg:SetColorTexture(0, 0, 0, 0.45)
+rosterBg:SetAllPoints(); rosterBg:SetColorTexture(0.16, 0.12, 0.09, 0.45)
 local rosterCount = roster:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
 rosterCount:SetPoint("TOPLEFT", 10, -10)
 local rosterOffline = CreateFrame("CheckButton", nil, roster, "UICheckButtonTemplate")
