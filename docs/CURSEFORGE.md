@@ -8,6 +8,14 @@
 
 ## 🇬🇧 English
 
+### NEW in 2.6: join dates, raid roster, applications, management tab
+
+- **Join date & history** – every member shows "member since …" plus joins, leaves and rank changes; you are told when someone was in the guild before.
+- **Raid roster** – for every event: 8 groups, drag or click, auto-assign (tanks first, healers spread), invite everyone assigned, arrange raid groups with one click, send the roster to the guild.
+- **Applications – even without the addon** – applicants whisper **!apply** to any member with GuildPride and answer four short questions; **!info** sends your guild profile. Officers get a notice and decide in one window.
+- **Management tab** – only visible to officers: applications, recruiting text, DKP, note templates and guild channel in one place. Settings now only hold personal options.
+- **Resizable window** – drag the bottom-right corner (60–200 %).
+
 ### NEW in 2.5: automatic alts, leaner menu, backup
 
 - **Alts detected automatically** – everyone with GuildPride reports the same player ID for all their characters, no matter which character joins the guild. The member list shows each player once, alts collapse under **+3**, and "playing *Alt* (level)" shows on the main. **Your BattleTag stays private:** it never leaves your PC, the guild only sees a code derived from it (different in every guild). Officers can link alts of players without the addon by hand.
@@ -70,6 +78,7 @@
 | `/gp errors` | error report to copy |
 | `/gp dkp` | DKP window (with *Log …*) |
 | `/gp news` | show what's new |
+| `/gp applications` | applications window (officers) |
 | `/gp badge 30` | preview a milestone pop-up |
 
 ### Feedback
@@ -81,6 +90,14 @@ Bug reports and ideas are very welcome in the comments here. Please include the 
 ## 🇩🇪 Deutsch
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt: Übersicht, Gilde & Chat, Events, Gruppensuche, Umfragen, Meilensteine und Gildeninfo an einem Ort. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
+
+### NEU in 2.6: Beitrittsdatum, Raid-Aufstellung, Bewerbungen, Verwaltung
+
+- **Beitrittsdatum & Verlauf** – bei jedem Mitglied „Mitglied seit …“ und dazu Beitritte, Austritte und Rangwechsel; Hinweis, wenn jemand schon einmal in der Gilde war.
+- **Raid-Aufstellung** – zu jedem Event: 8 Gruppen, Ziehen oder Anklicken, automatisch einteilen (Tanks zuerst, Heiler verteilt), alle Eingeteilten einladen, Gruppen im Raid mit einem Klick ordnen, Aufstellung an die Gilde senden.
+- **Bewerbungen – auch ohne Addon** – Bewerber flüstern einem Mitglied mit GuildPride **!bewerben** und beantworten vier kurze Fragen; **!info** schickt euren Steckbrief. Offiziere bekommen einen Hinweis und entscheiden in einem Fenster.
+- **Reiter „Verwaltung“** – nur für Offiziere sichtbar: Bewerbungen, Werbetext, DKP, Notiz-Vorlagen und Gildenkanal an einem Ort. Die Einstellungen enthalten nur noch persönliche Optionen.
+- **Fenster vergrößern** – unten rechts an der Ecke ziehen (60–200 %).
 
 ### NEU in 2.5: Twinks automatisch, schlankeres Menü, Datensicherung
 
@@ -144,6 +161,7 @@ Bug reports and ideas are very welcome in the comments here. Please include the 
 | `/gp fehler` | Fehlerbericht zum Kopieren |
 | `/gp dkp` | DKP-Fenster (mit *Protokoll …*) |
 | `/gp neu` | Neuerungen anzeigen |
+| `/gp bewerbungen` | Bewerbungsfenster (Offiziere) |
 | `/gp badge 30` | Meilenstein-Popup testen |
 
 ### Feedback
