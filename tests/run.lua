@@ -263,6 +263,15 @@ test("Berufe: Mitglied meldet eigene Berufe und Rezepte", function()
     eq(e.rec["Schneiderei"][1], tonumber("2s", 36))
 end)
 
+test("Berufe: Symbole werden mitgeschickt, Ersatz nach Namen", function()
+    W.Receive("Bert", msg("CRF", W.server + 5, "Bergbau~150~225;Alchemie~100~150", "136248;abc"))
+    local e = ns.GuildTable("crafts")["Bert"]
+    eq(e.profs[1].i, 136248)
+    eq(e.profs[2].i, nil, "ungültiges Symbol verworfen")
+    eq(ns.Crafts.Icon(e.profs[2]):find("Trade_Alchemy", 1, true) ~= nil, true, "Ersatz nach Name")
+    ns.GuildTable("crafts")["Bert"] = nil
+end)
+
 test("Berufe: Berufs-Link wird geteilt, falsche verworfen", function()
     local e = ns.GuildTable("crafts")["Anna"]
     W.Receive("Anna", msg("CRR", e.v, "Schneiderei", "2s,zz,1", "trade:Player-6937-0016743F:197:300"))

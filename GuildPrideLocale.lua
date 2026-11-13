@@ -684,6 +684,7 @@ local enUS = {
     ["Rechtsklick: Rezeptliste hier aufklappen"] = "Right-click: expand the recipe list here",
     ["Das Berufsfenster ist erst verfügbar, wenn der Spieler seins einmal mit dem neuen GuildPride geöffnet hat."] = "The profession window becomes available once the player has opened theirs with the new GuildPride.",
     ["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf öffnet sein Berufsfenster. Dafür muss der Spieler seins einmal geöffnet haben."] = "Click a name to show professions, click a profession to open their profession window. The player must have opened theirs once.",
+    ["Klick: aufklappen · Rechtsklick: anflüstern"] = "Click: expand · Right-click: whisper",
 }
 
 -- Fehlende Übersetzung -> deutscher Text als Rückfall

@@ -2,7 +2,8 @@
 -- Wer in der Gilde welchen Beruf auf welcher Stufe hat und welche Rezepte er kann.
 -- Jeder meldet nur seine eigenen Charaktere; die Gilde merkt sich den letzten Stand
 -- (auch wenn jemand offline ist).
---   CRF: ver, berufe        berufe = "Name~Stufe~Max;Name~Stufe~Max"
+--   CRF: ver, berufe, symbole   berufe = "Name~Stufe~Max;…", symbole = Datei-IDs der
+--                               Berufssymbole in derselben Reihenfolge ("123;456")
 --   CRR: ver, beruf, ids, link   ids = Rezept-IDs (Zauber-IDs) zur Basis 36, mit Komma
 --                                 getrennt; link = Daten des Berufs-Links ("trade:…"), mit
 --                                 dem andere das Berufsfenster des Spielers öffnen können
@@ -53,9 +54,10 @@ local function ReadProfessions()
     for i = 1, 5 do
         local idx = list[i]
         if idx then
-            local ok, name, _, level, max = pcall(GetProfessionInfo, idx)
+            local ok, name, icon, level, max = pcall(GetProfessionInfo, idx)
             if ok and type(name) == "string" and name ~= "" then
-                out[#out + 1] = { n = Clean(name, 30), l = tonumber(level) or 0, m = tonumber(max) or 0 }
+                out[#out + 1] = { n = Clean(name, 30), l = tonumber(level) or 0, m = tonumber(max) or 0,
+                                  i = tonumber(icon) }
             end
         end
     end
@@ -100,9 +102,18 @@ local function ProfString(e)
     return table.concat(parts, ";")
 end
 
+local function IconString(e)
+    local parts = {}
+    for i, p in ipairs(e.profs or {}) do
+        if i > MAX_PROFS then break end
+        parts[#parts + 1] = tostring(p.i or 0)
+    end
+    return table.concat(parts, ";")
+end
+
 local function SendProfs(target)
     local e = DB()[Me()]
-    if e and e.profs and #e.profs > 0 then ns.Queue("CRF", target, e.v, ProfString(e)) end
+    if e and e.profs and #e.profs > 0 then ns.Queue("CRF", target, e.v, ProfString(e), IconString(e)) end
 end
 
 local function SendRecipes(target)
@@ -163,9 +174,11 @@ end
 local askedRecipes = {}   -- [Name] = Version, die wir schon angefragt haben
 ns.On("CRF", function(payload, sender)
     if not Accept(sender) then return end
-    local ver, list = strsplit(SEP, payload)
+    local ver, list, iconList = strsplit(SEP, payload)
     ver = ns.Stamp(ver)
     if ver == 0 then return end
+    local icons = {}
+    for id in tostring(iconList or ""):gmatch("[^;]+") do icons[#icons + 1] = ns.Num(id, 1, 99999999) end
     local e = DB()[sender]
     if e and ver <= (e.v or 0) then return end
     if not e and Count() >= MAX_PEOPLE then return end
@@ -174,7 +187,7 @@ ns.On("CRF", function(payload, sender)
         local n, l, m = item:match("^([^~]+)~(%d+)~(%d+)$")
         n = Clean(n, 30)
         if n ~= "" and #profs < MAX_PROFS then
-            profs[#profs + 1] = { n = n, l = ns.Num(l, 0, 1000) or 0, m = ns.Num(m, 0, 1000) or 0 }
+            profs[#profs + 1] = { n = n, l = ns.Num(l, 0, 1000) or 0, m = ns.Num(m, 0, 1000) or 0, i = icons[#profs + 1] }
         end
     end
     if #profs == 0 then return end
@@ -279,6 +292,28 @@ function Crafts.Search(text)
     return rows
 end
 
+-- Berufssymbol: mitgeschickt, sonst nach dem Namen (deutsch/englisch)
+local ICON_BY_NAME = {
+    schneiderei = "Trade_Tailoring", tailoring = "Trade_Tailoring",
+    alchemie = "Trade_Alchemy", alchemy = "Trade_Alchemy",
+    schmiedekunst = "Trade_BlackSmithing", blacksmithing = "Trade_BlackSmithing",
+    verzauberkunst = "Trade_Engraving", enchanting = "Trade_Engraving",
+    ingenieurskunst = "Trade_Engineering", engineering = "Trade_Engineering",
+    ["kürschnerei"] = "INV_Misc_Pelt_Wolf_01", skinning = "INV_Misc_Pelt_Wolf_01",
+    ["kräuterkunde"] = "Spell_Nature_NatureTouchGrow", herbalism = "Spell_Nature_NatureTouchGrow",
+    bergbau = "Trade_Mining", mining = "Trade_Mining",
+    lederverarbeitung = "INV_Misc_ArmorKit_17", leatherworking = "INV_Misc_ArmorKit_17",
+    ["erste hilfe"] = "Spell_Holy_SealOfSacrifice", ["first aid"] = "Spell_Holy_SealOfSacrifice",
+    kochkunst = "INV_Misc_Food_15", cooking = "INV_Misc_Food_15",
+    angeln = "Trade_Fishing", fishing = "Trade_Fishing",
+}
+function Crafts.Icon(p, size)
+    local tex = p.i or (ICON_BY_NAME[(p.n or ""):lower()] and ("Interface\\Icons\\" .. ICON_BY_NAME[p.n:lower()]))
+        or "Interface\\Icons\\INV_Misc_QuestionMark"
+    size = size or 16
+    return ("|T%s:%d:%d:0:0:64:64:5:59:5:59|t"):format(tex, size, size)
+end
+
 -- Berufsfenster eines Spielers öffnen (über seinen geteilten Berufs-Link)
 function Crafts.OpenProfession(data, prof)
     data = LinkData(data)
@@ -302,7 +337,7 @@ function Crafts.Tree(text)
             local c = { name = name, profs = {}, auto = false }
             for _, p in ipairs(e.profs) do
                 local all = e.rec[p.n] or {}
-                local entry = { n = p.n, l = p.l, m = p.m, count = #all, ids = all, link = e.links and e.links[p.n] }
+                local entry = { n = p.n, l = p.l, m = p.m, i = p.i, count = #all, ids = all, link = e.links and e.links[p.n] }
                 if nameHit or p.n:lower():find(text, 1, true) then
                     c.profs[#c.profs + 1] = entry
                     if not nameHit then c.auto = true end
@@ -413,10 +448,21 @@ function page:Refresh()
         local main = ns.MainOf and ns.MainOf(c.name)
         row.left:SetText(("%s %s%s%s"):format(open and "▾" or "▸", online[c.name] and "|cff40ff40•|r" or "|cff666666•|r",
             Ambiguate(c.name, "guild"), (main and main ~= c.name) and (" |cff999999(" .. Ambiguate(main, "guild") .. ")|r") or ""))
-        local parts = {}
-        for _, p in ipairs(c.profs) do parts[#parts + 1] = ("%s |cffffd18c%d|r"):format(p.n, p.l or 0) end
-        row.mid:SetText(open and "" or table.concat(parts, "  ·  "))
-        row.right:SetText(L["Rechtsklick: anflüstern"])
+        -- nur Name, dahinter die Berufssymbole; Stufen im Tooltip und aufgeklappt
+        local icons = {}
+        for _, p in ipairs(c.profs) do icons[#icons + 1] = Crafts.Icon(p, 18) end
+        row.mid:SetText(table.concat(icons, " "))
+        row.right:SetText("")
+        row:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(Ambiguate(c.name, "guild"))
+            for _, p in ipairs(c.profs) do
+                GameTooltip:AddDoubleLine(Crafts.Icon(p, 14) .. " " .. p.n, ("%d / %d"):format(p.l or 0, p.m or 0), 1, 1, 1, 1, 0.82, 0.55)
+            end
+            GameTooltip:AddLine(L["Klick: aufklappen · Rechtsklick: anflüstern"], 0.7, 0.7, 0.7)
+            GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", GameTooltip_Hide)
         row:SetScript("OnMouseUp", function(_, button)
             if button == "RightButton" then
                 if ChatFrame_SendTell then ChatFrame_SendTell(Ambiguate(c.name, "none")) end
@@ -432,7 +478,7 @@ function page:Refresh()
                 if popen == nil then popen = p.auto or false end
                 n = n + 1
                 local prow = Row(n, PROF_INDENT)
-                prow.left:SetText((p.count > 0 and (popen and "▾ " or "▸ ") or "   ") .. p.n)
+                prow.left:SetText((p.count > 0 and (popen and "▾ " or "▸ ") or "   ") .. Crafts.Icon(p, 16) .. " " .. p.n)
                 prow.mid:SetText(("|cffffd18c%d|r|cff999999 / %d|r"):format(p.l or 0, p.m or 0))
                 -- Klick: Berufsfenster des Spielers (geteilter Link); sonst bzw.
                 -- Rechtsklick: Rezeptliste hier aufklappen
