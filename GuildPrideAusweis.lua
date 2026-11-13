@@ -80,6 +80,7 @@ local function Store()
     s.chars = s.chars or {}     -- [Name] = { a = Code, t = zuerst gesehen }
     s.mains = s.mains or {}     -- [Code] = Name des gewählten Mains
     s.manual = s.manual or {}   -- [Twink] = { main = Name, by = Name, t = Zeit }
+    s.disputed = s.disputed or {}  -- [Name] = { by = Name, t = Zeit }: Ausweis angezweifelt
     return s
 end
 
@@ -122,27 +123,31 @@ local function RosterIndex()
     local idx = {}
     for i = 1, GetNumGuildMembers() do
         local name, _, rankIndex, level = GetGuildRosterInfo(i)
-        if name then idx[ns.Normalize(name)] = { rank = rankIndex or 99, level = level or 0 } end
+        if type(name) == "string" and not (issecretvalue and (issecretvalue(name) or issecretvalue(rankIndex) or issecretvalue(level))) then
+            idx[ns.Normalize(name)] = { rank = rankIndex or 99, level = level or 0 }
+        end
     end
     return idx
 end
 
--- Alle Charaktere mit demselben Ausweis (nur wer in der Gilde ist)
-local function SameCode(code, roster)
-    local list = {}
-    for name, e in pairs(Store().chars) do
-        if e.a == code and roster[name] then list[#list + 1] = name end
+-- Ausweis -> Charaktere (nur wer in der Gilde und nicht umstritten ist)
+local function ByCode(roster)
+    local s, by = Store(), {}
+    for name, e in pairs(s.chars) do
+        if roster[name] and not s.disputed[name] then
+            by[e.a] = by[e.a] or {}
+            table.insert(by[e.a], name)
+        end
     end
-    return list
+    return by
 end
 
 -- Main bestimmen: gewählter Main > höchster Rang > höchstes Level > am längsten im Rang
-local function PickMain(code, roster)
-    local s = Store()
-    local chosen = s.mains[code]
-    if chosen and roster[chosen] and s.chars[chosen] and s.chars[chosen].a == code then return chosen end
+local function PickMain(code, names, roster)
+    local chosen = Store().mains[code]
+    for _, n in ipairs(names) do if n == chosen then return chosen end end
     local best, bestKey
-    for _, name in ipairs(SameCode(code, roster)) do
+    for _, name in ipairs(names) do
         local r = roster[name]
         local since = ns.RankSince and ns.RankSince(name) or GetServerTime()
         local key = { r.rank, -r.level, since, name }
@@ -157,41 +162,44 @@ local function PickMain(code, roster)
     return best
 end
 
--- Main zu einem Charakter: Offiziers-Zuordnung > Ausweis > er selbst
+-- Name -> Main für die ganze Gilde in einem Durchlauf
+-- (Offiziers-Zuordnung > Ausweis > er selbst)
+local function MainMap(roster)
+    local s, map = Store(), {}
+    for code, names in pairs(ByCode(roster)) do
+        local main = PickMain(code, names, roster)
+        for _, n in ipairs(names) do map[n] = main end
+    end
+    for name in pairs(roster) do
+        local m = s.manual[name]
+        if m and roster[m.main] and m.main ~= name then
+            -- Ziel selbst ein Twink? Dann gleich zu dessen Main (keine Ketten/Schleifen)
+            local target = map[m.main] or m.main
+            map[name] = target ~= name and target or name
+        elseif not map[name] then
+            map[name] = name
+        end
+    end
+    return map
+end
+
 function ns.MainOf(name, roster)
     if not name then return nil end
-    roster = roster or RosterIndex()
-    local s = Store()
-    local m = s.manual[name]
-    if m and roster[m.main] then return m.main end
-    local e = s.chars[name]
-    if e then return PickMain(e.a, roster) or name end
-    return name
+    return MainMap(roster or RosterIndex())[name] or name
 end
 
--- Twinks eines Mains (ohne den Main selbst)
-function ns.AltsOf(main, roster)
-    roster = roster or RosterIndex()
-    local alts = {}
-    for name in pairs(roster) do
-        if name ~= main and ns.MainOf(name, roster) == main then alts[#alts + 1] = name end
-    end
-    table.sort(alts)
-    return alts
-end
-
--- Gruppen für die Mitgliederliste: { [Main] = { Twink, … } }, ein Durchlauf
+-- Gruppen für die Mitgliederliste: { [Main] = { Twink, … } }
 function ns.AltGroups()
-    local roster = RosterIndex()
     local groups = {}
-    for name in pairs(roster) do
-        local main = ns.MainOf(name, roster)
+    for name, main in pairs(MainMap(RosterIndex())) do
         groups[main] = groups[main] or {}
         if main ~= name then table.insert(groups[main], name) end
     end
     for _, list in pairs(groups) do table.sort(list) end
     return groups
 end
+
+function ns.IsDisputed(name) return Store().disputed[name] ~= nil end
 
 -- Automatisch verknüpft und noch neu? (Hinweis für Offiziere)
 function ns.IsNewLink(name)
@@ -211,8 +219,11 @@ function ns.IsManualAlt(name) return Store().manual[name] ~= nil end
 ---------------------------------------------------------------------
 -- Senden
 ---------------------------------------------------------------------
+local lastAnnounce = 0
 local function Announce()
     if not Enabled() or not IsInGuild() or not ns.Queue then return end
+    if GetTime() - lastAnnounce < 30 then return end
+    lastAnnounce = GetTime()
     local code = ns.Ausweis()
     if not code then return end
     local me = ns.Me()
@@ -243,6 +254,7 @@ function ns.SetAltManual(twink, main)
     if not ns.CanSetAlts() or not twink or twink == main then return false end
     local s, t = Store(), GetServerTime()
     if main then s.manual[twink] = { main = main, by = ns.Me(), t = t } else s.manual[twink] = nil end
+    s.disputed[twink] = nil
     Changed()
     ns.Queue("ALT", nil, twink, main or "", t)
     return true
@@ -260,43 +272,96 @@ ns.On("AUS", function(payload, sender)
     -- Der Main muss zum selben Ausweis gehören, sonst nur den Code übernehmen
     local s = Store()
     if main ~= "" and main ~= sender and not (s.chars[main] and s.chars[main].a == code) then main = nil end
+    -- Jemand meldet MEINEN Ausweis mit einem anderen Charakter, während ich online
+    -- bin: Ein Battle.net-Konto kann nicht zweimal gleichzeitig spielen, also ist
+    -- das gefälscht (der Code wurde abgeschrieben). Anzweifeln und warnen.
+    if sender ~= ns.Me() and Enabled() and ValidCode(code) and code == ns.Ausweis() then
+        Learn(sender, code, nil)
+        s.disputed[sender] = { by = ns.Me(), t = GetServerTime() }
+        Changed()
+        ns.Queue("AUSX", nil, sender)
+        ns.Print((L["|cffff4040Achtung:|r %s gibt sich mit deinem Ausweis als dein Twink aus. Die Gildenleitung sieht das als „umstritten“."]):format(Ambiguate(sender, "guild")))
+        return
+    end
     Learn(sender, code, main ~= "" and main or nil)
 end)
 
+-- Anzweiflung: nur von einem Charakter, der selbst länger mit diesem Ausweis
+-- bekannt ist als der angezweifelte (ein Fälscher kommt immer später dazu)
+ns.On("AUSX", function(payload, sender)
+    if not ns.IsGuildMember(sender) then return end
+    local target = ns.Clean(payload, 60)
+    local s = Store()
+    local mine, theirs = s.chars[sender], s.chars[target]
+    if not (mine and theirs) or mine.a ~= theirs.a or target == sender then return end
+    if (mine.t or 0) > (theirs.t or 0) then return end
+    if s.manual[target] then return end   -- von Hand bestätigt: Offiziere entscheiden
+    s.disputed[target] = { by = sender, t = GetServerTime() }
+    Changed()
+end)
+
+-- Antworten: nicht alle, sonst bekäme der Fragende Dutzende Listen. Etwa drei
+-- zufällige Mitglieder antworten (Offiziere immer, ihre Liste zählt sofort).
+-- Listen gehen in Stücken: eine Nachricht darf höchstens 20 Teile haben.
+local CHUNK = 3000
 ns.On("AUSQ", function(_, sender)
     if sender == ns.Me() or not ns.IsGuildMember(sender) then return end
+    local users = 0
+    for _ in pairs(ns.AddonUsers or {}) do users = users + 1 end
+    if not ns.CanSetAlts() and math.random() > 3 / math.max(users, 1) then return end
     C_Timer.After(2 + math.random() * 6, function()
-        local parts, roster = {}, RosterIndex()
-        local s = Store()
-        for name, e in pairs(s.chars) do
-            if roster[name] then parts[#parts + 1] = ("%s=%s=%s"):format(name, e.a, s.mains[e.a] or "") end
+        local roster, s = RosterIndex(), Store()
+        local buf, len = {}, 0
+        local function flush()
+            if #buf > 0 then ns.Queue("AUSL", sender, table.concat(buf, ";")) end
+            buf, len = {}, 0
         end
-        if #parts > 0 then ns.Queue("AUSL", sender, table.concat(parts, ";")) end
+        for name, e in pairs(s.chars) do
+            if roster[name] and not s.disputed[name] then
+                local item = ("%s=%s=%s"):format(name, e.a, s.mains[e.a] or "")
+                if len + #item + 1 > CHUNK then flush() end
+                buf[#buf + 1] = item
+                len = len + #item + 1
+            end
+        end
+        flush()
     end)
 end)
 
 -- Liste von anderen: nur übernehmen, was wir noch nicht kennen (eigene Meldungen
 -- der Spieler über AUS haben immer Vorrang)
+-- Fremde Listen sind nur Hörensagen: Ein Eintrag zählt erst, wenn ihn ein
+-- Offizier oder zwei verschiedene Mitglieder gleich melden. So kann ein
+-- einzelnes manipuliertes Addon keine Spieler ohne GuildPride falsch zuordnen.
+local heard, heardCount = {}, 0   -- ["Name=Code"] = { [Absender] = true }
 ns.On("AUSL", function(payload, sender)
     if not ns.IsGuildMember(sender) then return end
+    local trusted = ns.IsOfficerName(sender)
     local s, roster, n = Store(), RosterIndex(), 0
     for entry in payload:gmatch("[^;]+") do
         n = n + 1
         if n > 1000 then break end
         local name, code, main = entry:match("^([^=]+)=([^=]+)=(.*)$")
         name = name and ns.Clean(name, 60)
-        if name and roster[name] and not s.chars[name] and ValidCode(code) then
-            Learn(name, code, nil)
-            main = ns.Clean(main, 60)
-            if main ~= "" and not s.mains[code] then s.mains[code] = main end
+        if name and name ~= sender and roster[name] and not s.chars[name] and ValidCode(code) then
+            local key = name .. "=" .. code
+            local seen = heard[key]
+            if not seen and heardCount < 5000 then seen = {}; heard[key] = seen; heardCount = heardCount + 1 end
+            if seen then seen[sender] = true end
+            local count = 0
+            for _ in pairs(seen or {}) do count = count + 1 end
+            if trusted or count >= 2 then
+                Learn(name, code, nil)
+                main = ns.Clean(main, 60)
+                if main ~= "" and not s.mains[code] then s.mains[code] = main end
+            end
         end
     end
 end)
 
 -- Von Hand: nur von Gildenleitung und Offizieren, neuere Änderung gewinnt
 ns.On("ALT", function(payload, sender)
-    local rank = ns.RankIndexOf and ns.RankIndexOf(sender)
-    if not rank or rank > OFFICER_MAX_RANK then return end
+    if not ns.IsOfficerName(sender) then return end
     local twink, main, t = strsplit(SEP, payload)
     twink, main, t = ns.Clean(twink, 60), ns.Clean(main, 60), ns.Stamp(t)
     if twink == "" or twink == main then return end
@@ -304,6 +369,7 @@ ns.On("ALT", function(payload, sender)
     local cur = s.manual[twink]
     if cur and (cur.t or 0) > t then return end
     if main == "" then s.manual[twink] = nil else s.manual[twink] = { main = main, by = sender, t = t } end
+    s.disputed[twink] = nil
     Changed()
 end)
 
@@ -312,9 +378,14 @@ end)
 ---------------------------------------------------------------------
 local function Cleanup()
     if not IsInGuild() or GetNumGuildMembers() == 0 then return end
+    -- Liefert der Client Offline-Mitglieder nicht mit, sähe jeder Offline-Spieler
+    -- wie ausgetreten aus: dann nichts löschen
+    if GetGuildRosterShowOffline and not GetGuildRosterShowOffline() then return end
     local roster, s = RosterIndex(), Store()
+    if next(roster) == nil then return end
     for name in pairs(s.chars) do if not roster[name] then s.chars[name] = nil end end
     for name in pairs(s.manual) do if not roster[name] then s.manual[name] = nil end end
+    for name in pairs(s.disputed) do if not roster[name] then s.disputed[name] = nil end end
     local used = {}
     for _, e in pairs(s.chars) do used[e.a] = true end
     for code in pairs(s.mains) do if not used[code] then s.mains[code] = nil end end

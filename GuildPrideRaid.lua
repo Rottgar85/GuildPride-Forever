@@ -156,8 +156,18 @@ function Raid.Finish(id)
     if bidWin then bidWin:Hide() end
 end
 
+-- Darf der Absender eine Bieterrunde starten? Offizier, Gruppenleitung oder Assistent
+local function MayAuction(sender)
+    if ns.IsOfficerName and ns.IsOfficerName(sender) then return true end
+    local short = Ambiguate(sender, "none")
+    local ok, lead = pcall(UnitIsGroupLeader, short)
+    if ok and lead then return true end
+    local ok2, assist = pcall(UnitIsGroupAssistant, short)
+    return ok2 and assist and true or false
+end
+
 ns.On("AUC", function(payload, sender)
-    if sender == ns.Me() or not IsInGroup() then return end
+    if sender == ns.Me() or not IsInGroup() or not MayAuction(sender) then return end
     local p = { strsplit(SEP, payload) }
     local ends = ns.Num(p[4], 0, GetServerTime() + 120)
     if not ends or ends < GetServerTime() then return end

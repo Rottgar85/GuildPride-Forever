@@ -219,10 +219,47 @@ local function IsMember(name)
     return guildMembers[name] ~= nil
 end
 function ns.IsGuildMember(name) return name ~= nil and IsMember(Normalize(name)) end
+---------------------------------------------------------------------
+-- Vertrauen bei Addon-Nachrichten
+-- Ein manipuliertes Addon kann beliebige Nachrichten schicken. Die Regeln:
+-- * Offiziere = Rang 0 (Gildenleitung) und 1 (Offiziere) laut Gildenliste.
+-- * Weitergeleitete Nachrichten (FWD) sind nie "direkt vom Urheber": wer
+--   weiterleitet, könnte den Absender erfunden haben. ns.Forwarded ist dann
+--   der Name des Weiterleiters.
+-- * Daten über andere (Abgleich) von Nicht-Offizieren zählen erst, wenn zwei
+--   verschiedene Mitglieder genau dasselbe melden (ns.Confirmed).
+---------------------------------------------------------------------
+ns.OFFICER_MAX_RANK = 1
+ns.Forwarded = nil
+-- Kommt die Nachricht wirklich direkt von "name"?
+function ns.IsDirect(sender, name) return not ns.Forwarded and sender == name end
+
+local confirms, confirmCount = {}, 0
+function ns.Confirmed(key, sender)
+    local who = ns.Forwarded or sender
+    local set = confirms[key]
+    if not set then
+        if confirmCount >= 20000 then wipe(confirms); confirmCount = 0 end
+        set = {}
+        confirms[key] = set
+        confirmCount = confirmCount + 1
+    end
+    set[who] = true
+    local n = 0
+    for _ in pairs(set) do n = n + 1; if n >= 2 then return true end end
+    return false
+end
+
 -- Rangnummer eines Gildenmitglieds (0 = Gildenleitung), nil wenn unbekannt
 function ns.RankIndexOf(name)
     if not name or not IsMember(Normalize(name)) then return nil end
     return guildMembers[Normalize(name)] - 1
+end
+-- Offizier oder Gildenleitung? Weitergeleitet zählt nie als Offizier.
+function ns.IsOfficerName(name)
+    if ns.Forwarded then return false end
+    local r = ns.RankIndexOf(name)
+    return r ~= nil and r <= ns.OFFICER_MAX_RANK
 end
 
 ns.IconString = IconString
@@ -472,6 +509,9 @@ local function IsSecret(v) return issecretvalue and issecretvalue(v) or false en
 -- Addon-Nachrichten verteilen; mehrteilige ("MP") erst zusammensetzen
 ---------------------------------------------------------------------
 local multipart = {}   -- ["Sender:id"] = { n, got, parts, t }
+-- Arten, die Rechte voraussetzen oder Identität beweisen: nie per Weiterleitung
+local NO_RELAY = { DKP = true, DRW = true, ALT = true, AUS = true, AUSX = true, AUSL = true,
+                   AUC = true, AUH = true, AUE = true, CKY = true, DEL = true }
 local recent, recentSweep = {}, 0   -- zuletzt empfangene Nachrichten (gegen Doppelte)
 local forwarded = {}   -- ["Name:id"] = Zeit, gegen doppelte Weiterleitungen
 local MP_MAX = 100
@@ -494,6 +534,8 @@ end
 local function Dispatch(message, sender)
     local kind, value = message:match("^(%u+):(.+)$")
     if not kind then return end
+    -- auch zusammengesetzte (MP) weitergeleitete Nachrichten prüfen
+    if ns.Forwarded and NO_RELAY[kind] then return end
     if ASKS[kind] and TooManyAsks(kind, sender) then return end
     if kind == "RLY" then
         -- Ein Mitglied ohne Gildenchat-Recht bittet uns, an die Gilde weiterzugeben
@@ -508,12 +550,22 @@ local function Dispatch(message, sender)
     if kind == "FWD" then
         local origin, id, msg = value:match("^([^\031]+)\031([^\031]+)\031(.+)$")
         if not origin or not guildMembers[origin] or msg:match("^FWD:") or msg:match("^RLY:") then return end
+        -- Offiziere dürfen im Gildenchat schreiben und brauchen keine Weiterleitung:
+        -- eine angebliche Weiterleitung von ihnen ist gefälscht
+        if guildMembers[origin] - 1 <= ns.OFFICER_MAX_RANK then return end
+        -- Nachrichten, die Rechte voraussetzen, nie weitergeleitet annehmen
+        local inner = msg:match("^(%u+):")
+        if inner and NO_RELAY[inner] then return end
         local now, key = GetTime(), origin .. ":" .. id
         for k, t in pairs(forwarded) do if now - t > 120 then forwarded[k] = nil end end
         if forwarded[key] then return end
         forwarded[key] = now
         ns.AddonUsers[origin] = true
-        Dispatch(msg, origin)
+        local outer = ns.Forwarded
+        ns.Forwarded = Normalize(sender)
+        local ok, err = pcall(Dispatch, msg, origin)
+        ns.Forwarded = outer
+        if not ok then geterrorhandler()(err) end
         return
     end
     if kind == "MP" then
@@ -525,7 +577,8 @@ local function Dispatch(message, sender)
         for k, b in pairs(multipart) do
             if now - b.t > 60 then multipart[k] = nil else count = count + 1 end
         end
-        local key = sender .. ":" .. id
+        -- weitergeleitete Teile getrennt halten: kein Mischen mit echten Teilen
+        local key = (ns.Forwarded and ("F>" .. ns.Forwarded .. ">") or "") .. sender .. ":" .. id
         local buf = multipart[key]
         if not buf then
             -- Gegen Speicherfluten: nur begrenzt viele halbfertige Nachrichten

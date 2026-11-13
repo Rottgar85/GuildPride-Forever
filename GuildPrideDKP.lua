@@ -75,6 +75,11 @@ end
 
 ns.On("DKP", function(payload, sender)
     if sender == ns.Me() or not ns.IsGuildMember(sender) then return end
+    -- Buchen und Zurücknehmen dürfen nur Offiziere. Direkt von einem Offizier:
+    -- sofort übernehmen. Abgleich über andere Mitglieder: erst, wenn zwei
+    -- verschiedene genau dieselbe Buchung melden (ein manipuliertes Addon allein
+    -- kann so keine Punkte erfinden oder Buchungen löschen).
+    if not ns.IsOfficerName(sender) and not ns.Confirmed("DKP\030" .. payload, sender) then return end
     local a = { strsplit(SEP, payload) }
     local d = ns.Num(a[2], -100000, 100000)
     local names = {}
@@ -274,7 +279,7 @@ function DKP.MarkDrop(id, winner, price, fromOther)
     end
 end
 ns.On("DRW", function(payload, sender)
-    if sender == ns.Me() then return end
+    if sender == ns.Me() or not ns.IsOfficerName(sender) then return end
     local id, winner, price = strsplit(SEP, payload)
     DKP.MarkDrop(Clean(id, 30), Clean(winner, 60), ns.Num(price, 0, 100000) or 0, true)
 end)

@@ -739,6 +739,16 @@ local function OnEventMessage(kind, payload, sender)
     -- Versionen nicht in der Zukunft (sonst ließe sich ein Event sperren)
     local id = Clean(a[1], 80)
     if id == "" and (kind == "EVT" or kind == "DEL" or kind == "SGN") then return end
+    -- Wer darf? Ein Event gehört dem, dessen Name vorne in der ID steht.
+    -- Direkt vom Urheber oder von Offizieren: sofort. Abgleich über andere
+    -- Mitglieder: erst, wenn zwei verschiedene genau dasselbe melden.
+    if kind == "EVT" or kind == "DEL" or kind == "SGN" then
+        local author = kind == "SGN" and Clean(a[2], 60) or id:match("^(.+)%-%d+%-%d+$")
+        if not author then return end
+        if kind == "EVT" and Clean(a[5], 60) ~= author then return end   -- Ersteller passt nicht zur ID
+        if not (ns.IsDirect(sender, author) or ns.IsOfficerName(sender))
+           and not ns.Confirmed(kind .. "\030" .. payload, sender) then return end
+    end
     if kind == "EVT" then
         local rep = tonumber(a[8]) or 0
         ApplyEvent(id, ns.Num(a[2], 0, 2 ^ 31) or 0, Clean(a[3], 40), Clean(a[4], 120), Clean(a[5], 60),
