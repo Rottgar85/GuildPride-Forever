@@ -126,7 +126,43 @@ Hint(y - 28, L["Erzeugt einen neuen geheimen Schlüssel für den Hintergrund-Kan
 Btn(L["Neuen Schlüssel erzeugen"], 200, nil, 4, y - 64, function()
     if SlashCmdList.GUILDPRIDE then SlashCmdList.GUILDPRIDE("kanal neu") end
 end)
-c:SetHeight(-(y - 100))
+
+---------------------------------------------------------------------
+-- Schwarzes Brett: Mitteilung, die jeder einmal als Fenster sieht
+---------------------------------------------------------------------
+y = y - 100
+ns.Section(c, L["Schwarzes Brett"], nil, y)
+Hint(y - 28, L["Jedes Mitglied mit GuildPride sieht die Mitteilung einmal als Fenster, danach steht sie in der Übersicht (30 Tage)."])
+local boardScroll = ns.NewScroll(c)
+boardScroll:SetPoint("TOPLEFT", 10, y - 48)
+boardScroll:SetSize(600, 58)
+local boardBg = boardScroll:CreateTexture(nil, "BACKGROUND")
+boardBg:SetPoint("TOPLEFT", -4, 4); boardBg:SetPoint("BOTTOMRIGHT", 4, -4)
+boardBg:SetColorTexture(0, 0, 0, 0.45)
+local boardBox = CreateFrame("EditBox", nil, boardScroll)
+boardBox:SetMultiLine(true); boardBox:SetAutoFocus(false); boardBox:SetMaxLetters(250)
+boardBox:SetFontObject(GPFont_TextSmall); boardBox:SetWidth(590)
+boardScroll:SetScrollChild(boardBox)
+boardScroll:EnableMouse(true)
+boardScroll:SetScript("OnMouseDown", function() boardBox:SetFocus() end)
+boardBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+local boardDiscord = CreateFrame("CheckButton", nil, c, "UICheckButtonTemplate")
+boardDiscord:SetPoint("TOPLEFT", 4, y - 112)
+local bdl = c:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+bdl:SetPoint("LEFT", boardDiscord, "RIGHT", 2, 0); bdl:SetText(L["auch nach Discord"])
+local bPost = Btn(L["Aushängen"], 130, nil, 200, y - 114, function()
+    if ns.Board and ns.Board.Post(boardBox:GetText(), boardDiscord:GetChecked()) then
+        boardBox:SetText(""); boardBox:ClearFocus()
+        ns.Print(L["Mitteilung hängt am Schwarzen Brett."])
+    else
+        ns.Print(L["Bitte erst einen Text schreiben."])
+    end
+end)
+Btn(L["Abnehmen"], 130, bPost, 8, 0, function()
+    if ns.Board then ns.Board.Remove() end
+end)
+local boardNow = Hint(y - 146, "")
+c:SetHeight(-(y - 190))
 
 ---------------------------------------------------------------------
 -- Aktualisieren
@@ -134,6 +170,8 @@ c:SetHeight(-(y - 100))
 function page:Refresh()
     if not recruitBox:HasFocus() then recruitBox:SetText(GuildPrideDB.recruitText or "") end
     if not tplBox:HasFocus() then tplBox:SetText(table.concat(GuildPrideDB.noteTemplates or {}, "\n")) end
+    local cur = ns.Board and ns.Board.Current()
+    boardNow:SetText(cur and (L["Hängt gerade: %s"]):format(cur.text) or L["Am Schwarzen Brett hängt gerade nichts."])
     local open = ns.RecruitOpen and ns.RecruitOpen()
     local n = 0
     for _, app in pairs(ns.GuildTable("apps")) do if app.status == "new" then n = n + 1 end end

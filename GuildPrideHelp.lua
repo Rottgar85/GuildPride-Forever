@@ -268,7 +268,7 @@ local function PublicFields()
         Short(GetZoneText(), 24), size, max, mine.needs or "", MyRoleKey(), class or "", stateVer,
         mine.map or 0, mine.keyLevel or 0, q and q.id or 0, q and q.level or 0, q and Short(q.name, 36) or "",
         d and Short(d.name, 36) or "", d and d.min or 0, d and d.max or 0, d and d.diff or "", d and d.keyLevel or 0,
-        MyFaction()
+        MyFaction(), "1"
 end
 
 -- Classic: in den offenen Kanal darf nur direkt aus einem Klick geschrieben
@@ -323,7 +323,8 @@ local function SendMine(target)
         ns.Queue("LFG", target, mine.kind, mine.note, UnitLevel("player"), GetZoneText() or "",
             size, max, mine.needs or "", MyRoleKey(), class or "", stateVer, mine.map or 0, mine.keyLevel or 0,
             q and q.id or 0, q and q.level or 0, q and Clean(q.name, 50) or "",
-            d and Clean(d.name, 40) or "", d and d.min or 0, d and d.max or 0, d and d.diff or "", d and d.keyLevel or 0)
+            d and Clean(d.name, 40) or "", d and d.min or 0, d and d.max or 0, d and d.diff or "", d and d.keyLevel or 0,
+            "1")   -- Feld 21: nimmt Beitrittsanfragen (LFJ) an
         if not target then lastSent = GetServerTime() end
     elseif not target then
         ns.Queue("LFG", nil, "none", "", 0, "", 0, 0, "", "", "", stateVer)
@@ -384,7 +385,7 @@ end
 ns.On("LFG", function(payload, sender)
     if sender == ns.Me() then return end
     local kind, note, level, zone, size, max, need, role, class, ver, map, keyLevel, questId, questLevel, questName,
-          dName, dMin, dMax, dDiff, dKey = strsplit(SEP, payload)
+          dName, dMin, dMax, dDiff, dKey, lfj = strsplit(SEP, payload)
     -- Älteren Stand als den schon bekannten ignorieren (ältere Versionen senden keine Nummer)
     ver = ns.Stamp(ver)   -- nicht in der Zukunft, sonst wären spätere Einträge gesperrt
     if ver > 0 then
@@ -396,6 +397,7 @@ ns.On("LFG", function(payload, sender)
     else
         local e, alert = BuildEntry(entries[sender], sender, kind, note, level, zone, size, max, need, role, class,
             map, keyLevel, questId, questLevel, questName, dName, dMin, dMax, dDiff, dKey)
+        e.lfj = lfj == "1"
         entries[sender] = e
         if alert and GuildPrideDB.helpAlerts ~= false then Alert(sender, e) end
     end
@@ -430,7 +432,7 @@ end
 
 local function OnPublicEntry(payload, sender)
     local kind, note, level, zone, size, max, need, role, class, ver, map, keyLevel, questId, questLevel, questName,
-          dName, dMin, dMax, dDiff, dKey, faction = strsplit(SEP, payload)
+          dName, dMin, dMax, dDiff, dKey, faction, lfj = strsplit(SEP, payload)
     ver = ns.Stamp(ver)
     if ver > 0 then
         if pubVerBy[sender] and ver < pubVerBy[sender] then return end
@@ -446,7 +448,7 @@ local function OnPublicEntry(payload, sender)
         if not old then MakeRoom() end
         local e, alert = BuildEntry(old, sender, kind, note, level, zone, size, max, need, role, class,
             map, keyLevel, questId, questLevel, questName, dName, dMin, dMax, dDiff, dKey)
-        e.public, e.faction = true, faction
+        e.public, e.faction, e.lfj = true, faction, lfj == "1"
         publicEntries[sender] = e
         -- Gildenmitglieder melden sich schon über die Gilde
         if alert and GuildPrideDB.publicAlerts and not entries[sender] then Alert(sender, e) end
@@ -1035,8 +1037,151 @@ local empty = page:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
 empty:SetPoint("TOP", 0, -160)
 empty:SetText(L["Gerade sucht niemand Hilfe."])
 
+---------------------------------------------------------------------
+-- Beitrittsanfragen: "Beitreten" schickt dem Eingetragenen Rolle, Klasse und
+-- Stufe; er nimmt mit einem Klick an (Einladung) oder lehnt ab.
+--   LFJ: rolle, klasse, stufe        LFJA: 1 = angenommen, 0 = abgelehnt
+-- Gilde: normale Addon-Nachricht. Server: per Flüstern, auch von Fremden – die
+-- nimmt GuildPride.lua nur für diese beiden Arten an (ns.OnPublicJoin).
+---------------------------------------------------------------------
+local Join = { sent = {}, inbox = {}, at = {}, TTL = 600 }
+ns.Join = Join
+local VALID_ROLE = { T = true, H = true, D = true }
+
+local function JoinSend(to, public, kind, ...)
+    if public then ns.QueuePublicTo(to, kind, ...) else ns.Queue(kind, to, ...) end
+end
+
+-- Stand der eigenen Anfrage an name: "wait", "yes", "no" oder nil (abgelaufen)
+function Join.State(name)
+    local r = Join.sent[name]
+    if not r then return nil end
+    if GetServerTime() - r.t > Join.TTL then Join.sent[name] = nil return nil end
+    return r.state
+end
+
+function Join.Request(name, e)
+    local _, class = UnitClass("player")
+    Join.sent[name] = { state = "wait", t = GetServerTime() }
+    JoinSend(name, e.public, "LFJ", MyRoleKey(), class or "", UnitLevel("player"))
+    ns.Print((L["Beitrittsanfrage an |cffffd100%s|r gesendet."]):format(Ambiguate(name, e.public and "none" or "guild")))
+    if ns.RefreshUI then ns.RefreshUI() end
+end
+
+local joinWin
+local function JoinRow(i)
+    local r = joinWin.rows[i]
+    if r then return r end
+    r = CreateFrame("Frame", nil, joinWin)
+    r:SetSize(400, 28); r:SetPoint("TOPLEFT", 12, -30 - (i - 1) * 30)
+    r.text = r:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+    r.text:SetPoint("LEFT", 4, 0); r.text:SetWidth(220); r.text:SetJustifyH("LEFT")
+    r.no = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
+    r.no:SetSize(80, 22); r.no:SetPoint("RIGHT", 0, 0); r.no:SetText(L["Ablehnen"])
+    r.yes = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
+    r.yes:SetSize(90, 22); r.yes:SetPoint("RIGHT", r.no, "LEFT", -4, 0); r.yes:SetText(L["Einladen"])
+    joinWin.rows[i] = r
+    return r
+end
+
+function Join.Refresh()
+    if not joinWin then return end
+    local now, list = GetServerTime(), {}
+    for name, x in pairs(Join.inbox) do
+        if now - x.t > Join.TTL then Join.inbox[name] = nil else list[#list + 1] = name end
+    end
+    table.sort(list, function(a, b) return Join.inbox[a].t < Join.inbox[b].t end)
+    for i, name in ipairs(list) do
+        if i > 8 then break end
+        local x, r = Join.inbox[name], JoinRow(i)
+        local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[x.class]
+        local hex = c and c.colorStr and c.colorStr:sub(3) or "f0c88c"
+        local cls = LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[x.class] or x.class
+        r.text:SetText(("|cff%s%s|r  |cff999999Lvl %d %s|r  %s"):format(hex, Ambiguate(name, x.public and "none" or "guild"),
+            x.level, cls or "", RoleLabel(x.role)))
+        r.yes:SetScript("OnClick", function()
+            local target = Ambiguate(name, "none")
+            local invite = (C_PartyInfo and C_PartyInfo.InviteUnit) or InviteUnit
+            if invite then invite(target) else ns.Print((L["Einladen: /einladen %s"]):format(target)) end
+            JoinSend(name, x.public, "LFJA", "1")
+            Join.inbox[name] = nil
+            Join.Refresh()
+        end)
+        r.no:SetScript("OnClick", function()
+            JoinSend(name, x.public, "LFJA", "0")
+            Join.inbox[name] = nil
+            Join.Refresh()
+        end)
+        r:Show()
+    end
+    local shown = math.min(#list, 8)
+    for i = shown + 1, #joinWin.rows do joinWin.rows[i]:Hide() end
+    joinWin:SetHeight(46 + shown * 30)
+    joinWin:SetShown(shown > 0)
+end
+
+local function ShowJoinWindow()
+    if not joinWin then
+        joinWin = CreateFrame("Frame", "GuildPrideJoinFrame", UIParent, "BasicFrameTemplateWithInset")
+        joinWin:SetSize(424, 80); joinWin:SetPoint("TOP", 0, -180); joinWin:SetFrameStrata("DIALOG")
+        joinWin:SetMovable(true); joinWin:EnableMouse(true); joinWin:RegisterForDrag("LeftButton")
+        joinWin:SetScript("OnDragStart", joinWin.StartMoving); joinWin:SetScript("OnDragStop", joinWin.StopMovingOrSizing)
+        local title = joinWin:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        title:SetPoint("TOP", 0, -5); title:SetText(L["Beitrittsanfragen"])
+        joinWin.rows = {}
+        if ns.SkinWindow then pcall(ns.SkinWindow, joinWin) end
+    end
+    Join.Refresh()
+end
+
+-- Anfrage an meinen Eintrag (public: kam über die serverweite Suche)
+function Join.OnRequest(payload, sender, public)
+    if sender == ns.Me() or not mine then return end
+    if public and not (mine.public and ns.PublicLFGOn()) then return end
+    local now = GetServerTime()
+    if Join.at[sender] and now - Join.at[sender] < 20 then return end
+    Join.at[sender] = now
+    local n = 0
+    for k, x in pairs(Join.inbox) do
+        if now - x.t > Join.TTL then Join.inbox[k] = nil else n = n + 1 end
+    end
+    if n >= 15 and not Join.inbox[sender] then return end
+    local role, class, level = strsplit(SEP, payload)
+    Join.inbox[sender] = { role = VALID_ROLE[role] and role or "D", class = Clean(class, 20):upper(),
+                           level = ns.Num(level, 1, 999) or 0, t = now, public = public }
+    ns.Print((L["|cffffd100%s|r möchte deiner Gruppe beitreten."]):format(Ambiguate(sender, public and "none" or "guild")))
+    if GuildPrideDB.sound then PlaySound(SOUNDKIT.TELL_MESSAGE) end
+    ShowJoinWindow()
+end
+
+-- Antwort auf meine Anfrage (nur, wenn ich ihn gefragt habe)
+function Join.OnAnswer(payload, sender)
+    if Join.State(sender) ~= "wait" then return end
+    local yes = tostring(payload):sub(1, 1) == "1"
+    Join.sent[sender].state = yes and "yes" or "no"
+    ns.Print(((yes and L["|cffffd100%s|r hat deine Anfrage angenommen – die Einladung kommt."])
+        or L["|cffffd100%s|r hat deine Anfrage abgelehnt."]):format(Ambiguate(sender, "none")))
+    if ns.RefreshUI then ns.RefreshUI() end
+end
+
+ns.On("LFJ", function(payload, sender) Join.OnRequest(payload, sender, false) end)
+ns.On("LFJA", function(payload, sender) Join.OnAnswer(payload, sender) end)
+
+-- Flüstern von Spielern außerhalb der Gilde (serverweite Suche)
+function ns.OnPublicJoin(message, sender)
+    if not ns.PublicLFGOn() or Blocked(sender) then return end
+    local kind, value = message:match("^(%u+):(.*)$")
+    if kind == "LFJ" then Join.OnRequest(value, sender, true)
+    elseif kind == "LFJA" then Join.OnAnswer(value, sender) end
+end
+
 -- Beitritt anfragen bzw. einladen; ohne passende Spielfunktion wird angeflüstert
-local function JoinOrInvite(target, mode)
+local function JoinOrInvite(target, mode, item)
+    -- Eintrag mit GuildPride, das Beitrittsanfragen kennt: eigene Anfrage
+    if mode == "join" and item and item.e.lfj and not item.e.self then
+        Join.Request(item.name, item.e)
+        return
+    end
     local P = C_PartyInfo or {}
     if mode == "invite" then
         local invite = P.InviteUnit or InviteUnit
@@ -1268,13 +1413,17 @@ function page:Refresh()
                 r.tell:SetText(L["In Gruppe"]); r.tell:Disable()
             elseif mode == "join" and e.size >= e.max then
                 r.tell:SetText(L["Voll"]); r.tell:Disable()
+            elseif mode == "join" and e.lfj and Join.State(item.name) then
+                local st = Join.State(item.name)
+                r.tell:SetText(st == "wait" and L["Angefragt …"] or st == "yes" and L["Angenommen"] or L["Abgelehnt"])
+                r.tell:Disable()
             elseif e.kind == "key" then
                 r.tell:SetText(L["Anmelden"]); r.tell:Enable()
             else
                 r.tell:SetText(mode == "invite" and L["Einladen"] or L["Beitreten"]); r.tell:Enable()
             end
             r.tell:SetScript("OnClick", function(_, button)
-                if button == "RightButton" or e.browser then SendTell(target) else JoinOrInvite(target, mode) end
+                if button == "RightButton" or e.browser then SendTell(target) else JoinOrInvite(target, mode, item) end
             end)
         end
     end
