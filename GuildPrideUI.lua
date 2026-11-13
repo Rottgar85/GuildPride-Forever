@@ -189,7 +189,7 @@ local function ShowSwitchBar(g, selectedTab)
             b:SetScript("OnClick", function() PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB); SelectTabFwd(t.id) end)
             -- aktive Unterseite wie im Chat/Liste-Umschalter hervorheben
             if b.gpBg then b.gpBg:SetTexture(MEDIA .. (t == selectedTab and "nav_active" or "nav")) end
-            b:SetNormalFontObject(t == selectedTab and GPFont_Normal or GPFont_Button)
+            b:SetNormalFontObject(t == selectedTab and GPFont_ButtonActive or GPFont_Button)
             b:Show()
         end
     end
@@ -485,7 +485,7 @@ local function Tile(i, label)
     local f = CreateFrame("Frame", nil, overview)
     f:SetSize(196, 64)
     f:SetPoint("TOPLEFT", (i - 1) * 210, -4)
-    local b = f:CreateTexture(nil, "BACKGROUND"); b:SetAllPoints(); b:SetColorTexture(0, 0, 0, 0.45)
+    local b = f:CreateTexture(nil, "BACKGROUND"); b:SetAllPoints(); ns.DarkBg(b, 0.45)
     local edge = f:CreateTexture(nil, "BORDER"); edge:SetPoint("TOPLEFT"); edge:SetPoint("BOTTOMLEFT"); edge:SetWidth(3)
     Paint(edge, "ember")
     f.value = f:CreateFontString(nil, "OVERLAY", "GPFont_Huge")
@@ -604,6 +604,7 @@ chatPane:SetPoint("BOTTOMRIGHT", -(ROSTER_W + 10), 0)
 
 -- Kompakte Mitgliederliste neben dem Chat
 local roster = CreateFrame("Frame", nil, community)
+roster.gpNoInk = true   -- dunkle Einlage auch im Gildenbuch
 roster:SetPoint("TOPRIGHT", 0, -32)
 roster:SetPoint("BOTTOMRIGHT", 0, 0)
 roster:SetWidth(ROSTER_W)

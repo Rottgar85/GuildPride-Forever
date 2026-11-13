@@ -23,6 +23,7 @@ W.Load("GuildPrideRecruit.lua")
 W.Load("GuildPrideCrafts.lua")
 W.Load("GuildPrideGoals.lua")
 W.Load("GuildPrideBoard.lua")
+W.Load("GuildPrideInk.lua")
 W.Start()
 local ns = W.ns
 ns.FormatDate = ns.FormatDate or function() return "" end
@@ -354,6 +355,21 @@ test("Beitrittsanfrage: weitergeleitet verworfen", function()
     ns.Handlers["LFJ"] = { function() got = true end }
     W.Receive("Bert", msg("FWD", "Carl", "10", msg("LFJ", "T", "WARRIOR", 60)))
     eq(got, false)
+end)
+
+---------------------------------------------------------------------
+test("Tinte: helle Farben werden dunkel, dunkle bleiben", function()
+    local Ink = ns.Ink
+    Ink.on = true
+    local r, g, b = Ink.Color(0.92, 0.90, 0.88)
+    eq(r < 0.3 and g < 0.3 and b < 0.3, true, "heller Text -> dunkle Tinte")
+    r, g, b = Ink.Color(0.1, 0.2, 0.1)
+    eq(r, 0.1, "dunkel bleibt")
+    local t = Ink.Text("|cffffd100Gold|r und |cff40ff40grün|r")
+    eq(t:find("ffd100", 1, true), nil, "Gold umgerechnet")
+    eq(t:find("|r und ", 1, true) ~= nil, true, "Text bleibt")
+    Ink.on = false
+    eq(Ink.Text("|cffffd100Gold|r"), "|cffffd100Gold|r", "aus = unverändert")
 end)
 ---------------------------------------------------------------------
 test("Datensicherung: sichern und Daten bleiben", function()

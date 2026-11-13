@@ -13,6 +13,7 @@ GuildPrideLocale.lua
 GuildPrideErrors.lua
 GuildPrideTheme.lua
 GuildPride.lua
+GuildPrideInk.lua
 GuildPrideUI.lua
 GuildPrideCopy.lua
 GuildPrideEvents.lua

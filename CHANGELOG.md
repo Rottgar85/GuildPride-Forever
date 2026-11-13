@@ -3,10 +3,10 @@
 ## 2.8.0
 
 **Deutsch**
-- Neu: wählbares Layout (Einstellungen › Layout): „Klassisch“ (wie bisher), „Icon-Leiste“ (schmale Leiste mit Symbolen, mehr Platz) und „Gildenbuch“ (Ledereinband, Lesezeichen-Bänder, dunkle Seiten). Frei kombinierbar mit jedem Style, Wechsel sofort ohne /reload
+- Neu: wählbares Layout (Einstellungen › Layout): „Klassisch“ (wie bisher), „Icon-Leiste“ (schmale Leiste mit Symbolen, mehr Platz) und „Gildenbuch“ (aufgeschlagenes Buch auf hellem Pergament: links Aushang, nächster Feldzug und Chronik, rechts die Seite, Lesezeichen als Menü). Frei kombinierbar mit jedem Style, Wechsel sofort ohne /reload
 
 **English**
-- New: selectable layout (Settings › Layout): "Classic" (as before), "Icon bar" (slim bar with icons, more room) and "Guild book" (leather binding, ribbon bookmarks, dark pages). Combine freely with any style, switches instantly without /reload
+- New: selectable layout (Settings › Layout): "Classic" (as before), "Icon bar" (slim bar with icons, more room) and "Guild book" (open book on light parchment: notice, next campaign and chronicle on the left, the page on the right, bookmarks as menu). Combine freely with any style, switches instantly without /reload
 
 ## 2.7.0
 

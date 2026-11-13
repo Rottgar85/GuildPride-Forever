@@ -95,7 +95,7 @@ function ns.PaintEnabled(tex, on)
 end
 
 local FONTS = {
-    GPFont_Huge = "heading", GPFont_Large = "heading", GPFont_Normal = "heading",
+    GPFont_Huge = "heading", GPFont_Large = "heading", GPFont_Normal = "heading", GPFont_ButtonActive = "heading",
     GPFont_TextBold = "heading", GPFont_Button = "button",
 }
 

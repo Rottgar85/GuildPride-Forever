@@ -32,6 +32,7 @@ if bClub:GetFontString() then bClub:GetFontString():SetWidth(164); bClub:GetFont
 -- Nachrichtenfeld
 ---------------------------------------------------------------------
 local box = CreateFrame("Frame", nil, pane)
+box.gpNoInk = true   -- bleibt im Gildenbuch eine dunkle Einlage (GuildPrideInk.lua)
 box:SetPoint("TOPLEFT", 0, 0)
 box:SetPoint("BOTTOMRIGHT", 0, 40)
 local boxBg = box:CreateTexture(nil, "BACKGROUND")
