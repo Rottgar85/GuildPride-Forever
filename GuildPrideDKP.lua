@@ -243,6 +243,8 @@ local function AddDrop(id, link, t)
     for _, d in ipairs(list) do if d.id == id then return end end
     table.insert(list, 1, { id = id, link = link, t = t })
     while #list > 40 do table.remove(list) end
+    -- Wer in der Gruppe wünscht sich das Item? (GuildPrideWishlist.lua)
+    if ns.WishDrop then pcall(ns.WishDrop, link) end
     if DKP.Refresh then DKP.Refresh() end
 end
 

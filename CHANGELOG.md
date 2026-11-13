@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.9.0
+
+**Deutsch**
+- Neu: Wunschliste (Reiter „Wünsche“ unter Planen, /gp wunsch). Items mit Stufe normal, hoch oder BiS markieren; im Item-Tooltip steht, wer in der Gilde das Item sucht (mit DKP-Stand)
+- Neu: Bei einem epischen Drop im Raid zeigt GuildPride, wer in der Gruppe ihn sich wünscht
+- Neu: Knopf am Blizzard-Gildenfenster, der GuildPride öffnet (Umschalt+Ziehen verschiebt ihn, abschaltbar in den Einstellungen)
+- Neu: Eintrag für Titan Panel, ChocolateBar und andere Infoleisten (zeigt, wie viele Mitglieder online sind)
+
+**English**
+- New: wishlist (tab "Wishlist" under Plan, /gp wish). Mark items as normal, high or BiS; the item tooltip shows who in the guild wants the item (with their DKP)
+- New: on an epic drop in a raid GuildPride shows who in the group wishes for it
+- New: button on Blizzard's guild window that opens GuildPride (shift-drag moves it, can be switched off in the settings)
+- New: entry for Titan Panel, ChocolateBar and other info bars (shows how many members are online)
+
 ## 2.8.2
 
 **Deutsch**

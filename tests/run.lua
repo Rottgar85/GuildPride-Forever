@@ -23,6 +23,7 @@ W.Load("GuildPrideRecruit.lua")
 W.Load("GuildPrideCrafts.lua")
 W.Load("GuildPrideGoals.lua")
 W.Load("GuildPrideBoard.lua")
+W.Load("GuildPrideWishlist.lua")
 W.Load("GuildPrideInk.lua")
 W.Start()
 local ns = W.ns
@@ -432,6 +433,73 @@ test("Beitrittsanfrage: weitergeleitet verworfen", function()
 end)
 
 ---------------------------------------------------------------------
+test("Wunschliste: kodieren und begrenzen", function()
+    local W2 = ns.Wish
+    local s = W2.Encode({ [19019] = 3, [16309] = 1 })
+    eq(s, "cl1:1,eob:3")
+    local d = W2.Decode(s .. ",zz:9,abc,0:2")
+    eq(d[19019], 3); eq(d[16309], 1)
+    eq(W2.Count(d), 2, "kaputte Einträge verworfen")
+    eq(W2.ItemID("|cffa335ee|Hitem:19019::::::::60:::::|h[Donnerzorn]|h|r"), 19019)
+    eq(W2.ItemID("abc"), nil)
+end)
+
+test("Wunschliste: eigene Liste ändern und senden", function()
+    local W2 = ns.Wish
+    W.sent = {}
+    eq(W2.Set(19019, 2), true)
+    eq(W2.Set(19019, 2), false, "unverändert")
+    eq(W2.Mine().i[19019], 2)
+    W2.Cycle(19019); eq(W2.Mine().i[19019], 3)
+    W2.Cycle(19019); eq(W2.Mine().i[19019], 1)
+    W.Advance(5)
+    local found
+    for _, m in ipairs(W.sent) do if m.kind == "WSH" then found = m end end
+    eq(found ~= nil, true, "Liste an die Gilde")
+    eq(found.target, nil)
+    eq(W2.Set(19019, 0), true)
+    eq(W2.Mine().i[19019], nil, "entfernt")
+end)
+
+test("Wunschliste: nur die eigene Liste, direkt und von Mitgliedern", function()
+    local db = ns.GuildTable("wish")
+    W.Receive("Anna", msg("WSH", W.server, "eob:3,cl1:1"))
+    eq(db["Anna"].i[19019], 3)
+    W.Receive("Anna", msg("WSH", W.server - 100, "eob:1"))
+    eq(db["Anna"].i[19019], 3, "älterer Stand überschreibt nicht")
+    W.Receive("Bert", msg("FWD", "Carl", "9", msg("WSH", W.server, "eob:3")))
+    eq(db["Carl"], nil, "weitergeleitet")
+    W.Receive("Fremd", msg("WSH", W.server, "eob:3"), "WHISPER")
+    eq(db["Fremd"], nil, "kein Mitglied")
+    W.Receive("Bert", msg("WSH", W.server, "eob:1"))
+    local who = ns.Wish.Who(19019)
+    eq(#who, 2); eq(who[1].name, "Anna", "BiS zuerst"); eq(who[2].name, "Bert")
+    local items = ns.Wish.GuildItems()
+    eq(items[1].id, 19019); eq(items[1].count, 2); eq(items[1].top, 3)
+end)
+
+test("Wunschliste: Tooltip und Drop-Hinweis", function()
+    local lines = {}
+    local tip = { AddLine = function(_, t) lines[#lines + 1] = t end,
+                  AddDoubleLine = function(_, a, b) lines[#lines + 1] = a .. "|" .. b end }
+    ns.Wish.AddTooltipLines(tip, 19019)
+    eq(#lines, 3, "Kopfzeile + zwei Namen")
+    eq(lines[2]:find("Anna", 1, true) ~= nil, true)
+    lines = {}
+    ns.Wish.AddTooltipLines(tip, 4711)
+    eq(#lines, 0, "niemand sucht es")
+    -- Drop: nur wer in der Gruppe ist
+    local old = ns.DKP.GroupNames
+    ns.DKP.GroupNames = function() return { "Bert" } end
+    local text = ns.Wish.DropText("|Hitem:19019|h")
+    eq(text:find("Bert", 1, true) ~= nil, true)
+    eq(text:find("Anna", 1, true), nil, "nicht in der Gruppe")
+    ns.DKP.GroupNames = function() return {} end
+    eq(ns.Wish.DropText("|Hitem:19019|h"), nil)
+    ns.DKP.GroupNames = old
+    ns.GuildTable("wish")["Anna"], ns.GuildTable("wish")["Bert"] = nil, nil
+end)
+
 test("Tinte: helle Farben werden dunkel, dunkle bleiben", function()
     local Ink = ns.Ink
     Ink.on = true

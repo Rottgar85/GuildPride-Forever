@@ -150,7 +150,7 @@ content:SetPoint("BOTTOMRIGHT", -14, 14)
 -- Der erste Schlüssel ist der Gastgeber.
 local GROUPS = {
     { host = "10", label = L["Übersicht"], keys = { "10", "60", "65" } },
-    { host = "30", label = L["Planen"],    keys = { "30", "40", "50" } },
+    { host = "30", label = L["Planen"],    keys = { "30", "40", "45", "50" } },
 }
 local groupOf = {}
 for _, g in ipairs(GROUPS) do for _, k in ipairs(g.keys) do groupOf[k] = g end end
@@ -1667,11 +1667,15 @@ local options = {
       changed = function() if ns.MenuChanged then ns.MenuChanged() end end },
     { key = "minimap",       label = L["Minimap-Knopf anzeigen"],
       changed = function() if ns.UpdateMinimap then ns.UpdateMinimap() end end },
+    { key = "guildTab",      label = L["Knopf am Blizzard-Gildenfenster anzeigen"],
+      changed = function() if ns.UpdateGuildTab then ns.UpdateGuildTab() end end },
     { header = L["Hinweise"] },
     { key = "popup",         label = L["Meilenstein-Popups anzeigen"] },
     { key = "sound",         label = L["Sounds abspielen"] },
     { key = "memberAlerts",  label = L["Warnung bei Beitritt / Austritt"] },
     { key = "helpAlerts",    label = L["Hinweis, wenn jemand Gruppe / Quest-Hilfe sucht"] },
+    { key = "wishTooltip",   label = L["Im Item-Tooltip zeigen, wer in der Gilde das Item sucht"] },
+    { key = "wishDropHint",  label = L["Bei einem Drop zeigen, wer in der Gruppe ihn sich wünscht"] },
     { header = L["Teilen"] },
     { key = "shareMilestones", label = L["Eigene Erfolge, Bosse, M+ und Reittiere mit der Gilde teilen"] },
     { key = "mapShow",       label = L["Gildenmitglieder mit GuildPride auf der Weltkarte zeigen"],
