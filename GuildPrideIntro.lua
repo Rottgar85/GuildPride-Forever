@@ -2,9 +2,10 @@
 -- Die letzte Seite fragt nach der Discord-Anbindung (GuildPrideDiscord.lua).
 local ADDON, ns = ...
 local L = ns.L
-local INTRO_VERSION = 1
+local INTRO_VERSION = 2   -- 2: Neuerungen in 2.5 (Menü, Twinks, Sicherung)
 
-local PAGES = {
+-- Seiten mit "since" sind Neuerungen: Wer die Tour schon kennt, sieht nur diese
+local ALL_PAGES = {
     { title = L["Willkommen bei GuildPride!"],
       text = L["GuildPride ist der Treffpunkt deiner Gilde: Gildenfenster, Chat, Events, Gruppensuche, DKP und Discord-Anbindung an einem Ort.\n\nDiese kurze Tour zeigt dir in fünf Schritten das Wichtigste. Du kannst sie jederzeit mit /gp intro wieder öffnen."] },
     { title = L["Das Gildenfenster"],
@@ -15,7 +16,14 @@ local PAGES = {
       text = L["Mit /gp dkp öffnest du die Punkte-Rangliste.\n\nOffiziere vergeben dort mit einem Klick Punkte an den ganzen Raid (Anwesenheit, Bosskills), ziehen Loot ab und können eine Buchung zurücknehmen.\n\nFahre mit der Maus über einen Spieler: Im Tooltip steht sein DKP-Stand."] },
     { discord = true, title = L["Discord-Anbindung"],
       text = L["GuildPride kann Events, Anmeldungen, DKP und Meilensteine über Blizzards Discord-Verknüpfung an den Discord deiner Gilde schicken. Dort trägt der Bot GameBot alles ein.\n\nDafür muss die Gildenleitung die Gilde mit einem Discord-Kanal verknüpfen und GameBot einladen (gamerbot.duckdns.org). Beides kannst du später jederzeit in den GuildPride-Einstellungen ändern."] },
+    { since = 2, title = L["Neu: schlankeres Menü"],
+      text = L["Das Gildenfenster hat jetzt 5 statt 8 Reiter:\n\n• Übersicht – oben umschalten zu Meilensteine\n• Planen – Events, Gruppensuche und Umfragen\n• Gilde & Chat, Gildeninfo, Einstellungen wie gewohnt\n\nDie Einstellungen sind in Abschnitte geteilt und haben oben eine Suche. Lieber das alte Menü? Einstellungen > Allgemein > „Kompaktes Menü“ ausschalten."] },
+    { since = 2, title = L["Neu: Twinks automatisch erkennen"],
+      text = L["Alle Charaktere eines Spielers erscheinen jetzt als eine Zeile in der Mitgliederliste, Twinks klappst du mit „+3“ auf.\n\nDein BattleTag bleibt dabei privat: Er verlässt nie deinen PC, die Gilde sieht nur einen daraus berechneten Code.\n\nRechtsklick auf einen eigenen Charakter: „Als Main festlegen“."] },
+    { since = 2, title = L["Neu: Sicherung und Protokoll"],
+      text = L["Einstellungen > „Datensicherung …“ sichert alle GuildPride-Daten mit einem Klick (und einmal pro Woche automatisch).\n\nIm DKP-Fenster zeigt „Protokoll …“ jede Buchung mit Wer, Wann und Warum.\n\nFalls einmal etwas schiefgeht: /gp fehler zeigt einen Fehlerbericht zum Kopieren."] },
 }
+local PAGES = ALL_PAGES
 
 local win, page = nil, 1
 
@@ -97,8 +105,16 @@ local function Build()
     if ns.SkinAll then pcall(ns.SkinAll, win) end
 end
 
-function ns.ShowIntro()
+-- onlyNew: nur die Neuerungen seit der zuletzt gesehenen Tour
+function ns.ShowIntro(onlyNew)
     if not win then Build() end
+    PAGES = {}
+    local seen = GuildPrideDB and GuildPrideDB.introSeen or 0
+    if seen >= INTRO_VERSION then seen = INTRO_VERSION - 1 end   -- /gp neu: letzte Neuerungen
+    for _, p in ipairs(ALL_PAGES) do
+        if not onlyNew or (p.since or 1) > seen then PAGES[#PAGES + 1] = p end
+    end
+    if #PAGES == 0 then PAGES = ALL_PAGES end
     win:Show()
     Show(1)
 end
@@ -108,7 +124,8 @@ f:RegisterEvent("PLAYER_LOGIN")
 f:SetScript("OnEvent", function()
     C_Timer.After(8, function()
         if GuildPrideDB and (GuildPrideDB.introSeen or 0) < INTRO_VERSION and not InCombatLockdown() then
-            ns.ShowIntro()
+            -- Wer die Tour schon kannte: nur die Neuerungen zeigen
+            ns.ShowIntro((GuildPrideDB.introSeen or 0) > 0)
         end
     end)
 end)
@@ -117,5 +134,6 @@ local slash = SlashCmdList.GUILDPRIDE
 SlashCmdList.GUILDPRIDE = function(arg)
     local a = strtrim(arg or ""):lower()
     if a == "intro" or a == "tour" or a == "einführung" then return ns.ShowIntro() end
+    if a == "neu" or a == "news" then return ns.ShowIntro(true) end
     return slash(arg)
 end

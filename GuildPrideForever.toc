@@ -9,6 +9,7 @@
 ## X-Curse-Project-ID: 1788777
 
 GuildPrideLocale.lua
+GuildPrideErrors.lua
 GuildPrideTheme.lua
 GuildPride.lua
 GuildPrideUI.lua

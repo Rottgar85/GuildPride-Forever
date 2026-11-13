@@ -1594,11 +1594,22 @@ end)
 local settingsPage = AddTab(L["Einstellungen"], 90)
 -- Die Seite ist länger als das Fenster: Inhalt in einem Scrollbereich
 local settingsScroll = ns.NewScroll(settingsPage)
-settingsScroll:SetPoint("TOPLEFT", 0, 0)
+settingsScroll:SetPoint("TOPLEFT", 0, -30)
 settingsScroll:SetPoint("BOTTOMRIGHT", -26, 0)
 local settings = CreateFrame("Frame", nil, settingsScroll)
 settings:SetSize(640, 1)
 settingsScroll:SetScrollChild(settings)
+
+-- Suche oben: passende Einstellungen hervorheben, andere abblenden,
+-- zur ersten passenden springen (Inhalt wird unten nach "options" gefüllt)
+local settingsSearch = CreateFrame("EditBox", nil, settingsPage, "InputBoxTemplate")
+settingsSearch:SetSize(220, 22); settingsSearch:SetPoint("TOPLEFT", 10, -2)
+settingsSearch:SetAutoFocus(false)
+local settingsSearchHint = settingsSearch:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
+settingsSearchHint:SetPoint("LEFT", 4, 0)
+settingsSearchHint:SetText(L["Einstellung suchen …"])
+settingsSearch:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
+settingsSearch:SetScript("OnEnterPressed", settingsSearch.ClearFocus)
 
 -- Style-Auswahl ganz oben: ein Knopf je Style, der aktive ist hervorgehoben
 local styleLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
@@ -1680,6 +1691,7 @@ for i, opt in ipairs(options) do
     local h = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
     h:SetPoint("TOPLEFT", 4, OPT_Y - (i - 1) * 30 - 8)
     h:SetText(opt.header)
+    opt.fs, opt.y = h, OPT_Y - (i - 1) * 30
   else
     local cb = CreateFrame("CheckButton", nil, settings, "UICheckButtonTemplate")
     cb:SetPoint("TOPLEFT", 0, OPT_Y - (i - 1) * 30)
@@ -1688,8 +1700,34 @@ for i, opt in ipairs(options) do
     label:SetText(opt.label)
     cb:SetScript("OnClick", function(self) SetOption(opt, self:GetChecked()) end)
     checks[opt.key] = cb
+    opt.fs, opt.cb, opt.y = label, cb, OPT_Y - (i - 1) * 30
   end
 end
+
+settingsSearch:SetScript("OnTextChanged", function(self)
+    local q = strtrim(self:GetText() or ""):lower()
+    settingsSearchHint:SetShown(q == "")
+    local first
+    for _, opt in ipairs(options) do
+        if opt.fs then
+            local text = (opt.label or opt.header or ""):lower()
+            local hit = q ~= "" and text:find(q, 1, true) ~= nil
+            local a = (q == "" or hit) and 1 or 0.3
+            opt.fs:SetAlpha(a)
+            if opt.cb then opt.cb:SetAlpha(a) end
+            if hit and not opt.header then
+                opt.fs:SetTextColor(1, 0.82, 0.2)
+                if not first then first = opt end
+            elseif not opt.header then
+                opt.fs:SetTextColor(0.92, 0.90, 0.88)
+            end
+        end
+    end
+    if first then
+        local range = settingsScroll:GetVerticalScrollRange() or 0
+        settingsScroll:SetVerticalScroll(math.min(range, math.max(0, -first.y - 40)))
+    end
+end)
 
 local blizzBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
 blizzBtn:SetSize(220, 26)

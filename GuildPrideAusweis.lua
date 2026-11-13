@@ -91,6 +91,7 @@ local changedCallbacks = {}
 function ns.OnAusweisChanged(fn) changedCallbacks[#changedCallbacks + 1] = fn end
 local pending
 local function Changed()
+    if ns.ClearMainCache then ns.ClearMainCache() end
     if pending then return end
     pending = true
     C_Timer.After(0.5, function()
@@ -182,9 +183,22 @@ local function MainMap(roster)
     return map
 end
 
+-- Zwischenspeicher: Chat und Listen fragen oft; neu rechnen nach Änderungen
+-- oder spätestens alle 10 s (Gildenliste kann sich geändert haben)
+local mapCache, mapAt = nil, 0
+local function CachedMap()
+    if not mapCache or GetTime() - mapAt > 10 then
+        mapCache, mapAt = MainMap(RosterIndex()), GetTime()
+    end
+    return mapCache
+end
+
+function ns.ClearMainCache() mapCache = nil end
+
 function ns.MainOf(name, roster)
     if not name then return nil end
-    return MainMap(roster or RosterIndex())[name] or name
+    if roster then return MainMap(roster)[name] or name end
+    return CachedMap()[name] or name
 end
 
 -- Gruppen für die Mitgliederliste: { [Main] = { Twink, … } }

@@ -802,6 +802,10 @@ SlashCmdList.GUILDPRIDE = function(arg)
     elseif arg:match("^einladen%f[%A]") or arg:match("^invite%f[%A]") then
         local name = raw:match("^%S+%s+(%S+)")
         if name and ns.InviteToGuild then ns.InviteToGuild(name) else Print(L["Bitte einen Charakternamen eingeben."]) end
+    elseif arg == "fehler" or arg == "errors" then
+        if ns.ErrorReport then ns.ErrorReport() end
+    elseif arg == "fehler löschen" or arg == "errors clear" then
+        if ns.ClearErrors then ns.ClearErrors() end
     elseif arg == "backup" or arg == "sicherung" then
         if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end
     elseif arg == "ausweis" or arg == "id" then
@@ -816,6 +820,6 @@ SlashCmdList.GUILDPRIDE = function(arg)
             InterfaceOptionsFrame_OpenToCategory(ns.SettingsPanel)   -- zweimal: alter Blizzard-Fehler
         end
     else
-        Print(L["Befehle: /gp (Fenster) · sound · popup · blizzard · einladen <Name> · werben · optionen · badge <Level> · version · kanal · server · ausweis · sicherung"])
+        Print(L["Befehle: /gp (Fenster) · sound · popup · blizzard · einladen <Name> · werben · optionen · badge <Level> · version · kanal · server · ausweis · sicherung · fehler"])
     end
 end
