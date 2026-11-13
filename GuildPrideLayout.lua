@@ -1,7 +1,7 @@
 -- GuildPride: wählbare Layouts für das Hauptfenster
---   forge = "Klassisch"   (Standard: breite Seitenleiste, Banner oben)
+--   forge = "Klassisch"   (bis 2.7 Standard: breite Seitenleiste, Banner oben)
 --   rail  = "Icon-Leiste" (schmale Leiste mit Symbolen, mehr Platz, flach)
---   book  = "Gildenbuch"  (aufgeschlagenes Buch auf hellem Pergament: links eine
+--   book  = "Gildenbuch"  (Standard ab 2.8; aufgeschlagenes Buch auf hellem Pergament: links eine
 --                          feste Seite mit Aushang, Feldzug und Chronik, rechts
 --                          die jeweilige Seite, Register-Reiter als Menü rechts)
 -- Das Layout ändert Rahmen, Menü und Hintergrund; die Seiten selbst und die
@@ -26,7 +26,7 @@ for _, l in ipairs(LAYOUTS) do byKey[l.key] = l end
 
 local function Current()
     local key = GuildPrideDB and GuildPrideDB.layout
-    return byKey[key] or LAYOUTS[1]
+    return byKey[key] or byKey.book   -- Standard seit 2.8: das Gildenbuch
 end
 ns.CurrentLayout = function() return Current().key end
 
