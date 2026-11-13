@@ -1,6 +1,6 @@
 # GuildPride Changelog
 
-## 2.5.0 (in Arbeit)
+## 2.5.0
 
 **Deutsch**
 - Neu: Twinks werden automatisch erkannt. Jeder Spieler mit GuildPride meldet für alle seine Charaktere denselben Ausweis-Code. Der BattleTag verlässt dabei nie deinen PC, gesendet wird nur ein daraus berechneter Code, der in jeder Gilde anders ist
