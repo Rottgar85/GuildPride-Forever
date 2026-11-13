@@ -1027,8 +1027,9 @@ bInvite:SetScript("OnClick", function() if Sel() then InviteAttendees(Sel()) end
 
 -- Raid-Aufstellung (GuildPrideRoster.lua): Offiziere teilen ein, alle sehen sie
 local bRoster = CreateFrame("Button", nil, detail, "UIPanelButtonTemplate")
-bRoster:SetSize(120, 22)
-bRoster:SetPoint("RIGHT", bInvite, "LEFT", -6, 0)
+bRoster:SetSize(130, 22)
+-- oben rechts unter "Meine Rolle" (unten ist die Knopfreihe schon voll)
+bRoster:SetPoint("TOPRIGHT", detail, "TOPRIGHT", -8, -34)
 bRoster:SetText(L["Aufstellung …"])
 bRoster:SetScript("OnClick", function() if Sel() and ns.ShowRoster then ns.ShowRoster(Sel()) end end)
 
