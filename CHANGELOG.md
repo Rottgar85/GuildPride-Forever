@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.8.1
+
+**Deutsch**
+- Gildenbuch: Eingabefelder sind jetzt helle Zettel mit dunkler Schrift (vorher kaum lesbar), auch die großen Textfelder für Schwarzes Brett, Notiz-Vorlagen und Gildeninfo
+
+**English**
+- Guild book: input fields are now light paper slips with dark text (previously hard to read), including the large text boxes for notice board, note templates and guild info
+
 ## 2.8.0
 
 **Deutsch**
