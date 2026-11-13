@@ -1,7 +1,8 @@
 -- GuildPride: wählbare Layouts für das Hauptfenster
 --   forge = "Klassisch"  (Standard: breite Seitenleiste, Banner oben)
 --   rail  = "Icon-Leiste" (schmale Leiste mit Symbolen, mehr Platz, flach)
---   book  = "Gildenbuch"  (Ledereinband, Lesezeichen-Bänder, dunkle Seiten)
+--   book  = "Gildenbuch"  (aufgeschlagenes Buch: links Inhaltsverzeichnis = Menü,
+--                          rechts die Seite, Buchrücken, Seitenkanten, Lesebändchen)
 -- Das Layout ändert nur Rahmen, Menü und Hintergrund; die Seiten selbst und
 -- die Farben (Style) bleiben gleich und lassen sich frei kombinieren.
 -- Umschalten geht sofort, ohne /reload.
@@ -17,7 +18,7 @@ local frame = P.frame
 local LAYOUTS = {
     { key = "forge", name = L["Klassisch"],    w = 860, h = 580, side = 180, header = 96 },
     { key = "rail",  name = L["Icon-Leiste"], w = 744, h = 600, side = 64,  header = 70 },
-    { key = "book",  name = L["Gildenbuch"],  w = 900, h = 600, side = 196, header = 88 },
+    { key = "book",  name = L["Gildenbuch"],  w = 980, h = 620, side = 260, header = 74 },
 }
 local byKey = {}
 for _, l in ipairs(LAYOUTS) do byKey[l.key] = l end
@@ -54,16 +55,89 @@ local RIBBON_DEFAULT = { 0.40, 0.27, 0.15 }
 ---------------------------------------------------------------------
 -- Zusätzliche Teile (nur in bestimmten Layouts sichtbar)
 ---------------------------------------------------------------------
--- Gildenbuch: Seite und Schatten am Buchrücken
-local page = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
-page:SetTexture(WHITE)
-local spine = frame:CreateTexture(nil, "BACKGROUND", nil, -4)
-spine:SetTexture(WHITE)
-spine:SetWidth(26)
-local pageEdge = frame:CreateTexture(nil, "BORDER")
-pageEdge:SetTexture(WHITE)
+-- Gildenbuch: alle Teile in einer Tabelle (nur dort sichtbar)
+local COVER, LPAGE, GUTTER = 16, 244, 14
+local book = {}
+local function BookTex(layer, sub)
+    local t = frame:CreateTexture(nil, layer, nil, sub)
+    t:SetTexture(WHITE)
+    book[#book + 1] = t
+    return t
+end
+local leftPage, rightPage = BookTex("BACKGROUND", -7), BookTex("BACKGROUND", -7)
+local gutter = BookTex("BACKGROUND", -6)
+local shadowL, shadowR = BookTex("BACKGROUND", -5), BookTex("BACKGROUND", -5)
+local rims = { BookTex("BORDER"), BookTex("BORDER"), BookTex("BORDER"), BookTex("BORDER") }
+local stacks = {}
+for i = 1, 9 do stacks[i] = BookTex("BACKGROUND", -6) end
+local ribbon, ribbonTip = BookTex("BACKGROUND", -8), BookTex("BACKGROUND", -8)
+local divider = BookTex("ARTWORK")
+local orn1, orn2 = BookTex("ARTWORK"), BookTex("ARTWORK")
 local kicker = frame:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
 kicker:SetText(L["DAS BUCH DER GILDE"])
+book[#book + 1] = kicker
+local ROMAN = { "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII" }
+
+local function BookGeometry(l)
+    local lpX, rpX = COVER, COVER + LPAGE + GUTTER
+    leftPage:ClearAllPoints()
+    leftPage:SetPoint("TOPLEFT", lpX, -COVER); leftPage:SetPoint("BOTTOMLEFT", lpX, COVER); leftPage:SetWidth(LPAGE)
+    rightPage:ClearAllPoints()
+    rightPage:SetPoint("TOPLEFT", rpX, -COVER); rightPage:SetPoint("BOTTOMRIGHT", -COVER, COVER)
+    -- Papier: oben etwas heller, zur Kante hin dunkler
+    Gradient(leftPage, "VERTICAL", { 0.17, 0.13, 0.09, 1 }, { 0.24, 0.19, 0.13, 1 })
+    Gradient(rightPage, "VERTICAL", { 0.17, 0.13, 0.09, 1 }, { 0.24, 0.19, 0.13, 1 })
+    gutter:ClearAllPoints()
+    gutter:SetPoint("TOPLEFT", lpX + LPAGE, -COVER + 4); gutter:SetPoint("BOTTOMLEFT", lpX + LPAGE, COVER - 4)
+    gutter:SetWidth(GUTTER); gutter:SetColorTexture(0.07, 0.05, 0.03, 1)
+    -- Wölbung zum Buchrücken hin
+    shadowL:ClearAllPoints()
+    shadowL:SetPoint("TOPRIGHT", leftPage, "TOPRIGHT"); shadowL:SetPoint("BOTTOMRIGHT", leftPage, "BOTTOMRIGHT"); shadowL:SetWidth(30)
+    Gradient(shadowL, "HORIZONTAL", { 0, 0, 0, 0 }, { 0, 0, 0, 0.6 })
+    shadowR:ClearAllPoints()
+    shadowR:SetPoint("TOPLEFT", rightPage, "TOPLEFT"); shadowR:SetPoint("BOTTOMLEFT", rightPage, "BOTTOMLEFT"); shadowR:SetWidth(34)
+    Gradient(shadowR, "HORIZONTAL", { 0, 0, 0, 0.6 }, { 0, 0, 0, 0 })
+    -- Goldkante im Einband
+    local rp = { { "TOPLEFT", "TOPRIGHT", 0, 1 }, { "BOTTOMLEFT", "BOTTOMRIGHT", 0, 1 },
+                 { "TOPLEFT", "BOTTOMLEFT", 1, 0 }, { "TOPRIGHT", "BOTTOMRIGHT", 1, 0 } }
+    for i, r in ipairs(rims) do
+        local p1, p2, vertical = rp[i][1], rp[i][2], rp[i][3] == 1
+        r:ClearAllPoints()
+        r:SetPoint(p1, p1:find("RIGHT") and -5 or 5, p1:find("BOTTOM") and 5 or -5)
+        r:SetPoint(p2, p2:find("RIGHT") and -5 or 5, p2:find("BOTTOM") and 5 or -5)
+        if vertical then r:SetWidth(1) else r:SetHeight(1) end
+        r:SetColorTexture(0.78, 0.60, 0.32, 0.55)
+    end
+    -- Seitenkanten (Papierstapel) außen links, rechts und unten
+    for i = 1, 3 do
+        local t = stacks[i]
+        t:ClearAllPoints()
+        t:SetPoint("TOPRIGHT", leftPage, "TOPLEFT", -(i * 3 - 2), -(i * 2)); t:SetPoint("BOTTOMRIGHT", leftPage, "BOTTOMLEFT", -(i * 3 - 2), i * 2)
+        t:SetWidth(1); t:SetColorTexture(0.62, 0.53, 0.40, 0.9 - i * 0.2)
+        t = stacks[i + 3]
+        t:ClearAllPoints()
+        t:SetPoint("TOPLEFT", rightPage, "TOPRIGHT", i * 3 - 2, -(i * 2)); t:SetPoint("BOTTOMLEFT", rightPage, "BOTTOMRIGHT", i * 3 - 2, i * 2)
+        t:SetWidth(1); t:SetColorTexture(0.62, 0.53, 0.40, 0.9 - i * 0.2)
+        t = stacks[i + 6]
+        t:ClearAllPoints()
+        t:SetPoint("TOPLEFT", leftPage, "BOTTOMLEFT", i * 2, -(i * 3 - 2)); t:SetPoint("TOPRIGHT", rightPage, "BOTTOMRIGHT", -(i * 2), -(i * 3 - 2))
+        t:SetHeight(1); t:SetColorTexture(0.62, 0.53, 0.40, 0.9 - i * 0.2)
+    end
+    -- Lesebändchen hängt unten aus dem Buch
+    ribbon:ClearAllPoints()
+    ribbon:SetPoint("TOP", frame, "BOTTOMRIGHT", -110, COVER + 6); ribbon:SetSize(14, 52)
+    ribbon:SetColorTexture(0.58, 0.12, 0.10, 1)
+    ribbonTip:ClearAllPoints()
+    ribbonTip:SetPoint("TOP", ribbon, "BOTTOM", 0, 2); ribbonTip:SetSize(10, 10)
+    ribbonTip:SetColorTexture(0.58, 0.12, 0.10, 1)
+    if ribbonTip.SetRotation then ribbonTip:SetRotation(math.pi / 4) end
+    -- Kopf der linken Seite: Wappen, "Das Buch der Gilde", Name, Mitglieder, Zierlinie
+    kicker:ClearAllPoints()
+    kicker:SetPoint("TOP", frame, "TOPLEFT", lpX + LPAGE / 2, -104)
+    divider:ClearAllPoints()
+    divider:SetPoint("TOP", frame, "TOPLEFT", lpX + LPAGE / 2, -176); divider:SetSize(150, 1)
+    divider:SetColorTexture(0.78, 0.60, 0.32, 0.6)
+end
 -- Icon-Leiste: Trennlinie unter der Kopfzeile und neben der Leiste
 local headLine = frame:CreateTexture(nil, "BORDER")
 local railLine = frame:CreateTexture(nil, "BORDER")
@@ -95,6 +169,11 @@ local function TabExtras(tab)
     tab.gpDot = tab:CreateTexture(nil, "OVERLAY")
     tab.gpDot:SetSize(8, 8); tab.gpDot:SetPoint("TOPRIGHT", -5, -5)
     tab.gpDot:SetColorTexture(1, 0.55, 0.25, 1)
+    tab.gpNum = tab:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+    tab.gpNum:SetPoint("RIGHT", -6, 0)
+    tab.gpLine = tab:CreateTexture(nil, "ARTWORK")
+    tab.gpLine:SetPoint("BOTTOMLEFT", 10, 0); tab.gpLine:SetPoint("BOTTOMRIGHT", -4, 0); tab.gpLine:SetHeight(1)
+    tab.gpLine:SetColorTexture(0.78, 0.60, 0.32, 0.22)
     -- Icon-Leiste: Name als Tooltip
     tab:HookScript("OnEnter", function(self)
         if Current().key ~= "rail" then return end
@@ -114,7 +193,7 @@ end
 function ns.LayoutTab(tab, index, bottom)
     TabExtras(tab)
     local l = Current()
-    tab.gpIcon:Hide(); tab.gpMark:Hide(); tab.gpDot:Hide()
+    tab.gpIcon:Hide(); tab.gpMark:Hide(); tab.gpDot:Hide(); tab.gpNum:Hide(); tab.gpLine:Hide()
     tab.text:Show()
     tab.text:ClearAllPoints()
     if l.key == "rail" then
@@ -130,12 +209,16 @@ function ns.LayoutTab(tab, index, bottom)
         end
         return true
     elseif l.key == "book" then
-        tab:SetSize(l.side - 26, 34)
-        tab.text:SetPoint("LEFT", 16, 0)
+        -- Inhaltsverzeichnis: Eintrag, Zierlinie, römische Kapitelzahl
+        tab:SetSize(LPAGE - 40, 30)
+        tab.text:SetPoint("LEFT", 14, 0)
+        tab.gpNum:SetShown(not bottom)
+        tab.gpNum:SetText(ROMAN[index + 1] or "")
+        tab.gpLine:Show()
         if bottom then
-            tab:SetPoint("BOTTOMLEFT", 14, 22 + index * 40)
+            tab:SetPoint("BOTTOMLEFT", COVER + 20, COVER + 26 + index * 34)
         else
-            tab:SetPoint("TOPLEFT", 14, -150 - index * 40)
+            tab:SetPoint("TOPLEFT", COVER + 20, -190 - index * 34)
         end
         return true
     end
@@ -155,13 +238,15 @@ function ns.LayoutMarkTab(tab, on)
         tab.gpIcon:SetAlpha(on and 1 or 0.75)
         tab.gpDot:SetShown(HasBadge(tab))
     elseif key == "book" then
+        -- aktiver Eintrag: Lesezeichen-Band links, Schrift in Stilfarbe
+        local t = ns.Theme()
+        tab.bgTex:SetColorTexture(1, 0.8, 0.5, on and 0.07 or 0)
+        tab.gpMark:SetShown(on)
         local c = RIBBONS[tab.key] or RIBBON_DEFAULT
-        local f = on and 1 or 0.62
-        tab.bgTex:SetColorTexture(c[1] * f, c[2] * f, c[3] * f, 1)
-        tab.text:SetTextColor(0.97, 0.92, 0.82)
-        -- aktives Band ragt ein Stück in die Seite
-        local p, rel, rp, x, y = tab:GetPoint(1)
-        if p then tab:SetPoint(p, rel, rp, on and 24 or 14, y) end
+        tab.gpMark:SetColorTexture(c[1] * 1.4, c[2] * 1.4, c[3] * 1.4, 1)
+        tab.gpMark:SetWidth(on and 5 or 3)
+        if on then tab.text:SetTextColor(t.title[1], t.title[2], t.title[3])
+        else tab.text:SetTextColor(0.90, 0.84, 0.74) end
     end
 end
 
@@ -169,7 +254,7 @@ end
 function ns.CrestSize(faction)
     local key = Current().key
     if key == "rail" then return 38 end
-    if key == "book" then return faction and 92 or 76 end
+    if key == "book" then return faction and 70 or 60 end
     return faction and 104 or 84
 end
 
@@ -179,36 +264,26 @@ end
 function ns.ApplyLayout(key)
     if key and byKey[key] then GuildPrideDB.layout = key end
     local l = Current()
-    local rail, book = l.key == "rail", l.key == "book"
+    local rail, isBook = l.key == "rail", l.key == "book"
     frame:SetSize(l.w, l.h)
 
     -- Hintergrund
     if rail then
         P.bg:SetColorTexture(0.075, 0.065, 0.08, 0.97)
-    elseif book then
-        P.bg:SetColorTexture(0.20, 0.12, 0.07, 1)   -- Ledereinband
+    elseif isBook then
+        P.bg:SetColorTexture(0.26, 0.14, 0.08, 1)   -- Ledereinband
     else
         P.bg:SetTexture(MEDIA .. "bg")
     end
-    page:SetShown(book); spine:SetShown(book); pageEdge:SetShown(book); kicker:SetShown(book)
-    if book then
-        page:ClearAllPoints()
-        page:SetPoint("TOPLEFT", l.side + 4, -12); page:SetPoint("BOTTOMRIGHT", -12, 12)
-        Gradient(page, "VERTICAL", { 0.12, 0.09, 0.06, 1 }, { 0.17, 0.13, 0.09, 1 })
-        spine:ClearAllPoints()
-        spine:SetPoint("TOPLEFT", page, "TOPLEFT"); spine:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT")
-        Gradient(spine, "HORIZONTAL", { 0, 0, 0, 0.55 }, { 0, 0, 0, 0 })
-        pageEdge:ClearAllPoints()
-        pageEdge:SetPoint("TOPLEFT", page, "TOPLEFT", -1, 1); pageEdge:SetPoint("BOTTOMLEFT", page, "BOTTOMLEFT", -1, -1)
-        pageEdge:SetWidth(2); pageEdge:SetColorTexture(0.45, 0.32, 0.18, 1)
-    end
+    for _, t in ipairs(book) do t:SetShown(isBook) end
+    if isBook then BookGeometry(l) end
 
     -- Seitenleiste
     P.side:SetWidth(l.side)
     if rail then
         P.side:SetColorTexture(0.045, 0.04, 0.05, 1)
-    elseif book then
-        P.side:SetColorTexture(0, 0, 0, 0)   -- Leder des Einbands
+    elseif isBook then
+        P.side:SetColorTexture(0, 0, 0, 0)   -- linke Buchseite liegt darunter
     else
         P.side:SetTexture(MEDIA .. "sidebar")
     end
@@ -220,19 +295,25 @@ function ns.ApplyLayout(key)
     end
 
     -- Wappen und Version
-    P.crestGlow:SetShown(not rail)
+    P.crestGlow:SetShown(l.key == "forge")
     P.crestGlow:ClearAllPoints()
-    P.crestGlow:SetPoint("TOP", frame, "TOPLEFT", l.side / 2 + 2, book and -18 or -10)
-    P.crestGlow:SetSize(book and 124 or 140, book and 124 or 140)
+    P.crestGlow:SetPoint("TOP", frame, "TOPLEFT", l.side / 2 + 2, -10)
+    P.crestGlow:SetSize(140, 140)
     P.factionLogo:ClearAllPoints()
     if rail then
         P.factionLogo:SetPoint("TOP", frame, "TOPLEFT", l.side / 2 + 1, -14)
+    elseif isBook then
+        P.factionLogo:SetPoint("TOP", frame, "TOPLEFT", COVER + LPAGE / 2, -28)
     else
         P.factionLogo:SetPoint("CENTER", P.crestGlow, "CENTER", 0, 0)
     end
     P.versionText:SetShown(not rail)
     P.versionText:ClearAllPoints()
-    P.versionText:SetPoint("BOTTOM", frame, "BOTTOMLEFT", l.side / 2 + 2, book and 6 or 14)
+    if isBook then
+        P.versionText:SetPoint("BOTTOM", frame, "BOTTOMLEFT", COVER + LPAGE / 2, COVER + 8)
+    else
+        P.versionText:SetPoint("BOTTOM", frame, "BOTTOMLEFT", l.side / 2 + 2, 14)
+    end
 
     -- Kopfzeile
     P.header:SetShown(l.key == "forge")
@@ -246,28 +327,43 @@ function ns.ApplyLayout(key)
         headLine:SetHeight(1)
     end
     P.title:ClearAllPoints()
-    P.title:SetFontObject(rail and GPFont_Large or GPFont_Huge)
+    P.title:SetFontObject((rail or isBook) and GPFont_Large or GPFont_Huge)
+    P.title:SetWidth(isBook and (LPAGE - 24) or 0)
+    P.title:SetJustifyH(isBook and "CENTER" or "LEFT")
+    P.subtitle:ClearAllPoints()
+    P.subtitle:SetJustifyH(isBook and "CENTER" or "LEFT")
     if rail then
         P.title:SetPoint("TOPLEFT", frame, "TOPLEFT", l.side + 20, -14)
-    elseif book then
-        kicker:ClearAllPoints()
-        kicker:SetPoint("TOPLEFT", frame, "TOPLEFT", l.side + 30, -22)
-        P.title:SetPoint("TOPLEFT", kicker, "BOTTOMLEFT", 0, -4)
+        P.subtitle:SetPoint("TOPLEFT", P.title, "BOTTOMLEFT", 2, -6)
+    elseif isBook then
+        P.title:SetPoint("TOP", kicker, "BOTTOM", 0, -8)
+        P.subtitle:SetPoint("TOP", P.title, "BOTTOM", 0, -6)
     else
         P.title:SetPoint("TOPLEFT", P.header, "TOPLEFT", 24, -20)
+        P.subtitle:SetPoint("TOPLEFT", P.title, "BOTTOMLEFT", 2, -6)
     end
     P.pageTitle:ClearAllPoints()
-    P.pageTitle:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -48, rail and -22 or (book and -30 or -26))
+    if isBook then
+        -- Seitentitel mittig über der rechten Seite, mit Zierstrichen
+        local rpX = COVER + LPAGE + GUTTER
+        P.pageTitle:SetPoint("TOP", frame, "TOPLEFT", rpX + (l.w - COVER - rpX) / 2, -32)
+        orn1:ClearAllPoints(); orn1:SetPoint("RIGHT", P.pageTitle, "LEFT", -12, 0); orn1:SetSize(70, 1)
+        orn2:ClearAllPoints(); orn2:SetPoint("LEFT", P.pageTitle, "RIGHT", 12, 0); orn2:SetSize(70, 1)
+        orn1:SetColorTexture(0.78, 0.60, 0.32, 0.6); orn2:SetColorTexture(0.78, 0.60, 0.32, 0.6)
+    else
+        P.pageTitle:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -48, rail and -22 or -26)
+    end
 
     -- Rahmen
     for _, t in ipairs(frame.gpCorners or {}) do t:SetShown(not rail) end
+    for _, t in ipairs(frame.gpBorder or {}) do t:SetShown(not isBook) end
 
     -- Inhalt
     P.content:ClearAllPoints()
     if rail then
         P.content:SetPoint("TOPLEFT", l.side + 16, -l.header - 10); P.content:SetPoint("BOTTOMRIGHT", -16, 14)
-    elseif book then
-        P.content:SetPoint("TOPLEFT", l.side + 30, -l.header - 6); P.content:SetPoint("BOTTOMRIGHT", -24, 22)
+    elseif isBook then
+        P.content:SetPoint("TOPLEFT", COVER + LPAGE + GUTTER + 22, -l.header); P.content:SetPoint("BOTTOMRIGHT", -COVER - 20, COVER + 14)
     else
         P.content:SetPoint("TOPLEFT", l.side + 14, -l.header - 12); P.content:SetPoint("BOTTOMRIGHT", -14, 14)
     end

@@ -264,6 +264,40 @@ function Crafts.Search(text)
     return rows
 end
 
+-- Baumansicht: Charaktere mit ihren Berufen; bei einer Suche nur Treffer
+-- (Name, Beruf oder Rezept) und automatisch aufgeklappt
+function Crafts.Tree(text)
+    text = strtrim(text or ""):lower()
+    local chars = {}
+    for name, e in pairs(DB()) do
+        if ns.IsGuildMember(name) and e.profs and #e.profs > 0 then
+            local nameHit = text == "" or name:lower():find(text, 1, true)
+            local c = { name = name, profs = {}, auto = false }
+            for _, p in ipairs(e.profs) do
+                local all = e.rec[p.n] or {}
+                local entry = { n = p.n, l = p.l, m = p.m, count = #all, ids = all }
+                if nameHit or p.n:lower():find(text, 1, true) then
+                    c.profs[#c.profs + 1] = entry
+                    if not nameHit then c.auto = true end
+                elseif #text >= 3 then
+                    local hits = {}
+                    for _, id in ipairs(all) do
+                        local rn = RecipeName(id)
+                        if rn and rn:lower():find(text, 1, true) then hits[#hits + 1] = id end
+                    end
+                    if #hits > 0 then
+                        entry.ids, entry.auto = hits, true
+                        c.profs[#c.profs + 1] = entry
+                        c.auto = true
+                    end
+                end
+            end
+            if #c.profs > 0 then chars[#chars + 1] = c end
+        end
+    end
+    return chars
+end
+
 ---------------------------------------------------------------------
 -- Ereignisse: beim Einloggen Berufe melden, beim Öffnen des Berufsfensters Rezepte
 ---------------------------------------------------------------------
@@ -303,7 +337,7 @@ local ph = search:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
 ph:SetPoint("LEFT", 4, 0); ph:SetText(L["Name, Beruf oder Rezept suchen …"])
 local info = page:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
 info:SetPoint("LEFT", search, "RIGHT", 12, 0); info:SetWidth(330); info:SetJustifyH("LEFT")
-info:SetText(L["Öffne dein Berufsfenster einmal, dann stehen auch deine Rezepte hier. Klick auf eine Zeile = anflüstern."])
+info:SetText(L["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf die Rezepte. Rezepte erscheinen, wenn der Spieler sein Berufsfenster einmal geöffnet hat."])
 
 local holder = CreateFrame("Frame", nil, page)
 holder:SetPoint("TOPLEFT", 0, -36); holder:SetPoint("BOTTOMRIGHT")
@@ -311,35 +345,104 @@ local list = ns.CreateList(holder, 24)
 local empty = holder:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
 empty:SetPoint("TOP", 0, -60); empty:SetWidth(560)
 
-local function Online(full)
+local function OnlineMap()
+    local on = {}
     for i = 1, GetNumGuildMembers() do
-        local n, _, _, _, _, _, _, _, on = GetGuildRosterInfo(i)
-        if n and (ns.FullName and ns.FullName(n) or n) == full then return on end
+        local n, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
+        if n and online then on[ns.FullName and ns.FullName(n) or n] = true end
     end
+    return on
+end
+
+-- Aufgeklappt: Charakter -> Berufe, Beruf -> Rezepte
+local openChar, openProf = {}, {}
+local function ProfKey(name, prof) return name .. "\030" .. prof end
+
+local CHAR_INDENT, PROF_INDENT, REC_INDENT = 8, 30, 54
+local function Row(i, indent)
+    local row = list:GetRow(i)
+    row.left:ClearAllPoints(); row.left:SetPoint("LEFT", indent, 0)
+    row:EnableMouse(true)
+    row:SetScript("OnEnter", nil); row:SetScript("OnLeave", nil)
+    return row
 end
 
 function page:Refresh()
     local text = search:GetText() or ""
     ph:SetShown(text == "" and not search:HasFocus())
-    local rows = Crafts.Search(text)
-    for i, r in ipairs(rows) do
-        local row = list:GetRow(i)
-        local main = ns.MainOf and ns.MainOf(r.name)
-        local who = Ambiguate(r.name, "guild") .. ((main and main ~= r.name) and (" |cff999999(" .. Ambiguate(main, "guild") .. ")|r") or "")
-        row.left:SetText((Online(r.name) and "|cff40ff40•|r " or "|cff666666•|r ") .. who)
-        if r.recipe then
-            row.mid:SetText(("|cffffd100%s|r  |cff999999%s|r"):format(r.recipe, r.prof))
-        else
-            row.mid:SetText(("%s  |cffffd18c%d|r|cff999999/%d|r"):format(r.prof, r.level or 0, r.max or 0))
-        end
-        row.right:SetText(r.recipe and "" or (r.recipes > 0 and (L["%d Rezepte"]):format(r.recipes) or ""))
-        row:EnableMouse(true)
-        row:SetScript("OnMouseUp", function()
-            if ChatFrame_SendTell then ChatFrame_SendTell(Ambiguate(r.name, "none")) end
+    local chars = Crafts.Tree(text)
+    local online = OnlineMap()
+    table.sort(chars, function(a, b)
+        local oa, ob = online[a.name] and true or false, online[b.name] and true or false
+        if oa ~= ob then return oa end
+        return a.name < b.name
+    end)
+    local n = 0
+    for _, c in ipairs(chars) do
+        local open = openChar[c.name]
+        if open == nil then open = c.auto end
+        n = n + 1
+        local row = Row(n, CHAR_INDENT)
+        local main = ns.MainOf and ns.MainOf(c.name)
+        row.left:SetText(("%s %s%s%s"):format(open and "▾" or "▸", online[c.name] and "|cff40ff40•|r" or "|cff666666•|r",
+            Ambiguate(c.name, "guild"), (main and main ~= c.name) and (" |cff999999(" .. Ambiguate(main, "guild") .. ")|r") or ""))
+        local parts = {}
+        for _, p in ipairs(c.profs) do parts[#parts + 1] = ("%s |cffffd18c%d|r"):format(p.n, p.l or 0) end
+        row.mid:SetText(open and "" or table.concat(parts, "  ·  "))
+        row.right:SetText(L["Rechtsklick: anflüstern"])
+        row:SetScript("OnMouseUp", function(_, button)
+            if button == "RightButton" then
+                if ChatFrame_SendTell then ChatFrame_SendTell(Ambiguate(c.name, "none")) end
+                return
+            end
+            openChar[c.name] = not open
+            page:Refresh()
         end)
+        if open then
+            for _, p in ipairs(c.profs) do
+                local key = ProfKey(c.name, p.n)
+                local popen = openProf[key]
+                if popen == nil then popen = p.auto or false end
+                n = n + 1
+                local prow = Row(n, PROF_INDENT)
+                prow.left:SetText((p.count > 0 and (popen and "▾ " or "▸ ") or "   ") .. p.n)
+                prow.mid:SetText(("|cffffd18c%d|r|cff999999 / %d|r"):format(p.l or 0, p.m or 0))
+                prow.right:SetText(p.count > 0 and (L["%d Rezepte"]):format(p.count) or L["Rezepte unbekannt"])
+                prow:SetScript("OnMouseUp", function()
+                    if p.count == 0 then return end
+                    openProf[key] = not popen
+                    page:Refresh()
+                end)
+                if popen then
+                    local recs = {}
+                    for _, id in ipairs(p.ids) do recs[#recs + 1] = { id = id, name = RecipeName(id) or ("#" .. id) } end
+                    table.sort(recs, function(a, b) return a.name < b.name end)
+                    for _, r in ipairs(recs) do
+                        n = n + 1
+                        local rrow = Row(n, REC_INDENT)
+                        rrow.left:SetText("|cffe6e0da" .. r.name .. "|r")
+                        rrow.mid:SetText("")
+                        rrow.right:SetText("")
+                        rrow:SetScript("OnEnter", function(self)
+                            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                            if GameTooltip.SetSpellByID then GameTooltip:SetSpellByID(r.id) else GameTooltip:SetText(r.name) end
+                            GameTooltip:AddLine(L["Shift-Klick: in den Chat"], 0.6, 0.6, 0.6)
+                            GameTooltip:Show()
+                        end)
+                        rrow:SetScript("OnLeave", GameTooltip_Hide)
+                        rrow:SetScript("OnMouseUp", function()
+                            if not IsShiftKeyDown() then return end
+                            local link = (C_Spell and C_Spell.GetSpellLink and C_Spell.GetSpellLink(r.id))
+                                or (GetSpellLink and GetSpellLink(r.id))
+                            if link and ChatEdit_InsertLink then ChatEdit_InsertLink(link) end
+                        end)
+                    end
+                end
+            end
+        end
     end
-    list:Finish(#rows)
-    empty:SetShown(#rows == 0)
+    list:Finish(n)
+    empty:SetShown(n == 0)
     empty:SetText(text ~= "" and L["Nichts gefunden."]
         or L["Noch keine Berufe bekannt. Mitglieder mit GuildPride melden ihre Berufe automatisch."])
 end

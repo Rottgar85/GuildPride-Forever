@@ -281,6 +281,13 @@ test("Berufe: Suche nach Beruf und Name", function()
     eq(#ns.Crafts.Search("schnei"), 1)
     eq(#ns.Crafts.Search("anna"), 2)
     eq(#ns.Crafts.Search(""), 2)
+    local tree = ns.Crafts.Tree("")
+    eq(#tree, 1, "ein Charakter")
+    eq(#tree[1].profs, 2)
+    eq(tree[1].auto, false, "ohne Suche zugeklappt")
+    tree = ns.Crafts.Tree("verzau")
+    eq(#tree[1].profs, 1, "nur der passende Beruf")
+    eq(tree[1].auto, true, "Treffer aufgeklappt")
 end)
 
 ---------------------------------------------------------------------
