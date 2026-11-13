@@ -55,6 +55,15 @@ local RIBBON_DEFAULT = { 0.40, 0.27, 0.15 }
 ---------------------------------------------------------------------
 -- Zusätzliche Teile (nur in bestimmten Layouts sichtbar)
 ---------------------------------------------------------------------
+local function Gradient(tex, orient, a, b)
+    -- Farbverlauf (neuere Spielversionen: Farbobjekte), sonst einfarbig
+    if CreateColor and tex.SetGradient then
+        local ok = pcall(tex.SetGradient, tex, orient, CreateColor(a[1], a[2], a[3], a[4]), CreateColor(b[1], b[2], b[3], b[4]))
+        if ok then return end
+    end
+    tex:SetColorTexture(a[1], a[2], a[3], a[4])
+end
+
 -- Gildenbuch: alle Teile in einer Tabelle (nur dort sichtbar)
 local COVER, LPAGE, GUTTER = 16, 244, 14
 local book = {}
@@ -144,14 +153,6 @@ local railLine = frame:CreateTexture(nil, "BORDER")
 ns.Paint(headLine, "accent", 0.35)
 ns.Paint(railLine, "accent", 0.35)
 
-local function Gradient(tex, orient, a, b)
-    -- Farbverlauf (neuere Spielversionen: Farbobjekte), sonst einfarbig
-    if CreateColor and tex.SetGradient then
-        local ok = pcall(tex.SetGradient, tex, orient, CreateColor(a[1], a[2], a[3], a[4]), CreateColor(b[1], b[2], b[3], b[4]))
-        if ok then return end
-    end
-    tex:SetColorTexture(a[1], a[2], a[3], a[4])
-end
 
 ---------------------------------------------------------------------
 -- Reiter je Layout (wird von LayoutTabs/MarkTabs in GuildPrideUI.lua gerufen)
