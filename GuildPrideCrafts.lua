@@ -19,6 +19,8 @@ local Crafts = {}
 ns.Crafts = Crafts
 
 local function DB() return ns.GuildTable("crafts") end   -- [Name] = { v, profs = { {n, l, m} }, rec = { [Beruf] = { id, … } } }
+-- Berufe aus der Gildenliste des Spiels (auch Mitglieder ohne GuildPride)
+local function GuildProfs() return ns.GuildTable("craftsRoster") end   -- [Name] = { {n, l, i, id} }
 local function Me() return ns.Me() end
 local function Now() return GetServerTime() end
 -- Trennzeichen der Nachricht (~ ; ,) und Codes aus fremden Texten entfernen
@@ -326,18 +328,25 @@ function Crafts.OpenProfession(data, prof)
     return false
 end
 
+local function RosterSkill(name, prof)
+    for _, p in ipairs(GuildProfs()[name] or {}) do
+        if p.n == prof then return p.id end
+    end
+end
+
 -- Baumansicht: Charaktere mit ihren Berufen; bei einer Suche nur Treffer
 -- (Name, Beruf oder Rezept) und automatisch aufgeklappt
 function Crafts.Tree(text)
     text = strtrim(text or ""):lower()
-    local chars = {}
+    local chars, seen = {}, {}
     for name, e in pairs(DB()) do
         if ns.IsGuildMember(name) and e.profs and #e.profs > 0 then
             local nameHit = text == "" or name:lower():find(text, 1, true)
             local c = { name = name, profs = {}, auto = false }
             for _, p in ipairs(e.profs) do
                 local all = e.rec[p.n] or {}
-                local entry = { n = p.n, l = p.l, m = p.m, i = p.i, count = #all, ids = all, link = e.links and e.links[p.n] }
+                local entry = { n = p.n, l = p.l, m = p.m, i = p.i, count = #all, ids = all, link = e.links and e.links[p.n],
+                                skill = RosterSkill(name, p.n) }
                 if nameHit or p.n:lower():find(text, 1, true) then
                     c.profs[#c.profs + 1] = entry
                     if not nameHit then c.auto = true end
@@ -354,6 +363,20 @@ function Crafts.Tree(text)
                     end
                 end
             end
+            if #c.profs > 0 then chars[#chars + 1] = c; seen[name] = true end
+        end
+    end
+    -- Mitglieder ohne GuildPride: Beruf und Stufe aus der Gildenliste des Spiels
+    for name, profs in pairs(GuildProfs()) do
+        if not seen[name] and ns.IsGuildMember(name) then
+            local nameHit = text == "" or name:lower():find(text, 1, true)
+            local c = { name = name, profs = {}, auto = false, roster = true }
+            for _, p in ipairs(profs) do
+                if nameHit or p.n:lower():find(text, 1, true) then
+                    c.profs[#c.profs + 1] = { n = p.n, l = p.l, i = p.i, skill = p.id, count = 0, ids = {} }
+                    if not nameHit then c.auto = true end
+                end
+            end
             if #c.profs > 0 then chars[#chars + 1] = c end
         end
     end
@@ -361,10 +384,100 @@ function Crafts.Tree(text)
 end
 
 ---------------------------------------------------------------------
+-- Berufe aus der Gildenliste des Spiels: so erscheinen auch Mitglieder
+-- ohne GuildPride (nur Beruf und Stufe, keine Rezepte)
+---------------------------------------------------------------------
+local function ValidIcon(icon)
+    if type(icon) == "number" then return icon end
+    if type(icon) == "string" and icon ~= "" and not icon:find("|", 1, true) then return icon end
+end
+
+local reading, lastRead = false, -60
+local function ScanGuildProfs()
+    local closed = {}
+    for i = 1, GetNumGuildTradeSkill() do
+        local id, collapsed, _, header = GetGuildTradeSkillInfo(i)
+        if header and collapsed and id then closed[#closed + 1] = id end
+    end
+    -- zugeklappte Berufe kurz aufklappen, Offline-Mitglieder kurz einblenden
+    if ExpandGuildTradeSkillHeader then
+        for _, id in ipairs(closed) do ExpandGuildTradeSkillHeader(id) end
+    end
+    local showOff = GetGuildRosterShowOffline and SetGuildRosterShowOffline and not GetGuildRosterShowOffline()
+    if showOff then SetGuildRosterShowOffline(true) end
+    local found, any, cur = {}, false, nil
+    for i = 1, GetNumGuildTradeSkill() do
+        local id, _, icon, header, _, _, _, player, withRealm, _, _, _, skill = GetGuildTradeSkillInfo(i)
+        if header then
+            cur = (not header:find("DNT", 1, true)) and { n = Clean(header, 30), id = tonumber(id), i = ValidIcon(icon) } or nil
+        elseif cur and (withRealm or player) then
+            local name = ns.Normalize(withRealm or player)
+            local t = found[name] or {}
+            found[name] = t
+            if #t < MAX_PROFS then
+                t[#t + 1] = { n = cur.n, l = tonumber(skill) or 0, i = cur.i, id = cur.id }
+                any = true
+            end
+        end
+    end
+    if showOff then SetGuildRosterShowOffline(false) end
+    -- Blizzards Gildenfenster so lassen, wie es war
+    if any and CollapseGuildTradeSkillHeader then
+        for _, id in ipairs(closed) do CollapseGuildTradeSkillHeader(id) end
+    end
+    return any and found or nil
+end
+
+function Crafts.ReadGuild()
+    if reading or not (GetNumGuildTradeSkill and GetGuildTradeSkillInfo) then return false end
+    reading, lastRead = true, GetTime()
+    local ok, found = pcall(ScanGuildProfs)
+    reading = false
+    if not ok or not found then return false end
+    local db = GuildProfs()
+    wipe(db)
+    local n = 0
+    for name, profs in pairs(found) do
+        n = n + 1
+        if n > MAX_PEOPLE then break end
+        db[name] = profs
+    end
+    return true
+end
+function Crafts.ReadGuildSoon(force)
+    if not force and GetTime() - lastRead < 5 then return false end
+    return Crafts.ReadGuild()
+end
+
+-- Berufsfenster eines Mitglieds über das Spiel anfragen (ohne geteilten Link)
+local otherAt = -60
+function Crafts.OpenGuildMember(name, skillID)
+    if not (name and skillID) then return false end
+    local short = Ambiguate(name, "none")
+    if C_GuildInfo and C_GuildInfo.QueryGuildMemberRecipes then
+        local guid
+        for i = 1, GetNumGuildMembers() do
+            local n = GetGuildRosterInfo(i)
+            if n and ns.Normalize(n) == ns.Normalize(name) then guid = select(17, GetGuildRosterInfo(i)) break end
+        end
+        if guid then
+            otherAt = GetTime()
+            if pcall(C_GuildInfo.QueryGuildMemberRecipes, guid, skillID) then return true end
+        end
+    end
+    if GetGuildMemberRecipes then
+        otherAt = GetTime()
+        if pcall(GetGuildMemberRecipes, short, skillID) then return true end
+    end
+    return false
+end
+
+---------------------------------------------------------------------
 -- Ereignisse: beim Einloggen Berufe melden, beim Öffnen des Berufsfensters Rezepte
 ---------------------------------------------------------------------
 local ev = CreateFrame("Frame")
-ns.RegisterEvents(ev, "PLAYER_ENTERING_WORLD", "SKILL_LINES_CHANGED", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_SHOW")
+ns.RegisterEvents(ev, "PLAYER_ENTERING_WORLD", "SKILL_LINES_CHANGED", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_SHOW",
+                  "GUILD_TRADESKILL_UPDATE")
 local started, pending = false, false
 ev:SetScript("OnEvent", function(_, event)
     if not GuildPrideDB or not IsInGuild() then return end
@@ -372,12 +485,19 @@ ev:SetScript("OnEvent", function(_, event)
         if started then return end
         started = true
         C_Timer.After(50, function() pcall(UpdateMine) end)
+        C_Timer.After(60, function() Crafts.ReadGuildSoon() end)
+    elseif event == "GUILD_TRADESKILL_UPDATE" then
+        -- nur bei offenem Reiter neu lesen (unser Auf-/Zuklappen löst das Ereignis selbst aus)
+        local page = ns.CraftsPage
+        if page and page:IsVisible() and Crafts.ReadGuildSoon() then page:Refresh() end
     elseif event == "SKILL_LINES_CHANGED" then
         if not started or pending then return end
         pending = true
         C_Timer.After(10, function() pending = false; pcall(UpdateMine) end)
     else
-        -- Berufsfenster: kurz warten, bis die Liste vollständig ist
+        -- Berufsfenster: kurz warten, bis die Liste vollständig ist. Gerade
+        -- das Fenster eines anderen angefragt? Dann nichts als eigenes melden.
+        if GetTime() - otherAt < 15 then return end
         C_Timer.After(1, function()
             local ok, prof, ids, link = pcall(ReadOpenRecipes)
             if ok and prof then pcall(UpdateMine, prof, ids, link) end
@@ -399,7 +519,7 @@ local ph = search:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
 ph:SetPoint("LEFT", 4, 0); ph:SetText(L["Name, Beruf oder Rezept suchen …"])
 local info = page:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
 info:SetPoint("LEFT", search, "RIGHT", 12, 0); info:SetWidth(330); info:SetJustifyH("LEFT")
-info:SetText(L["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf öffnet sein Berufsfenster. Dafür muss der Spieler seins einmal geöffnet haben."])
+info:SetText(L["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf öffnet sein Berufsfenster. Auch Mitglieder ohne GuildPride stehen in der Liste."])
 
 local holder = CreateFrame("Frame", nil, page)
 holder:SetPoint("TOPLEFT", 0, -36); holder:SetPoint("BOTTOMRIGHT")
@@ -421,6 +541,13 @@ local openChar, openProf = {}, {}
 local function ProfKey(name, prof) return name .. "\030" .. prof end
 
 local CHAR_INDENT, PROF_INDENT, REC_INDENT = 8, 30, 54
+local function Level(p)
+    if (p.m or 0) > 0 then return ("|cffffd18c%d|r|cff999999 / %d|r"):format(p.l or 0, p.m) end
+    return ("|cffffd18c%d|r"):format(p.l or 0)
+end
+local function CanAskGuild()
+    return (C_GuildInfo and C_GuildInfo.QueryGuildMemberRecipes or GetGuildMemberRecipes) and true or false
+end
 local function Row(i, indent)
     local row = list:GetRow(i)
     row.left:ClearAllPoints(); row.left:SetPoint("LEFT", indent, 0)
@@ -457,7 +584,11 @@ function page:Refresh()
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(Ambiguate(c.name, "guild"))
             for _, p in ipairs(c.profs) do
-                GameTooltip:AddDoubleLine(Crafts.Icon(p, 14) .. " " .. p.n, ("%d / %d"):format(p.l or 0, p.m or 0), 1, 1, 1, 1, 0.82, 0.55)
+                GameTooltip:AddDoubleLine(Crafts.Icon(p, 14) .. " " .. p.n,
+                    (p.m or 0) > 0 and ("%d / %d"):format(p.l or 0, p.m) or tostring(p.l or 0), 1, 1, 1, 1, 0.82, 0.55)
+            end
+            if c.roster then
+                GameTooltip:AddLine(L["Ohne GuildPride: Berufe aus der Gildenliste des Spiels"], 0.7, 0.7, 0.7, true)
             end
             GameTooltip:AddLine(L["Klick: aufklappen · Rechtsklick: anflüstern"], 0.7, 0.7, 0.7)
             GameTooltip:Show()
@@ -479,13 +610,18 @@ function page:Refresh()
                 n = n + 1
                 local prow = Row(n, PROF_INDENT)
                 prow.left:SetText((p.count > 0 and (popen and "▾ " or "▸ ") or "   ") .. Crafts.Icon(p, 16) .. " " .. p.n)
-                prow.mid:SetText(("|cffffd18c%d|r|cff999999 / %d|r"):format(p.l or 0, p.m or 0))
+                prow.mid:SetText(Level(p))
                 -- Klick: Berufsfenster des Spielers (geteilter Link); sonst bzw.
                 -- Rechtsklick: Rezeptliste hier aufklappen
-                local countText = p.count > 0 and (L["%d Rezepte"]):format(p.count) or L["Rezepte unbekannt"]
-                prow.right:SetText(p.link and ("|cffffd100" .. L["Berufsfenster öffnen"] .. "|r  ·  " .. countText) or countText)
+                local countText = p.count > 0 and (L["%d Rezepte"]):format(p.count)
+                    or (c.roster and L["ohne GuildPride"] or L["Rezepte unbekannt"])
+                local canOpen = p.link or (p.skill and CanAskGuild())
+                prow.right:SetText(canOpen and ("|cffffd100" .. L["Berufsfenster öffnen"] .. "|r  ·  " .. countText) or countText)
                 prow:SetScript("OnMouseUp", function(_, button)
-                    if button ~= "RightButton" and p.link and Crafts.OpenProfession(p.link, p.n) then return end
+                    if button ~= "RightButton" then
+                        if p.link and Crafts.OpenProfession(p.link, p.n) then return end
+                        if p.skill and Crafts.OpenGuildMember(c.name, p.skill) then return end
+                    end
                     if p.count == 0 then return end
                     openProf[key] = not popen
                     page:Refresh()
@@ -493,7 +629,7 @@ function page:Refresh()
                 prow:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:SetText(("%s – %s"):format(Ambiguate(c.name, "guild"), p.n))
-                    if p.link then
+                    if canOpen then
                         GameTooltip:AddLine(L["Klick: sein Berufsfenster mit allen Rezepten öffnen"], 1, 1, 1, true)
                         if p.count > 0 then GameTooltip:AddLine(L["Rechtsklick: Rezeptliste hier aufklappen"], 0.7, 0.7, 0.7, true) end
                     else
@@ -533,7 +669,7 @@ function page:Refresh()
     list:Finish(n)
     empty:SetShown(n == 0)
     empty:SetText(text ~= "" and L["Nichts gefunden."]
-        or L["Noch keine Berufe bekannt. Mitglieder mit GuildPride melden ihre Berufe automatisch."])
+        or L["Noch keine Berufe bekannt. Öffne einmal das Gildenfenster, dann liest GuildPride die Berufe aller Mitglieder."])
 end
 
 search:SetScript("OnTextChanged", function() page:Refresh() end)
@@ -545,6 +681,10 @@ search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearF
 -- Beim Öffnen die Berufe der anderen anfragen (höchstens alle 10 Minuten)
 local lastAsk = -600
 page:HookScript("OnShow", function()
+    -- Berufe aller Mitglieder aus der Gildenliste des Spiels; kommen die Daten
+    -- erst nach dem Aufklappen an, noch einmal kurz danach
+    if Crafts.ReadGuildSoon() then page:Refresh()
+    else C_Timer.After(2, function() if page:IsVisible() and Crafts.ReadGuildSoon(true) then page:Refresh() end end) end
     if GetTime() - lastAsk < 600 then return end
     lastAsk = GetTime()
     ns.Queue("CRQ", nil, "1")

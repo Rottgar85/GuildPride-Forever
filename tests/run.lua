@@ -309,6 +309,62 @@ test("Berufe: Suche nach Beruf und Name", function()
     eq(tree[1].auto, true, "Treffer aufgeklappt")
 end)
 
+test("Berufe: auch Mitglieder ohne GuildPride aus der Gildenliste", function()
+    local oldRoster = W.roster
+    W.roster = { { "Anna", 2 }, { "Dora", 3 }, { "Emil", 3, 60, false } }
+    for _, m in ipairs(oldRoster) do W.roster[#W.roster + 1] = m end
+    local rows = {   -- id, zugeklappt, Symbol, Überschrift, …, Name, Name-Realm, …, Stufe
+        { 164, true, 136241, "Schmiedekunst" },
+        { 2933, true, nil, "Test Profession [DNT]" },
+        { 197, true, 136249, "Schneiderei" },
+    }
+    local members = { [164] = { { "Dora", 280 }, { "Emil", 150 } }, [197] = { { "Anna", 285 } } }
+    local open, offline, expanded, collapsed = {}, false, 0, 0
+    local function list()
+        local out = {}
+        for _, h in ipairs(rows) do
+            out[#out + 1] = { h[1], not open[h[1]], h[3], h[4] }
+            if open[h[1]] then
+                for _, m in ipairs(members[h[1]] or {}) do
+                    if offline or m[1] ~= "Emil" then
+                        out[#out + 1] = { h[1], nil, nil, nil, nil, nil, nil, m[1], m[1] .. "-Realm", "Krieger", true, "Zone", m[2] }
+                    end
+                end
+            end
+        end
+        return out
+    end
+    GetNumGuildTradeSkill = function() return #list() end
+    GetGuildTradeSkillInfo = function(i) local r = list()[i]; if r then return unpack(r, 1, 13) end end
+    ExpandGuildTradeSkillHeader = function(id) open[id] = true; expanded = expanded + 1 end
+    CollapseGuildTradeSkillHeader = function(id) open[id] = nil; collapsed = collapsed + 1 end
+    GetGuildRosterShowOffline = function() return offline end
+    SetGuildRosterShowOffline = function(v) offline = v end
+
+    eq(ns.Crafts.ReadGuild(), true)
+    eq(expanded, 3); eq(collapsed, 3, "danach wieder zugeklappt")
+    eq(offline, false, "Offline-Anzeige zurückgesetzt")
+    local db = ns.GuildTable("craftsRoster")
+    eq(db["Emil"] ~= nil, true, "Offline-Mitglied gelesen")
+    eq(db["Dora"][1].n, "Schmiedekunst"); eq(db["Dora"][1].l, 280); eq(db["Dora"][1].id, 164)
+
+    W.Advance(6)   -- Gildenliste neu einlesen lassen
+    local tree = ns.Crafts.Tree("")
+    local byName = {}
+    for _, c in ipairs(tree) do byName[c.name] = c end
+    eq(byName["Anna"].roster, nil, "Addon-Nutzer behält seine Daten")
+    eq(byName["Anna"].profs[1].skill, 197, "Berufs-ID aus der Gildenliste")
+    eq(byName["Dora"].roster, true)
+    eq(byName["Dora"].profs[1].count, 0)
+    eq(#ns.Crafts.Tree("schmiede"), 2, "Suche findet Mitglieder ohne Addon")
+
+    GetNumGuildTradeSkill, GetGuildTradeSkillInfo = nil, nil
+    ExpandGuildTradeSkillHeader, CollapseGuildTradeSkillHeader, SetGuildRosterShowOffline = nil, nil, nil
+    GetGuildRosterShowOffline = function() return true end
+    eq(ns.Crafts.ReadGuild(), false, "ohne Spielfunktion nichts")
+    wipe(db); W.roster = oldRoster; W.Advance(6)
+end)
+
 ---------------------------------------------------------------------
 local function goal(id, ver, title, progress)
     return msg("GOL", id, ver, "manual", 10, 0, progress or 0, 0, title)

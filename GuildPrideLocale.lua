@@ -612,7 +612,9 @@ local enUS = {
     ["Name, Beruf oder Rezept suchen …"] = "Search name, profession or recipe …",
     ["Öffne dein Berufsfenster einmal, dann stehen auch deine Rezepte hier. Klick auf eine Zeile = anflüstern."] = "Open your profession window once to list your recipes here. Click a row to whisper.",
     ["Nichts gefunden."] = "Nothing found.",
-    ["Noch keine Berufe bekannt. Mitglieder mit GuildPride melden ihre Berufe automatisch."] = "No professions known yet. Members with GuildPride report theirs automatically.",
+    ["Noch keine Berufe bekannt. Öffne einmal das Gildenfenster, dann liest GuildPride die Berufe aller Mitglieder."] = "No professions known yet. Open the guild window once and GuildPride reads every member's professions.",
+    ["Ohne GuildPride: Berufe aus der Gildenliste des Spiels"] = "Without GuildPride: professions from the game's guild list",
+    ["ohne GuildPride"] = "without GuildPride",
     ["Ziele"] = "Goals",
     ["Ziel"] = "Target",
     ["Art"] = "Type",
@@ -683,7 +685,7 @@ local enUS = {
     ["Klick: sein Berufsfenster mit allen Rezepten öffnen"] = "Click: open their profession window with all recipes",
     ["Rechtsklick: Rezeptliste hier aufklappen"] = "Right-click: expand the recipe list here",
     ["Das Berufsfenster ist erst verfügbar, wenn der Spieler seins einmal mit dem neuen GuildPride geöffnet hat."] = "The profession window becomes available once the player has opened theirs with the new GuildPride.",
-    ["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf öffnet sein Berufsfenster. Dafür muss der Spieler seins einmal geöffnet haben."] = "Click a name to show professions, click a profession to open their profession window. The player must have opened theirs once.",
+    ["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf öffnet sein Berufsfenster. Auch Mitglieder ohne GuildPride stehen in der Liste."] = "Click a name to show professions, click a profession to open their profession window. Members without GuildPride are listed too.",
     ["Klick: aufklappen · Rechtsklick: anflüstern"] = "Click: expand · Right-click: whisper",
 }
 

@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.8.2
+
+**Deutsch**
+- Berufe: Die Liste zeigt jetzt alle Gildenmitglieder mit ihren Berufen, auch ohne GuildPride (Beruf und Stufe aus der Gildenliste des Spiels)
+- Berufe: Klick auf einen Beruf eines Mitglieds ohne GuildPride fragt sein Berufsfenster beim Spiel an
+
+**English**
+- Professions: the list now shows every guild member with their professions, even without GuildPride (profession and skill from the game's guild list)
+- Professions: clicking a profession of a member without GuildPride requests their profession window from the game
+
 ## 2.8.1
 
 **Deutsch**
