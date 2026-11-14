@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.10.0
+
+**Deutsch**
+- Neu: Einrichtung beim ersten Start. GuildPride fragt jetzt, ob die Taste J das GuildPride-Fenster oder Blizzards Gildenfenster öffnen soll, und welches Aussehen das Fenster haben soll (Gildenbuch, Klassisch, Icon-Leiste)
+- Die Einrichtung ist jederzeit wieder zu öffnen: Einstellungen > „Einrichtung …“ oder /gp einrichtung
+- Wer GuildPride schon benutzt, bekommt die Frage einmal mit der eigenen bisherigen Einstellung vorausgewählt
+
+**English**
+- New: setup on first start. GuildPride now asks whether the J key should open the GuildPride window or Blizzard's guild window, and which look the window should have (guild book, classic, icon bar)
+- The setup can be reopened any time: Settings > "Setup …" or /gp einrichtung
+- Existing users get the question once, with their current setting preselected
+
 ## 2.9.0
 
 **Deutsch**

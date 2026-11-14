@@ -1772,6 +1772,13 @@ backupBtn:SetSize(180, 26)
 backupBtn:SetPoint("LEFT", blizzBtn, "RIGHT", 10, 0)
 backupBtn:SetText(L["Datensicherung …"])
 backupBtn:SetScript("OnClick", function() if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end end)
+
+-- Einrichtung erneut öffnen: welches Gildenfenster, welches Aussehen
+local setupBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+setupBtn:SetSize(150, 26)
+setupBtn:SetPoint("LEFT", backupBtn, "RIGHT", 10, 0)
+setupBtn:SetText(L["Einrichtung …"])
+setupBtn:SetScript("OnClick", function() if ns.ShowSetup then ns.ShowSetup() end end)
 end
 
 -- Begrüßungstext (GuildPrideMembers.lua), {name} = neues Mitglied

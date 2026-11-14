@@ -16,11 +16,12 @@ local MEDIA = ns.MEDIA
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local frame = P.frame
 
-local LAYOUTS = {
+local LAYOUTS = {   -- auch für die Einrichtung: ns.LayoutList
     { key = "forge", name = L["Klassisch"],   w = 860,  h = 580, side = 180, header = 96 },
     { key = "rail",  name = L["Icon-Leiste"], w = 744,  h = 600, side = 64,  header = 70 },
     { key = "book",  name = L["Gildenbuch"],  w = 1052, h = 640, side = 340, header = 76 },
 }
+ns.LayoutList = LAYOUTS
 local byKey = {}
 for _, l in ipairs(LAYOUTS) do byKey[l.key] = l end
 

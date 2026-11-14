@@ -2,12 +2,14 @@
 -- Die letzte Seite fragt nach der Discord-Anbindung (GuildPrideDiscord.lua).
 local ADDON, ns = ...
 local L = ns.L
-local INTRO_VERSION = 2   -- 2: Neuerungen in 2.5 (Menü, Twinks, Sicherung)
+local INTRO_VERSION = 3   -- 3: Einrichtung (welches Gildenfenster, Aussehen)
 
 -- Seiten mit "since" sind Neuerungen: Wer die Tour schon kennt, sieht nur diese
 local ALL_PAGES = {
     { title = L["Willkommen bei GuildPride!"],
       text = L["GuildPride ist der Treffpunkt deiner Gilde: Gildenfenster, Chat, Events, Gruppensuche, DKP und Discord-Anbindung an einem Ort.\n\nDiese kurze Tour zeigt dir in fünf Schritten das Wichtigste. Du kannst sie jederzeit mit /gp intro wieder öffnen."] },
+    { setup = true, since = 3, title = L["Einrichtung: dein Gildenfenster"],
+      text = L["GuildPride bringt ein eigenes Gildenfenster mit: Chat, Events, Gruppensuche, Berufe, DKP und mehr.\n\nWas soll die Taste J öffnen? Erreichbar bleiben beide: GuildPride über den Minimap-Knopf oder /gp, Blizzards Fenster über die Einstellungen.\n\nDu kannst das jederzeit wieder ändern: Einstellungen > „Einrichtung …“."] },
     { title = L["Das Gildenfenster"],
       text = L["Drücke J (oder /gp), um das Gildenfenster zu öffnen.\n\n• Übersicht: wer online ist, nächstes Event, Neuigkeiten der Woche\n• Gilde & Chat: Gilden-, Offiziers- und Community-Chat mit Mitgliederliste\n• Gruppensuche: Hilfe für Quests und Dungeons finden\n• Umfragen, Meilensteine und Gildeninfo\n\nMit /gp blizzard kommst du zurück zum Blizzard-Fenster."] },
     { title = L["Events und Raids"],
@@ -27,10 +29,11 @@ local PAGES = ALL_PAGES
 
 local win, page = nil, 1
 
+local hadDiscord = false
 local function Close()
     GuildPrideDB.introSeen = INTRO_VERSION
     -- Wer die Tour schließt, ohne zu wählen, hat die Anbindung aus
-    if GuildPrideDB.discordBridge == nil then GuildPrideDB.discordBridge = false end
+    if hadDiscord and GuildPrideDB.discordBridge == nil then GuildPrideDB.discordBridge = false end
     win:Hide()
 end
 
@@ -43,6 +46,8 @@ local function Show(i)
     win.back:SetShown(i > 1)
     win.next:SetText(i < #PAGES and L["Weiter"] or L["Fertig"])
     win.discord:SetShown(p.discord == true)
+    win.setup:SetShown(p.setup == true)
+    if p.setup then win.SetupRefresh() end
     if p.discord then
         win.useCb:SetChecked(GuildPrideDB.discordBridge == true)
         win.linkCb:SetChecked(GuildPrideDB.discordLinked == true)
@@ -92,6 +97,47 @@ local function Build()
         GuildPrideDB.discordLinked = self:GetChecked() and true or false
     end)
 
+    ---------------------------------------------------------------------
+    -- Einrichtung: welches Gildenfenster und welches Aussehen
+    ---------------------------------------------------------------------
+    win.setup = CreateFrame("Frame", nil, win)
+    win.setup:SetPoint("BOTTOMLEFT", 20, 42); win.setup:SetSize(400, 104)
+    local function SetWindow(own)
+        GuildPrideDB.replaceGuildFrame = own and true or false
+        win.SetupRefresh()
+    end
+    win.ownCb = Check(win.setup, 0, L["GuildPride-Fenster öffnen (empfohlen)"], function() SetWindow(true) end)
+    win.blizzCb = Check(win.setup, -26, L["Blizzards Gildenfenster behalten"], function() SetWindow(false) end)
+
+    local lookLabel = win.setup:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    lookLabel:SetPoint("TOPLEFT", 4, -58)
+    local lookBtns = {}
+    for i, l in ipairs(ns.LayoutList or {}) do
+        local b = CreateFrame("Button", nil, win.setup, "UIPanelButtonTemplate")
+        b:SetSize(118, 24); b:SetPoint("TOPLEFT", 4 + (i - 1) * 124, -76)
+        b:SetText(l.name); b.key = l.key
+        b:SetScript("OnClick", function()
+            if ns.ApplyLayout then ns.ApplyLayout(l.key) end
+            win.SetupRefresh()
+        end)
+        lookBtns[i] = b
+    end
+    lookLabel:SetShown(#lookBtns > 0)
+
+    function win.SetupRefresh()
+        local own = GuildPrideDB.replaceGuildFrame ~= false
+        win.ownCb:SetChecked(own)
+        win.blizzCb:SetChecked(not own)
+        local cur = GuildPrideDB.layout or "book"
+        local curName = cur
+        for _, l in ipairs(ns.LayoutList or {}) do if l.key == cur then curName = l.name end end
+        lookLabel:SetText((L["Aussehen: %s"]):format(curName))
+        for _, b in ipairs(lookBtns) do
+            b:SetEnabled(b.key ~= cur)
+            if b.gpBg then b.gpBg:SetTexture(ns.MEDIA .. (b.key == cur and "nav_active" or "nav")) end
+        end
+    end
+
     win.step = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     win.step:SetPoint("BOTTOM", 0, 16)
     win.back = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
@@ -115,6 +161,18 @@ function ns.ShowIntro(onlyNew)
         if not onlyNew or (p.since or 1) > seen then PAGES[#PAGES + 1] = p end
     end
     if #PAGES == 0 then PAGES = ALL_PAGES end
+    hadDiscord = false
+    for _, p in ipairs(PAGES) do if p.discord then hadDiscord = true end end
+    win:Show()
+    Show(1)
+end
+
+-- Nur die Einrichtung (Einstellungen > „Einrichtung …“, /gp einrichtung)
+function ns.ShowSetup()
+    if not win then Build() end
+    PAGES, hadDiscord = {}, false
+    for _, p in ipairs(ALL_PAGES) do if p.setup then PAGES[#PAGES + 1] = p end end
+    if #PAGES == 0 then return ns.ShowIntro() end
     win:Show()
     Show(1)
 end
@@ -134,6 +192,7 @@ local slash = SlashCmdList.GUILDPRIDE
 SlashCmdList.GUILDPRIDE = function(arg)
     local a = strtrim(arg or ""):lower()
     if a == "intro" or a == "tour" or a == "einführung" then return ns.ShowIntro() end
+    if a == "einrichtung" or a == "setup" then return ns.ShowSetup() end
     if a == "neu" or a == "news" then return ns.ShowIntro(true) end
     return slash(arg)
 end
