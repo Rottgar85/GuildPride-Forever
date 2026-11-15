@@ -11,42 +11,12 @@ local L = ns.L
 -- heading: Überschriften und Namen
 -- button:  Knopftext und aktiver Reiter
 -- title:   Seitentitel oben rechts
-local THEMES = {
-    { key = "forge", name = L["Schmiede"], tint = nil,
-      accent = { 0.80, 0.55, 0.27 }, ember = { 1.00, 0.45, 0.15 }, glow = { 1.00, 0.50, 0.20 },
-      heading = { 0.94, 0.78, 0.55 }, button = { 1.00, 0.82, 0.55 }, title = { 1.00, 0.55, 0.25 } },
-    { key = "frost", name = L["Frost"], tint = { 0.62, 0.82, 1.00 },
-      accent = { 0.45, 0.65, 0.88 }, ember = { 0.35, 0.75, 1.00 }, glow = { 0.45, 0.80, 1.00 },
-      heading = { 0.76, 0.88, 1.00 }, button = { 0.82, 0.92, 1.00 }, title = { 0.45, 0.80, 1.00 } },
-    { key = "emerald", name = L["Smaragd"], tint = { 0.62, 1.00, 0.66 },
-      accent = { 0.36, 0.72, 0.42 }, ember = { 0.30, 0.90, 0.45 }, glow = { 0.35, 0.95, 0.50 },
-      heading = { 0.74, 0.95, 0.74 }, button = { 0.82, 1.00, 0.82 }, title = { 0.35, 0.95, 0.50 } },
-    { key = "arcane", name = L["Arkan"], tint = { 0.84, 0.64, 1.00 },
-      accent = { 0.62, 0.46, 0.88 }, ember = { 0.76, 0.45, 1.00 }, glow = { 0.78, 0.50, 1.00 },
-      heading = { 0.87, 0.78, 1.00 }, button = { 0.92, 0.84, 1.00 }, title = { 0.80, 0.55, 1.00 } },
-    { key = "night", name = L["Nacht"], tint = { 0.70, 0.70, 0.74 },
-      accent = { 0.50, 0.50, 0.56 }, ember = { 0.82, 0.82, 0.88 }, glow = { 0.80, 0.80, 0.90 },
-      heading = { 0.90, 0.90, 0.93 }, button = { 0.95, 0.95, 0.97 }, title = { 0.85, 0.85, 0.92 } },
-}
--- Eigener Style: alle Farben aus einer selbst gewählten Farbe abgeleitet
-local function Mix(c, w) return { c[1] + (1 - c[1]) * w, c[2] + (1 - c[2]) * w, c[3] + (1 - c[3]) * w } end
-local custom = { key = "custom", name = L["Eigene"] }
-local function BuildCustom()
-    local s = GuildPrideDB and GuildPrideDB.customColor or { 1.00, 0.45, 0.15 }
-    local c = { s[1], s[2], s[3] }
-    custom.tint = Mix(c, 0.35)
-    custom.accent = { c[1] * 0.8, c[2] * 0.8, c[3] * 0.8 }
-    custom.ember, custom.glow, custom.title = c, c, Mix(c, 0.15)
-    custom.heading, custom.button = Mix(c, 0.6), Mix(c, 0.7)
-end
-BuildCustom()
-THEMES[#THEMES + 1] = custom
 -- Seit 2.14 gibt es nur noch einen Style: "Gildenhalle" – dunkler Schiefer mit Gold.
 -- Die Texturen in Media/ sind schon in diesen Farben gemalt (kein Einfärben: tint = nil).
 local HALLE = { key = "halle", name = L["Gildenhalle"], tint = nil,
     accent = { 0.79, 0.64, 0.36 }, ember = { 0.79, 0.64, 0.36 }, glow = { 0.91, 0.76, 0.48 },
     heading = { 0.95, 0.90, 0.81 }, button = { 0.95, 0.86, 0.62 }, title = { 0.91, 0.76, 0.48 } }
-THEMES = { HALLE }
+local THEMES = { HALLE }
 ns.THEMES = THEMES
 
 function ns.Theme()
