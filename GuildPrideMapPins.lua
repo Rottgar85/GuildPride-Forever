@@ -12,6 +12,10 @@ local sources = {}
 GuildPrideMapPinMixin = CreateFromMixins(MapCanvasPinMixin)
 
 function GuildPrideMapPinMixin:OnLoad()
+    -- Nur Maus-Bewegung (Tooltip), keine Klicks: sonst setzt die Karte beim Erzeugen
+    -- SetPassThroughButtons, und das sperrt WoW im Kampf ("Aktion blockiert")
+    self:EnableMouse(false)
+    self:EnableMouseMotion(true)
     self:UseFrameLevelType("PIN_FRAME_LEVEL_VIGNETTE")
     self:SetScalingLimits(1, 1.0, 1.2)
 end
@@ -49,6 +53,7 @@ end
 local Provider = CreateFromMixins(MapCanvasDataProviderMixin)
 function Provider:RemoveAllData() self:GetMap():RemoveAllPinsByTemplate(TEMPLATE) end
 function Provider:RefreshAllData()
+    if InCombatLockdown() then return end   -- im Kampf nichts an der Karte ändern
     local map = self:GetMap()
     map:RemoveAllPinsByTemplate(TEMPLATE)
     hovering = false
@@ -73,7 +78,7 @@ end
 
 function ns.AddMapSource(fn) sources[#sources + 1] = fn end
 function ns.RefreshMapPins(force)
-    if hovering and not force then return end
+    if (hovering and not force) or InCombatLockdown() then return end
     for frame, p in pairs(providers) do
         if frame:IsShown() then p:RefreshAllData() end
     end

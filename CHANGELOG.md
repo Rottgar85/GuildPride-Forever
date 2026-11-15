@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.13.2
+
+**Deutsch**
+- Behoben: Meldung „WoW hat die Aktion blockiert (SetPassThroughButtons)“ beim Öffnen der Karte. Die Kartenpunkte zeigen weiter ihren Tooltip, reagieren aber nicht mehr auf Klicks und werden im Kampf nicht verändert
+
+**English**
+- Fixed: "WoW blocked the action (SetPassThroughButtons)" when opening the map. Map dots still show their tooltip but no longer react to clicks and are not changed during combat
+
 ## 2.13.1
 
 **Deutsch**
