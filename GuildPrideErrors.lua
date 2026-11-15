@@ -62,6 +62,49 @@ function ns.ErrorReport()
     end
 end
 
+-- Fehler melden (Knopf unter der Version): fertiger Bericht zum Kopieren mit Version,
+-- Spielversion, Sprache, anderen Addons und gespeicherten Lua-Fehlern
+ns.ISSUES_URL = "https://github.com/Rottgar85/GuildPride-Forever/issues/new"
+function ns.BugReport()
+    local version, build, _, toc = GetBuildInfo()
+    local lines = {
+        L["So meldest du einen Fehler:"],
+        "1. " .. L["Alles markieren (Strg+A) und kopieren (Strg+C)"],
+        "2. " .. L["Hier einfügen und kurz beschreiben, was passiert ist:"],
+        "   " .. ns.ISSUES_URL,
+        "   " .. L["(oder als Kommentar auf CurseForge)"],
+        "",
+        L["Was ist passiert? Was hast du gerade gemacht?"],
+        "...",
+        "",
+        "----",
+        ("GuildPride %s · WoW %s (%s, %s) · %s"):format(ns.VERSION or "?", version or "?", build or "?",
+            tostring(toc or "?"), GetLocale and GetLocale() or "?"),
+    }
+    -- Andere geladene Addons (helfen bei Konflikten, z. B. Karten-Addons)
+    local others = {}
+    local num = (C_AddOns and C_AddOns.GetNumAddOns or GetNumAddOns)()
+    for i = 1, num do
+        local name = (C_AddOns and C_AddOns.GetAddOnInfo or GetAddOnInfo)(i)
+        local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded)(i)
+        if loaded and name ~= ADDON and not tostring(name):find("^Blizzard_") then others[#others + 1] = name end
+    end
+    lines[#lines + 1] = L["Andere Addons:"] .. " " .. (#others > 0 and table.concat(others, ", ") or "-")
+    lines[#lines + 1] = ""
+    local list = Store()
+    if #list == 0 then
+        lines[#lines + 1] = L["Keine GuildPride-Fehler gespeichert."]
+    else
+        for i, e in ipairs(list) do
+            lines[#lines + 1] = ("#%d  %s  (%dx)"):format(i, date("%d.%m.%Y %H:%M", e.t or 0), e.n or 1)
+            lines[#lines + 1] = e.msg or ""
+            lines[#lines + 1] = e.stack or ""
+            lines[#lines + 1] = ""
+        end
+    end
+    if ns.ShowCopy then ns.ShowCopy(L["Fehler melden"], table.concat(lines, "\n")) end
+end
+
 function ns.ClearErrors()
     wipe(Store())
     ns.Print(L["Gespeicherte Fehler gelöscht."])
