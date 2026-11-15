@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.12.0
+
+**Deutsch**
+- Neu: **Scales ist jetzt in GuildPride eingebaut** (`/scales` oder `/gp scales`). Simuliert deinen Charakter (DPS, HPS, Mitigation) und zeigt an jedem Item, ob es ein Upgrade ist – mit Pfeilen in den Taschen und einer Zeile im Tooltip
+- Scales öffnet sich mit dem Charakterfenster und hängt rechts daneben; Knopf „Scales“ im Charakterfenster. Beides in `/scales options` abschaltbar
+- Scales im GuildPride-Look, folgt dem gewählten Style. Einstellungen aus dem bisherigen Scales-Addon werden übernommen – das eigene Scales-Addon wird in WoW Forever nicht mehr gebraucht
+
+**English**
+- New: **Scales is now built into GuildPride** (`/scales` or `/gp scales`). Simulates your character (DPS, HPS, mitigation) and shows on every item whether it is an upgrade – with arrows in your bags and a tooltip line
+- Scales opens with the character window and docks to its right; "Scales" button on the character window. Both can be turned off in `/scales options`
+- Scales uses the GuildPride look and follows your chosen style. Settings from the standalone Scales addon carry over – the separate Scales addon is no longer needed in WoW Forever
+
 ## 2.11.0
 
 **Deutsch**
