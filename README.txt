@@ -31,7 +31,13 @@ Important commands (all of them: /gp help)
   /gp invite First Last                 show the /ginvite command in chat
   /gp badge 30         preview pop-up
 
-GuildPride tauscht Daten nur mit GuildPride-Spielern der eigenen Gilde per Addon-Nachricht.
-GuildPride only exchanges data with GuildPride players in your guild via addon messages.
+GuildPride tauscht Daten per Addon-Nachricht mit GuildPride-Spielern der eigenen Gilde. Serverweit gehen nur
+Gruppensuche-Einträge und Rare-Sichtungen (Name, Ort, Zeit) – abschaltbar.
+GuildPride exchanges data via addon messages with GuildPride players in your guild. Realm-wide it only shares
+group finder entries and rare sightings (name, place, time) – both can be switched off.
 
-Fehler melden / Report bugs: bitte mit Lua-Fehlermeldung und Spielversion / with the Lua error and game version.
+Fehler melden / Report bugs: bitte mit Lua-Fehlermeldung und Spielversion / with the Lua error and game version.
+
+Lizenz / License: GNU GPL v3.0 (LICENSE.txt)
+Rare-Fundorte / rare spawn points: ForeverMapNotes (GPL-3.0), QuestieDB Forever data (Questie team),
+CMaNGOS classic-db (GPL-3.0). Schriften / fonts: DejaVu (Media/Fonts/LICENSE-DejaVu.txt).
