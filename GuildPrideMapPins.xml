@@ -1,5 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <Frame name="GuildPrideMapPinTemplate" mixin="GuildPrideMapPinMixin" virtual="true" enableMouse="true">
+    <Frame name="GuildPrideMapPinTemplate" mixin="GuildPrideMapPinMixin" virtual="true">
         <Size x="14" y="14"/>
         <Layers>
             <Layer level="BACKGROUND">
