@@ -541,7 +541,7 @@ local ph = search:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
 ph:SetPoint("LEFT", 4, 0); ph:SetText(L["Name, Beruf oder Rezept suchen …"])
 local info = page:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
 info:SetPoint("LEFT", search, "RIGHT", 12, 0); info:SetWidth(330); info:SetJustifyH("LEFT")
-info:SetText(L["Klick auf einen Namen zeigt die Berufe, Klick auf einen Beruf öffnet sein Berufsfenster. Auch Mitglieder ohne GuildPride stehen in der Liste."])
+info:SetText(L["Klick auf einen Namen zeigt die Berufe. Mit GuildPride: Klick auf einen Beruf zeigt die Rezepte. Ohne GuildPride: Klick fragt per Flüstern nach einem Link."])
 
 local holder = CreateFrame("Frame", nil, page)
 holder:SetPoint("TOPLEFT", 0, -36); holder:SetPoint("BOTTOMRIGHT")
@@ -633,29 +633,34 @@ function page:Refresh()
                 local prow = Row(n, PROF_INDENT)
                 prow.left:SetText((p.count > 0 and (popen and "▾ " or "▸ ") or "   ") .. Crafts.Icon(p, 16) .. " " .. p.n)
                 prow.mid:SetText(Level(p))
-                -- Klick: Berufsfenster des Spielers (geteilter Link); sonst bzw.
-                -- Rechtsklick: Rezeptliste hier aufklappen
+                -- Mit GuildPride: Klick öffnet sein Berufsfenster (geteilter Link), Rechtsklick
+                -- die Rezeptliste hier. Ohne GuildPride: WoW Forever liefert fremde Rezepte nicht
+                -- aus – Klick öffnet ein Flüstern mit der Bitte, den Beruf zu verlinken.
                 local countText = p.count > 0 and (L["%d Rezepte"]):format(p.count)
                     or (c.roster and L["ohne GuildPride"] or L["Rezepte unbekannt"])
-                local canOpen = p.link or (p.skill and CanAskGuild())
-                prow.right:SetText(canOpen and ("|cffffd100" .. L["Berufsfenster öffnen"] .. "|r  ·  " .. countText) or countText)
+                local action = p.link and L["Berufsfenster öffnen"] or (p.count > 0 and L["Rezepte zeigen"]) or L["Anfragen"]
+                prow.right:SetText("|cffffd100" .. action .. "|r  ·  " .. countText)
+                local function Ask()
+                    local short = Ambiguate(c.name, "none"):gsub(" ", "-")
+                    local msg = (L["Hi, kannst du mir bitte dein %s-Fenster im Chat verlinken? (Shift-Klick auf den Beruf)"]):format(p.n)
+                    if ChatFrame_OpenChat then ChatFrame_OpenChat("/w " .. short .. " " .. msg) end
+                end
                 prow:SetScript("OnMouseUp", function(_, button)
-                    if button ~= "RightButton" then
-                        if p.link and Crafts.OpenProfession(p.link, p.n) then return end
-                        if p.skill and Crafts.OpenGuildMember(c.name, p.skill) then return end
-                    end
-                    if p.count == 0 then return end
+                    if button ~= "RightButton" and p.link and Crafts.OpenProfession(p.link, p.n) then return end
+                    if p.count == 0 then Ask() return end
                     openProf[key] = not popen
                     page:Refresh()
                 end)
                 prow:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:SetText(("%s – %s"):format(Ambiguate(c.name, "guild"), p.n))
-                    if canOpen then
+                    if p.link then
                         GameTooltip:AddLine(L["Klick: sein Berufsfenster mit allen Rezepten öffnen"], 1, 1, 1, true)
                         if p.count > 0 then GameTooltip:AddLine(L["Rechtsklick: Rezeptliste hier aufklappen"], 0.7, 0.7, 0.7, true) end
+                    elseif p.count > 0 then
+                        GameTooltip:AddLine(L["Klick: Rezeptliste hier aufklappen"], 1, 1, 1, true)
                     else
-                        GameTooltip:AddLine(L["Das Berufsfenster ist erst verfügbar, wenn der Spieler seins einmal mit dem neuen GuildPride geöffnet hat."], 0.7, 0.7, 0.7, true)
+                        GameTooltip:AddLine(L["Klick: anflüstern und um einen Link zum Beruf bitten. Den Link im Chat anklicken öffnet sein Berufsfenster."], 1, 1, 1, true)
                     end
                     GameTooltip:Show()
                 end)
@@ -711,3 +716,4 @@ page:HookScript("OnShow", function()
     lastAsk = GetTime()
     ns.Queue("CRQ", nil, "1")
 end)
+

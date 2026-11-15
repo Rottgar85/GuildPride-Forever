@@ -58,11 +58,8 @@ function St.Header(f, text)
   line:SetHeight(1)
   if GP.Paint then GP.Paint(line, "accent", 0.6) else line:SetColorTexture(St.GOLD[1], St.GOLD[2], St.GOLD[3], 0.6) end
 
-  local logo = f:CreateTexture(nil, "OVERLAY")
-  logo:SetSize(20, 20); logo:SetPoint("TOPLEFT", 9, -9)
-  logo:SetTexture(St.LOGO)
   local title = f:CreateFontString(nil, "OVERLAY", GPFont_Large and "GPFont_Large" or "GameFontNormal")
-  title:SetPoint("LEFT", logo, "RIGHT", 6, 0)
+  title:SetPoint("TOPLEFT", 14, -12)
   title:SetText(text and (text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) or "Scales")
   if GP.Paint then GP.Paint(title, "heading") end
 
@@ -93,18 +90,18 @@ function St.Text(parent, size, template)
   return fs
 end
 
--- Small flat button in panel colors.
+-- Knopf wie überall in GuildPride (Kupfer-/Glutknopf). Hervorhebung (z. B. gewählte
+-- Sprache) über SetBackdropBorderColor in GOLD -> gedrückter Knopf-Hintergrund.
 function St.Button(parent, text, w)
-  local b = CreateFrame("Button", nil, parent, TEMPLATE)
-  b:SetSize(w, 18)
-  b:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-  b:SetBackdropColor(0.16, 0.10, 0.06, 1)
-  b:SetBackdropBorderColor(St.CYAN[1], St.CYAN[2], St.CYAN[3], 0.8)
-  local fs = b:CreateFontString(nil, "OVERLAY", GPFont_Button and "GPFont_Button" or "GameFontHighlightSmall")
-  fs:SetPoint("CENTER"); fs:SetText(text)
-  b:SetFontString(fs)
-  b:SetScript("OnEnter", function(self) self:SetBackdropBorderColor(St.GOLD[1], St.GOLD[2], St.GOLD[3], 1) end)
-  b:SetScript("OnLeave", function(self) self:SetBackdropBorderColor(St.CYAN[1], St.CYAN[2], St.CYAN[3], 0.8) end)
+  local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+  b:SetSize(w, 22)
+  b:SetText(text)
+  if GP.SkinButton then GP.SkinButton(b) end
+  function b:SetBackdropColor() end
+  function b:SetBackdropBorderColor(r, g, bl)
+    local on = r == St.GOLD[1] and g == St.GOLD[2] and bl == St.GOLD[3]
+    if self.gpBg then self.gpBg:SetTexture(MEDIA .. (on and "nav_active" or "nav")) end
+  end
   return b
 end
 

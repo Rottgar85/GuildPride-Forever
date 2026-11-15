@@ -24,7 +24,7 @@ local function Row(f, i)
   r:SetSize(W - 20, RH)
   r:SetPoint("TOPLEFT", 10, -(TOP + (i - 1) * RH))
   local hl = r:CreateTexture(nil, "HIGHLIGHT")
-  hl:SetAllPoints(); hl:SetColorTexture(St.CYAN[1], St.CYAN[2], St.CYAN[3], 0.12)
+  hl:SetAllPoints(); if GP.Paint then GP.Paint(hl, "glow", 0.15) else hl:SetColorTexture(St.CYAN[1], St.CYAN[2], St.CYAN[3], 0.12) end
   r.slot = St.Text(r, 11, "GameFontNormalSmall")
   r.slot:SetPoint("LEFT", 2, 0); r.slot:SetWidth(78); r.slot:SetWordWrap(false)
   r.icon = r:CreateTexture(nil, "ARTWORK")
@@ -96,7 +96,14 @@ end
 local function SpecButton(f)
   local b = CreateFrame("Button", nil, f, BackdropTemplateMixin and "BackdropTemplate" or nil)
   b:SetHeight(26)
-  b:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+  -- Hintergrund wie die GuildPride-Knöpfe, dünner Rahmen in Akzentfarbe
+  b:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+  b.gpBg = b:CreateTexture(nil, "BACKGROUND")
+  b.gpBg:SetAllPoints(); b.gpBg:SetTexture("Interface\\AddOns\\GuildPrideForever\\Media\\nav")
+  if GP.Paint then GP.Paint(b.gpBg, "tex") end
+  local hl = b:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetPoint("TOPLEFT", 2, -2); hl:SetPoint("BOTTOMRIGHT", -2, 2)
+  if GP.Paint then GP.Paint(hl, "glow", 0.15) end
   b.icon = b:CreateTexture(nil, "ARTWORK")
   b.icon:SetSize(18, 18); b.icon:SetPoint("LEFT", 4, 0)
   b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
@@ -147,7 +154,7 @@ local function UpdateSpecBar(f, specs, view)
     b.check:SetShown(not s.active and s.weights ~= ns.weights)
     b.check:SetChecked(ns.Specs.InTooltip(s.index))
     local sel = s == view
-    b:SetBackdropColor(sel and 0.30 or 0.12, sel and 0.18 or 0.08, sel and 0.08 or 0.05, 1)
+    b.gpBg:SetTexture("Interface\\AddOns\\GuildPrideForever\\Media\\" .. (sel and "nav_active" or "nav"))
     if s.active then b:SetBackdropBorderColor(St.GOLD[1], St.GOLD[2], St.GOLD[3], 1)
     else b:SetBackdropBorderColor(St.CYAN[1], St.CYAN[2], St.CYAN[3], sel and 1 or 0.35) end
     b:Show()
