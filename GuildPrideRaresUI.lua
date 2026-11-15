@@ -16,10 +16,8 @@ win:SetScript("OnDragStart", win.StartMoving)
 win:SetScript("OnDragStop", win.StopMovingOrSizing)
 win:Hide()
 tinsert(UISpecialFrames, "GPRaresWindow")   -- Esc schließt
-local logo = win:CreateTexture(nil, "ARTWORK")
-logo:SetSize(26, 26); logo:SetPoint("TOPLEFT", 10, -10); logo:SetTexture(ns.MEDIA .. "logo_small")
 local title = win:CreateFontString(nil, "OVERLAY", "GPFont_Large")
-title:SetPoint("LEFT", logo, "RIGHT", 8, 0); title:SetText("Rares & Weltbosse")
+title:SetPoint("TOPLEFT", 14, -12); title:SetText("Rares & Weltbosse")
 ns.Paint(title, "heading")
 ns.CloseButton(win)
 

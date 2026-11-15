@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.13.0
+
+**Deutsch**
+- Berufe: WoW Forever liefert die Rezepte von Mitgliedern ohne GuildPride nicht aus. Klick auf ihren Beruf öffnet jetzt ein Flüstern mit der Bitte, den Beruf im Chat zu verlinken – den Link anklicken öffnet ihr Berufsfenster
+- Berufe: Mitglieder mit GuildPride – Klick öffnet ihr Berufsfenster oder zeigt die Rezeptliste im Addon
+- Rares- und Scales-Fenster sehen jetzt aus wie alle anderen GuildPride-Fenster (Kopfzeile, Knöpfe, Spezialisierungs-Leiste, Zeilen-Hervorhebung im gewählten Style)
+
+**English**
+- Professions: WoW Forever does not send the recipes of members without GuildPride. Clicking their profession now opens a whisper asking them to link it in chat – clicking that link opens their profession window
+- Professions: members with GuildPride – a click opens their profession window or shows the recipe list in the addon
+- The rares and Scales windows now look like every other GuildPride window (header, buttons, spec bar, row highlight in your chosen style)
+
 ## 2.12.0
 
 **Deutsch**
