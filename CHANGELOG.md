@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.13.1
+
+**Deutsch**
+- Behoben: Rares und Gildenmitglieder erscheinen jetzt auch auf verkleinerten Weltkarten (z. B. mit Leatrix Maps) und auf der Gebietskarte. Die Punkte nutzen jetzt Blizzards eigenes Kartenpunkt-System
+- Neu: **Fehler melden …** in den Einstellungen (oder `/gp melden`) – fertiger Bericht mit Version, Addons und gespeicherten Fehlern zum Kopieren
+- Neu: Nach einem Update zeigt GuildPride einmal, was sich geändert hat (wieder öffnen mit `/gp changelog`)
+
+**English**
+- Fixed: rares and guild members now also show on scaled-down world maps (e.g. with Leatrix Maps) and on the zone map. The dots now use Blizzard's own map pin system
+- New: **Report a bug …** in the settings (or `/gp melden`) – a ready report with version, addons and saved errors to copy
+- New: after an update GuildPride shows once what has changed (reopen with `/gp changelog`)
+
 ## 2.13.0
 
 **Deutsch**

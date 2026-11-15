@@ -814,6 +814,8 @@ SlashCmdList.GUILDPRIDE = function(arg)
     elseif arg:match("^einladen%f[%A]") or arg:match("^invite%f[%A]") then
         local name = raw:match("^%S+%s+(%S+)")
         if name and ns.InviteToGuild then ns.InviteToGuild(name) else Print(L["Bitte einen Charakternamen eingeben."]) end
+    elseif arg == "melden" or arg == "bug" or arg == "report" then
+        if ns.BugReport then ns.BugReport() end
     elseif arg == "fehler" or arg == "errors" then
         if ns.ErrorReport then ns.ErrorReport() end
     elseif arg == "fehler löschen" or arg == "errors clear" then

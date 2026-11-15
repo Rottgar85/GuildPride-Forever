@@ -43,57 +43,24 @@ local function PinEnter(pin)
 end
 
 local SKULL = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull"
-local function NewPin(m)
-    local pin = CreateFrame("Button", nil, m.overlay)
-    pin.tex = pin:CreateTexture(nil, "OVERLAY")
-    pin.tex:SetAllPoints()
-    pin.tex:SetTexture(SKULL)
-    pin.glow = pin:CreateTexture(nil, "BACKGROUND")
-    pin.glow:SetPoint("CENTER"); pin.glow:SetTexture("Interface\\Cooldown\\star4"); pin.glow:SetBlendMode("ADD")
-    pin:SetScript("OnEnter", PinEnter)
-    pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    pin:SetScript("OnClick", function(self) if self.active then ns.ShowAlert(self.npc, "auf der Karte") end end)
-    return pin
-end
-
-local function Place(m, n, npc, x, y, active, gold)
-    local canvas = m.frame:GetCanvas()
-    local cw, ch = canvas:GetWidth(), canvas:GetHeight()
-    local scale = 1 / (m.frame:GetCanvasScale() or 1)
-    local pin = m.pins[n] or NewPin(m)
-    m.pins[n] = pin
-    local size = active and m.size or math.floor(m.size * 0.7)
-    pin:SetSize(size, size)
-    pin.npc, pin.active = npc, active
+-- Punkte für die gerade gezeigte Karte (über GuildPrideMapPins.lua gezeichnet)
+local function RarePins(shown)
+    local list, now, db = {}, GetServerTime(), ns.DB()
     -- gold: Rare-Elite und Weltboss, weiß: normales Rare, grün leuchtend: gerade gesehen
-    if gold then pin.tex:SetVertexColor(1, 0.8, 0.2) else pin.tex:SetVertexColor(1, 1, 1) end
-    pin.tex:SetAlpha(active and 1 or 0.8)
-    pin.glow:SetSize(size * 2.2, size * 2.2)
-    pin.glow:SetVertexColor(0.2, 1, 0.2)
-    pin.glow:SetShown(active)
-    pin:SetFrameLevel(m.overlay:GetFrameLevel() + (active and 10 or 1))
-    pin:SetScale(scale)
-    pin:ClearAllPoints()
-    pin:SetPoint("CENTER", canvas, "TOPLEFT", cw * x / scale, -ch * y / scale)
-    pin:Show()
-end
-
-local function Refresh(m)
-    if not m.frame:IsShown() then return end
-    local shown = m.frame:GetMapID()
-    local canvas = m.frame:GetCanvas()
-    local want = canvas:GetFrameLevel() + 1600
-    if m.overlay:GetFrameLevel() < want then m.overlay:SetFrameLevel(want) end
-    local n, now, db = 0, GetServerTime(), ns.DB()
-    if db and ns.Enabled() and ns.Opt("pins") and shown and canvas:GetWidth() > 0 then
+    local function Add(npc, x, y, active, gold)
+        list[#list + 1] = { x = x, y = y, tex = SKULL, size = active and 20 or 14, glow = active,
+            alpha = active and 1 or 0.85, color = gold and { 1, 0.8, 0.2 } or nil,
+            enter = function(pin) pin.npc, pin.active = npc, active; PinEnter(pin) end,
+            click = function() if active then ns.ShowAlert(npc, "auf der Karte") end end }
+    end
+    if db and ns.Enabled() and ns.Opt("pins") and shown then
         local activeAt = {}
         -- 1. gerade gesehen (groß, leuchtend)
         for npc, e in pairs(db.seen) do
             if e.t and now - e.t <= ns.FRESH and not (e.dead and e.dead >= e.t) then
                 local x, y = Translate(e.map, e.x, e.y, shown)
                 if x then
-                    n = n + 1
-                    Place(m, n, npc, x, y, true, e.elite or e.boss)
+                    Add(npc, x, y, true, e.elite or e.boss)
                     activeAt[npc] = true
                 end
             end
@@ -107,8 +74,7 @@ local function Refresh(m)
             for _, p in ipairs(pts) do
                 local x, y = Translate(p[1], p[2], p[3], shown)
                 if x then
-                    n = n + 1
-                    Place(m, n, npc, x, y, false, gold)
+                    Add(npc, x, y, false, gold)
                     if zoomedOut then activeAt[npc] = true; return end
                 end
             end
@@ -122,32 +88,19 @@ local function Refresh(m)
                 for _, p in ipairs(s.pts) do
                     local x, y = Translate(p[1], p[2], p[3], shown)
                     if x then
-                        n = n + 1
-                        Place(m, n, npc, x, y, false, s.elite or s.boss)
+                        Add(npc, x, y, false, s.elite or s.boss)
                         if zoomedOut then break end
                     end
                 end
             end
         end
     end
-    for i = n + 1, #m.pins do m.pins[i]:Hide(); m.pins[i].npc = nil end
+    return list
 end
-local function Setup(frame, size)
-    if not frame or maps[frame] or not (frame.GetCanvas and frame.GetMapID) then return end
-    local canvas = frame:GetCanvas()
-    if not canvas then return end
-    local overlay = CreateFrame("Frame", nil, canvas)
-    overlay:SetAllPoints(canvas)
-    overlay:SetFrameLevel(canvas:GetFrameLevel() + 1600)
-    local m = { frame = frame, overlay = overlay, pins = {}, size = size }
-    maps[frame] = m
-    local elapsed = 0
-    overlay:SetScript("OnUpdate", function(_, dt)
-        elapsed = elapsed + dt
-        if elapsed < 1 then return end
-        elapsed = 0
-        Refresh(m)
-    end)
+if GP.AddMapSource then GP.AddMapSource(RarePins) end
+
+local function Setup(frame)
+    if frame then maps[frame] = true end
 end
 
 -- Kleiner Knopf oben rechts auf der Weltkarte: Rare-Scanner an/aus
@@ -225,7 +178,7 @@ local function SetupAll()
     HookFilterMenu()
     UpdateToggleShown()
 end
-ns.RefreshMaps = function() for _, m in pairs(maps) do Refresh(m) end end
+ns.RefreshMaps = function() if GP.RefreshMapPins then GP.RefreshMapPins() end end
 ns.Listen("PLAYER_LOGIN", SetupAll)
 ns.Listen("ADDON_LOADED", function(name)
     if name == "Blizzard_WorldMap" or name == "Blizzard_BattlefieldMap" then SetupAll() end

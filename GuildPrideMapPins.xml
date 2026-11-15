@@ -1,0 +1,23 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Frame name="GuildPrideMapPinTemplate" mixin="GuildPrideMapPinMixin" virtual="true" enableMouse="true">
+        <Size x="14" y="14"/>
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture parentKey="Glow" file="Interface\Cooldown\star4" alphaMode="ADD" hidden="true">
+                    <Anchors><Anchor point="CENTER"/></Anchors>
+                </Texture>
+            </Layer>
+            <Layer level="BORDER">
+                <Texture parentKey="Ring" file="Interface\CharacterFrame\TempPortraitAlphaMask" hidden="true">
+                    <Anchors><Anchor point="CENTER"/></Anchors>
+                </Texture>
+            </Layer>
+            <Layer level="ARTWORK">
+                <Texture parentKey="Tex" setAllPoints="true"/>
+            </Layer>
+        </Layers>
+        <Scripts>
+            <OnLoad method="OnLoad"/>
+        </Scripts>
+    </Frame>
+</Ui>

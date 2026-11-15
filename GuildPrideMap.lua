@@ -187,21 +187,6 @@ local function PinEnter(pin)
     GameTooltip:Show()
 end
 
-local function NewPin(m)
-    local pin = CreateFrame("Frame", nil, m.overlay)
-    pin:SetSize(m.size, m.size)
-    pin:EnableMouse(true)
-    if pin.SetPropagateMouseClicks then pcall(pin.SetPropagateMouseClicks, pin, true) end
-    local mask = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
-    pin.ring = pin:CreateTexture(nil, "ARTWORK")
-    pin.ring:SetAllPoints(); pin.ring:SetTexture(mask); pin.ring:SetVertexColor(0, 0, 0, 0.9)
-    pin.dot = pin:CreateTexture(nil, "OVERLAY")
-    pin.dot:SetPoint("CENTER"); pin.dot:SetSize(m.size - 4, m.size - 4); pin.dot:SetTexture(mask)
-    pin:SetScript("OnEnter", PinEnter)
-    pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    return pin
-end
-
 local function AnyMapShown()
     for frame in pairs(maps) do
         if frame:IsShown() then return true end
@@ -209,47 +194,37 @@ local function AnyMapShown()
     return false
 end
 
-local function Refresh(m)
-    if not m then
-        for _, each in pairs(maps) do Refresh(each) end
-        return
-    end
-    local frame, pins = m.frame, m.pins
-    if not frame:IsShown() then return end
-    local shown = frame:GetMapID()
-    local canvas = frame:GetCanvas()
-    local cw, ch = canvas:GetWidth(), canvas:GetHeight()
-    local scale = 1 / (frame:GetCanvasScale() or 1)
-    -- Blizzard stuft Kartenebenen beim Kartenwechsel neu ein: immer obenauf bleiben
-    local want = canvas:GetFrameLevel() + 1500
-    if m.overlay:GetFrameLevel() < want then m.overlay:SetFrameLevel(want) end
-    local now, n = GetTime(), 0
-    if Showing() and shown and cw > 0 then
-        -- Gruppe und Gildenliste nur alle 2 s neu lesen (große Gilden)
-        if now - cacheAt > 2 then cacheAt, cachedGroup, cachedRoster = now, GroupNames(), RosterInfo() end
-        local group, roster = cachedGroup, cachedRoster
-        for who, p in pairs(positions) do
-            if now - p.t > STALE or not roster[who] or p.none then
-                if now - p.t > STALE then positions[who] = nil end
-            elseif not InGroup(group, who) then
-                local x, y = Translate(p.map, p.x, p.y, shown)
-                if x then
-                    n = n + 1
-                    local pin = pins[n] or NewPin(m)
-                    pins[n] = pin
-                    local r = roster[who]
-                    pin.who, pin.level, pin.zone, pin.class = who, r.level, r.zone, r.class
-                    local c = r.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[r.class]
-                    pin.dot:SetVertexColor(c and c.r or 0.94, c and c.g or 0.78, c and c.b or 0.55)
-                    pin:SetScale(scale)
-                    pin:ClearAllPoints()
-                    pin:SetPoint("CENTER", canvas, "TOPLEFT", cw * x / scale, -ch * y / scale)
-                    pin:Show()
-                end
+-- Punkte für die gerade gezeigte Karte (über GuildPrideMapPins.lua gezeichnet)
+local MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
+local function MemberPins(shown)
+    local list, now = {}, GetTime()
+    if not Showing() or not shown then return list end
+    -- Gruppe und Gildenliste nur alle 2 s neu lesen (große Gilden)
+    if now - cacheAt > 2 then cacheAt, cachedGroup, cachedRoster = now, GroupNames(), RosterInfo() end
+    local group, roster = cachedGroup, cachedRoster
+    for who, p in pairs(positions) do
+        if now - p.t > STALE or not roster[who] or p.none then
+            if now - p.t > STALE then positions[who] = nil end
+        elseif not InGroup(group, who) then
+            local x, y = Translate(p.map, p.x, p.y, shown)
+            if x then
+                local r = roster[who]
+                local c = r.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[r.class]
+                list[#list + 1] = { x = x, y = y, tex = MASK, size = 12, ring = true,
+                    color = { c and c.r or 0.94, c and c.g or 0.78, c and c.b or 0.55 },
+                    enter = function(pin)
+                        pin.who, pin.level, pin.zone, pin.class = who, r.level, r.zone, r.class
+                        PinEnter(pin)
+                    end }
             end
         end
     end
-    for i = n + 1, #pins do pins[i]:Hide(); pins[i].who = nil end
+    return list
+end
+if ns.AddMapSource then ns.AddMapSource(MemberPins) end
+
+local function Refresh()
+    if ns.RefreshMapPins then ns.RefreshMapPins() end
 end
 
 local function SetupMap(frame, size)
@@ -262,14 +237,7 @@ local function SetupMap(frame, size)
     overlay:EnableMouse(false)
     local m = { frame = frame, overlay = overlay, pins = {}, size = size }
     maps[frame] = m
-    local elapsed = 0
-    overlay:SetScript("OnUpdate", function(_, dt)
-        elapsed = elapsed + dt
-        if elapsed < 0.1 then return end
-        elapsed = 0
-        Refresh(m)
-    end)
-    frame:HookScript("OnShow", function() Ask(); Refresh(m) end)
+    frame:HookScript("OnShow", function() Ask(); Refresh() end)
     if frame:IsShown() then Ask() end
 end
 
