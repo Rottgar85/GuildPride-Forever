@@ -301,7 +301,9 @@ ns.MenuTabs = MenuTabs
 -- unten in der Seitenleiste
 local function LayoutTabs()
     local top, bottom = 0, 0
-    for _, tab in ipairs(tabs) do if IsGuest(tab) then tab:Hide() end end
+    -- Erst alle (außer unten fixierte) ausblenden: Offiziers-Reiter ohne Rechte stehen
+    -- nicht in MenuTabs und blieben sonst an ihrer alten Stelle über einem anderen Reiter
+    for _, tab in ipairs(tabs) do if not IsFixed(tab) then tab:Hide() end end
     for _, tab in ipairs(MenuTabs()) do
         tab:ClearAllPoints()
         ApplyTabText(tab)
