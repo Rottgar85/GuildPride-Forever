@@ -1629,6 +1629,7 @@ settingsScroll:SetScrollChild(settings)
 local styleLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
 styleLabel:SetPoint("TOPLEFT", 4, -4)
 styleLabel:SetText(L["Style"])
+styleLabel:Hide()   -- seit 2.14 nur noch ein Style
 local styleButtons = {}
 for i, t in ipairs(ns.THEMES) do
     local b = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
@@ -1641,6 +1642,7 @@ for i, t in ipairs(ns.THEMES) do
     dot:SetSize(8, 8); dot:SetPoint("LEFT", 8, 0)
     b.dot, b.theme = dot, t
     b.key = t.key
+    b:Hide()
     styleButtons[i] = b
 end
 local function MarkStyle()
@@ -1658,8 +1660,9 @@ local colorBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
 colorBtn:SetSize(170, 22); colorBtn:SetPoint("TOPLEFT", 4, -50)
 colorBtn:SetText(L["Eigene Farbe wählen …"])
 colorBtn:SetScript("OnClick", function() ns.PickCustomColor() end)
+colorBtn:Hide()
 
-local OPT_Y = -134   -- darüber: Style, eigene Farbe, Layout (GuildPrideLayout.lua)
+local OPT_Y = -4   -- Style- und Layout-Auswahl gibt es seit 2.14 nicht mehr
 local options = {
     { header = L["Allgemein"] },
     { key = "replaceGuildFrame", label = L["Dieses Fenster statt Blizzard-Gildenfenster (J)"] },

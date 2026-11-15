@@ -70,6 +70,7 @@ local enUS = {
     ["Sichert alles (Einstellungen, DKP, Events, Umfragen, Verlauf, Twinks). Wöchentlich automatisch. Gegen Datenverlust zusätzlich die Datei WTF\\Account\\…\\SavedVariables\\GuildPrideForever.lua kopieren."] = "Backs up everything (settings, DKP, events, polls, history, alts). Automatic once a week. To guard against data loss, also copy the file WTF\\Account\\…\\SavedVariables\\GuildPrideForever.lua.",
     ["Planen"] = "Plan",
     ["Fehler melden"] = "Report a bug",
+    ["Gildenhalle"] = "Guild hall",
     ["Was ist neu in GuildPride?"] = "What's new in GuildPride?",
     ["Wieder öffnen mit /gp changelog"] = "Reopen with /gp changelog",
     ["Verstanden"] = "Got it",

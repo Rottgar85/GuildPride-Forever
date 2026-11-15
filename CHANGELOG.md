@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.14.0
+
+**Deutsch**
+- Neues Design **„Gildenhalle“**: dunkler Schiefer mit Gold-Akzent, neue Schrift (Inter), flache Knöpfe, Felder und Popups. Alle Fenster – auch Rares, Scales und Alarme – sehen jetzt gleich aus
+- Es gibt nur noch einen Style und einen Aufbau (Reiter links). Die Auswahl in den Einstellungen fällt weg
+
+**English**
+- New design **"Guild hall"**: dark slate with a gold accent, new font (Inter), flat buttons, fields and pop-ups. Every window – rares, Scales and alerts too – now looks the same
+- There is only one style and one layout left (tabs on the left). The choice in the settings is gone
+
 ## 2.13.2
 
 **Deutsch**

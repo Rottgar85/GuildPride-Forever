@@ -40,4 +40,4 @@ Fehler melden / Report bugs: bitte mit Lua-Fehlermeldung und Spielversion / with
 
 Lizenz / License: GNU GPL v3.0 (LICENSE.txt)
 Rare-Fundorte / rare spawn points: ForeverMapNotes (GPL-3.0), QuestieDB Forever data (Questie team),
-CMaNGOS classic-db (GPL-3.0). Schriften / fonts: DejaVu (Media/Fonts/LICENSE-DejaVu.txt).
+CMaNGOS classic-db (GPL-3.0). Schriften / fonts: DejaVu (Media/Fonts/LICENSE-DejaVu.txt), Inter (SIL OFL 1.1, Media/Fonts/LICENSE-Inter.txt).
