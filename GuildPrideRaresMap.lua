@@ -50,7 +50,7 @@ local function RarePins(shown)
         list[#list + 1] = { x = x, y = y, tex = SKULL, size = active and 20 or 14, glow = active,
             alpha = active and 1 or 0.85, color = gold and { 1, 0.8, 0.2 } or nil,
             enter = function(pin) pin.npc, pin.active = npc, active; PinEnter(pin) end,
-            click = function() if active then ns.ShowAlert(npc, "auf der Karte") end end }
+            click = function() if active then ns.ShowAlert(npc, "") end end }
     end
     if db and ns.Enabled() and ns.Opt("pins") and shown then
         local activeAt = {}

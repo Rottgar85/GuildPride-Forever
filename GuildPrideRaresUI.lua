@@ -63,7 +63,7 @@ for i = 1, ROWS do
             f[self.npc] = not f[self.npc] or nil
             ns.RefreshUI()
         elseif ns.DB().seen[self.npc] then
-            ns.ShowAlert(self.npc, "aus der Liste")
+            ns.ShowAlert(self.npc, "")
         end
     end)
     r:SetScript("OnEnter", function(self)

@@ -11,7 +11,7 @@ local MEDIA = ns.MEDIA
 local function ApplyTargetLater() if ns.ApplyTarget then ns.ApplyTarget() end end
 -- Banner wie das Meilenstein-Popup von GuildPride
 local alert = CreateFrame("Frame", "GPRaresAlert", UIParent)
-alert:SetSize(460, 115)
+alert:SetSize(460, 132)
 alert:SetPoint("TOP", 0, -180)
 alert:SetFrameStrata("DIALOG")
 alert:SetMovable(true); alert:EnableMouse(true); alert:RegisterForDrag("LeftButton")
@@ -67,6 +67,11 @@ local s3 = shineAg:CreateAnimation("Alpha"); s3:SetFromAlpha(0.9); s3:SetToAlpha
 -- Platzhalter, über dem der Blizzard-Knopf liegt
 alert.slot = CreateFrame("Frame", nil, alert)
 alert.slot:SetSize(120, 22); alert.slot:SetPoint("TOPLEFT", alert.sub, "BOTTOMLEFT", 0, -7)
+-- Ganz unten: wer den Gegner gefunden hat
+alert.finder = alert:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+alert.finder:SetPoint("TOPLEFT", alert.slot, "BOTTOMLEFT", 0, -8)
+alert.finder:SetPoint("RIGHT", -24, 0)
+alert.finder:SetJustifyH("LEFT")
 alert.combat = alert:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
 alert.combat:SetPoint("LEFT", alert.slot, "LEFT", 0, 0)
 
@@ -138,8 +143,10 @@ function ns.ShowAlert(npcId, how)
     badge:SetVertexColor(1, (e.elite or e.boss) and 0.8 or 1, (e.elite or e.boss) and 0.2 or 1)
     ns.Repaint()
     local layerTxt = (e.layer and ns.myLayer and e.layer ~= ns.myLayer) and " · |cffff6060anderer Layer?|r" or ""
-    alert.sub:SetText(("%s %.1f / %.1f · %s%s · %s%s"):format(ns.MapName(e.map), e.x * 100, e.y * 100,
-        e.hp and (e.hp .. "% · ") or "", how, ns.Ago(e.t), layerTxt))
+    alert.sub:SetText(("%s %.1f / %.1f · %s%s%s"):format(ns.MapName(e.map), e.x * 100, e.y * 100,
+        e.hp and (e.hp .. "% · ") or "", ns.Ago(e.t), layerTxt))
+    alert.finder:SetText("|cffa39d90Gefunden von|r |cffe8c37a" .. tostring(e.by or "?") .. "|r"
+        .. (how and how ~= "" and ("  |cff8a857a(" .. how .. ")|r") or ""))
     alert:SetAlpha(1)
     alert:Show()
     ag:Play(); badgeAg:Play(); shineAg:Play()
@@ -155,7 +162,7 @@ function ns.LocalAlert(npcId, source)
     local e = ns.DB().seen[npcId]
     if not e then return end
     if ns.DB().fav[npcId] or ns.Opt("alertAll") or (e.boss and ns.Opt("alertBoss")) then
-        ns.ShowAlert(npcId, "von dir (" .. source .. ")")
+        ns.ShowAlert(npcId, source)
     end
 end
 
@@ -165,6 +172,6 @@ function ns.OnRemoteSighting(npcId, isNew)
     local e = ns.DB().seen[npcId]
     if not e then return end
     if ns.DB().fav[npcId] or (e.boss and ns.Opt("alertBoss")) or ns.Opt("alertAll") then
-        ns.ShowAlert(npcId, "gemeldet von " .. tostring(e.by))
+        ns.ShowAlert(npcId, "")
     end
 end

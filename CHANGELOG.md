@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.14.1
+
+**Deutsch**
+- Behoben: Im Menü links lagen zwei Reiter übereinander (z. B. „Verwaltung“ über „Berufe“), wenn sich die Offiziersrechte nach dem Laden änderten
+- Rare-Alarm: ganz unten steht jetzt, wer den Gegner gefunden hat
+
+**English**
+- Fixed: two menu tabs on the left could overlap (e.g. "Management" over "Professions") when officer rights changed after loading
+- Rare alert: the bottom line now shows who found the enemy
+
 ## 2.14.0
 
 **Deutsch**

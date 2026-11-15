@@ -302,6 +302,9 @@ local function TabExtras(tab)
     tab.gpEdge:SetPoint("TOPRIGHT"); tab.gpEdge:SetPoint("BOTTOMRIGHT"); tab.gpEdge:SetWidth(2)
     tab.gpEdge:SetColorTexture(0, 0, 0, 0.35)
     tab.gpEdge:Hide()
+    -- Alles versteckt, bis ein Layout es braucht (sonst erscheinen Punkt und zweite
+    -- Aufschrift auf Reitern, die erst nach dem Anordnen sichtbar werden)
+    tab.gpIcon:Hide(); tab.gpMark:Hide(); tab.gpDot:Hide(); tab.gpVert:Hide()
     -- Name als Tooltip (Icon-Leiste und Lesezeichen)
     tab:HookScript("OnEnter", function(self)
         if Current().key == "forge" then return end
@@ -380,6 +383,10 @@ function ns.LayoutMarkTab(tab, on)
         tab:SetWidth(on and 94 or 82)   -- der aktive Reiter ragt weiter heraus
         tab.gpVert:SetTextColor(0.98, 0.94, 0.86, on and 1 or 0.82)
         if ns.Ink then ns.Ink.Soon() end
+    else
+        -- Seitenleiste: nur die normale Aufschrift
+        tab.gpIcon:Hide(); tab.gpMark:Hide(); tab.gpDot:Hide(); tab.gpVert:Hide(); tab.gpEdge:Hide()
+        tab.text:Show()
     end
 end
 
@@ -560,5 +567,25 @@ function ns.MarkLayout()
     for _, b in ipairs(buttons) do
         if b.gpBg then b.gpBg:SetTexture(MEDIA .. (b.key == cur and "nav_active" or "nav")) end
         b:SetNormalFontObject(b.key == cur and GPFont_ButtonActive or GPFont_Button)
+    end
+end
+
+-- /gp reiter: Liste der Reiter mit Lage und sichtbaren Aufschriften (Fehlersuche Menü)
+do
+    local slash = SlashCmdList.GUILDPRIDE
+    SlashCmdList.GUILDPRIDE = function(arg)
+        if strtrim(arg or ""):lower() ~= "reiter" then return slash(arg) end
+        for i, tab in ipairs(P.tabs) do
+            local p, rel, rp, x, y = tab:GetPoint()
+            local texts = {}
+            for _, r in ipairs({ tab:GetRegions() }) do
+                if r:IsObjectType("FontString") and r:IsShown() and (r:GetText() or "") ~= "" then
+                    texts[#texts + 1] = r:GetText()
+                end
+            end
+            print(("%d key=%s shown=%s %s %s %d/%d  %s  dot=%s"):format(i, tostring(tab.key), tostring(tab:IsShown()),
+                tostring(p), tostring(rp), math.floor(x or 0), math.floor(y or 0), table.concat(texts, " | "),
+                tostring(tab.gpDot and tab.gpDot:IsShown())))
+        end
     end
 end
