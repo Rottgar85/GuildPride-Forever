@@ -450,27 +450,48 @@ function Crafts.ReadGuildSoon(force)
 end
 
 -- Berufsfenster eines Mitglieds über das Spiel anfragen (ohne geteilten Link)
-local otherAt = -60
+-- Wichtig: Das Spiel kennt den Namen nur in seiner eigenen Form aus der
+-- Gildenliste („Reon-Strobek“), nicht in GuildPrides „Reon Strobek“. Vorher
+-- ging die Anfrage darum ins Leere, und es öffnete sich nichts.
+local otherAt, waitFor = -60, nil
+local function LoadTradeUI()
+    local load = (C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
+    if not load then return end
+    for _, a in ipairs({ "Blizzard_Professions", "Blizzard_TradeSkillUI" }) do
+        local loaded = (C_AddOns and C_AddOns.IsAddOnLoaded or IsAddOnLoaded)
+        if not (loaded and loaded(a)) then pcall(load, a) end
+    end
+end
 function Crafts.OpenGuildMember(name, skillID)
     if not (name and skillID) then return false end
-    local short = Ambiguate(name, "none")
-    if C_GuildInfo and C_GuildInfo.QueryGuildMemberRecipes then
-        local guid
-        for i = 1, GetNumGuildMembers() do
-            local n = GetGuildRosterInfo(i)
-            if n and ns.Normalize(n) == ns.Normalize(name) then guid = select(17, GetGuildRosterInfo(i)) break end
-        end
-        if guid then
-            otherAt = GetTime()
-            if pcall(C_GuildInfo.QueryGuildMemberRecipes, guid, skillID) then return true end
-        end
+    local raw, guid
+    for i = 1, GetNumGuildMembers() do
+        local n = GetGuildRosterInfo(i)
+        if n and ns.Normalize(n) == name then raw, guid = n, select(17, GetGuildRosterInfo(i)) break end
     end
-    if GetGuildMemberRecipes then
-        otherAt = GetTime()
-        if pcall(GetGuildMemberRecipes, short, skillID) then return true end
+    if not raw then return false end
+    LoadTradeUI()
+    local asked = false
+    if C_GuildInfo and C_GuildInfo.QueryGuildMemberRecipes and guid then
+        asked = pcall(C_GuildInfo.QueryGuildMemberRecipes, guid, skillID)
     end
-    return false
+    if not asked and GetGuildMemberRecipes then
+        asked = pcall(GetGuildMemberRecipes, raw, skillID)
+    end
+    if not asked then return false end
+    otherAt = GetTime()
+    -- Kommt nach 3 s kein Berufsfenster, Bescheid sagen statt still nichts zu tun
+    local token = {}
+    waitFor = token
+    C_Timer.After(3, function()
+        if waitFor == token then
+            waitFor = nil
+            ns.Print((L["%s: Das Spiel hat kein Berufsfenster geschickt. Bitte ihn, sein Berufsfenster einmal mit GuildPride zu öffnen."]):format(Ambiguate(name, "guild")))
+        end
+    end)
+    return true
 end
+function Crafts.GotTradeWindow() waitFor = nil end
 
 ---------------------------------------------------------------------
 -- Ereignisse: beim Einloggen Berufe melden, beim Öffnen des Berufsfensters Rezepte
@@ -497,6 +518,7 @@ ev:SetScript("OnEvent", function(_, event)
     else
         -- Berufsfenster: kurz warten, bis die Liste vollständig ist. Gerade
         -- das Fenster eines anderen angefragt? Dann nichts als eigenes melden.
+        if event == "TRADE_SKILL_SHOW" then Crafts.GotTradeWindow() end
         if GetTime() - otherAt < 15 then return end
         C_Timer.After(1, function()
             local ok, prof, ids, link = pcall(ReadOpenRecipes)

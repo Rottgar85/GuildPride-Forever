@@ -1,5 +1,27 @@
 # GuildPride Changelog
 
+## 2.11.0
+
+**Deutsch**
+- Neu: **Rare-Scanner und Weltbosse** (`/gp rares` oder `/gpr`). Rares und Weltbosse werden über Ziel, Maus und Namensplaketten erkannt und serverweit mit allen GuildPride-Nutzern geteilt – auch außerhalb der eigenen Gilde
+- Alarm im Stil des Meilenstein-Popups mit Knöpfen **Anvisieren** und **Wegpunkt**. Für eine Taste: Makro `/click GPRaresTarget`
+- Weltkarte und Gebietskarte zeigen bekannte Fundorte von über 300 Rares als Totenkopf (gold = Elite/Weltboss), frische Sichtungen leuchten grün. Neue Fundorte lernt GuildPride beim Spielen dazu
+- An/Aus direkt im Kartenfilter der Weltkarte („GuildPride Rares“)
+- Fenster mit „zuletzt gesehen/getötet“, Favoriten (Rechtsklick) und geschätzten Zeitfenstern für Weltbosse
+- `/gpr weit` erhöht die Reichweite der Namensplaketten, damit Rares früher erkannt werden
+- Behoben: Klick auf einen Beruf eines Mitglieds ohne GuildPride öffnet jetzt sein Berufsfenster (der Name wurde in falscher Form ans Spiel geschickt). Kommt keins, steht ein Hinweis im Chat
+- GuildPride steht jetzt unter der GPL-3.0. Rare-Fundorte: ForeverMapNotes, QuestieDB (Questie-Team), CMaNGOS classic-db
+
+**English**
+- New: **rare scanner and world bosses** (`/gp rares` or `/gpr`). Rares and world bosses are detected via target, mouseover and nameplates and shared realm-wide with every GuildPride user – not only your guild
+- Alert in the style of the milestone pop-up with **Target** and **Waypoint** buttons. For a key bind: macro `/click GPRaresTarget`
+- World map and zone map show known spawn points of 300+ rares as skulls (gold = elite/world boss); fresh sightings glow green. GuildPride learns new spawn points while you play
+- On/off right in the world map filter menu ("GuildPride Rares")
+- Window with last seen/killed, favourites (right-click) and estimated world boss windows
+- `/gpr weit` raises the nameplate range so rares are spotted earlier
+- Fixed: clicking a profession of a member without GuildPride now opens their profession window (the name was sent to the game in the wrong form). If none comes, a hint shows in chat
+- GuildPride is now licensed under GPL-3.0. Rare spawn data: ForeverMapNotes, QuestieDB (Questie team), CMaNGOS classic-db
+
 ## 2.10.0
 
 **Deutsch**
