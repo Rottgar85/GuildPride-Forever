@@ -21,13 +21,13 @@ local LAYOUTS = {   -- auch für die Einrichtung: ns.LayoutList
     { key = "rail",  name = L["Icon-Leiste"], w = 744,  h = 600, side = 64,  header = 70 },
     { key = "book",  name = L["Gildenbuch"],  w = 1052, h = 640, side = 340, header = 76 },
 }
-ns.LayoutList = LAYOUTS
+ns.LayoutList = {}   -- keine Auswahl mehr (ein Aufbau, ein Style)
 local byKey = {}
 for _, l in ipairs(LAYOUTS) do byKey[l.key] = l end
 
 local function Current()
-    local key = GuildPrideDB and GuildPrideDB.layout
-    return byKey[key] or byKey.book   -- Standard seit 2.8: das Gildenbuch
+    -- Seit 2.14 nur noch ein Aufbau: Seitenleiste links, Inhalt rechts (passend zum Style "Gildenhalle")
+    return byKey.forge
 end
 ns.CurrentLayout = function() return Current().key end
 
@@ -535,9 +535,11 @@ if not settings then return end
 local label = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
 label:SetPoint("TOPLEFT", 4, -82)
 label:SetText(L["Layout"])
+label:Hide()
 local hint = settings:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
 hint:SetPoint("LEFT", label, "RIGHT", 10, 0)
 hint:SetText(L["Aufbau des Fensters – frei kombinierbar mit dem Style"])
+hint:Hide()
 local buttons = {}
 for i, l in ipairs(LAYOUTS) do
     local b = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
@@ -550,6 +552,7 @@ for i, l in ipairs(LAYOUTS) do
     end)
     if ns.SkinButton then pcall(ns.SkinButton, b) end
     b.key = l.key
+    b:Hide()
     buttons[i] = b
 end
 function ns.MarkLayout()

@@ -142,4 +142,4 @@ GuildPride steht unter der **GNU General Public License v3.0** (siehe `LICENSE.t
 GuildPride is licensed under the **GNU General Public License v3.0** (see `LICENSE.txt`).
 
 - Rare-Fundorte / rare spawn points: aus / from [ForeverMapNotes](https://www.curseforge.com/wow/addons/forevermapnotes-bysiberiano12) (GPL-3.0), dort aus / based on QuestieDB Forever data ([github.com/Questie/QuestieDB](https://github.com/Questie/QuestieDB)) – danke an das Questie-Team / thanks to the Questie team – und / and CMaNGOS classic-db ([github.com/cmangos/classic-db](https://github.com/cmangos/classic-db), GPL-3.0)
-- Schriften / fonts: DejaVu (siehe / see `Media/Fonts/LICENSE-DejaVu.txt`)
+- Schriften / fonts: DejaVu (`Media/Fonts/LICENSE-DejaVu.txt`), Inter (SIL OFL 1.1, `Media/Fonts/LICENSE-Inter.txt`)
