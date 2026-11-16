@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.20.0
+
+**Deutsch**
+- Weniger Spam im Gildenchat durch die Discord-Anbindung: `[GP]`-Zeilen gehen jetzt automatisch in Blizzards eigenen Discord-Kanal der Gilde, sobald die Gildenleitung **Discord-Chat getrennt** eingeschaltet hat (Gildeneinstellungen → Discord-Einstellungen). Spieler ohne GuildPride sehen sie dann nicht mehr in /g. Landen die Zeilen doch im Gildenchat, bekommen Offiziere einmal einen Hinweis. `/gp discord gilde` erzwingt weiter den Gildenchat
+- Anmeldungen werden 10 Sekunden zurückgehalten: Wer schnell umentscheidet (Zusage, Vielleicht, Absage …), erzeugt nur eine Zeile mit dem letzten Stand
+- Boss-Erstkills gehen nicht mehr einzeln von jedem Raidmitglied an Discord; die Bosse stehen in der Raid-Zusammenfassung
+
+**English**
+- Less guild chat spam from the Discord bridge: `[GP]` lines now automatically go to Blizzard's own Discord channel of the guild once the guild leader has turned on **Separate Discord chat** (Guild Settings → Discord Settings). Players without GuildPride no longer see them in /g. If the lines still end up in guild chat, officers get a one-time hint. `/gp discord guild` still forces guild chat
+- Sign-ups are held back for 10 seconds: changing your mind quickly (attending, maybe, declined …) produces only one line with the final choice
+- First boss kills are no longer sent to Discord by every raid member separately; the bosses are listed in the raid summary
+
 ## 2.19.1
 
 **Deutsch**

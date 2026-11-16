@@ -85,6 +85,17 @@ end
 -- Senden
 ---------------------------------------------------------------------
 local queue = {}
+local notBefore = {}   -- Zeile -> frühester Sendezeitpunkt (GetTime)
+local hinted = false
+
+-- Anmeldungen kurz zurückhalten: wer schnell umentscheidet (Zusage, dann
+-- Vielleicht …), erzeugt nur eine Zeile statt mehrerer
+local SIGN_HOLD = 10
+local SIGN_WORDS = { Zusage = true, Vielleicht = true, Absage = true, Attending = true, Maybe = true, Declined = true }
+local function SignKey(text)
+    local name, word, id = text:match("^%[GP%] ([^:]+): (%S+) #(%w+)")
+    if name and SIGN_WORDS[word] then return name .. "#" .. id end
+end
 
 local function DiscordStream()
     if not (C_Club and C_Club.GetGuildClubId and C_Club.GetStreams) then return end
@@ -101,30 +112,48 @@ local function DiscordStream()
 end
 
 -- Rückgabe: "stream", "guild" oder nil (fehlgeschlagen)
+-- Standard: in Blizzards eigenen Discord-Kanal der Gilde, sobald die Gilde
+-- ihn vom Gildenchat getrennt hat. Dann sieht /g die Zeilen gar nicht.
+-- Nur mit /gp discord gilde immer in den Gildenchat.
 local function SendNow(text)
     local o = Opt()
-    if o.via == "stream" then
+    if o.via ~= "guild" then
         local clubId, streamId = DiscordStream()
         if clubId and C_Club.SendMessage and pcall(C_Club.SendMessage, clubId, streamId, text) then
             return "stream"
         end
     end
     local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-    if pcall(send, text, "GUILD") then return "guild" end
+    if pcall(send, text, "GUILD") then
+        -- Offizieren einmal pro Sitzung sagen, wie der Gildenchat frei bleibt
+        if not hinted and o.via ~= "guild" and ns.IsOfficerName and ns.IsOfficerName(ns.Me()) then
+            hinted = true
+            ns.Print(L["Discord-Zeilen landen im Gildenchat. Damit /g frei bleibt: Gildenleitung schaltet unter Gildeneinstellungen → Discord-Einstellungen „Discord-Chat getrennt“ ein."])
+        end
+        return "guild"
+    end
 end
 
 -- Aus einer Spieleraktion heraus aufrufen (Klick, Tastendruck)
 function Discord.Flush()
     if #queue == 0 or InCombatLockdown() then return end
-    if not IsInGuild() then wipe(queue); return end
-    -- Bis zu drei Zeilen pro Aktion (lange DKP-Buchungen sind mehrteilig)
-    for _ = 1, 3 do
-        local item = table.remove(queue, 1)
-        if not item then break end
-        -- Hat es inzwischen schon jemand anderes gesendet?
-        if not Seen(item) then
-            MarkSeen(item)
-            SendNow(item)
+    if not IsInGuild() then wipe(queue); wipe(notBefore); return end
+    -- Bis zu drei Zeilen pro Aktion (lange DKP-Buchungen sind mehrteilig);
+    -- zurückgehaltene Anmeldungen bleiben liegen, bis ihre Zeit um ist
+    local now, sent, i = GetTime(), 0, 1
+    while i <= #queue and sent < 3 do
+        local item = queue[i]
+        if (notBefore[item] or 0) > now then
+            i = i + 1
+        else
+            table.remove(queue, i)
+            notBefore[item] = nil
+            -- Hat es inzwischen schon jemand anderes gesendet?
+            if not Seen(item) then
+                MarkSeen(item)
+                SendNow(item)
+                sent = sent + 1
+            end
         end
     end
 end
@@ -132,6 +161,14 @@ end
 local function Enqueue(text)
     text = text:sub(1, 255)
     for _, q in ipairs(queue) do if q == text then return end end
+    -- Neue Anmeldung desselben Spielers zum selben Event ersetzt die wartende
+    local key = SignKey(text)
+    if key then
+        for i = #queue, 1, -1 do
+            if SignKey(queue[i]) == key then notBefore[queue[i]] = nil; table.remove(queue, i) end
+        end
+        notBefore[text] = GetTime() + SIGN_HOLD
+    end
     table.insert(queue, text)
 end
 
@@ -182,7 +219,7 @@ local AddFilter = ChatFrame_AddMessageEventFilter or (ChatFrameUtil and ChatFram
 local function Filter(_, _, text)
     if not ns.IsBridgeLine(text) then return false end
     MarkSeen(text)
-    for i = #queue, 1, -1 do if queue[i] == text then table.remove(queue, i) end end
+    for i = #queue, 1, -1 do if queue[i] == text then notBefore[text] = nil; table.remove(queue, i) end end
     return not (GuildPrideDB and Opt().showRaw)
 end
 if AddFilter then
@@ -256,7 +293,7 @@ SlashCmdList.GUILDPRIDE = function(arg)
     ns.Print(("Discord: %s · %s: %s · %s: %s · %s · %s: %d"):format(
         Enabled() and L["an"] or L["aus"],
         L["verknüpft"], Discord.IsLinked() and L["ja"] or L["nein"],
-        L["Weg"], o.via == "stream" and stream or L["Gildenchat"],
+        L["Weg"], o.via == "guild" and L["Gildenchat"] or stream,
         o.showRaw and L["Zeilen sichtbar"] or L["Zeilen ausgeblendet"],
         L["wartend"], #queue))
 end

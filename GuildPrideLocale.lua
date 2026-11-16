@@ -426,6 +426,7 @@ local enUS = {
     ["Discord-Test an ein verknüpftes Mitglied gegeben."] = "Discord test handed to a linked guildmate.",
     ["eigener Discord-Kanal"] = "own Discord channel",
     ["Gildenchat"] = "guild chat",
+    ["Discord-Zeilen landen im Gildenchat. Damit /g frei bleibt: Gildenleitung schaltet unter Gildeneinstellungen → Discord-Einstellungen „Discord-Chat getrennt“ ein."] = "Discord lines are going to guild chat. To keep /g clear, the guild leader turns on \"Separate Discord chat\" under Guild Settings → Discord Settings.",
     ["verknüpft"] = "linked",
     ["Weg"] = "route",
     ["Zeilen sichtbar"] = "lines visible",

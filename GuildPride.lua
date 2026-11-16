@@ -321,8 +321,10 @@ local function Broadcast(kind, value)
     if not IsInGuild() or not ns.Queue then return end
     ns.Queue(kind, "@CHANNEL", value)
     if ShowMilestone then ShowMilestone(ns.Me(), kind, value) end
-    -- Wichtige Meilensteine zusätzlich nach Discord (Erfolge/Reittiere wären zu viele)
-    if ns.Discord and ns.DescribeMilestone and (kind == "LEVEL" or kind == "BOSS" or kind == "MPLUS") then
+    -- Wichtige Meilensteine zusätzlich nach Discord (Erfolge/Reittiere wären zu viele).
+    -- Bosse nicht: Bei einem Erstkill schickte sonst jeder im Raid eine eigene
+    -- Zeile; die Bosse stehen in der Raid-Zusammenfassung.
+    if ns.Discord and ns.DescribeMilestone and (kind == "LEVEL" or kind == "MPLUS") then
         ns.Discord.Post(((ns.IS_GERMAN and "Meilenstein" or "Milestone") .. ": %s %s"):format(Ambiguate(ns.Me(), "guild"), ns.DescribeMilestone(kind, value)))
     end
 end

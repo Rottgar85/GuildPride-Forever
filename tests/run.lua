@@ -590,5 +590,28 @@ test("Datensicherung: sichern und Daten bleiben", function()
     eq(GuildPrideBackupDB.snaps[1].data.testWert, 42, "Kopie, keine Referenz")
 end)
 
+---------------------------------------------------------------------
+test("Discord: schnelles Umentscheiden ergibt nur eine Zeile", function()
+    SlashCmdList.GUILDPRIDE = SlashCmdList.GUILDPRIDE or function() end
+    W.Load("GuildPrideDiscord.lua")
+    local D = ns.Discord
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = true, true
+    local out, old = {}, C_ChatInfo.SendChatMessage
+    C_ChatInfo.SendChatMessage = function(text, kind) if kind == "GUILD" then out[#out + 1] = text end end
+    D.Post("Tester: Zusage #abcde Kara (Tank)", true)
+    D.Post("Tester: Vielleicht #abcde Kara", true)
+    D.Post("Tester: Absage #abcde Kara", true)
+    D.Flush()
+    eq(#out, 0, "Anmeldung wird kurz zurückgehalten")
+    W.Advance(11)
+    D.Flush()
+    eq(#out, 1, "nur die letzte Anmeldung")
+    eq(out[1], "[GP] Tester: Absage #abcde Kara")
+    D.Post("Neues Event #fghij: Ony – 20.11. 20:00 (t=1)", true)
+    eq(#out, 2, "andere Zeilen sofort")
+    C_ChatInfo.SendChatMessage = old
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = nil, nil
+end)
+
 print(("\n%d bestanden, %d fehlgeschlagen"):format(passed, failed))
 if failed > 0 then os.exit(1) end
