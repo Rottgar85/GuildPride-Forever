@@ -11,7 +11,33 @@ permissions:
   contents: write
 
 jobs:
+  # Vor dem Hochladen dieselben Pruefungen wie bei jedem Push: geht etwas
+  # schief, wird nichts veroeffentlicht
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: luacheck installieren
+        run: sudo apt-get update && sudo apt-get install -y lua-check lua5.1 liblua5.1-0-dev
+      - name: Lua-Code pruefen
+        run: luacheck . --no-color
+      - name: Lua kompilieren (u. a. Grenze 200 lokale Variablen)
+        run: for f in *.lua; do luac5.1 -p "$f" || exit 1; done
+      - name: Tests
+        run: lua5.1 tests/run.lua
+      - name: Version passt zu Tag, Changelog und Spiel-Changelog
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          toc=$(sed -n 's/^## Version: *//p' GuildPrideForever.toc | tr -d '\r')
+          log=$(grep -m1 '^## ' CHANGELOG.md | sed 's/^## *//' | tr -d '\r')
+          news=$(grep -m1 -o 'version = "[^"]*"' GuildPrideNewsData.lua | cut -d'"' -f2)
+          echo "Tag $tag · toc $toc · CHANGELOG $log · News $news"
+          [ "$tag" = "$toc" ] && [ "$tag" = "$log" ] && [ "$tag" = "$news" ]
+
   release:
+    needs: check
     runs-on: ubuntu-latest
     env:
       CF_API_KEY: ${{ secrets.CF_API_KEY }}

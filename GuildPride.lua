@@ -87,7 +87,8 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    minimap = true, chatFont = 12, scale = 1, alpha = 1, welcome = false,
                    publicLFG = true, publicAlerts = false, lfgPublic = false, lfgScope = "all",
                    mapShow = true, mapShare = true, ausweisAuto = true, groupAlts = true, compactMenu = true,
-                   guildTab = true, wishTooltip = true, wishDropHint = true }
+                   guildTab = true, wishTooltip = true, wishDropHint = true,
+                   remindMin = 15, layerHelp = true, layerShow = true }
 
 -- Weitere Meilensteine neben LEVEL (Wert ist Text bzw. ID)
 local EXTRA_KINDS = { ACH = true, BOSS = true, MPLUS = true, MOUNT = true }
@@ -432,8 +433,10 @@ local function CheckRosterLevels()
     if not IsInGuild() or not ns.GuildId() or GetNumGuildMembers() == 0 then return end
     local known = ns.GuildTable("levels")
     local silent = not rosterSeen
+    local inGuild = {}
     for i = 1, GetNumGuildMembers() do
         local name, _, _, level = GetGuildRosterInfo(i)
+        if name then inGuild[Normalize(name)] = true end
         if name and level and level > 0 then
             local full = Normalize(name)
             local before = known[full]
@@ -443,6 +446,12 @@ local function CheckRosterLevels()
                 end
             end
             known[full] = level
+        end
+    end
+    -- Ausgetretene Mitglieder vergessen, sonst wächst die Liste für immer
+    if next(inGuild) then
+        for full in pairs(known) do
+            if not inGuild[full] then known[full] = nil end
         end
     end
     rosterSeen = true
@@ -624,7 +633,12 @@ local function Dispatch(message, sender)
         return
     end
     if ns.Handlers[kind] then
-        for _, fn in ipairs(ns.Handlers[kind]) do fn(value, sender) end
+        -- Jeden Empfänger einzeln absichern: ein Fehler in einem Modul
+        -- darf die Nachricht nicht für alle anderen verschlucken
+        for _, fn in ipairs(ns.Handlers[kind]) do
+            local ok, err = pcall(fn, value, sender)
+            if not ok then geterrorhandler()(err) end
+        end
     elseif kind == "LEVEL" or EXTRA_KINDS[kind] then
         value = SafeMilestoneValue(kind, value)
         if value then ShowMilestone(sender, kind, value) end
@@ -667,7 +681,9 @@ local function OnExtraMilestone(event, ...)
         if not C_ChallengeMode then return end
         local info = C_ChallengeMode.GetChallengeCompletionInfo and C_ChallengeMode.GetChallengeCompletionInfo()
         local level = info and info.level
-        if not level then level = select(2, C_ChallengeMode.GetCompletionInfo()) end
+        if not level and C_ChallengeMode.GetCompletionInfo then
+            level = select(2, C_ChallengeMode.GetCompletionInfo())
+        end
         if not level or level < 10 or (info and info.onTime == false) then return end
         if level <= (GuildPrideDB.mplusBest or 0) then return end   -- nur neue Bestwerte
         GuildPrideDB.mplusBest = level
@@ -742,7 +758,10 @@ f:SetScript("OnEvent", function(_, event, ...)
         if channel == "CHANNEL" and ns.IsPublicChannel then
             local _, _, _, _, _, _, localID, chanName = ...
             if not IsSecret(localID) and not IsSecret(chanName) and ns.IsPublicChannel(localID, chanName) then
-                if ns.OnPublicMessage then ns.OnPublicMessage(message, sender) end
+                -- Layer-Wechsel (GuildPrideLayer.lua) hat eigene Arten: LYQ/LYA/LYR
+                if message:sub(1, 2) == "LY" then
+                    if ns.OnLayerMessage then ns.OnLayerMessage(message, sender, false) end
+                elseif ns.OnPublicMessage then ns.OnPublicMessage(message, sender) end
                 return
             end
         end
@@ -750,6 +769,11 @@ f:SetScript("OnEvent", function(_, event, ...)
         -- Fremden – ebenfalls nur an die Gruppensuche, und nur Einträge (PLFG)
         if channel == "WHISPER" and message:sub(1, 5) == "PLFG:" then
             if ns.OnPublicMessage then ns.OnPublicMessage(message, sender, true) end
+            return
+        end
+        -- Layer-Wechsel: Angebot (LYA) und Bitte (LYR) kommen per Flüstern, auch von Fremden
+        if channel == "WHISPER" and (message:sub(1, 4) == "LYA:" or message:sub(1, 4) == "LYR:") then
+            if ns.OnLayerMessage then ns.OnLayerMessage(message, sender, true) end
             return
         end
         -- Kanal: nur unser abgesicherter Gildenkanal zählt, keine anderen Kanäle

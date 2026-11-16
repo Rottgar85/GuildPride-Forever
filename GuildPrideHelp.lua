@@ -555,6 +555,7 @@ end)
 -- UI-Reiter
 ---------------------------------------------------------------------
 local page = ns.AddTab(L["Gruppensuche"], 40)
+ns.GroupPage = page   -- Layer-Wechsel-Knopf (GuildPrideLayer.lua)
 
 local hint = page:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
 hint:SetPoint("TOPLEFT", 2, -2)
@@ -906,6 +907,7 @@ end
 if ns.IS_FOREVER and LFDMicroButton then
     local bBrowser = ns.SecureClickButton(page, 140, L["Dungeonbrowser"], LFDMicroButton)
     bBrowser:SetPoint("TOPRIGHT", -2, -52)
+    ns.GroupBrowserWidth = 140
     bBrowser:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText(L["Dungeonbrowser"], 1, 1, 1)

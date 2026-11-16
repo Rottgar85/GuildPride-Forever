@@ -617,8 +617,39 @@ roster:SetWidth(ROSTER_W)
 -- kann den sicheren Klick-Handler ersetzen – dann passiert beim Klick nichts.
 -- Aussehen deshalb selbst gebaut, im Stil der übrigen Knöpfe.
 local secureButtons = {}
+
+-- Im Kampf darf ein sicherer Knopf weder gezeigt, versteckt, verschoben noch
+-- umgestellt werden. Damit sich das Gildenfenster trotzdem im Kampf öffnen
+-- lässt (die Seiten stellen beim Anzeigen ihre Knöpfe ein), merken sich die
+-- Knöpfe solche Aufrufe und holen sie nach dem Kampf nach.
+local GUARDED = { "Show", "Hide", "SetShown", "SetPoint", "ClearAllPoints", "SetAllPoints", "SetSize",
+    "SetWidth", "SetHeight", "SetAttribute", "SetEnabled", "Enable", "Disable" }
+local function GuardSecure(b)
+    local base = getmetatable(b).__index
+    for _, m in ipairs(GUARDED) do
+        local orig = base[m]
+        b[m] = function(self, ...)
+            if not InCombatLockdown() then return orig(self, ...) end
+            local parked = self.gpParked
+            if parked and (m == "Show" or m == "Hide" or m == "SetShown") then
+                parked.shown = m == "Show" or (m == "SetShown" and (...) and true or false)
+                return
+            end
+            self.gpLater = self.gpLater or {}
+            table.insert(self.gpLater, { m = m, n = select("#", ...), ... })
+        end
+    end
+end
+local function ReplaySecure(b)
+    local later = b.gpLater
+    if not later then return end
+    b.gpLater = nil
+    for _, c in ipairs(later) do b[c.m](b, unpack(c, 1, c.n)) end
+end
+
 local function SecureButton(parent, w, label)
     local b = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate")
+    GuardSecure(b)
     b:SetSize(w, 24)
     local bg = b:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints(); bg:SetTexture(MEDIA .. "nav")
@@ -687,8 +718,11 @@ secureState:SetScript("OnEvent", function(_, event)
             b.gpParked = nil
             b:SetParent(s.parent)
             for _, p in ipairs(s.points) do b:SetPoint(unpack(p)) end
+            ReplaySecure(b)   -- im Kampf aufgeschobene Änderungen nachholen
             -- Bestätigungsknöpfe nicht wieder zeigen: ihr Makro kann im Kampf veraltet sein
             if b.gpAfterCombat then b.gpAfterCombat(b, s.shown) else b:SetShown(s.shown) end
+        else
+            ReplaySecure(b)   -- erst im Kampf entstanden: nichts geparkt, nur nachholen
         end
     end
 end)
@@ -1690,6 +1724,10 @@ local options = {
     { key = "publicLFG",     label = L["Serverweite Gruppensuche (alle mit GuildPride, gleiche Spielversion)"], public = true,
       changed = function() if ns.PublicLFGChanged then ns.PublicLFGChanged() end end },
     { key = "publicAlerts",  label = L["Hinweis auch bei Einträgen vom Server"], public = true },
+    { key = "layerShow",     label = L["Eigenen Layer unter der Minimap anzeigen"], forever = true,
+      changed = function() if ns.LayerShowChanged then ns.LayerShowChanged() end end },
+    { key = "layerHelp",     label = L["Anderen mit GuildPride beim Layer-Wechsel helfen (lädt automatisch ein)"],
+      public = true, forever = true },
     { header = L["Gilde"] },
     { key = "welcome",       label = L["Neue Mitglieder automatisch im Gildenchat begrüßen"] },
     { key = "discordBridge", label = L["Discord-Anbindung nutzen (Events, Anmeldungen, DKP an Discord)"] },
@@ -1701,7 +1739,7 @@ local options = {
 }
 -- Serverweite Gruppensuche: in Classic-Clients nicht möglich, Schalter weglassen
 for i = #options, 1, -1 do
-    if options[i].public and not ns.HAS_PUBLIC_LFG then table.remove(options, i) end
+    if (options[i].public and not ns.HAS_PUBLIC_LFG) or (options[i].forever and not ns.IS_FOREVER) then table.remove(options, i) end
 end
 local function SetOption(opt, on)
     GuildPrideDB[opt.key] = on and true or false
@@ -1849,6 +1887,8 @@ Stepper(L["Fenstergröße"], lookY, "scale", 0.05, 0.6, 2, Pct, ApplyLook)
 Stepper(L["Deckkraft"], lookY - 28, "alpha", 0.05, 0.5, 1, Pct, ApplyLook)
 Stepper(L["Chat-Schrift"], lookY - 56, "chatFont", 1, 10, 18, function(v) return ("%d pt"):format(v or 12) end,
     function(v) if ns.SetChatFont then ns.SetChatFont(v) end end)
+Stepper(L["Event-Erinnerung"], lookY - 84, "remindMin", 5, 0, 60,
+    function(v) return (v or 15) == 0 and L["aus"] or (L["%d Min."]):format(v or 15) end, function() end)
 
 -- Ecke unten rechts: ziehen vergrößert/verkleinert das ganze Fenster
 -- (alles wächst mit, auch die Schrift). Die linke obere Ecke bleibt stehen.
@@ -1911,7 +1951,7 @@ lookFrame:RegisterEvent("PLAYER_LOGIN")
 lookFrame:SetScript("OnEvent", ApplyLook)
 
 -- Werbetext, Bewerbungen und Notiz-Vorlagen: Reiter "Verwaltung" (GuildPrideAdmin.lua)
-local baseY = lookY - 96
+local baseY = lookY - 124
 
 -- Menü anpassen: Reiter zeigen/ausblenden, umbenennen, verschieben, Startreiter.
 -- Die Zeilen entstehen erst beim ersten Öffnen, weil andere Dateien ihre
@@ -2111,6 +2151,11 @@ function ns.RefreshUI()
     if page and page.Refresh then page:Refresh() end
 end
 
+-- Öffnen und Schließen geht auch im Kampf: Die sicheren Knöpfe (Einladen,
+-- Befördern …) hängen dann außerhalb des Fensters (siehe "parking") und
+-- holen Änderungen nach dem Kampf nach. Sie sind im Kampf so lange ausgeblendet.
+do   -- eigener Block: Lua erlaubt nur 200 lokale Variablen je Datei-Ebene
+local hinted = false
 function ns.ToggleUI()
     if frame:IsShown() then
         frame:Hide()
@@ -2127,7 +2172,12 @@ function ns.ToggleUI()
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
         UpdateHeader()
         SelectTab(frame.selected or 1)
+        if InCombatLockdown() and not hinted then
+            hinted = true
+            ns.Print(L["Im Kampf: Knöpfe wie Einladen oder Befördern erscheinen erst nach dem Kampf."])
+        end
     end
+end
 end
 
 ---------------------------------------------------------------------

@@ -11,11 +11,27 @@ local L = ns.L
 local MAX = 20
 local hinted = false
 
+-- Vor ADDON_LOADED gibt es GuildPrideDB noch nicht (WoW lädt sie erst danach);
+-- frühe Fehler warten so lange hier und werden dann übernommen
+local loaded, early = false, {}
 local function Store()
+    if not loaded then return early end
     GuildPrideDB = GuildPrideDB or {}
     GuildPrideDB.errors = GuildPrideDB.errors or {}
     return GuildPrideDB.errors
 end
+
+local loader = CreateFrame("Frame")
+loader:RegisterEvent("ADDON_LOADED")
+loader:SetScript("OnEvent", function(self, _, name)
+    if name ~= ADDON then return end
+    self:UnregisterEvent("ADDON_LOADED")
+    loaded = true
+    local list = Store()
+    for i = #early, 1, -1 do table.insert(list, 1, early[i]) end
+    while #list > MAX do table.remove(list) end
+    early = nil
+end)
 
 local function Record(msg)
     if type(msg) ~= "string" or (issecretvalue and issecretvalue(msg)) then return end

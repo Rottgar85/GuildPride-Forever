@@ -623,7 +623,10 @@ rosterWatch:SetScript("OnEvent", function()
             if not onlineBefore[full] and full ~= me then
                 -- kurz warten, bis der andere sein Addon geladen hat
                 C_Timer.After(20 + math.random() * 10, function()
-                    for _, fn in ipairs(onlineHooks) do fn(full) end
+                    for _, fn in ipairs(onlineHooks) do
+                        local ok, err = pcall(fn, full)
+                        if not ok then geterrorhandler()(err) end
+                    end
                 end)
             end
         end
@@ -1241,7 +1244,7 @@ end
 -- Dialog: Event erstellen
 ---------------------------------------------------------------------
 local dlg = CreateFrame("Frame", "GuildPrideCreateEvent", UIParent, "BackdropTemplate")
-dlg:SetSize(360, 256)
+dlg:SetSize(360, 290)
 dlg:SetPoint("CENTER")
 dlg:SetFrameStrata("DIALOG")
 dlg:EnableMouse(true)
@@ -1304,6 +1307,81 @@ for _, eb in ipairs(order) do
     eb:SetScript("OnEscapePressed", function() dlg:Hide() end)
 end
 
+-- Vorlagen: häufige Events (z. B. "Raid Donnerstag 20 Uhr") mit einem Klick ausfüllen.
+-- Je Gilde auf diesem Rechner: [Titel] = { title, desc, time = "HH:MM", rep, wday }
+local function Templates() return ns.GuildTable("eventTemplates") end
+local WDAYS = { L["Sonntag"], L["Montag"], L["Dienstag"], L["Mittwoch"], L["Donnerstag"], L["Freitag"], L["Samstag"] }
+
+local function ApplyTemplate(tpl)
+    fTitle:SetText(tpl.title or ""); fDesc:SetText(tpl.desc or "")
+    fTime:SetText(tpl.time or "20:00"); fRepeat:SetChecked((tpl.rep or 0) > 0)
+    fErr:SetText("")
+    if tpl.wday then
+        -- nächster passender Wochentag (heute nur, wenn die Uhrzeit noch kommt)
+        local h, m = (tpl.time or "20:00"):match("^(%d+):(%d+)$")
+        local now = time()
+        for add = 0, 7 do
+            local t = now + add * 86400
+            local d = date("*t", t)
+            d.hour, d.min, d.sec = tonumber(h) or 20, tonumber(m) or 0, 0
+            if d.wday == tpl.wday and time(d) > now then fDate:SetText(date("%d.%m.%Y", t)); break end
+        end
+    end
+end
+
+local function SortedTemplates()
+    local list = {}
+    for _, tpl in pairs(Templates()) do if type(tpl) == "table" and tpl.title then list[#list + 1] = tpl end end
+    table.sort(list, function(a, b) return a.title < b.title end)
+    return list
+end
+
+local function TemplateLabel(tpl)
+    return tpl.title .. (tpl.wday and ("  |cff999999" .. WDAYS[tpl.wday] .. " " .. (tpl.time or "") .. "|r") or "")
+end
+
+local bTpl = CreateFrame("Button", nil, dlg, "UIPanelButtonTemplate")
+bTpl:SetSize(140, 22); bTpl:SetPoint("TOPLEFT", 26, -204); bTpl:SetText(L["Vorlage …"])
+local bTplSave = CreateFrame("Button", nil, dlg, "UIPanelButtonTemplate")
+bTplSave:SetSize(160, 22); bTplSave:SetPoint("LEFT", bTpl, "RIGHT", 8, 0); bTplSave:SetText(L["Als Vorlage speichern"])
+local tplCycle = 0
+
+bTplSave:SetScript("OnClick", function()
+    local title = strtrim(fTitle:GetText())
+    if title == "" then fErr:SetText(L["Bitte einen Titel eingeben."]); return end
+    local t = ParseDate(strtrim(fDate:GetText()), strtrim(fTime:GetText()))
+    local clock = strtrim(fTime:GetText())
+    Templates()[title] = { title = Clean(title, 40), desc = Clean(strtrim(fDesc:GetText()), 120),
+        time = clock:match("^%d%d?:%d%d$") and clock or "20:00",
+        rep = fRepeat:GetChecked() and 7 or 0, wday = t and date("*t", t).wday or nil }
+    fErr:SetText("")
+    ns.Print((L["Vorlage |cffffd100%s|r gespeichert."]):format(title))
+end)
+
+bTpl:SetScript("OnClick", function(self)
+    local list = SortedTemplates()
+    if #list == 0 then fErr:SetText(L["Noch keine Vorlagen – fülle das Event aus und speichere es als Vorlage."]); return end
+    if MenuUtil and MenuUtil.CreateContextMenu then
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            root:CreateTitle(L["Vorlage verwenden"])
+            for _, tpl in ipairs(list) do
+                root:CreateButton(TemplateLabel(tpl), function() ApplyTemplate(tpl) end)
+            end
+            local del = root:CreateButton(L["Vorlage löschen"])
+            for _, tpl in ipairs(list) do
+                del:CreateButton(tpl.title, function()
+                    Templates()[tpl.title] = nil
+                    ns.Print((L["Vorlage |cffffd100%s|r gelöscht."]):format(tpl.title))
+                end)
+            end
+        end)
+    else
+        -- Ältere Clients ohne Menü: jeder Klick nimmt die nächste Vorlage
+        tplCycle = tplCycle % #list + 1
+        ApplyTemplate(list[tplCycle])
+    end
+end)
+
 function ns.ShowCreateDialog()
     if not CanManage() then ns.Print(L["Nur Offiziere können Events erstellen."]); return end
     -- Vorschlag: heute um 20:00 (nach 20 Uhr: morgen)
@@ -1311,6 +1389,7 @@ function ns.ShowCreateDialog()
     if tonumber(date("%H")) >= 20 then start = start + 86400 end
     fTitle:SetText(""); fDate:SetText(date("%d.%m.%Y", start)); fTime:SetText("20:00")
     fDesc:SetText(""); fErr:SetText(""); fRepeat:SetChecked(false)
+    tplCycle = 0
     dlg:Show(); fTitle:SetFocus()
 end
 
@@ -1335,8 +1414,9 @@ C_Timer.NewTicker(30, function()
             RecordAttendance(e, true)
         end
         local mine = e.signups and e.signups[Me()]
+        local lead = (tonumber(GuildPrideDB.remindMin) or 15) * 60   -- 0 = keine Erinnerung
         if e.title and not e.deleted and mine and mine.s ~= "no" and not e.reminded
-           and e.t - now <= 900 and e.t - now > 0 then
+           and lead > 0 and e.t - now <= lead and e.t - now > 0 then
             e.reminded = true
             RaidNotice_AddMessage(RaidWarningFrame,
                 (L["%s %s beginnt in %d Min.!"]):format(ns.IconString(20), e.title, math.ceil((e.t - now) / 60)),

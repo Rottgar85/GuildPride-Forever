@@ -528,6 +528,58 @@ test("Tinte: dunkle Flächen werden im Buch hell", function()
     eq(got[1], 0, "wieder dunkel")
 end)
 ---------------------------------------------------------------------
+-- Kanal-Nachricht so, wie WoW sie meldet: 7. Wert Kanalnummer, 8. Kanalname
+local function chan(sender, localID, name, m)
+    W.Advance(31)
+    W.Fire("CHAT_MSG_ADDON", "GuildPride", m, "CHANNEL", sender, "", 0, localID, name)
+end
+
+test("Kanal: nur unser Datenkanal und nur Mitglieder (Fehler aus 2.2.4)", function()
+    local db, old = ns.GuildTable("wish"), ns.DataChannelId
+    ns.DataChannelId = function() return 5, "GPsabc" end
+    chan("Anna", 9, "Fremdkanal", msg("WSH", W.server, "eob:1"))
+    eq(db["Anna"], nil, "fremder Kanal")
+    chan("Fremd", 5, "GPsabc", msg("WSH", W.server, "eob:1"))
+    eq(db["Fremd"], nil, "kein Mitglied")
+    chan("Anna", 7, "7. GPsabc", msg("WSH", W.server, "eob:1"))
+    eq(db["Anna"] and db["Anna"].i[19019], 1, "Name passt, andere Nummer")
+    chan("Bert", 5, "", msg("WSH", W.server, "eob:2"))
+    eq(db["Bert"] and db["Bert"].i[19019], 2, "Nummer passt")
+    db["Anna"], db["Bert"] = nil, nil
+    ns.DataChannelId = nil
+    chan("Carl", 5, "GPsabc", msg("WSH", W.server, "eob:1"))
+    eq(db["Carl"], nil, "ohne Kanal-Schlüssel nichts")
+    ns.DataChannelId = old
+end)
+
+test("Mehrteilig (MP): Teile werden zusammengesetzt, auch durcheinander", function()
+    local db = ns.GuildTable("wish")
+    local full = msg("WSH", W.server, "eob:2")
+    W.Receive("Bert", msg("MP", "4242", 2, 2, full:sub(7)))
+    eq(db["Bert"], nil, "erst wenn alle Teile da sind")
+    W.Receive("Bert", msg("MP", "4242", 1, 2, full:sub(1, 6)))
+    eq(db["Bert"] and db["Bert"].i[19019], 2)
+    W.Receive("Carl", msg("MP", "4343", 1, 2, full:sub(1, 6)))
+    W.Receive("Carl", msg("MP", "4343", 2, 3, full:sub(7)))
+    eq(db["Carl"], nil, "Teil mit anderer Anzahl verworfen")
+    db["Bert"] = nil
+end)
+
+test("Empfang: ein Fehler in einem Modul stoppt die anderen nicht", function()
+    local db, list = ns.GuildTable("wish"), ns.Handlers["WSH"]
+    table.insert(list, 1, function() error("kaputt") end)
+    local oldEH, caught = geterrorhandler, 0
+    geterrorhandler = function() return function() caught = caught + 1 end end
+    local ok, err = pcall(W.Receive, "Anna", msg("WSH", W.server, "eob:1"))
+    geterrorhandler = oldEH
+    table.remove(list, 1)
+    eq(ok, true, tostring(err))
+    eq(caught, 1, "Fehler gemeldet")
+    eq(db["Anna"] and db["Anna"].i[19019], 1, "Wunschliste trotzdem übernommen")
+    db["Anna"] = nil
+end)
+
+---------------------------------------------------------------------
 test("Datensicherung: sichern und Daten bleiben", function()
     W.Load("GuildPrideBackup.lua")
     GuildPrideDB.testWert = 42

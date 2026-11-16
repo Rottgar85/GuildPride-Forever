@@ -1,5 +1,27 @@
 # GuildPride Changelog
 
+## 2.16.0
+
+**Deutsch**
+- Neu: **Layer wechseln** – Knopf im Gildenfenster über „Einstellungen“, in der Gruppensuche oder `/gp layer`. Fragt alle mit GuildPride in deiner Zone (serverweit, nicht nur die Gilde); ein Spieler auf einem anderen Layer lädt dich automatisch ein, die Einladung wird automatisch angenommen und nach dem Wechsel verlässt du die Gruppe von selbst. Deinen aktuellen Layer siehst du direkt unter der Minimap (verschiebbar, abschaltbar mit `/gp layer anzeige`), auf dem Knopf und im Minimap-Tooltip. Helfen lässt sich in den Einstellungen oder mit `/gp layer an/aus` abschalten
+- Neu: Das Gildenfenster lässt sich jetzt auch im Kampf öffnen und schließen. Knöpfe wie Einladen oder Befördern erscheinen erst nach dem Kampf
+- Neu: Reiter **Aktivität** für Offiziere – wer wie lange offline ist, wer sich zu Events anmeldet (oder nie), Anwesenheit und wer zuletzt über Discord geschrieben hat
+- Neu: Discord-Filter im Gildenchat (Discord-Symbol neben den Kanälen): alle Nachrichten, nur über Discord oder ohne Discord
+- Neu: Event-Vorlagen – im Dialog „Neues Gildenevent“ als Vorlage speichern und mit einem Klick wieder ausfüllen (inkl. Wochentag und Uhrzeit)
+- Neu: Vorlaufzeit der Event-Erinnerung einstellbar (Einstellungen, 0–60 Min., 0 = aus)
+- Stabiler: Ein Fehler in einem Teil des Addons verschluckt eingehende Gildendaten nicht mehr für alle anderen Teile
+- Behoben: Ausgetretene Mitglieder blieben in der Level-Liste, Fehler vor dem Laden gingen verloren, `/gpr weit` im Kampf, fehlende Mythisch+-Stufe beim Abschluss
+
+**English**
+- New: **Switch layer** – button in the guild window above "Settings", in the group finder or `/gp layer`. Asks everyone with GuildPride in your zone (server-wide, not just the guild); a player on another layer invites you automatically, the invite is accepted automatically and you leave the group on your own after the switch. Your current layer is shown right below the minimap (movable, toggle with `/gp layer display`), on the button and in the minimap tooltip. Helping can be turned off in the settings or with `/gp layer on/off`
+- New: the guild window can now be opened and closed in combat. Buttons such as invite or promote appear after combat
+- New: **Activity** tab for officers – who has been offline for how long, who signs up for events (or never), attendance and who last wrote via Discord
+- New: Discord filter in the guild chat (Discord icon next to the channels): all messages, Discord only or without Discord
+- New: event templates – save as a template in the "New guild event" dialog and fill it in again with one click (incl. weekday and time)
+- New: event reminder lead time is adjustable (settings, 0–60 min, 0 = off)
+- More robust: an error in one part of the addon no longer swallows incoming guild data for all other parts
+- Fixed: members who left stayed in the level list, errors before loading were lost, `/gpr weit` in combat, missing Mythic+ level on completion
+
 ## 2.15.0
 
 **Deutsch**

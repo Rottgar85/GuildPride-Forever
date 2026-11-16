@@ -173,6 +173,10 @@ SlashCmdList.GPRARES = function(arg)
         ns.Print(ns.Opt("mapButton") and "Knopf oben links auf der Weltkarte an." or "Knopf auf der Weltkarte aus – An/Aus jetzt im Kartenfilter.")
     elseif cmd == "weit" then
         -- Namensplaketten weiter sichtbar: Rares werden früher erkannt
+        if InCombatLockdown() then
+            ns.Print("Im Kampf nicht möglich – bitte nach dem Kampf noch einmal.")
+            return
+        end
         SetCVar("nameplateMaxDistance", 80)
         ns.Print("Namensplaketten-Reichweite auf 80 gesetzt. Gegner-Namensplaketten müssen eingeschaltet sein (Taste V).")
     elseif cmd == "status" then

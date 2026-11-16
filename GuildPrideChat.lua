@@ -129,6 +129,57 @@ local function DiscordIcon()
     return discordIcon
 end
 
+-- Discord-Filter: nil = alle Nachrichten, "only" = nur Discord, "hide" = ohne Discord
+local DISCORD_MODES = {
+    { key = nil,    text = "Alle Nachrichten" },
+    { key = "only", text = "Nur über Discord" },
+    { key = "hide", text = "Ohne Discord" },
+}
+local function DiscordMode() return GuildPrideDB and GuildPrideDB.chatDiscord end
+local function Visible(e)
+    local m = DiscordMode()
+    if m == "only" then return e.discord and true or false end
+    if m == "hide" then return not e.discord end
+    return true
+end
+
+-- Wer zuletzt über Discord geschrieben hat (Aktivitätsübersicht)
+local function NoteDiscord(full)
+    if type(full) ~= "string" or full == "" or Secret(full) or not ns.GuildTable then return end
+    local seen = ns.GuildTable("discordSeen")
+    if seen then seen[ns.Normalize(full)] = GetServerTime() end
+end
+
+local bDiscord = CreateFrame("Button", nil, page)
+bDiscord:SetSize(24, 24)
+bDiscord:SetPoint("LEFT", bClub, "RIGHT", 8, 0)
+bDiscord.icon = bDiscord:CreateTexture(nil, "ARTWORK")
+bDiscord.icon:SetAllPoints()
+if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(DISCORD_ATLAS) then
+    bDiscord.icon:SetAtlas(DISCORD_ATLAS)
+else
+    bDiscord.icon:SetColorTexture(0.35, 0.40, 0.95, 1)
+end
+bDiscord:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+local function DiscordModeIndex()
+    local m = DiscordMode()
+    for i, d in ipairs(DISCORD_MODES) do if d.key == m then return i end end
+    return 1
+end
+local function PaintDiscord()
+    local m = DiscordMode()
+    bDiscord.icon:SetDesaturated(m == "hide")
+    bDiscord.icon:SetAlpha(m == nil and 0.55 or 1)
+end
+bDiscord:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    GameTooltip:SetText(L["Discord-Filter"], 1, 1, 1)
+    GameTooltip:AddLine(L["Jetzt:"] .. " " .. L[DISCORD_MODES[DiscordModeIndex()].text], 0.9, 0.8, 0.5)
+    GameTooltip:AddLine(L["Klick: alle > nur Discord > ohne Discord"], 0.7, 0.7, 0.7, true)
+    GameTooltip:Show()
+end)
+bDiscord:SetScript("OnLeave", GameTooltip_Hide)
+
 local function Line(t, who, full, hex, text, kind, guid, discord)
     local name = full and ("|Hplayer:%s|h|cff%s%s|r|h"):format(full, hex, who) or ("|cff%s%s|r"):format(hex, who)
     -- Rang-Krone nur im Gilden- und Offizierschat: in Communities sagt der Gildenrang nichts aus
@@ -596,6 +647,12 @@ local function Redraw()
         if #show == 0 then
             msgs:AddMessage(L["|cff888888Noch keine Nachrichten.|r"])
         end
+        if DiscordMode() then
+            local kept = {}
+            for _, e in ipairs(show) do if Visible(e) then kept[#kept + 1] = e end end
+            show = kept
+            if #show == 0 then msgs:AddMessage(L["|cff888888Keine Nachrichten für diesen Filter.|r"]) end
+        end
         for i = math.max(1, #show - HISTORY + 1), #show do
             msgs:AddMessage(EntryLine(show[i], channel.kind))
         end
@@ -608,7 +665,9 @@ local function Redraw()
     else
         if channel.kind == "CLUB" then return end
         for _, e in ipairs(Store()[channel.kind] or {}) do
-            msgs:AddMessage(Line(e.t, e.who, e.full, (e.discord and not e.full) and DISCORD_NAME_HEX or ClassHex(nil, e.class), e.text, e.ch, nil, e.discord))
+            if Visible(e) then
+                msgs:AddMessage(Line(e.t, e.who, e.full, (e.discord and not e.full) and DISCORD_NAME_HEX or ClassHex(nil, e.class), e.text, e.ch, nil, e.discord))
+            end
         end
     end
     msgs:ScrollToBottom()
@@ -760,6 +819,16 @@ send:SetScript("OnClick", Send)
 input:SetScript("OnEnterPressed", Send)
 input:SetScript("OnEscapePressed", input.ClearFocus)
 
+-- Discord-Filter weiterschalten: alle -> nur Discord -> ohne Discord
+bDiscord:SetScript("OnClick", function(self)
+    local nextMode = DISCORD_MODES[DiscordModeIndex() % #DISCORD_MODES + 1]
+    GuildPrideDB.chatDiscord = nextMode.key
+    PaintDiscord()
+    SafeRedraw()
+    ns.Print(L["Gildenchat:"] .. " " .. L[nextMode.text])
+    if GameTooltip:GetOwner() == self then self:GetScript("OnEnter")(self) end
+end)
+
 -- Aufgerufen von "Gilde & Chat" (GuildPrideUI.lua) beim Anzeigen/Aktualisieren
 function ns.ChatRefresh()
     local canOfficer = (C_GuildInfo and C_GuildInfo.CanViewOfficerNote and C_GuildInfo.CanViewOfficerNote())
@@ -769,6 +838,10 @@ function ns.ChatRefresh()
     bClub:SetPoint("LEFT", canOfficer and bOfficer or bGuild, "RIGHT", 6, 0)
     -- Communities gibt es in den Classic-Clients nicht
     bClub:SetShown(HAS_CLUB and ns.HAS_COMMUNITIES and C_Club.GetSubscribedClubs and true or false)
+    -- Discord-Filter rechts neben dem letzten sichtbaren Kanalknopf
+    bDiscord:ClearAllPoints()
+    bDiscord:SetPoint("LEFT", bClub:IsShown() and bClub or (canOfficer and bOfficer or bGuild), "RIGHT", 8, 0)
+    PaintDiscord()
     if not canOfficer and channel.kind == "OFFICER" then channel = { kind = "GUILD", label = L["Gilde"] } end
     SetChannel(channel)
 end
@@ -824,7 +897,8 @@ if HAS_CLUB then
                 MarkUnread(key)
             end
             local myClub, myStream = Resolve(channel)
-            if pane:IsVisible() and clubId == myClub and streamId == myStream then
+            if e.discord then NoteDiscord(e.full) end
+            if pane:IsVisible() and clubId == myClub and streamId == myStream and Visible(e) then
                 msgs:AddMessage(EntryLine(e, channel.kind))
             end
             return
@@ -851,6 +925,7 @@ if HAS_CLUB then
             dWho, dFull, dHex = (Ambiguate(author, "guild"):gsub("|", "")), nil, DISCORD_NAME_HEX
         end
         if dWho then
+            NoteDiscord(dFull)
             Remember(Cache(clubId, streamId), { { t = GetServerTime(), who = dWho, full = dFull, hex = dHex,
                 text = text, discord = true } })
             return
@@ -874,11 +949,12 @@ else
         local dWho, dFull = DiscordAuthor((select(6, ...)))
         if dWho or (not Secret(flags) and flags == "DISCORD") then
             e.who, e.full, e.discord = dWho or (e.who:gsub("|", "")), dFull, true
+            NoteDiscord(dFull)
         end
         table.insert(list, e)
         while #list > MAX_SAVED do table.remove(list, 1) end
         if ns.Normalize(author) ~= ns.Me() and Ambiguate(author, "guild") ~= UnitName("player") then MarkUnread(ch) end
-        if pane:IsVisible() and channel.kind == ch then
+        if pane:IsVisible() and channel.kind == ch and Visible(e) then
             msgs:AddMessage(Line(e.t, e.who, e.full, (e.discord and not e.full) and DISCORD_NAME_HEX or ClassHex(nil, e.class), e.text, ch, nil, e.discord))
         end
     end)
