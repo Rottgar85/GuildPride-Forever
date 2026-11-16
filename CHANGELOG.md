@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.19.0
+
+**Deutsch**
+- Neu: Die **Layer-Liste** zeigt jetzt serverweit alle Spieler mit GuildPride, nicht nur die Gilde (eigene Fraktion). Gildenmitglieder stehen grün, deine Zone steht oben, mit dem Mausrad scrollst du durch längere Listen. Mit **Hierhin** wechselst du auf den Layer jedes Spielers in deiner Zone
+- Wer den serverweiten GuildPride-Kanal an hat, meldet dort Zone und Layer (höchstens alle 30 Sekunden). Abschalten mit `/gp server`
+- Gildenmitglieder mit GuildPride stehen auch ohne Layer-Angabe in der Liste, mit ihrer Zone. Ältere Versionen ohne Layer-Teilen sind mit „alt“ markiert
+
+**English**
+- New: the **layer list** now shows every player with GuildPride server-wide, not just the guild (own faction). Guild members are green, your zone comes first, scroll longer lists with the mouse wheel. **Go here** switches you to the layer of any player in your zone
+- Everyone with the server-wide GuildPride channel on reports zone and layer there (at most every 30 seconds). Turn it off with `/gp server`
+- Guild members with GuildPride are listed even without a layer, with their zone. Older versions that do not share layers are marked "old"
+
 ## 2.18.0
 
 **Deutsch**

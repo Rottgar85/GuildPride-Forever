@@ -78,6 +78,7 @@ end
 
 local lastShared, lastShareAt, sharePending = nil, 0, false
 function Layer.Share(force)
+    if Layer.SharePublic then Layer.SharePublic() end
     if not ns.IS_FOREVER or not IsInGuild() or not ns.QueueLatest then return end
     local map, id = MyShare()
     local key = map .. ":" .. id
@@ -166,6 +167,118 @@ local function Send(kind, to, ...)
     if to then ns.QueuePublicTo(to, kind, ...) else ns.Queue(kind, "@PUBLIC", ...) end
 end
 
+---------------------------------------------------------------------
+-- Serverweit: alle mit GuildPride im offenen Kanal melden Zone + Layer
+-- im offenen Kanal (LYS). LYP fragt alle; geantwortet wird öffentlich und
+-- höchstens einmal pro Minute, eine Antwort reicht für alle Fragenden.
+---------------------------------------------------------------------
+Layer.public = {}   -- ["Name"] = { map, id, t }
+local PUBLIC_MAX = 400
+local publicCount = 0
+
+-- Alle im serverweiten GuildPride-Kanal teilen (abschalten: /gp server)
+local function SharesPublic()
+    return Available() and GuildPrideDB and GuildPrideDB.publicLFG and not IsInInstance()
+end
+
+local lastPubKey, lastPubAt, pubPending = nil, 0, false
+function Layer.SharePublic(force)
+    if not SharesPublic() then return end
+    local map, id = MyShare()
+    local key = map .. ":" .. id
+    if not force and key == lastPubKey then return end
+    -- höchstens alle 30 s; den letzten Stand dann nachholen
+    local wait = 30 - (GetTime() - lastPubAt)
+    if wait > 0 then
+        if not pubPending then
+            pubPending = true
+            C_Timer.After(wait + 0.1, function() pubPending = false; Layer.SharePublic(force) end)
+        end
+        return
+    end
+    lastPubKey, lastPubAt = key, GetTime()
+    Send("LYS", nil, ns.CLIENT_TAG, map, id)
+end
+
+local function StorePublic(sender, map, id)
+    if type(sender) ~= "string" or Secret(sender) or #sender > 60 or sender:find("|", 1, true) then return end
+    map = tonumber(map)
+    if map and (map <= 0 or map > 999999) then map = nil end
+    if type(id) ~= "string" or not id:match("^%d+$") or #id > 10 then id = nil end
+    if not Layer.public[sender] then
+        if publicCount >= PUBLIC_MAX then return end
+        publicCount = publicCount + 1
+    end
+    Layer.public[sender] = { map = map, id = id, t = GetTime() }
+    if Layer.RefreshList then Layer.RefreshList() end
+end
+Layer.StorePublic = StorePublic
+
+local lastPubAnswer, lastPubAsk = 0, 0
+local function AnswerPublic()
+    if GetTime() - lastPubAnswer < 60 then return end
+    lastPubAnswer = GetTime()
+    C_Timer.After(1 + math.random() * 9, function() Layer.SharePublic(true) end)
+end
+Layer.AnswerPublic = AnswerPublic
+
+-- Gilde und Server fragen (Liste öffnen / Aktualisieren)
+local lastVerAsk = 0
+function Layer.AskAll()
+    Layer.AskGuild()
+    -- Wer in der Gilde hat überhaupt GuildPride? (Versionsabfrage, alle antworten)
+    if IsInGuild() and ns.VERSION and GetTime() - lastVerAsk > 120 then
+        lastVerAsk = GetTime()
+        ns.Queue("VER", nil, ns.VERSION, "")
+    end
+    if not Available() or GetTime() - lastPubAsk < 60 then return end
+    lastPubAsk = GetTime()
+    Send("LYP", nil, ns.CLIENT_TAG)
+    Layer.SharePublic(true)
+end
+
+-- Gilde + Server zusammen: gleiche Zone zuerst, dann Gilde, dann Name
+function Layer.AllList()
+    local list, seen, now, myMap = {}, {}, GetTime(), MapId()
+    for _, e in ipairs(Layer.GuildList()) do
+        e.guild = true
+        seen[e.name] = true
+        list[#list + 1] = e
+    end
+    -- Gildenmitglieder mit GuildPride (aus der Versionsabfrage), die online sind,
+    -- aber (noch) keinen Layer melden – z. B. ältere Versionen ohne Layer-Teilen
+    if ns.Versions and GetNumGuildMembers then
+        for i = 1, GetNumGuildMembers() do
+            local rname, _, _, _, _, zone, _, _, online = GetGuildRosterInfo(i)
+            local full = rname and (ns.FullName and ns.FullName(rname) or rname)
+            local v = full and ns.Versions[full]
+            if online and v and not seen[full] and full ~= ns.Me() then
+                seen[full] = true
+                local a, b = v:match("^(%d+)%.(%d+)")
+                local old = tonumber(a) < 2 or (tonumber(a) == 2 and tonumber(b) < 17)
+                list[#list + 1] = { name = full, guild = true, here = false,
+                    zoneText = type(zone) == "string" and zone or nil, old = old and v or nil }
+            end
+        end
+    end
+    for name, e in pairs(Layer.public) do
+        if now - e.t > GUILD_MAX_AGE then
+            Layer.public[name] = nil
+            publicCount = publicCount - 1
+        elseif not seen[name] and name ~= ns.Me() then
+            local guild = ns.IsGuildMember and ns.IsGuildMember(name) or false
+            list[#list + 1] = { name = name, map = e.map, id = e.id, guild = guild,
+                here = e.map ~= nil and e.map == myMap }
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.here ~= b.here then return a.here end
+        if a.guild ~= b.guild then return a.guild end
+        return a.name < b.name
+    end)
+    return list
+end
+
 -- Laufende Anfrage (ich will wechseln)
 local req          -- { started, map, from, offers = { [name] = layer }, asked, joinedAt }
 -- Wem ich als Helfer geantwortet habe: [Name] = Zeit
@@ -237,6 +350,10 @@ function ns.OnLayerMessage(message, sender, whisper)
         C_Timer.After(0.5 + math.random() * 2.5, function()
             if CanHelp() then Send("LYA", sender, ns.CLIENT_TAG, Layer.map, Layer.id) end
         end)
+    elseif kind == "LYS" and not whisper then
+        StorePublic(sender, f[2], f[3])
+    elseif kind == "LYP" and not whisper then
+        if SharesPublic() then AnswerPublic() end
     elseif kind == "LYA" and whisper then
         if not req or req.asked or map ~= req.map then return end
         local layer = f[3]
@@ -455,7 +572,7 @@ if ns.IS_FOREVER and setTab then
         GameTooltip:SetText(L["Layer wechseln"], 1, 1, 1)
         GameTooltip:AddLine((L["Dein Layer: %s"]):format(Layer.Text()), 0.9, 0.8, 0.5)
         GameTooltip:AddLine(L["Klick: Ein anderer GuildPride-Spieler lädt dich automatisch ein, nach dem Wechsel verlässt du die Gruppe von selbst."], 0.8, 0.8, 0.8, true)
-        GameTooltip:AddLine(L["Rechtsklick: Layer der Gilde"], 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(L["Rechtsklick: Layer-Liste"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", GameTooltip_Hide)
@@ -509,17 +626,22 @@ end
 
 local function RefreshList()
     if not list or not list:IsShown() then return end
-    local entries = Layer.GuildList()
+    local entries = Layer.AllList()
     local myMap = MapId()
     list.mine:SetText(("%s |cff40ff40%s|r  ·  %s"):format(L["Dein Layer:"], Layer.Text(), ZoneName(myMap)))
+    local maxOff = math.max(0, #entries - LIST_ROWS)
+    list.offset = math.min(list.offset or 0, maxOff)
     for i = 1, LIST_ROWS do
-        local row, e = list.rows[i], entries[i]
+        local row, e = list.rows[i], entries[i + list.offset]
         if e then
             local same = e.id and e.id == Layer.id and e.here
             local idTxt = e.id and ((same and "|cff40ff40" or "|cffffd100") .. e.id .. "|r") or "|cff999999?|r"
-            row.name:SetText(Ambiguate(e.name, "none"))
-            row.zone:SetText(e.here and ("|cffe6e0da" .. ZoneName(e.map) .. "|r") or ("|cff888888" .. ZoneName(e.map) .. "|r"))
-            row.layer:SetText(idTxt)
+            -- Gildenmitglieder grün, alle anderen mit GuildPride weiß
+            row.name:SetText((e.guild and "|cff60d060" or "|cffe6e0da") .. Ambiguate(e.name, "none") .. "|r")
+            local zoneTxt = e.zoneText or ZoneName(e.map)
+            row.zone:SetText(e.here and ("|cffe6e0da" .. zoneTxt .. "|r") or ("|cff888888" .. zoneTxt .. "|r"))
+            -- Ältere GuildPride-Version teilt keinen Layer
+            row.layer:SetText(e.old and ("|cffff8040" .. L["alt"] .. "|r") or idTxt)
             -- Wechsel nur in derselben Zone und auf einen anderen, bekannten Layer
             row.go.want = (e.here and e.id and e.id ~= Layer.id) and e.id or nil
             row.go:SetShown(row.go.want ~= nil)
@@ -528,9 +650,12 @@ local function RefreshList()
             row:Hide()
         end
     end
-    local more = #entries - LIST_ROWS
+    local more = #entries - LIST_ROWS - list.offset
     list.empty:SetShown(#entries == 0)
-    list.more:SetText(more > 0 and (L["… und %d weitere"]):format(more) or "")
+    local guildN = 0
+    for _, e in ipairs(entries) do if e.guild then guildN = guildN + 1 end end
+    list.more:SetText((L["%d Spieler mit GuildPride (%d aus der Gilde, grün)"]):format(#entries, guildN)
+        .. (more > 0 and ("  ·  " .. (L["… und %d weitere"]):format(more) .. " " .. L["(Mausrad)"]) or ""))
     list.stats:SetText(Layer.StatsText())
 end
 Layer.RefreshList = RefreshList
@@ -539,7 +664,7 @@ local function ToggleList()
     if not ns.IS_FOREVER then return end
     if not list then
         list = CreateFrame("Frame", "GuildPrideLayerList", UIParent, "BackdropTemplate")
-        list:SetSize(380, 112 + LIST_ROWS * 22)
+        list:SetSize(380, 130 + LIST_ROWS * 22)
         list:SetPoint("CENTER", 0, 60)
         list:SetFrameStrata("DIALOG")
         list:SetMovable(true); list:EnableMouse(true); list:SetClampedToScreen(true)
@@ -552,7 +677,12 @@ local function ToggleList()
         close:SetPoint("TOPRIGHT", -2, -2)
         local title = list:CreateFontString(nil, "OVERLAY", "GPFont_Large")
         title:SetPoint("TOPLEFT", 14, -14)
-        title:SetText(L["Layer der Gilde"])
+        title:SetText(L["Layer der GuildPride-Spieler"])
+        list:EnableMouseWheel(true)
+        list:SetScript("OnMouseWheel", function(_, delta)
+            list.offset = math.max(0, (list.offset or 0) - delta * 3)
+            RefreshList()
+        end)
         list.mine = list:CreateFontString(nil, "OVERLAY", "GPFont_Text")
         list.mine:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
         list.rows = {}
@@ -577,7 +707,7 @@ local function ToggleList()
         list.empty = list:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
         list.empty:SetPoint("TOPLEFT", 14, -62); list.empty:SetPoint("RIGHT", -14, 0)
         list.empty:SetJustifyH("LEFT")
-        list.empty:SetText(L["Noch keine Meldungen – Gildenmitglieder mit GuildPride melden ihren Layer, sobald er erkannt ist."])
+        list.empty:SetText(L["Noch keine Meldungen – Spieler mit GuildPride melden ihren Layer, sobald er erkannt ist (serverweit ab GuildPride 2.19)."])
         list.more = list:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
         list.more:SetPoint("TOPLEFT", 14, -60 - LIST_ROWS * 22)
         list.stats = list:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
@@ -594,8 +724,8 @@ local function ToggleList()
         refresh:SetSize(110, 22)
         refresh:SetPoint("BOTTOMRIGHT", -14, 12)
         refresh:SetText(L["Aktualisieren"])
-        refresh:SetScript("OnClick", function() Layer.AskGuild(); RefreshList() end)
-        list:SetScript("OnShow", function() Layer.AskGuild(); RefreshList() end)
+        refresh:SetScript("OnClick", function() Layer.AskAll(); RefreshList() end)
+        list:SetScript("OnShow", function() list.offset = 0; Layer.AskAll(); RefreshList() end)
         list:Hide()
     end
     list:SetShown(not list:IsShown())
@@ -673,7 +803,7 @@ if ns.IS_FOREVER then
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:SetText((L["Dein Layer: %s"]):format(Layer.Text()), 1, 1, 1)
         GameTooltip:AddLine(L["Die Zahl kommt vom Server: gleiche Zahl = gleicher Layer (nur innerhalb einer Zone vergleichbar). Erkannt über Kreaturen in der Nähe – eine Kreatur anvisieren aktualisiert sie."], 0.8, 0.8, 0.8, true)
-        GameTooltip:AddLine(L["Klick: Layer der Gilde (gezielt wechseln)"], 1, 1, 1)
+        GameTooltip:AddLine(L["Klick: Layer-Liste (gezielt wechseln)"], 1, 1, 1)
         GameTooltip:AddLine(L["Umschalt+Ziehen: verschieben"], 0.7, 0.7, 0.7)
         GameTooltip:AddLine(L["Rechtsklick: ausblenden"], 0.7, 0.7, 0.7)
         GameTooltip:AddLine(Layer.StatsText(), 0.9, 0.8, 0.5, true)
@@ -712,6 +842,6 @@ SlashCmdList.GUILDPRIDE = function(arg)
             or L["Du hilfst anderen nicht mehr beim Layer-Wechsel."])
     else
         ns.Print((L["Dein Layer: %s"]):format(Layer.Text()))
-        ns.Print(L["/gp layer – wechseln · /gp layer liste – Layer der Gilde · /gp layer anzeige – Anzeige ein/aus · /gp layer raus – Gruppe verlassen · /gp layer an|aus – anderen helfen"])
+        ns.Print(L["/gp layer – wechseln · /gp layer liste – Layer-Liste · /gp layer anzeige – Anzeige ein/aus · /gp layer raus – Gruppe verlassen · /gp layer an|aus – anderen helfen"])
     end
 end
