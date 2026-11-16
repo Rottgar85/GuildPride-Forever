@@ -143,6 +143,20 @@ end
 -- Discord, ist das eigene Konto nicht verknüpft
 local lastSent, lastSentAt = nil, 0
 
+-- Eigene Addon-Version für GameBots Versions-Übersicht: höchstens einmal pro
+-- Woche (oder nach einem Update), nur über den eigenen Discord-Kanal der
+-- Gilde, damit /g davon nichts abbekommt
+local VERSION_EVERY = 7 * 86400
+local function MaybeSendVersion(clubId, streamId)
+    local v = ns.VERSION
+    if type(v) ~= "string" or not v:match("^%d+%.%d+") then return end
+    local o = Opt()
+    if o.verSent == v and time() - (o.verAt or 0) < VERSION_EVERY then return end
+    if pcall(C_Club.SendMessage, clubId, streamId, TAG .. " V " .. v) then
+        o.verSent, o.verAt = v, time()
+    end
+end
+
 -- Rückgabe: "stream", "guild" oder nil (fehlgeschlagen)
 -- Standard: in Blizzards eigenen Discord-Kanal der Gilde, sobald die Gilde
 -- ihn vom Gildenchat getrennt hat. Dann sieht /g die Zeilen gar nicht.
@@ -156,6 +170,7 @@ local function SendNow(text)
                 awaiting[text] = GetTime()
                 C_Timer.After(ECHO_WAIT, function() Discord.CheckEcho(text) end)
             end
+            MaybeSendVersion(clubId, streamId)
             return "stream"
         end
     end

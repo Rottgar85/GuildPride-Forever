@@ -628,9 +628,12 @@ test("Discord: Kanal nimmt still nichts an -> Gildenchat, Offiziers-Zeilen nur v
     local timers = {}
     local oldAfter = C_Timer.After
     C_Timer.After = function(_, fn) timers[#timers + 1] = fn end
+    ns.VERSION = "2.20.0"
     D.Post("Offi: Test 1", true)
     D.Post("Offi: Test 2", true)
-    eq(#streamSent, 2, "zuerst über den Discord-Kanal")
+    eq(#streamSent, 3, "zuerst über den Discord-Kanal, dazu einmal die Version")
+    eq(streamSent[2], "[GP] V 2.20.0")
+    eq(GuildPrideDB.discord.verSent, "2.20.0")
     eq(#guildSent, 0)
     for _, fn in ipairs(timers) do fn() end
     D.Flush()

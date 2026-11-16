@@ -13,6 +13,7 @@
 - Meldet Blizzard direkt nach einer eigenen Discord-Zeile, dass dein Discord nicht verknüpft ist, stellt GuildPride das selbst um und gibt die Zeile über ein verknüpftes Mitglied weiter
 - Wartende Discord-Zeilen gehen beim Ausloggen nicht mehr verloren, sie werden beim nächsten Einloggen gesendet (bis 6 Stunden)
 - Einstellungen › Gilde: neue Schalter „Discord-Zeilen immer in den Gildenchat“ und „Discord-Zeilen im Chat anzeigen“ sowie ein Knopf **Discord testen**
+- GuildPride meldet GameBot höchstens einmal pro Woche (und nach einem Update) die eigene Version, nur über den eigenen Discord-Kanal der Gilde. Im Dashboard sehen Offiziere, wer eine veraltete Version nutzt
 
 **English**
 - Less guild chat spam from the Discord bridge: `[GP]` lines now automatically go to Blizzard's own Discord channel of the guild once the guild leader has turned on **Separate Discord chat** (Guild Settings → Discord Settings). Players without GuildPride no longer see them in /g. If the lines still end up in guild chat, officers get a one-time hint. `/gp discord guild` still forces guild chat
@@ -25,6 +26,7 @@
 - If Blizzard reports right after one of your Discord lines that your Discord is not linked, GuildPride switches this by itself and passes the line on through a linked guildmate
 - Waiting Discord lines are no longer lost when you log out, they are sent at your next login (up to 6 hours)
 - Settings › Guild: new switches "Always send Discord lines to guild chat" and "Show Discord lines in chat", plus a **Test Discord** button
+- GuildPride reports its version to GameBot at most once a week (and after an update), only through the guild's own Discord channel. Officers see in the dashboard who uses an outdated version
 
 ## 2.19.1
 
