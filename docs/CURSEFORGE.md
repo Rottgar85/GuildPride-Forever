@@ -8,6 +8,16 @@
 
 ## 🇬🇧 English
 
+### NEW in 2.16 / 2.17: switch layers with one click
+
+- **Switch layer** – button in the guild window above "Settings", in the group finder or `/gp layer`. Asks everyone with GuildPride in your zone (server-wide, not just the guild); a player on another layer invites you automatically, the invite is accepted automatically and you leave the group on your own after the switch.
+- **See your layer** – your current layer is shown right below the minimap (movable, toggle with `/gp layer display`), on the button and in the minimap tooltip.
+- **Layer help** – one click enables everything: the server-wide GuildPride channel and helping others. Click again to turn helping off.
+- **Guild layers** – click the layer display or `/gp layer list`: who from the guild is in which zone on which layer. **Go here** switches you to a specific member's layer.
+- **Rares per layer** – the rare alert shows the layer of the sighting; **To layer** takes you straight there.
+- **Thanks & stats** – after a switch the addon thanks the helper; how often you helped, got thanked and switched yourself is shown in the tooltips.
+- **Also new:** guild window opens in combat, **Activity** tab for officers, Discord filter in the guild chat, event templates, adjustable reminder time, new **"Guild hall"** design (2.14) and a reworked weapon comparison in Scales (2.15).
+
 ### NEW in 2.6: join dates, raid roster, applications, management tab
 
 - **Join date & history** – every member shows "member since …" plus joins, leaves and rank changes; you are told when someone was in the guild before.
@@ -49,7 +59,7 @@
 - **Customize the menu** – hide, rename and reorder the sidebar tabs and pick a start tab that opens every time. "Settings" always stays.
 - **Polls** – officers create polls with up to 6 answers and an optional duration, everyone votes.
 - **Guild info** – Blizzard's guild info text for everyone, with a notice when it changes and a copy button.
-- **Six styles** – Forge, Frost, Emerald, Arcane, Night or your own colours; window size, opacity and chat font size are adjustable. Minimap button, optional automatic welcome for new members, version check.
+- **"Guild hall" design** – dark slate with a gold accent, the same look in every window; window size, opacity and chat font size are adjustable. Minimap button, optional automatic welcome for new members, version check.
 - **English & German** – switches automatically to your game client's language.
 
 ### Security & sync
@@ -78,6 +88,7 @@
 | `/gp errors` | error report to copy |
 | `/gp dkp` | DKP window (with *Log …*) |
 | `/gp news` | show what's new |
+| `/gp layer` | switch layer (`/gp layer list`, `display`, `on`/`off`, `leave`) |
 | `/gp applications` | applications window (officers) |
 | `/gp badge 30` | preview a milestone pop-up |
 
@@ -90,6 +101,16 @@ Bug reports and ideas are very welcome in the comments here. Please include the 
 ## 🇩🇪 Deutsch
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt: Übersicht, Gilde & Chat, Events, Gruppensuche, Umfragen, Meilensteine und Gildeninfo an einem Ort. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
+
+### NEU in 2.16 / 2.17: Layer wechseln mit einem Klick
+
+- **Layer wechseln** – Knopf im Gildenfenster über „Einstellungen“, in der Gruppensuche oder `/gp layer`. Fragt alle mit GuildPride in deiner Zone (serverweit, nicht nur die Gilde); ein Spieler auf einem anderen Layer lädt dich automatisch ein, die Einladung wird automatisch angenommen und nach dem Wechsel verlässt du die Gruppe von selbst.
+- **Eigenen Layer sehen** – dein aktueller Layer steht direkt unter der Minimap (verschiebbar, abschaltbar mit `/gp layer anzeige`), auf dem Knopf und im Minimap-Tooltip.
+- **Layer helfen** – ein Klick schaltet alles frei: den serverweiten GuildPride-Kanal und die Hilfe für andere. Noch ein Klick schaltet die Hilfe wieder ab.
+- **Layer der Gilde** – Klick auf die Layer-Anzeige oder `/gp layer liste`: wer aus der Gilde in welcher Zone auf welchem Layer ist. Mit **Hierhin** wechselst du gezielt auf den Layer eines Mitglieds.
+- **Rares pro Layer** – der Rare-Alarm zeigt den Layer der Sichtung; **Zum Layer** bringt dich direkt dorthin.
+- **Danke & Statistik** – nach einem Wechsel bedankt sich das Addon beim Helfer; wie oft du geholfen hast, Dank bekommen hast und selbst gewechselt bist, steht in den Tooltips.
+- **Außerdem neu:** Gildenfenster im Kampf öffnen, Reiter **Aktivität** für Offiziere, Discord-Filter im Gildenchat, Event-Vorlagen, einstellbare Erinnerungszeit, neues Design **„Gildenhalle“** (2.14) und überarbeiteter Waffenvergleich in Scales (2.15).
 
 ### NEU in 2.6: Beitrittsdatum, Raid-Aufstellung, Bewerbungen, Verwaltung
 
@@ -132,7 +153,7 @@ Bug reports and ideas are very welcome in the comments here. Please include the 
 - **Menü anpassen** – Reiter der Seitenleiste ausblenden, umbenennen, umsortieren und einen Startreiter wählen, der bei jedem Öffnen kommt. „Einstellungen“ bleibt immer da.
 - **Umfragen** – Offiziere legen Umfragen mit bis zu 6 Antworten und wahlweiser Laufzeit an, alle stimmen ab.
 - **Gildeninfo** – der Info-Text aus dem Blizzard-Gildenfenster für alle, mit Hinweis bei Änderungen und Kopier-Knopf.
-- **Sechs Styles** – Schmiede, Frost, Smaragd, Arkan, Nacht oder eigene Farben; Fenstergröße, Deckkraft und Chat-Schriftgröße einstellbar. Minimap-Knopf, wahlweise automatische Begrüßung neuer Mitglieder, Versionscheck.
+- **Design „Gildenhalle“** – dunkler Schiefer mit Gold-Akzent, in allen Fenstern gleich; Fenstergröße, Deckkraft und Chat-Schriftgröße einstellbar. Minimap-Knopf, wahlweise automatische Begrüßung neuer Mitglieder, Versionscheck.
 - **Deutsch & Englisch** – stellt sich automatisch auf die Sprache deines Clients ein.
 
 ### Sicherheit & Abgleich
@@ -161,6 +182,7 @@ Bug reports and ideas are very welcome in the comments here. Please include the 
 | `/gp fehler` | Fehlerbericht zum Kopieren |
 | `/gp dkp` | DKP-Fenster (mit *Protokoll …*) |
 | `/gp neu` | Neuerungen anzeigen |
+| `/gp layer` | Layer wechseln (`/gp layer liste`, `anzeige`, `an`/`aus`, `raus`) |
 | `/gp bewerbungen` | Bewerbungsfenster (Offiziere) |
 | `/gp badge 30` | Meilenstein-Popup testen |
 
