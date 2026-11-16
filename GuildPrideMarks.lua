@@ -2,8 +2,9 @@
 local ADDON, ns = ...
 local SEP = ns.SEP or "\031"
 
-local K1 = ""
+local K1 = "0bip88v1ndy026"
 local K2 = {
+    ["1vxs7k00jec691"] = true,
 }
 
 local ICON = "|TInterface\\AddOns\\GuildPrideForever\\Media\\logo_small:14:14:0:0|t"
