@@ -1,5 +1,21 @@
 # GuildPride Changelog
 
+## 2.17.0
+
+**Deutsch**
+- Neu: **Layer der Gilde** – Klick auf die Layer-Anzeige, Rechtsklick auf „Layer wechseln“ oder `/gp layer liste`: zeigt, wer aus der Gilde mit GuildPride in welcher Zone auf welchem Layer ist. Mit **Hierhin** wechselst du gezielt auf den Layer eines Mitglieds in deiner Zone
+- Neu: Der **Rare-Alarm** zeigt den Layer der Sichtung; liegt das Rare in deiner Zone auf einem anderen Layer, bringt dich **Zum Layer** direkt dorthin
+- Neu: Knopf **Layer helfen** im Gildenfenster (über „Layer wechseln“): ein Klick schaltet alles frei – den serverweiten GuildPride-Kanal und die Hilfe für andere. Noch ein Klick schaltet die Hilfe wieder ab
+- Neu: Nach einem Wechsel bedankt sich das Addon beim Helfer. Wie oft du geholfen hast, wie viele Dankeschöns du bekommen hast und wie oft du selbst gewechselt bist, steht in den Tooltips und im Fenster „Layer der Gilde“
+- **Layer wechseln** schaltet den serverweiten Kanal jetzt selbst ein, falls er aus war, und startet danach automatisch
+
+**English**
+- New: **Guild layers** – click the layer display, right-click "Switch layer" or `/gp layer list`: shows which guild members with GuildPride are in which zone on which layer. **Go here** switches you to a specific member's layer in your zone
+- New: the **rare alert** shows the layer of the sighting; if the rare is in your zone on another layer, **To layer** takes you straight there
+- New: **Layer help** button in the guild window (above "Switch layer"): one click enables everything – the server-wide GuildPride channel and helping others. Click again to turn helping off
+- New: after a switch the addon thanks the helper. How often you helped, how many thanks you received and how often you switched yourself is shown in the tooltips and the "Guild layers" window
+- **Switch layer** now turns on the server-wide channel by itself if it was off, and then starts automatically
+
 ## 2.16.0
 
 **Deutsch**

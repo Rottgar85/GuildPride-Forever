@@ -38,6 +38,7 @@ local function Observe(unit)
     local map, changed = MapId(), Layer.id ~= zoneUID
     Layer.id, Layer.map, Layer.at = zoneUID, map, GetTime()
     if changed and Layer.OnChange then Layer.OnChange() end
+    if changed and Layer.Share then Layer.Share() end
 end
 
 local watch = CreateFrame("Frame")
@@ -54,12 +55,104 @@ watch:SetScript("OnEvent", function(_, event, unit)
     else
         -- neue Zone: alte Layer-Zahl gilt dort nicht mehr
         Layer.id, Layer.map = nil, nil
+        -- der Gilde die neue Zone melden (Layer noch unbekannt)
+        C_Timer.After(3, function() if Layer.Share then Layer.Share() end end)
     end
 end)
 
 function Layer.Text()
     if not Layer.id then return L["unbekannt"] end
     return Layer.id
+end
+
+---------------------------------------------------------------------
+-- Layer der Gildenmitglieder (über die Gilde: LYG = Zone + Layer, LYGQ = Abfrage)
+---------------------------------------------------------------------
+Layer.guild = {}   -- ["Name"] = { map, id, t }
+local GUILD_MAX_AGE = 15 * 60   -- ältere Meldungen gelten als veraltet (offline, ausgeloggt)
+
+local function MyShare()
+    local map = MapId() or 0
+    return map, (Layer.map == map and Layer.id) or ""
+end
+
+local lastShared, lastShareAt, sharePending = nil, 0, false
+function Layer.Share(force)
+    if not ns.IS_FOREVER or not IsInGuild() or not ns.QueueLatest then return end
+    local map, id = MyShare()
+    local key = map .. ":" .. id
+    if not force and key == lastShared then return end
+    -- höchstens alle 10 s senden; den letzten Stand dann nachholen
+    local wait = 10 - (GetTime() - lastShareAt)
+    if wait > 0 then
+        if not sharePending then
+            sharePending = true
+            C_Timer.After(wait + 0.1, function() sharePending = false; Layer.Share(force) end)
+        end
+        return
+    end
+    lastShared, lastShareAt = key, GetTime()
+    ns.QueueLatest("LYG", nil, ns.CLIENT_TAG, map, id, GetServerTime())
+end
+
+ns.On("LYG", function(payload, sender)
+    if sender == ns.Me() then return end
+    local tag, map, id = strsplit(SEP, payload or "")
+    if tag ~= ns.CLIENT_TAG then return end
+    map = tonumber(map)
+    if map and (map <= 0 or map > 999999) then map = nil end
+    -- die Layer-Zahl ist immer eine Ziffernfolge (Teil der Kreatur-GUID)
+    if type(id) ~= "string" or not id:match("^%d+$") or #id > 10 then id = nil end
+    Layer.guild[sender] = { map = map, id = id, t = GetTime() }
+    if Layer.RefreshList then Layer.RefreshList() end
+end)
+
+ns.On("LYGQ", function(_, sender)
+    if sender == ns.Me() then return end
+    C_Timer.After(0.3 + math.random() * 2, function()
+        local map, id = MyShare()
+        ns.QueueLatest("LYG", sender, ns.CLIENT_TAG, map, id, GetServerTime())
+    end)
+end)
+
+local lastGuildAsk = 0
+function Layer.AskGuild()
+    if not ns.IS_FOREVER or not IsInGuild() or not ns.QueueLatest then return end
+    if GetTime() - lastGuildAsk < 30 then return end
+    lastGuildAsk = GetTime()
+    ns.QueueLatest("LYGQ", nil, GetServerTime())
+    Layer.Share(true)
+end
+
+-- Gildenmitglieder mit bekanntem Stand, aktuelle zuerst: gleiche Zone, dann Name
+function Layer.GuildList()
+    local list, now, myMap = {}, GetTime(), MapId()
+    for name, e in pairs(Layer.guild) do
+        if now - e.t <= GUILD_MAX_AGE then
+            list[#list + 1] = { name = name, map = e.map, id = e.id, here = e.map ~= nil and e.map == myMap }
+        else
+            Layer.guild[name] = nil
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.here ~= b.here then return a.here end
+        return a.name < b.name
+    end)
+    return list
+end
+
+-- Zähler: wie oft geholfen, wie oft bedankt, wie oft selbst gewechselt
+function Layer.Stats()
+    if not GuildPrideDB then return { helped = 0, thanks = 0, switched = 0 } end
+    local s = GuildPrideDB.layerStats
+    if type(s) ~= "table" then s = {}; GuildPrideDB.layerStats = s end
+    s.helped, s.thanks, s.switched = tonumber(s.helped) or 0, tonumber(s.thanks) or 0, tonumber(s.switched) or 0
+    return s
+end
+function Layer.StatsText()
+    local s = Layer.Stats()
+    return (L["Du hast %d-mal beim Layer-Wechsel geholfen (%d Dankeschöns) und %d-mal selbst gewechselt."])
+        :format(s.helped, s.thanks, s.switched)
 end
 
 ---------------------------------------------------------------------
@@ -77,6 +170,8 @@ end
 local req          -- { started, map, from, offers = { [name] = layer }, asked, joinedAt }
 -- Wem ich als Helfer geantwortet habe: [Name] = Zeit
 local answered = {}
+-- Wen ich als Helfer eingeladen habe: [Name] = Zeit (für den Dank)
+local invited = {}
 local lastAsk = 0
 
 local function Reset(msg)
@@ -100,6 +195,8 @@ StaticPopupDialogs["GUILDPRIDE_LAYER_INVITE"] = {
     OnAccept = function(_, name)
         local invite = (C_PartyInfo and C_PartyInfo.InviteUnit) or InviteUnit
         if invite then invite(Ambiguate(name, "none")) end
+        invited[name] = GetTime()
+        local s = Layer.Stats(); s.helped = s.helped + 1
     end,
     timeout = 30, whileDead = true, hideOnEscape = true,
 }
@@ -133,6 +230,8 @@ function ns.OnLayerMessage(message, sender, whisper)
     if kind == "LYQ" and not whisper then
         -- Jemand sucht einen anderen Layer: nur antworten, wenn ich wirklich helfen kann
         if not CanHelp() or map ~= Layer.map or (f[3] ~= "" and f[3] == Layer.id) then return end
+        -- Wunsch-Layer (gezielter Wechsel): nur antworten, wer genau dort steht
+        if f[4] and f[4] ~= "" and f[4] ~= Layer.id then return end
         if (answered[sender] or 0) > GetTime() - 30 then return end
         answered[sender] = GetTime()
         C_Timer.After(0.5 + math.random() * 2.5, function()
@@ -142,6 +241,7 @@ function ns.OnLayerMessage(message, sender, whisper)
         if not req or req.asked or map ~= req.map then return end
         local layer = f[3]
         if layer == "" or layer == req.from then return end
+        if req.want and layer ~= req.want then return end
         req.offers[sender] = layer
     elseif kind == "LYR" and whisper then
         -- Bitte um Einladung: nur, wenn ich dem Fragenden vorher angeboten habe
@@ -149,12 +249,20 @@ function ns.OnLayerMessage(message, sender, whisper)
         answered[sender] = nil
         local short = Ambiguate(sender, "none")
         if Try("invite", InviteFn, short) then
+            invited[sender] = GetTime()
+            local s = Layer.Stats(); s.helped = s.helped + 1
             ns.Print((L["Layer-Hilfe: %s automatisch eingeladen – die Person wechselt auf deinen Layer und verlässt die Gruppe danach von selbst."]):format(short))
         else
             -- WoW lässt das automatische Einladen nicht zu: ein Klick genügt
             StaticPopup_Show("GUILDPRIDE_LAYER_INVITE", short, nil, sender)
             if GuildPrideDB.sound then PlaySound(SOUNDKIT.TELL_MESSAGE) end
         end
+    elseif kind == "LYT" and whisper then
+        -- Dank nach erfolgreichem Wechsel: nur von jemandem, den ich eingeladen habe
+        if (invited[sender] or 0) < GetTime() - 600 then return end
+        invited[sender] = nil
+        local s = Layer.Stats(); s.thanks = s.thanks + 1
+        ns.Print((L["%s hat dank dir den Layer gewechselt und bedankt sich! (%d Dankeschöns bisher)"]):format(Ambiguate(sender, "none"), s.thanks))
     end
 end
 
@@ -168,7 +276,8 @@ local function PickHelper()
     local names = {}
     for name in pairs(req.offers) do names[#names + 1] = name end
     if #names == 0 then
-        return Reset(L["Layer wechseln: Niemand mit GuildPride in dieser Zone kann gerade helfen. Später noch einmal versuchen."])
+        return Reset(req.want and (L["Layer wechseln: Auf Layer %s kann gerade niemand mit GuildPride helfen. Später noch einmal versuchen."]):format(req.want)
+            or L["Layer wechseln: Niemand mit GuildPride in dieser Zone kann gerade helfen. Später noch einmal versuchen."])
     end
     local layers = {}
     for _, layer in pairs(req.offers) do layers[layer] = true end
@@ -186,9 +295,36 @@ local function PickHelper()
     end)
 end
 
-function Layer.Request()
+-- Ein Klick schaltet alles frei: serverweiter GuildPride-Kanal + anderen helfen.
+-- Gibt true zurück, wenn der Kanal schon bereit ist (sonst dauert der Beitritt ein paar Sekunden).
+function Layer.EnableAll()
+    if not GuildPrideDB then return false end
+    if not GuildPrideDB.publicLFG then
+        GuildPrideDB.publicLFG = true
+        if ns.PublicLFGChanged then ns.PublicLFGChanged() end
+    end
+    GuildPrideDB.layerHelp = true
+    if ns.RefreshUI then ns.RefreshUI() end
+    if ns.LayerUpdateDisplay then ns.LayerUpdateDisplay() end
+    return Available() and true or false
+end
+
+function Layer.HelpActive()
+    return GuildPrideDB and GuildPrideDB.layerHelp and Available() and true or false
+end
+
+-- want: gewünschter Layer (gezielt zu einem Mitglied oder Rare), sonst irgendein anderer
+function Layer.Request(retried, want)
+    if want == "" then want = nil end
     if not ns.IS_FOREVER then ns.Print(L["Layer wechseln gibt es nur in WoW Forever."]); return end
     if not Available() then
+        -- Kanal aus: automatisch einschalten und nach dem Beitritt noch einmal versuchen
+        if not retried and not ns.PUBLIC_VIA_CHAT then
+            Layer.EnableAll()
+            ns.Print(L["Serverweiter GuildPride-Kanal wird eingeschaltet – Layer wechseln startet gleich …"])
+            C_Timer.After(6, function() Layer.Request(true, want) end)
+            return
+        end
         ns.Print(L["Layer wechseln braucht den serverweiten GuildPride-Kanal: Einstellungen > Serverweite Gruppensuche einschalten."])
         return
     end
@@ -198,10 +334,11 @@ function Layer.Request()
     if GetTime() - lastAsk < 20 then ns.Print(L["Bitte kurz warten, bevor du erneut fragst."]); return end
     local map = MapId()
     if not map then return end
-    lastAsk = GetTime()
     local from = (Layer.map == map) and Layer.id or nil
-    req = { started = GetTime(), map = map, from = from, offers = {} }
-    Send("LYQ", nil, ns.CLIENT_TAG, map, from or "")
+    if want and want == from then ns.Print((L["Du bist schon auf Layer %s."]):format(want)); return end
+    lastAsk = GetTime()
+    req = { started = GetTime(), map = map, from = from, want = want, offers = {} }
+    Send("LYQ", nil, ns.CLIENT_TAG, map, from or "", want or "")
     ns.Print(from and (L["Layer wechseln: Suche Helfer (dein Layer: %s) …"]):format(from)
         or L["Layer wechseln: Suche Helfer … (Tipp: vorher eine Kreatur anvisieren, dann wird dein Layer erkannt)"])
     -- Antworten sammeln (Kanaltakt 2 s + Zufallsverzögerung der Helfer)
@@ -246,6 +383,8 @@ function Layer.OnChange()
     -- Ziel ist der Layer des Helfers (die eigene alte Zahl ist evtl. unbekannt)
     if Layer.map ~= req.map or Layer.id ~= req.target then return end
     ns.Print((L["Layer gewechselt (jetzt %s). Gruppe wird verlassen – danke an %s!"]):format(Layer.id, Ambiguate(req.helper, "none")))
+    Send("LYT", req.helper, ns.CLIENT_TAG, req.map)
+    local s = Layer.Stats(); s.switched = s.switched + 1
     req = nil
     C_Timer.After(1.5, function() if IsInGroup() then LeaveGroup() end end)
 end
@@ -283,17 +422,159 @@ if ns.IS_FOREVER and setTab then
     b:SetPoint("BOTTOMRIGHT", setTab, "TOPRIGHT", 0, 6)
     b:SetText(L["Layer wechseln"])
     b:SetScript("OnSizeChanged", function() if ns.LayerUpdateDisplay then ns.LayerUpdateDisplay() end end)
-    b:SetScript("OnClick", function() Layer.Request() end)
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    b:SetScript("OnClick", function(_, button) if button == "RightButton" then Layer.ToggleList() else Layer.Request() end end)
     b:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(L["Layer wechseln"], 1, 1, 1)
         GameTooltip:AddLine((L["Dein Layer: %s"]):format(Layer.Text()), 0.9, 0.8, 0.5)
         GameTooltip:AddLine(L["Klick: Ein anderer GuildPride-Spieler lädt dich automatisch ein, nach dem Wechsel verlässt du die Gruppe von selbst."], 0.8, 0.8, 0.8, true)
+        GameTooltip:AddLine(L["Rechtsklick: Layer der Gilde"], 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", GameTooltip_Hide)
     Layer.sideButton = b
+
+    -- Darüber: "Layer helfen" – ein Klick gibt alles frei (Kanal + Hilfe), noch ein Klick schaltet die Hilfe ab
+    local h = CreateFrame("Button", nil, parts.frame, "UIPanelButtonTemplate")
+    if ns.SkinButton then ns.SkinButton(h) end
+    h:SetHeight(24)
+    h:SetPoint("BOTTOMLEFT", b, "TOPLEFT", 0, 4)
+    h:SetPoint("BOTTOMRIGHT", b, "TOPRIGHT", 0, 4)
+    h:SetScript("OnClick", function(self)
+        if Layer.HelpActive() then
+            GuildPrideDB.layerHelp = false
+            if ns.RefreshUI then ns.RefreshUI() end
+            ns.Print(L["Du hilfst anderen nicht mehr beim Layer-Wechsel."])
+        elseif ns.PUBLIC_VIA_CHAT then
+            ns.Print(L["Layer wechseln braucht den serverweiten GuildPride-Kanal: Einstellungen > Serverweite Gruppensuche einschalten."])
+        else
+            local ready = Layer.EnableAll()
+            ns.Print(ready and L["Layer helfen ist an: Andere mit GuildPride auf dem Server können über dich den Layer wechseln (lädt automatisch ein)."]
+                or L["Layer helfen wird eingeschaltet: serverweiter GuildPride-Kanal wird betreten …"])
+        end
+        if ns.LayerUpdateDisplay then ns.LayerUpdateDisplay() end
+        if GameTooltip:GetOwner() == self then self:GetScript("OnEnter")(self) end
+    end)
+    h:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Layer helfen"], 1, 1, 1)
+        GameTooltip:AddLine(Layer.HelpActive() and ("|cff40ff40" .. L["An"] .. "|r") or ("|cff999999" .. L["Aus"] .. "|r"))
+        GameTooltip:AddLine(L["Ein Klick schaltet alles frei: serverweiter GuildPride-Kanal und Hilfe für andere. Wer auf einem anderen Layer wechseln will, wird von dir automatisch eingeladen und verlässt die Gruppe danach von selbst."], 0.8, 0.8, 0.8, true)
+        GameTooltip:AddLine(L["Noch ein Klick: Hilfe abschalten"], 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(Layer.StatsText(), 0.9, 0.8, 0.5, true)
+        GameTooltip:Show()
+    end)
+    h:SetScript("OnLeave", GameTooltip_Hide)
+    Layer.helpButton = h
 end
+
+---------------------------------------------------------------------
+-- Fenster "Layer der Gilde": wer mit GuildPride wo auf welchem Layer ist,
+-- "Hierhin" wechselt gezielt auf den Layer eines Mitglieds (gleiche Zone)
+---------------------------------------------------------------------
+local list
+local LIST_ROWS = 12
+
+local function ZoneName(map)
+    local info = map and C_Map.GetMapInfo and C_Map.GetMapInfo(map)
+    return info and info.name or L["unbekannt"]
+end
+
+local function RefreshList()
+    if not list or not list:IsShown() then return end
+    local entries = Layer.GuildList()
+    local myMap = MapId()
+    list.mine:SetText(("%s |cff40ff40%s|r  ·  %s"):format(L["Dein Layer:"], Layer.Text(), ZoneName(myMap)))
+    for i = 1, LIST_ROWS do
+        local row, e = list.rows[i], entries[i]
+        if e then
+            local same = e.id and e.id == Layer.id and e.here
+            local idTxt = e.id and ((same and "|cff40ff40" or "|cffffd100") .. e.id .. "|r") or "|cff999999?|r"
+            row.name:SetText(Ambiguate(e.name, "none"))
+            row.zone:SetText(e.here and ("|cffe6e0da" .. ZoneName(e.map) .. "|r") or ("|cff888888" .. ZoneName(e.map) .. "|r"))
+            row.layer:SetText(idTxt)
+            -- Wechsel nur in derselben Zone und auf einen anderen, bekannten Layer
+            row.go.want = (e.here and e.id and e.id ~= Layer.id) and e.id or nil
+            row.go:SetShown(row.go.want ~= nil)
+            row:Show()
+        else
+            row:Hide()
+        end
+    end
+    local more = #entries - LIST_ROWS
+    list.empty:SetShown(#entries == 0)
+    list.more:SetText(more > 0 and (L["… und %d weitere"]):format(more) or "")
+    list.stats:SetText(Layer.StatsText())
+end
+Layer.RefreshList = RefreshList
+
+local function ToggleList()
+    if not ns.IS_FOREVER then return end
+    if not list then
+        list = CreateFrame("Frame", "GuildPrideLayerList", UIParent, "BackdropTemplate")
+        list:SetSize(380, 112 + LIST_ROWS * 22)
+        list:SetPoint("CENTER", 0, 60)
+        list:SetFrameStrata("DIALOG")
+        list:SetMovable(true); list:EnableMouse(true); list:SetClampedToScreen(true)
+        list:RegisterForDrag("LeftButton")
+        list:SetScript("OnDragStart", list.StartMoving)
+        list:SetScript("OnDragStop", list.StopMovingOrSizing)
+        if ns.SkinDialog then ns.SkinDialog(list) end
+        tinsert(UISpecialFrames, "GuildPrideLayerList")   -- Escape schließt
+        local close = CreateFrame("Button", nil, list, "UIPanelCloseButton")
+        close:SetPoint("TOPRIGHT", -2, -2)
+        local title = list:CreateFontString(nil, "OVERLAY", "GPFont_Large")
+        title:SetPoint("TOPLEFT", 14, -14)
+        title:SetText(L["Layer der Gilde"])
+        list.mine = list:CreateFontString(nil, "OVERLAY", "GPFont_Text")
+        list.mine:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
+        list.rows = {}
+        for i = 1, LIST_ROWS do
+            local row = CreateFrame("Frame", nil, list)
+            row:SetSize(352, 20)
+            row:SetPoint("TOPLEFT", 14, -58 - (i - 1) * 22)
+            row.name = row:CreateFontString(nil, "OVERLAY", "GPFont_Text")
+            row.name:SetPoint("LEFT", 0, 0); row.name:SetWidth(120); row.name:SetJustifyH("LEFT"); row.name:SetWordWrap(false)
+            row.zone = row:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+            row.zone:SetPoint("LEFT", 124, 0); row.zone:SetWidth(110); row.zone:SetJustifyH("LEFT"); row.zone:SetWordWrap(false)
+            row.layer = row:CreateFontString(nil, "OVERLAY", "GPFont_Text")
+            row.layer:SetPoint("LEFT", 238, 0); row.layer:SetWidth(46); row.layer:SetJustifyH("LEFT")
+            row.go = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+            if ns.SkinButton then ns.SkinButton(row.go) end
+            row.go:SetSize(66, 18)
+            row.go:SetPoint("RIGHT", 0, 0)
+            row.go:SetText(L["Hierhin"])
+            row.go:SetScript("OnClick", function(self) if self.want then Layer.Request(nil, self.want) end end)
+            list.rows[i] = row
+        end
+        list.empty = list:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
+        list.empty:SetPoint("TOPLEFT", 14, -62); list.empty:SetPoint("RIGHT", -14, 0)
+        list.empty:SetJustifyH("LEFT")
+        list.empty:SetText(L["Noch keine Meldungen – Gildenmitglieder mit GuildPride melden ihren Layer, sobald er erkannt ist."])
+        list.more = list:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+        list.more:SetPoint("TOPLEFT", 14, -60 - LIST_ROWS * 22)
+        list.stats = list:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+        list.stats:SetPoint("BOTTOMLEFT", 14, 40); list.stats:SetPoint("RIGHT", -14, 0)
+        list.stats:SetJustifyH("LEFT")
+        local any = CreateFrame("Button", nil, list, "UIPanelButtonTemplate")
+        if ns.SkinButton then ns.SkinButton(any) end
+        any:SetSize(170, 22)
+        any:SetPoint("BOTTOMLEFT", 14, 12)
+        any:SetText(L["Irgendein anderer Layer"])
+        any:SetScript("OnClick", function() Layer.Request() end)
+        local refresh = CreateFrame("Button", nil, list, "UIPanelButtonTemplate")
+        if ns.SkinButton then ns.SkinButton(refresh) end
+        refresh:SetSize(110, 22)
+        refresh:SetPoint("BOTTOMRIGHT", -14, 12)
+        refresh:SetText(L["Aktualisieren"])
+        refresh:SetScript("OnClick", function() Layer.AskGuild(); RefreshList() end)
+        list:SetScript("OnShow", function() Layer.AskGuild(); RefreshList() end)
+        list:Hide()
+    end
+    list:SetShown(not list:IsShown())
+end
+Layer.ToggleList = ToggleList
 
 ---------------------------------------------------------------------
 -- Layer-Anzeige: kleine Zeile unter der Minimap (verschiebbar, abschaltbar)
@@ -310,6 +591,12 @@ local function UpdateDisplay()
         local w = sb:GetWidth() or 0
         sb:SetText(w < 100 and L["Layer"] or (Layer.id and ("%s (%s)"):format(L["Layer wechseln"], Layer.id) or L["Layer wechseln"]))
     end
+    local hb = Layer.helpButton
+    if hb then
+        hb:SetText(Layer.HelpActive() and ("%s: |cff40ff40%s|r"):format(L["Layer helfen"], L["An"])
+            or ("%s: |cff999999%s|r"):format(L["Layer helfen"], L["Aus"]))
+    end
+    if list and list:IsShown() then RefreshList() end
     if display and display:IsShown() then
         display.text:SetText(("%s %s"):format(L["Layer:"], DisplayText()))
         display:SetWidth(display.text:GetStringWidth() + 12)
@@ -353,16 +640,17 @@ if ns.IS_FOREVER then
             PlaceDisplay()
             ns.Print(L["Layer-Anzeige ausgeblendet. Wieder einblenden mit /gp layer anzeige oder in den Einstellungen."])
         else
-            Layer.Request()
+            Layer.ToggleList()
         end
     end)
     display:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:SetText((L["Dein Layer: %s"]):format(Layer.Text()), 1, 1, 1)
         GameTooltip:AddLine(L["Die Zahl kommt vom Server: gleiche Zahl = gleicher Layer (nur innerhalb einer Zone vergleichbar). Erkannt über Kreaturen in der Nähe – eine Kreatur anvisieren aktualisiert sie."], 0.8, 0.8, 0.8, true)
-        GameTooltip:AddLine(L["Klick: Layer wechseln"], 1, 1, 1)
+        GameTooltip:AddLine(L["Klick: Layer der Gilde (gezielt wechseln)"], 1, 1, 1)
         GameTooltip:AddLine(L["Umschalt+Ziehen: verschieben"], 0.7, 0.7, 0.7)
         GameTooltip:AddLine(L["Rechtsklick: ausblenden"], 0.7, 0.7, 0.7)
+        GameTooltip:AddLine(Layer.StatsText(), 0.9, 0.8, 0.5, true)
         GameTooltip:Show()
     end)
     display:SetScript("OnLeave", GameTooltip_Hide)
@@ -381,6 +669,8 @@ SlashCmdList.GUILDPRIDE = function(arg)
     if cmd ~= "layer" then return slash(arg) end
     if rest == "" or rest == "wechseln" or rest == "switch" then
         Layer.Request()
+    elseif rest == "liste" or rest == "list" or rest == "gilde" or rest == "guild" then
+        ToggleList()
     elseif rest == "anzeige" or rest == "display" then
         GuildPrideDB.layerShow = GuildPrideDB.layerShow == false
         ns.LayerShowChanged()
@@ -390,11 +680,12 @@ SlashCmdList.GUILDPRIDE = function(arg)
         req = nil
         LeaveGroup()
     elseif rest == "an" or rest == "on" or rest == "aus" or rest == "off" then
-        GuildPrideDB.layerHelp = rest == "an" or rest == "on"
+        if rest == "an" or rest == "on" then Layer.EnableAll() else GuildPrideDB.layerHelp = false end
+        if ns.LayerUpdateDisplay then ns.LayerUpdateDisplay() end
         ns.Print(GuildPrideDB.layerHelp and L["Du hilfst anderen beim Layer-Wechsel (lädt automatisch ein)."]
             or L["Du hilfst anderen nicht mehr beim Layer-Wechsel."])
     else
         ns.Print((L["Dein Layer: %s"]):format(Layer.Text()))
-        ns.Print(L["/gp layer – wechseln · /gp layer anzeige – Anzeige ein/aus · /gp layer raus – Gruppe verlassen · /gp layer an|aus – anderen helfen"])
+        ns.Print(L["/gp layer – wechseln · /gp layer liste – Layer der Gilde · /gp layer anzeige – Anzeige ein/aus · /gp layer raus – Gruppe verlassen · /gp layer an|aus – anderen helfen"])
     end
 end

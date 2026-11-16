@@ -556,7 +556,7 @@ local MP_MAX = 100
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
 local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
-               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true }
+               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender
@@ -771,8 +771,8 @@ f:SetScript("OnEvent", function(_, event, ...)
             if ns.OnPublicMessage then ns.OnPublicMessage(message, sender, true) end
             return
         end
-        -- Layer-Wechsel: Angebot (LYA) und Bitte (LYR) kommen per Flüstern, auch von Fremden
-        if channel == "WHISPER" and (message:sub(1, 4) == "LYA:" or message:sub(1, 4) == "LYR:") then
+        -- Layer-Wechsel: Angebot (LYA), Bitte (LYR) und Dank (LYT) kommen per Flüstern, auch von Fremden
+        if channel == "WHISPER" and (message:sub(1, 4) == "LYA:" or message:sub(1, 4) == "LYR:" or message:sub(1, 4) == "LYT:") then
             if ns.OnLayerMessage then ns.OnLayerMessage(message, sender, true) end
             return
         end
