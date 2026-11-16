@@ -1765,6 +1765,8 @@ local options = {
     { key = "welcome",       label = L["Neue Mitglieder automatisch im Gildenchat begrüßen"] },
     { key = "discordBridge", label = L["Discord-Anbindung nutzen (Events, Anmeldungen, DKP an Discord)"] },
     { key = "discordLinked", label = L["Mein Discord ist mit WoW verknüpft (Optionen > Soziales)"] },
+    { key = "discordViaGuild", label = L["Discord-Zeilen immer in den Gildenchat (sonst eigener Discord-Kanal der Gilde)"] },
+    { key = "discordShowRaw", label = L["Discord-Zeilen im Chat anzeigen"] },
     { header = L["Twinks"] },
     { key = "ausweisAuto",   label = L["Meine Charaktere automatisch verknüpfen (BattleTag bleibt privat)"] },
     { key = "groupAlts",     label = L["Twinks in der Mitgliederliste unter dem Main zusammenfassen"],
@@ -1795,6 +1797,14 @@ for i, opt in ipairs(options) do
     cb:SetScript("OnClick", function(self) SetOption(opt, self:GetChecked()) end)
     checks[opt.key] = cb
     opt.fs, opt.cb, opt.y = label, cb, OPT_Y - (i - 1) * 30
+    -- Knopf zum Testen der Discord-Anbindung direkt neben dem Schalter
+    if opt.key == "discordBridge" then
+        local test = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+        test:SetSize(130, 20)
+        test:SetPoint("LEFT", label, "RIGHT", 10, 0)
+        test:SetText(L["Discord testen"])
+        test:SetScript("OnClick", function() if ns.Discord and ns.Discord.Test then ns.Discord.Test() end end)
+    end
   end
 end
 

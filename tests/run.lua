@@ -652,5 +652,55 @@ test("Discord: Kanal nimmt still nichts an -> Gildenchat, Offiziers-Zeilen nur v
     GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = nil, nil
 end)
 
+---------------------------------------------------------------------
+test("Discord: Blizzard-Meldung nach eigener Zeile -> nicht verknüpft, Zeile über Mitglied", function()
+    local D = ns.Discord
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked, GuildPrideDB.discordViaGuild = true, true, true
+    local old, oldAddon = C_ChatInfo.SendChatMessage, ns.SendAddonMsg
+    local relayed
+    C_ChatInfo.SendChatMessage = function() end
+    ns.SendAddonMsg = function(_, msg) relayed = msg end
+    D.Post("Neues Event #zzzzz: X – 1.1. 20:00 (t=1)", true)
+    W.Fire("CHAT_MSG_SYSTEM", "Irgendwas anderes")
+    eq(GuildPrideDB.discordLinked, true, "fremde Meldung ändert nichts")
+    W.Fire("CHAT_MSG_SYSTEM", "Verknüpfe dein Discord-Konto, um im Discord-Kanal zu schreiben.")
+    eq(GuildPrideDB.discordLinked, false)
+    eq(relayed, "DRL:[GP] Neues Event #zzzzz: X – 1.1. 20:00 (t=1)", "Zeile über ein Mitglied nachgeholt")
+    -- Später kommt keine Meldung mehr durch (Zeitfenster vorbei)
+    GuildPrideDB.discordLinked = true
+    W.Advance(5)
+    W.Fire("CHAT_MSG_SYSTEM", "Discord …")
+    eq(GuildPrideDB.discordLinked, true, "nur direkt nach dem Senden")
+    C_ChatInfo.SendChatMessage, ns.SendAddonMsg = old, oldAddon
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked, GuildPrideDB.discordViaGuild = nil, nil, nil
+end)
+
+test("Discord: wartende Zeilen überleben das Ausloggen, alte verfallen", function()
+    local D = ns.Discord
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = true, true
+    D.Post("Tester: Zusage #qqqqq Ony (Tank)", true)   -- wird zurückgehalten
+    eq(#D.Pending(), 1)
+    W.Fire("PLAYER_LOGOUT")
+    eq(#GuildPrideDB.discord.pending, 1, "gespeichert")
+    table.insert(GuildPrideDB.discord.pending, { t = time() - 7 * 3600, text = "[GP] alt" })
+    for i = #D.Pending(), 1, -1 do table.remove(D.Pending(), i) end
+    W.Fire("PLAYER_LOGIN")
+    eq(#D.Pending(), 1, "nur die junge Zeile kommt zurück")
+    eq(D.Pending()[1], "[GP] Tester: Zusage #qqqqq Ony (Tank)")
+    eq(GuildPrideDB.discord.pending, nil)
+    for i = #D.Pending(), 1, -1 do table.remove(D.Pending(), i) end
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = nil, nil
+end)
+
+test("Discord: alte Einstellungen werden zu Schaltern", function()
+    GuildPrideDB.discord = { via = "guild", showRaw = true }
+    GuildPrideDB.discordViaGuild, GuildPrideDB.discordShowRaw = nil, nil
+    W.Fire("PLAYER_LOGIN")
+    eq(GuildPrideDB.discordViaGuild, true)
+    eq(GuildPrideDB.discordShowRaw, true)
+    eq(GuildPrideDB.discord.via, nil)
+    GuildPrideDB.discordViaGuild, GuildPrideDB.discordShowRaw = nil, nil
+end)
+
 print(("\n%d bestanden, %d fehlgeschlagen"):format(passed, failed))
 if failed > 0 then os.exit(1) end

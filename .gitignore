@@ -4,3 +4,5 @@
 Thumbs.db
 .claude/settings.local.json
 .tools/
+# Lua-Compiler-Ausgabe
+*.out

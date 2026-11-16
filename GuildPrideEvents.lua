@@ -683,8 +683,10 @@ local function ApplyEvent(id, t, title, desc, creator, ver, note, fromOther, rep
     local e = GetOrStub(id)
     if not e or ver <= e.ver then return end
     local isNew = not e.title
-    -- Wiederholtes Event: hier schon weitergerückt? Dann nicht zurücksetzen
-    if not (rep and rep > 0 and e.rep == rep and e.t and e.t > t) then e.t = t end
+    -- Wiederholtes Event: hier schon um ganze Wochen weitergerückt? Dann nicht
+    -- zurücksetzen. Eine echte Zeitänderung (Bearbeiten) wird übernommen.
+    local rolled = rep and rep > 0 and e.rep == rep and e.t and e.t > t and (e.t - t) % (rep * 86400) == 0
+    if not rolled then e.t = t end
     e.title, e.desc, e.creator, e.ver, e.deleted = title, desc, creator, ver, nil
     e.note = note or ""
     e.rep = (rep and rep > 0) and rep or nil
@@ -812,6 +814,16 @@ function ns.RollEvents()
             end
         end
     end
+end
+
+-- Titel, Zeit, Beschreibung oder Wiederholung ändern (Ersteller oder Offizier)
+local function EditEvent(e, title, t, desc, rep)
+    ApplyEvent(e.id, t, Clean(title, 40), Clean(desc, 120), e.creator, math.max(Now(), e.ver + 1), e.note, nil, rep)
+    e.t = t
+    e.reminded = nil
+    SendEvent(e)
+    if ns.Discord and ns.Discord.EventChanged then ns.Discord.EventChanged(e) end
+    ns.RefreshUI()
 end
 
 local function DeleteEvent(e)
@@ -1078,6 +1090,12 @@ bNote:SetScript("OnClick", function()
     if Sel() then StaticPopup_Show("GUILDPRIDE_EVENT_NOTE", nil, nil, Sel()) end
 end)
 
+-- Event bearbeiten (oben rechts neben „Aufstellung …“)
+local bEdit = CreateFrame("Button", nil, detail, "UIPanelButtonTemplate")
+bEdit:SetSize(100, 22)
+bEdit:SetText(L["Bearbeiten"])
+bEdit:SetScript("OnClick", function() if Sel() and ns.ShowEditDialog then ns.ShowEditDialog(Sel()) end end)
+
 -- Alle Zugesagten einladen: erst bis zu 4 in die Gruppe, dann zum Schlachtzug
 -- umwandeln und den Rest einladen (Umwandeln geht erst mit bestehender Gruppe)
 local InviteToGroup = (C_PartyInfo and C_PartyInfo.InviteUnit) or InviteUnit
@@ -1119,6 +1137,7 @@ bRoster:SetSize(130, 22)
 bRoster:SetPoint("TOPRIGHT", detail, "TOPRIGHT", -8, -34)
 bRoster:SetText(L["Aufstellung …"])
 bRoster:SetScript("OnClick", function() if Sel() and ns.ShowRoster then ns.ShowRoster(Sel()) end end)
+bEdit:SetPoint("RIGHT", bRoster, "LEFT", -6, 0)
 
 ---------------------------------------------------------------------
 -- Anwesenheit: wer zugesagt hat und wer wirklich in der Gruppe war.
@@ -1278,7 +1297,7 @@ function page:Refresh()
         dWhen:SetText(L["Nur auf diesem Rechner gespeichert."])
         dDesc:SetText("")
         dPeople:SetText(AttendanceText())
-        bNote:Hide(); bInvite:Hide()
+        bNote:Hide(); bInvite:Hide(); bEdit:Hide()
         return
     end
     if not e then return end
@@ -1293,6 +1312,7 @@ function page:Refresh()
     dDesc:SetText(descText)
     bNote:SetShown(CanManage())
     bInvite:SetShown(CanManage())
+    bEdit:SetShown(CanManage() or e.creator == Me())
     bRoster:SetShown(e ~= nil and not attendView and (CanManage() or (e.layout ~= nil and next(e.layout) ~= nil)))
 
     local myRole = MyRole()
@@ -1376,6 +1396,7 @@ local cancel = CreateFrame("Button", nil, dlg, "UIPanelButtonTemplate")
 cancel:SetSize(120, 24); cancel:SetPoint("BOTTOMRIGHT", -40, 18); cancel:SetText(CANCEL)
 cancel:SetScript("OnClick", function() dlg:Hide() end)
 
+local editing   -- Event, das gerade bearbeitet wird (nil = neues Event)
 ok:SetScript("OnClick", function()
     local title = strtrim(fTitle:GetText())
     if title == "" then fErr:SetText(L["Bitte einen Titel eingeben."]); return end
@@ -1383,7 +1404,13 @@ ok:SetScript("OnClick", function()
     if bad == "date" then fErr:SetText(L["Datum bitte als TT.MM.JJJJ eingeben (z. B. 24.12.2026)."]); return end
     if bad == "time" then fErr:SetText(L["Uhrzeit bitte als HH:MM eingeben (z. B. 20:00)."]); return end
     if t < time() then fErr:SetText(L["Der Termin liegt in der Vergangenheit."]); return end
-    CreateEvent(title, t, strtrim(fDesc:GetText()), fRepeat:GetChecked() and 7 or 0)
+    local rep = fRepeat:GetChecked() and 7 or 0
+    if editing then
+        local e = editing
+        if not e.deleted and e.title then EditEvent(e, title, t, strtrim(fDesc:GetText()), rep) end
+    else
+        CreateEvent(title, t, strtrim(fDesc:GetText()), rep)
+    end
     dlg:Hide()
 end)
 for _, eb in ipairs(order) do
@@ -1474,6 +1501,21 @@ function ns.ShowCreateDialog()
     fTitle:SetText(""); fDate:SetText(date("%d.%m.%Y", start)); fTime:SetText("20:00")
     fDesc:SetText(""); fErr:SetText(""); fRepeat:SetChecked(false)
     tplCycle = 0
+    editing = nil
+    dh:SetText(L["Neues Gildenevent"]); ok:SetText(L["Erstellen"])
+    bTpl:Show(); bTplSave:Show()
+    dlg:Show(); fTitle:SetFocus()
+end
+
+function ns.ShowEditDialog(e)
+    if not e or e.deleted or not e.title then return end
+    if not (CanManage() or e.creator == Me()) then ns.Print(L["Nur der Ersteller oder Offiziere können das Event ändern."]); return end
+    editing = e
+    fTitle:SetText(e.title or ""); fDesc:SetText(e.desc or "")
+    fDate:SetText(date("%d.%m.%Y", e.t)); fTime:SetText(date("%H:%M", e.t))
+    fRepeat:SetChecked((e.rep or 0) > 0); fErr:SetText("")
+    dh:SetText(L["Event bearbeiten"]); ok:SetText(L["Speichern"])
+    bTpl:Hide(); bTplSave:Hide()
     dlg:Show(); fTitle:SetFocus()
 end
 

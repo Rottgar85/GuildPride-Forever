@@ -33,8 +33,19 @@ local function Opt()
         if o.linked then GuildPrideDB.discordBridge = true end
     end
     o.linked, o.enabled = nil, nil
+    -- "Weg" und "Rohzeilen" sind seit 2.20 normale Schalter in den Einstellungen
+    if o.via ~= nil then
+        if GuildPrideDB.discordViaGuild == nil then GuildPrideDB.discordViaGuild = (o.via == "guild") end
+        o.via = nil
+    end
+    if o.showRaw ~= nil then
+        if GuildPrideDB.discordShowRaw == nil then GuildPrideDB.discordShowRaw = o.showRaw end
+        o.showRaw = nil
+    end
     return o
 end
+local function ViaGuild() return GuildPrideDB and GuildPrideDB.discordViaGuild == true end
+local function ShowRaw() return GuildPrideDB and GuildPrideDB.discordShowRaw == true end
 
 local function Enabled() return GuildPrideDB and GuildPrideDB.discordBridge == true end
 Discord.Enabled = Enabled
@@ -128,13 +139,17 @@ local function DiscordStream()
     end
 end
 
+-- Zuletzt selbst gesendete Zeile: Meldet Blizzard gleich danach etwas zu
+-- Discord, ist das eigene Konto nicht verknüpft
+local lastSent, lastSentAt = nil, 0
+
 -- Rückgabe: "stream", "guild" oder nil (fehlgeschlagen)
 -- Standard: in Blizzards eigenen Discord-Kanal der Gilde, sobald die Gilde
 -- ihn vom Gildenchat getrennt hat. Dann sieht /g die Zeilen gar nicht.
 -- Nur mit /gp discord gilde immer in den Gildenchat.
 local function SendNow(text)
-    local o = Opt()
-    if o.via ~= "guild" and not streamBroken then
+    lastSent, lastSentAt = text, GetTime()
+    if not ViaGuild() and not streamBroken then
         local clubId, streamId = DiscordStream()
         if clubId and C_Club.SendMessage and pcall(C_Club.SendMessage, clubId, streamId, text) then
             if not streamOk then
@@ -147,7 +162,7 @@ local function SendNow(text)
     local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
     if pcall(send, text, "GUILD") then
         -- Offizieren einmal pro Sitzung sagen, wie der Gildenchat frei bleibt
-        if not hinted and o.via ~= "guild" and ns.IsOfficerName and ns.IsOfficerName(ns.Me()) then
+        if not hinted and not ViaGuild() and ns.IsOfficerName and ns.IsOfficerName(ns.Me()) then
             hinted = true
             ns.Print(L["Discord-Zeilen landen im Gildenchat. Damit /g frei bleibt: Gildenleitung schaltet unter Gildeneinstellungen → Discord-Einstellungen „Discord-Chat getrennt“ ein."])
         end
@@ -178,6 +193,53 @@ for _, ev in ipairs({ "CHAT_MSG_COMMUNITIES_CHANNEL", "CHAT_MSG_GUILD_DISCORD", 
     pcall(echoFrame.RegisterEvent, echoFrame, ev)
 end
 echoFrame:SetScript("OnEvent", function(_, _, text) NoteEcho(text) end)
+
+-- "Nicht verknüpft" erkennen: Blizzard antwortet auf eine Zeile von einem
+-- unverknüpften Konto sofort mit einer Meldung, in der "Discord" vorkommt
+local LINK_WINDOW = 3
+function Discord.OnSystemText(text)
+    if type(text) ~= "string" or Secret(text) then return end
+    if not lastSent or GetTime() - lastSentAt > LINK_WINDOW or not Discord.IsLinked() then return end
+    if not text:lower():find("discord", 1, true) then return end
+    GuildPrideDB.discordLinked = false
+    local line = lastSent
+    lastSent = nil
+    ns.Print(L["Blizzard meldet: Dein Discord ist nicht verknüpft. GuildPride gibt deine Discord-Zeilen ab jetzt über ein verknüpftes Mitglied weiter. Später verknüpft? /gp discord verknuepft"])
+    -- Die eben gesendete Zeile über ein Mitglied nachholen
+    ns.SendAddonMsg(PREFIX, "DRL:" .. line, "GUILD")
+end
+local sysFrame = CreateFrame("Frame")
+for _, ev in ipairs({ "CHAT_MSG_SYSTEM", "UI_INFO_MESSAGE", "UI_ERROR_MESSAGE" }) do pcall(sysFrame.RegisterEvent, sysFrame, ev) end
+sysFrame:SetScript("OnEvent", function(_, event, a, b)
+    Discord.OnSystemText(event == "CHAT_MSG_SYSTEM" and a or b)
+end)
+
+-- Wartende Zeilen überleben das Ausloggen (höchstens 6 Std. alt)
+local KEEP = 6 * 3600
+local saveFrame = CreateFrame("Frame")
+saveFrame:RegisterEvent("PLAYER_LOGOUT")
+saveFrame:RegisterEvent("PLAYER_LOGIN")
+saveFrame:SetScript("OnEvent", function(_, event)
+    if not GuildPrideDB then return end
+    local o = Opt()
+    if event == "PLAYER_LOGOUT" then
+        local now, keep = time(), {}
+        for _, p in ipairs(o.pending or {}) do if now - (p.t or 0) < KEEP then keep[#keep + 1] = p end end
+        for _, text in ipairs(queue) do keep[#keep + 1] = { t = now, text = text } end
+        o.pending = #keep > 0 and keep or nil
+    else
+        local list = o.pending
+        o.pending = nil
+        if not list then return end
+        local now = time()
+        for _, p in ipairs(list) do
+            if type(p) == "table" and type(p.text) == "string" and now - (p.t or 0) < KEEP and ns.IsBridgeLine(p.text) then
+                Enqueue(p.text)
+            end
+        end
+    end
+end)
+Discord.Pending = function() return queue end
 
 -- Aus einer Spieleraktion heraus aufrufen (Klick, Tastendruck)
 function Discord.Flush()
@@ -274,7 +336,7 @@ local function Filter(_, _, text)
     NoteEcho(text)
     MarkSeen(text)
     for i = #queue, 1, -1 do if queue[i] == text then notBefore[text] = nil; table.remove(queue, i) end end
-    return not (GuildPrideDB and Opt().showRaw)
+    return not ShowRaw()
 end
 if AddFilter then
     for _, ev in ipairs({ "CHAT_MSG_GUILD", "CHAT_MSG_GUILD_DISCORD", "CHAT_MSG_COMMUNITIES_CHANNEL" }) do
@@ -283,7 +345,7 @@ if AddFilter then
 end
 
 function ns.HideBridgeLine(text)
-    return ns.IsBridgeLine(text) and not (GuildPrideDB and Opt().showRaw)
+    return ns.IsBridgeLine(text) and not ShowRaw()
 end
 
 ---------------------------------------------------------------------
@@ -323,6 +385,20 @@ function Discord.SignedUp(e, s)
         Clean(e.title, 40), extra), true)
 end
 
+function Discord.EventChanged(e)
+    if not e or not e.title then return end
+    local line = ((DE and "Event geändert" or "Event changed") .. " #%s: %s – %s (t=%d%s)"):format(Discord.ShortId(e.id), Clean(e.title, 40),
+        When(e.t), e.t, (e.rep and e.rep > 0) and (DE and ", wöchentlich" or ", weekly") or "")
+    if e.desc and e.desc ~= "" then line = line .. " – " .. Clean(e.desc, 80) end
+    Discord.Post(line, true)
+end
+
+function Discord.Test()
+    if not Enabled() then ns.Print(L["Die Discord-Anbindung ist aus (Einstellungen > Gilde)."]); return end
+    Discord.Post(("%s: Test %s"):format(Name(ns.Me()), ns.VERSION or ""), true)
+    ns.Print(Discord.IsLinked() and L["Discord-Test gesendet."] or L["Discord-Test an ein verknüpftes Mitglied gegeben."])
+end
+
 ---------------------------------------------------------------------
 -- Befehle: /gp discord [an|aus|verknuepft|test|roh|gilde|auto]
 ---------------------------------------------------------------------
@@ -330,24 +406,22 @@ local slash = SlashCmdList.GUILDPRIDE
 SlashCmdList.GUILDPRIDE = function(arg)
     local cmd, rest = strtrim(arg or ""):lower():match("^(%S+)%s*(.*)$")
     if cmd ~= "discord" then return slash(arg) end
-    local o = Opt()
+    Opt()
     if rest == "an" or rest == "on" then GuildPrideDB.discordBridge = true
     elseif rest == "aus" or rest == "off" then GuildPrideDB.discordBridge = false
     elseif rest == "verknuepft" or rest == "verknüpft" or rest == "linked" then GuildPrideDB.discordLinked = not Discord.IsLinked()
-    elseif rest == "roh" or rest == "raw" then o.showRaw = not o.showRaw
-    elseif rest == "gilde" or rest == "guild" then o.via = "guild"
-    elseif rest == "stream" then o.via = "stream"
-    elseif rest == "auto" then o.via = nil
+    elseif rest == "roh" or rest == "raw" then GuildPrideDB.discordShowRaw = not ShowRaw()
+    elseif rest == "gilde" or rest == "guild" then GuildPrideDB.discordViaGuild = true
+    elseif rest == "stream" or rest == "auto" then GuildPrideDB.discordViaGuild = false
     elseif rest == "test" then
-        Discord.Post(("%s: Test %s"):format(Name(ns.Me()), ns.VERSION or ""), true)
-        ns.Print(Discord.IsLinked() and L["Discord-Test gesendet."] or L["Discord-Test an ein verknüpftes Mitglied gegeben."])
+        Discord.Test()
         return
     end
     local stream = (DiscordStream() and not streamBroken) and L["eigener Discord-Kanal"] or L["Gildenchat"]
     ns.Print(("Discord: %s · %s: %s · %s: %s · %s · %s: %d"):format(
         Enabled() and L["an"] or L["aus"],
         L["verknüpft"], Discord.IsLinked() and L["ja"] or L["nein"],
-        L["Weg"], o.via == "guild" and L["Gildenchat"] or stream,
-        o.showRaw and L["Zeilen sichtbar"] or L["Zeilen ausgeblendet"],
+        L["Weg"], ViaGuild() and L["Gildenchat"] or stream,
+        ShowRaw() and L["Zeilen sichtbar"] or L["Zeilen ausgeblendet"],
         L["wartend"], #queue))
 end

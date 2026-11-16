@@ -9,6 +9,10 @@
 - Meilensteine (Level, Mythisch+) gehen nur noch von Offizieren an Discord; GameBot nimmt Meilensteine und Umfragen nur von Offizieren an
 - Nimmt der Discord-Kanal der Gilde die Zeilen still nicht an (sie kommen nicht zurück), schaltet GuildPride für die Sitzung auf den Gildenchat um und holt die fehlenden Zeilen nach
 - Offiziere ohne verknüpftes Discord bekommen einen Hinweis, dass DKP, Ankündigungen und Umfragen sonst nur über einen verknüpften Offizier ankommen. Solche Zeilen geben nur noch Offiziere weiter
+- Neu: Events **bearbeiten** – Knopf „Bearbeiten“ im Event (Ersteller und Offiziere): Titel, Datum, Uhrzeit, Beschreibung und Wiederholung ändern. Die Änderung geht an die Gilde und an Discord (mit aktuellem GameBot)
+- Meldet Blizzard direkt nach einer eigenen Discord-Zeile, dass dein Discord nicht verknüpft ist, stellt GuildPride das selbst um und gibt die Zeile über ein verknüpftes Mitglied weiter
+- Wartende Discord-Zeilen gehen beim Ausloggen nicht mehr verloren, sie werden beim nächsten Einloggen gesendet (bis 6 Stunden)
+- Einstellungen › Gilde: neue Schalter „Discord-Zeilen immer in den Gildenchat“ und „Discord-Zeilen im Chat anzeigen“ sowie ein Knopf **Discord testen**
 
 **English**
 - Less guild chat spam from the Discord bridge: `[GP]` lines now automatically go to Blizzard's own Discord channel of the guild once the guild leader has turned on **Separate Discord chat** (Guild Settings → Discord Settings). Players without GuildPride no longer see them in /g. If the lines still end up in guild chat, officers get a one-time hint. `/gp discord guild` still forces guild chat
@@ -17,6 +21,10 @@
 - Milestones (level, Mythic+) are only sent to Discord by officers; GameBot only accepts milestones and polls from officers
 - If the guild's Discord channel silently does not accept the lines (they never come back), GuildPride switches to guild chat for the session and resends the missing lines
 - Officers without a linked Discord get a hint that DKP, announcements and polls otherwise only arrive through a linked officer. Only officers pass such lines on
+- New: **edit** events – "Edit" button in the event (creator and officers): change title, date, time, description and repeat. The change goes to the guild and to Discord (with the current GameBot)
+- If Blizzard reports right after one of your Discord lines that your Discord is not linked, GuildPride switches this by itself and passes the line on through a linked guildmate
+- Waiting Discord lines are no longer lost when you log out, they are sent at your next login (up to 6 hours)
+- Settings › Guild: new switches "Always send Discord lines to guild chat" and "Show Discord lines in chat", plus a **Test Discord** button
 
 ## 2.19.1
 
