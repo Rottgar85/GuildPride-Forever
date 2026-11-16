@@ -2,6 +2,9 @@
 -- ERZEUGT aus CHANGELOG.md mit: python .github/build-news.py (bei jeder Version neu erzeugen)
 local ADDON, ns = ...
 ns.NEWS = {
+    { version = "2.18.0",
+      de = { "Neu: |cffffd100Hinweis bei neuen Events|r – kommt ein neues Gildenevent an (auch beim Einloggen, wenn es geplant wurde, während du offline warst), erscheint ein Fenster mit Ton. |cffffd100Ansehen|r öffnet direkt den Reiter Events. Der Reiter zeigt „(Neu)“, bis du ihn geöffnet hast. Fenster und Ton folgen |cffe6e0da/gp popup|r und |cffe6e0da/gp sound|r", "Events kommen beim Einloggen zuverlässiger an: Das Addon fragt nach 2 Minuten noch einmal nach, wenn dann mehr Mitglieder online sind", "Layer wechseln: Nach dem Wechsel verlässt du die Gruppe jetzt zuverlässig automatisch – das Addon erkennt den neuen Layer selbst über die Namensplaketten, ohne Anklicken. Wird der Wechsel nicht sicher erkannt, verlässt du die Gruppe spätestens nach 90 Sekunden" },
+      en = { "New: |cffffd100notice for new events|r – when a new guild event arrives (also at login if it was planned while you were offline), a window with a sound appears. |cffffd100View|r opens the Events tab directly. The tab shows \"(New)\" until you open it. Window and sound follow |cffe6e0da/gp popup|r and |cffe6e0da/gp sound|r", "Events arrive more reliably at login: the addon asks again after 2 minutes, when more members are online", "Switch layer: after the switch you now reliably leave the group automatically – the addon detects the new layer by itself via nameplates, no clicking needed. If the switch is not clearly detected, you leave the group after 90 seconds at the latest" } },
     { version = "2.17.1",
       de = { "Rare-Alarm: Das Alarm-Fenster erscheint nur noch, wenn das Rare in deiner Zone ist (Höhlen und Unterkarten zählen dazu). Sichtungen aus anderen Zonen stehen weiter in der Liste und auf der Karte" },
       en = { "Rare alert: the alert window only appears when the rare is in your zone (caves and sub-maps count). Sightings from other zones still show in the list and on the map" } },
@@ -23,7 +26,4 @@ ns.NEWS = {
     { version = "2.13.2",
       de = { "Behoben: Meldung „WoW hat die Aktion blockiert (SetPassThroughButtons)“ beim Öffnen der Karte. Die Kartenpunkte zeigen weiter ihren Tooltip, reagieren aber nicht mehr auf Klicks und werden im Kampf nicht verändert" },
       en = { "Fixed: \"WoW blocked the action (SetPassThroughButtons)\" when opening the map. Map dots still show their tooltip but no longer react to clicks and are not changed during combat" } },
-    { version = "2.13.1",
-      de = { "Behoben: Rares und Gildenmitglieder erscheinen jetzt auch auf verkleinerten Weltkarten (z. B. mit Leatrix Maps) und auf der Gebietskarte. Die Punkte nutzen jetzt Blizzards eigenes Kartenpunkt-System", "Neu: |cffffd100Fehler melden …|r in den Einstellungen (oder |cffe6e0da/gp melden|r) – fertiger Bericht mit Version, Addons und gespeicherten Fehlern zum Kopieren", "Neu: Nach einem Update zeigt GuildPride einmal, was sich geändert hat (wieder öffnen mit |cffe6e0da/gp changelog|r)" },
-      en = { "Fixed: rares and guild members now also show on scaled-down world maps (e.g. with Leatrix Maps) and on the zone map. The dots now use Blizzard's own map pin system", "New: |cffffd100Report a bug …|r in the settings (or |cffe6e0da/gp melden|r) – a ready report with version, addons and saved errors to copy", "New: after an update GuildPride shows once what has changed (reopen with |cffe6e0da/gp changelog|r)" } },
 }

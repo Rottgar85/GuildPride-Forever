@@ -357,15 +357,44 @@ function Layer.OnInvite(inviter)
     end
 end
 
+local function LeaveGroup()
+    local leave = (C_PartyInfo and C_PartyInfo.LeaveParty) or LeaveParty
+    if not (leave and pcall(leave)) then
+        ns.Print(L["Layer wechseln: Gruppe konnte nicht automatisch verlassen werden – bitte /gp layer raus eingeben."])
+    end
+end
+
+-- Während des Wartens selbst nach Kreaturen schauen (Namensplaketten, Ziel),
+-- damit der neue Layer auch ohne Anklicken erkannt wird
+local function Poll()
+    if C_NamePlate and C_NamePlate.GetNamePlates then
+        for _, plate in ipairs(C_NamePlate.GetNamePlates() or {}) do
+            local unit = plate.namePlateUnitToken or (plate.UnitFrame and plate.UnitFrame.unit)
+            if unit then Observe(unit) end
+        end
+    end
+    Observe("target")
+end
+
 -- Beitritt erkannt -> auf den neuen Layer warten, dann wieder austreten
 function Layer.OnGroup()
     if not req or not req.helper then return end
     if IsInGroup() and not req.joinedAt then
         req.joinedAt = GetTime()
-        ns.Print(L["Layer wechseln: In der Gruppe. Warte auf den Wechsel – eine Kreatur anvisieren hilft beim Erkennen."])
-        C_Timer.After(120, function()
-            if req and req.joinedAt and IsInGroup() then
-                Reset(L["Layer wechseln: Kein Wechsel erkannt. Du bist noch in der Gruppe – verlassen mit /gp layer raus."])
+        local mine = req
+        ns.Print(L["Layer wechseln: In der Gruppe. Warte auf den Wechsel – die Gruppe wird danach automatisch verlassen."])
+        mine.ticker = C_Timer.NewTicker(2, function()
+            if req ~= mine or not IsInGroup() then
+                if mine.ticker then mine.ticker:Cancel() end
+                return
+            end
+            Poll()
+        end, 45)
+        -- Kein Wechsel erkannt: trotzdem austreten (Layer meist längst gewechselt)
+        C_Timer.After(90, function()
+            if req == mine and IsInGroup() then
+                Reset(L["Layer wechseln: Wechsel nicht sicher erkannt – Gruppe wird trotzdem verlassen. Eine Kreatur anvisieren zeigt deinen Layer."])
+                LeaveGroup()
             end
         end)
     elseif not IsInGroup() and req.joinedAt then
@@ -373,15 +402,12 @@ function Layer.OnGroup()
     end
 end
 
-local function LeaveGroup()
-    local leave = (C_PartyInfo and C_PartyInfo.LeaveParty) or LeaveParty
-    if leave then leave() end
-end
-
 function Layer.OnChange()
     if not req or not req.joinedAt or not IsInGroup() then return end
-    -- Ziel ist der Layer des Helfers (die eigene alte Zahl ist evtl. unbekannt)
-    if Layer.map ~= req.map or Layer.id ~= req.target then return end
+    -- Geschafft, wenn ich auf dem Layer des Helfers bin oder (alter Layer bekannt)
+    -- nicht mehr auf meinem alten
+    if Layer.map ~= req.map then return end
+    if Layer.id ~= req.target and not (req.from and Layer.id ~= req.from) then return end
     ns.Print((L["Layer gewechselt (jetzt %s). Gruppe wird verlassen – danke an %s!"]):format(Layer.id, Ambiguate(req.helper, "none")))
     Send("LYT", req.helper, ns.CLIENT_TAG, req.map)
     local s = Layer.Stats(); s.switched = s.switched + 1

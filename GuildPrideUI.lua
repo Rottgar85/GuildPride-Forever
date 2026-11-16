@@ -403,6 +403,14 @@ function ns.SetTabOfficerOnly(page)
     if tab then tab.officerOnly = true; LayoutTabs() end
 end
 
+-- Fenster öffnen (falls zu) und direkt auf diesen Reiter wechseln
+function ns.OpenTab(page)
+    local tab = page and tabs[page.tabId]
+    if not tab then return end
+    if not frame:IsShown() and ns.ToggleUI then ns.ToggleUI() end
+    if not TabHidden(tab) then SelectTab(tab.id) end
+end
+
 -- Zusatz hinter dem Reiternamen, z. B. ungelesene Nachrichten "(3)"
 function ns.SetTabBadge(page, text)
     local tab = tabs[page.tabId]

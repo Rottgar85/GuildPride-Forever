@@ -690,6 +690,11 @@ local function ApplyEvent(id, t, title, desc, creator, ver, note, fromOther, rep
     e.rep = (rep and rep > 0) and rep or nil
     if isNew and fromOther then
         ns.Print((L["Neues Gildenevent: |cffffd100%s|r am %s"]):format(title, ns.FormatDate(t, "short")))
+        -- Noch nicht gesehen: Hinweisfenster und Markierung am Reiter
+        if e.t > Now() then
+            e.unseen = true
+            if ns.NoteNewEvent then ns.NoteNewEvent(e) end
+        end
     end
 end
 
@@ -905,6 +910,85 @@ page:HookScript("OnShow", function()
     lastAsk = GetTime()
     Queue("EVQ", nil, "1")
 end)
+
+-- Neue Events, die man noch nicht gesehen hat: Markierung am Reiter + Hinweisfenster
+do   -- eigener Block: Lua erlaubt nur 200 lokale Variablen je Datei-Ebene
+local fresh, timer = {}, nil
+
+local function UnseenCount()
+    local n, now = 0, Now()
+    for _, e in pairs(DB()) do
+        if e.unseen and (e.deleted or not e.title or e.t <= now) then e.unseen = nil end
+        if e.unseen then n = n + 1 end
+    end
+    return n
+end
+
+function ns.UpdateEventBadge()
+    if not GuildPrideDB then return end
+    local n = UnseenCount()
+    ns.SetTabBadge(page, n > 0 and ("(" .. L["Neu"] .. ")") or nil)
+end
+
+StaticPopupDialogs["GUILDPRIDE_NEW_EVENT"] = {
+    text = "%s",
+    button1 = L["Ansehen"], button2 = L["Später"],
+    OnAccept = function() ns.OpenTab(page) end,
+    timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
+}
+
+local function ShowFresh()
+    timer = nil
+    if InCombatLockdown() then return end   -- nach dem Kampf (PLAYER_REGEN_ENABLED)
+    local list = {}
+    for _, e in ipairs(fresh) do
+        if e.unseen and not e.deleted then list[#list + 1] = e end
+    end
+    wipe(fresh)
+    if #list == 0 or page:IsVisible() then return end
+    table.sort(list, function(a, b) return a.t < b.t end)
+    local lines = {}
+    for i = 1, math.min(#list, 3) do
+        lines[#lines + 1] = ("|cffffd100%s|r – %s"):format(list[i].title, ns.FormatDate(list[i].t, "short"))
+    end
+    if #list > 3 then lines[#lines + 1] = (L["… und %d weitere"]):format(#list - 3) end
+    local head = #list == 1 and L["Neues Gildenevent"] or (L["%d neue Gildenevents"]):format(#list)
+    if GuildPrideDB.sound then PlaySound(SOUNDKIT.RAID_WARNING, "Master") end
+    if GuildPrideDB.popup then
+        StaticPopup_Show("GUILDPRIDE_NEW_EVENT", head .. "\n\n" .. table.concat(lines, "\n"))
+    end
+end
+
+-- Mehrere Events kommen beim Login kurz hintereinander: gesammelt melden
+function ns.NoteNewEvent(e)
+    fresh[#fresh + 1] = e
+    ns.UpdateEventBadge()
+    if not timer then timer = C_Timer.NewTimer(4, ShowFresh) end
+end
+
+local after = CreateFrame("Frame")
+after:RegisterEvent("PLAYER_REGEN_ENABLED")
+after:RegisterEvent("PLAYER_LOGIN")
+after:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_LOGIN" then
+        -- Vom letzten Mal noch ungesehen? Markierung gleich zeigen
+        C_Timer.After(2, ns.UpdateEventBadge)
+    elseif #fresh > 0 and not timer then
+        timer = C_Timer.NewTimer(2, ShowFresh)
+    end
+end)
+
+-- Reiter geöffnet: alles gesehen
+page:HookScript("OnShow", function()
+    local any = false
+    for _, e in pairs(DB()) do
+        if e.unseen then e.unseen = nil; any = true end
+    end
+    wipe(fresh)
+    StaticPopup_Hide("GUILDPRIDE_NEW_EVENT")
+    if any then ns.UpdateEventBadge() end
+end)
+end
 local selected
 local ROWS = 6
 local rows = {}
@@ -1401,6 +1485,9 @@ ev:RegisterEvent("PLAYER_LOGIN")
 ev:SetScript("OnEvent", function()
     -- nach dem Kanalbeitritt (15 s), damit die Antworten über den Kanal kommen
     C_Timer.After(20, function() Queue("REQ", nil, "1") end)
+    -- Noch einmal nach 2 Min.: Bis dahin sind meist mehr Mitglieder online, und
+    -- weitergereichte Events brauchen zwei Melder, bevor sie angenommen werden
+    C_Timer.After(120, function() Queue("REQ", nil, "1") end)
 end)
 
 C_Timer.NewTicker(30, function()

@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.18.0
+
+**Deutsch**
+- Neu: **Hinweis bei neuen Events** – kommt ein neues Gildenevent an (auch beim Einloggen, wenn es geplant wurde, während du offline warst), erscheint ein Fenster mit Ton. **Ansehen** öffnet direkt den Reiter Events. Der Reiter zeigt „(Neu)“, bis du ihn geöffnet hast. Fenster und Ton folgen `/gp popup` und `/gp sound`
+- Events kommen beim Einloggen zuverlässiger an: Das Addon fragt nach 2 Minuten noch einmal nach, wenn dann mehr Mitglieder online sind
+- Layer wechseln: Nach dem Wechsel verlässt du die Gruppe jetzt zuverlässig automatisch – das Addon erkennt den neuen Layer selbst über die Namensplaketten, ohne Anklicken. Wird der Wechsel nicht sicher erkannt, verlässt du die Gruppe spätestens nach 90 Sekunden
+
+**English**
+- New: **notice for new events** – when a new guild event arrives (also at login if it was planned while you were offline), a window with a sound appears. **View** opens the Events tab directly. The tab shows "(New)" until you open it. Window and sound follow `/gp popup` and `/gp sound`
+- Events arrive more reliably at login: the addon asks again after 2 minutes, when more members are online
+- Switch layer: after the switch you now reliably leave the group automatically – the addon detects the new layer by itself via nameplates, no clicking needed. If the switch is not clearly detected, you leave the group after 90 seconds at the latest
+
 ## 2.17.1
 
 **Deutsch**
