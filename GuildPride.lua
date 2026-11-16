@@ -548,7 +548,7 @@ local multipart = {}   -- ["Sender:id"] = { n, got, parts, t }
 -- Arten, die Rechte voraussetzen oder Identität beweisen: nie per Weiterleitung
 local NO_RELAY = { DKP = true, DRW = true, ALT = true, AUS = true, AUSX = true, AUSL = true,
                    AUC = true, AUH = true, AUE = true, CKY = true, DEL = true, JHL = true, LAY = true, RCP = true, APK = true,
-                   CRF = true, CRR = true, GOL = true, BRD = true, LFJ = true, LFJA = true, WSH = true }
+                   CRF = true, CRR = true, GOL = true, BRD = true, LFJ = true, LFJA = true, WSH = true, GPS = true }
 local recent, recentSweep = {}, 0   -- zuletzt empfangene Nachrichten (gegen Doppelte)
 local forwarded = {}   -- ["Name:id"] = Zeit, gegen doppelte Weiterleitungen
 local MP_MAX = 100
@@ -752,6 +752,10 @@ f:SetScript("OnEvent", function(_, event, ...)
         -- Absender immer als "Name-Realm": manchmal kommt er ohne Realm an, dann
         -- wurden eigene Nachrichten für fremde gehalten (z. B. doppelte Hinweise)
         sender = Normalize(sender)
+        if message:sub(1, 4) == "GPS:" then
+            if ns.OnMarkMessage then ns.OnMarkMessage(message, sender) end
+            return
+        end
         -- Serverweite Gruppensuche: offener Kanal, in dem jeder schreiben kann.
         -- Nur die Gruppensuche bekommt diese Nachrichten (prüft Art und Kennung
         -- selbst), nie Dispatch – Weiterleitungen und Gildendaten sind so tabu.
@@ -848,6 +852,8 @@ SlashCmdList.GUILDPRIDE = function(arg)
         if ns.ToggleApps then ns.ToggleApps() end
     elseif arg == "backup" or arg == "sicherung" then
         if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end
+    elseif arg == "gps" then
+        if ns.MarkCommand then ns.MarkCommand() end
     elseif arg == "ausweis" or arg == "id" then
         if ns.AusweisCommand then ns.AusweisCommand() end
     elseif arg == "werben" or arg == "recruit" then

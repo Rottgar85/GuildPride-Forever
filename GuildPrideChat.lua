@@ -190,6 +190,7 @@ local function Line(t, who, full, hex, text, kind, guid, discord)
         if main and main ~= full then name = name .. ("|cff777777 (%s)|r"):format(Ambiguate(main, "guild")) end
     end
     if discord then name = DiscordIcon() .. name end
+    if full and ns.NameMark then name = ns.NameMark(full) .. name end
     -- Erwähnung: » davor und goldene Schrift
     if MentionsMe(text, who) then
         return ("|cff777777%s|r  |cffffd100»|r %s: |cffffd100%s|r"):format(date("%H:%M", t), name, text)

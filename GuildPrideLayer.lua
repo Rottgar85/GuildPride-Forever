@@ -610,6 +610,9 @@ if ns.IS_FOREVER and setTab then
     end)
     h:SetScript("OnLeave", GameTooltip_Hide)
     Layer.helpButton = h
+    -- Platz über „Einstellungen“: zwei Knöpfe (6 + 24 + 4 + 24 px), damit das Menü oben nicht hineinrutscht
+    ns.SidebarBottomExtra = 58
+    if parts.LayoutTabs then parts.LayoutTabs() end
 end
 
 ---------------------------------------------------------------------
@@ -637,7 +640,7 @@ local function RefreshList()
             local same = e.id and e.id == Layer.id and e.here
             local idTxt = e.id and ((same and "|cff40ff40" or "|cffffd100") .. e.id .. "|r") or "|cff999999?|r"
             -- Gildenmitglieder grün, alle anderen mit GuildPride weiß
-            row.name:SetText((e.guild and "|cff60d060" or "|cffe6e0da") .. Ambiguate(e.name, "none") .. "|r")
+            row.name:SetText((ns.NameMark and ns.NameMark(e.name) or "") .. (e.guild and "|cff60d060" or "|cffe6e0da") .. Ambiguate(e.name, "none") .. "|r")
             local zoneTxt = e.zoneText or ZoneName(e.map)
             row.zone:SetText(e.here and ("|cffe6e0da" .. zoneTxt .. "|r") or ("|cff888888" .. zoneTxt .. "|r"))
             -- Ältere GuildPride-Version teilt keinen Layer

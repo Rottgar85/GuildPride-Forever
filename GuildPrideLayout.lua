@@ -404,6 +404,7 @@ function ns.ApplyLayout(key)
     local l = Current()
     local rail, isBook = l.key == "rail", l.key == "book"
     frame:SetSize(l.w, l.h)
+    frame.gpBaseH = l.h   -- Mindesthöhe; LayoutTabs macht das Fenster höher, wenn das Menü mehr braucht
 
     -- Hintergrund
     if rail then

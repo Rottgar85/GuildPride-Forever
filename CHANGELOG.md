@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.19.1
+
+**Deutsch**
+- Behoben: Das Menü links wird beim Verkleinern des Fensters nicht mehr zusammengeschoben. Die Reiter oben und „Einstellungen“ mit den Layer-Knöpfen unten überlappen nicht mehr; das Fenster ist immer hoch genug für das ganze Menü und wächst und schrumpft gleichmäßig mit
+
+**English**
+- Fixed: the menu on the left no longer gets squeezed when you make the window smaller. The tabs at the top and "Settings" with the layer buttons at the bottom no longer overlap; the window is always tall enough for the whole menu and scales evenly
+
 ## 2.19.0
 
 **Deutsch**

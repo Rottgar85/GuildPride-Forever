@@ -32,7 +32,7 @@ end
 
 local function Colored(name)
     local c = RAID_CLASS_COLORS[ClassOf(name) or ""] or NORMAL_FONT_COLOR
-    return ("|cff%02x%02x%02x%s|r"):format(c.r * 255, c.g * 255, c.b * 255, Ambiguate(name, "guild"))
+    return (ns.NameMark and ns.NameMark(name) or "") .. ("|cff%02x%02x%02x%s|r"):format(c.r * 255, c.g * 255, c.b * 255, Ambiguate(name, "guild"))
 end
 
 local function Layout()

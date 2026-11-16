@@ -299,7 +299,15 @@ ns.MenuTabs = MenuTabs
 
 -- Reiter nach "order" sortiert untereinander; ab Ordnung 90 (Einstellungen)
 -- unten in der Seitenleiste
-local function LayoutTabs()
+local LayoutTabs
+do   -- eigener Block (Grenze von 200 lokalen Variablen)
+    local fitEv = CreateFrame("Frame")
+    fitEv:RegisterEvent("PLAYER_REGEN_ENABLED")
+    fitEv:SetScript("OnEvent", function()
+        if frame.gpFitAfterCombat then frame.gpFitAfterCombat = nil; LayoutTabs() end
+    end)
+end
+function LayoutTabs()
     local top, bottom = 0, 0
     -- Erst alle (außer unten fixierte) ausblenden: Offiziers-Reiter ohne Rechte stehen
     -- nicht in MenuTabs und blieben sonst an ihrer alten Stelle über einem anderen Reiter
@@ -322,6 +330,22 @@ local function LayoutTabs()
             tab:Show()
             if not (ns.LayoutTab and ns.LayoutTab(tab, bottom, true)) then tab:SetPoint("BOTTOMLEFT", 10, 34 + bottom * 40) end
             bottom = bottom + 1
+        end
+    end
+    -- Seitenleiste bleibt fest: Reicht die Höhe nicht für alle Reiter oben plus den
+    -- Block unten (Einstellungen, Layer-Knöpfe), wird das Fenster höher, statt dass
+    -- sich die Knöpfe überlappen. Größer/kleiner ziehen skaliert alles gleichmäßig.
+    if not ns.CurrentLayout or ns.CurrentLayout() == "forge" then
+        local base = frame.gpBaseH or H
+        local need = 168 + top * 40 - 4 + 10 + 30 + bottom * 40 + (ns.SidebarBottomExtra or 0)
+        local h = math.max(base, need)
+        if math.abs(frame:GetHeight() - h) > 0.5 then
+            -- Fenster mit sicherem Knopf: im Kampf nicht ändern, nach dem Kampf nachholen
+            if InCombatLockdown() and frame:IsProtected() then
+                frame.gpFitAfterCombat = true
+            else
+                frame:SetHeight(h)
+            end
         end
     end
 end
@@ -1444,7 +1468,8 @@ end
 
 local function ClassName(m)
     local c = CLASS_COLORS[m.class] or NORMAL_FONT_COLOR
-    return ("|cff%02x%02x%02x%s|r"):format(c.r * 255, c.g * 255, c.b * 255, m.name)
+    return (ns.NameMark and m.full and ns.NameMark(m.full) or "")
+        .. ("|cff%02x%02x%02x%s|r"):format(c.r * 255, c.g * 255, c.b * 255, m.name)
 end
 
 -- Name mit Rang-Krone; nur Gildenmitglieder, in Communities sagt der Gildenrang nichts aus
@@ -1939,7 +1964,7 @@ grip:SetScript("OnMouseDown", function(self, button)
     self:SetScript("OnUpdate", function()
         local cx, cy = GetCursorPosition()
         cx, cy = cx / uiScale, cy / uiScale
-        local new = math.max((cx - left) / W, (top - cy) / H)
+        local new = math.max((cx - left) / frame:GetWidth(), (top - cy) / frame:GetHeight())
         new = math.max(SCALE_MIN, math.min(SCALE_MAX, new))
         if math.abs(new - frame:GetScale()) > 0.005 then
             frame:SetScale(new)

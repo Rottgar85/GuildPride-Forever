@@ -1100,7 +1100,7 @@ function Join.Refresh()
         local c = RAID_CLASS_COLORS and RAID_CLASS_COLORS[x.class]
         local hex = c and c.colorStr and c.colorStr:sub(3) or "f0c88c"
         local cls = LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[x.class] or x.class
-        r.text:SetText(("|cff%s%s|r  |cff999999Lvl %d %s|r  %s"):format(hex, Ambiguate(name, x.public and "none" or "guild"),
+        r.text:SetText((ns.NameMark and ns.NameMark(name) or "") .. ("|cff%s%s|r  |cff999999Lvl %d %s|r  %s"):format(hex, Ambiguate(name, x.public and "none" or "guild"),
             x.level, cls or "", RoleLabel(x.role)))
         r.yes:SetScript("OnClick", function()
             local target = Ambiguate(name, "none")
@@ -1343,7 +1343,7 @@ function page:Refresh()
             elseif e.browser then
                 mark = " |cff66ccff[" .. L["Dungeonbrowser"] .. "]|r"
             end
-            r.name:SetText(("|cff%s%s|r"):format(hex, shown) .. mark
+            r.name:SetText((ns.NameMark and ns.NameMark(item.name) or "") .. ("|cff%s%s|r"):format(hex, shown) .. mark
                 .. (e.self and (" |cff999999(" .. L["du"] .. ")|r") or ""))
             r.block:SetShown(e.public and not e.self)
             r.block:SetScript("OnClick", function()

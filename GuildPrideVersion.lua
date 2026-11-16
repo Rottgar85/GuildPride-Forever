@@ -65,7 +65,7 @@ SlashCmdList.GUILDPRIDE = function(arg)
         for name, v in pairs(ns.Versions) do
             n = n + 1
             local c = Compare(v, MY_VERSION)
-            print(("  %s: %s%s|r"):format(Ambiguate(name, "guild"),
+            print(("  %s%s: %s%s|r"):format(ns.NameMark and ns.NameMark(name) or "", Ambiguate(name, "guild"),
                 c < 0 and "|cffff4040" or (c > 0 and "|cff40ff40" or "|cffffffff"), v))
         end
         if n == 0 then print(L["  Noch keine anderen Versionen empfangen."]) end
