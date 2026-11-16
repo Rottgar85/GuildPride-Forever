@@ -196,6 +196,11 @@ local function SendNow(text)
             return
         end
     end
+    -- "Immer Gildenchat" bei getrenntem Discord-Chat: kommt nie in Discord an
+    if ViaGuild() and Separated() and not separatedWarned then
+        separatedWarned = true
+        ns.Print(L["Achtung: Der Discord-Chat ist vom Gildenchat getrennt, aber „Discord-Zeilen immer in den Gildenchat“ ist an. So kommt nichts in Discord an. Abschalten: Einstellungen › Gilde oder /gp discord auto"])
+    end
     local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
     lastRoute = "guild"
     if pcall(send, text, "GUILD") then

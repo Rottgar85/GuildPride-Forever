@@ -426,6 +426,7 @@ local enUS = {
     ["Discord-Test an ein verknüpftes Mitglied gegeben."] = "Discord test handed to a linked guildmate.",
     ["eigener Discord-Kanal"] = "own Discord channel",
     ["Gildenchat"] = "guild chat",
+    ["Achtung: Der Discord-Chat ist vom Gildenchat getrennt, aber „Discord-Zeilen immer in den Gildenchat“ ist an. So kommt nichts in Discord an. Abschalten: Einstellungen › Gilde oder /gp discord auto"] = "Warning: Discord chat is separate from guild chat, but \"Always send Discord lines to guild chat\" is on. Nothing reaches Discord this way. Turn it off: Settings › Guild or /gp discord auto",
     ["Discord-Zeile konnte nicht gesendet werden: Der Discord-Chat ist vom Gildenchat getrennt, aber GuildPride erreicht den Discord-Kanal nicht. Details: /gp discord info"] = "Discord line could not be sent: Discord chat is separate from guild chat, but GuildPride cannot reach the Discord channel. Details: /gp discord info",
     ["Bearbeiten"] = "Edit",
     ["Event bearbeiten"] = "Edit event",
