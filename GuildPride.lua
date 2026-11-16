@@ -324,7 +324,9 @@ local function Broadcast(kind, value)
     -- Wichtige Meilensteine zusätzlich nach Discord (Erfolge/Reittiere wären zu viele).
     -- Bosse nicht: Bei einem Erstkill schickte sonst jeder im Raid eine eigene
     -- Zeile; die Bosse stehen in der Raid-Zusammenfassung.
-    if ns.Discord and ns.DescribeMilestone and (kind == "LEVEL" or kind == "MPLUS") then
+    -- Nur Offiziere: GameBot nimmt Meilensteine nur von ihnen an.
+    if ns.Discord and ns.DescribeMilestone and (kind == "LEVEL" or kind == "MPLUS")
+        and ns.IsOfficerName(ns.Me()) then
         ns.Discord.Post(((ns.IS_GERMAN and "Meilenstein" or "Milestone") .. ": %s %s"):format(Ambiguate(ns.Me(), "guild"), ns.DescribeMilestone(kind, value)))
     end
 end
