@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.17.1
+
+**Deutsch**
+- Rare-Alarm: Das Alarm-Fenster erscheint nur noch, wenn das Rare in deiner Zone ist (Höhlen und Unterkarten zählen dazu). Sichtungen aus anderen Zonen stehen weiter in der Liste und auf der Karte
+
+**English**
+- Rare alert: the alert window only appears when the rare is in your zone (caves and sub-maps count). Sightings from other zones still show in the list and on the map
+
 ## 2.17.0
 
 **Deutsch**

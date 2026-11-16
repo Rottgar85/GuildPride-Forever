@@ -194,20 +194,42 @@ function ns.ShowAlert(npcId, how)
     Sound()
 end
 
+-- Karte bis zur Zone hochgehen (Höhlen, Unterkarten zählen zur Zone)
+local function ZoneOf(map)
+    local guard = 0
+    while map and C_Map.GetMapInfo and guard < 8 do
+        local info = C_Map.GetMapInfo(map)
+        if not info then break end
+        if info.mapType and info.mapType <= 3 then return map end
+        if not info.parentMapID or info.parentMapID == 0 then break end
+        map, guard = info.parentMapID, guard + 1
+    end
+    return map
+end
+
+-- Alarm nur, wenn das Rare in meiner Zone ist
+local function InMyZone(e)
+    local myMap = C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+    if not myMap or ns.Secret(myMap) or not e.map then return false end
+    if e.map == myMap then return true end
+    return ZoneOf(e.map) == ZoneOf(myMap)
+end
+ns.RareInMyZone = InMyZone
+
 -- Selbst gefunden
 function ns.LocalAlert(npcId, source)
     local e = ns.DB().seen[npcId]
-    if not e then return end
+    if not e or not InMyZone(e) then return end
     if ns.DB().fav[npcId] or ns.Opt("alertAll") or (e.boss and ns.Opt("alertBoss")) then
         ns.ShowAlert(npcId, source)
     end
 end
 
--- Von anderen gemeldet: nur neue Sichtungen, Favoriten immer
+-- Von anderen gemeldet: nur neue Sichtungen in meiner Zone
 function ns.OnRemoteSighting(npcId, isNew)
     if not isNew then return end
     local e = ns.DB().seen[npcId]
-    if not e then return end
+    if not e or not InMyZone(e) then return end
     if ns.DB().fav[npcId] or (e.boss and ns.Opt("alertBoss")) or ns.Opt("alertAll") then
         ns.ShowAlert(npcId, "")
     end
