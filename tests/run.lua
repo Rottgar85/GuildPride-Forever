@@ -614,7 +614,7 @@ test("Discord: schnelles Umentscheiden ergibt nur eine Zeile", function()
 end)
 
 ---------------------------------------------------------------------
-test("Discord: Kanal nimmt still nichts an -> Gildenchat, Offiziers-Zeilen nur von Offizieren weitergeben", function()
+test("Discord: getrennter Kanal ohne Ausweichen in /g, Offiziers-Zeilen nur von Offizieren weitergeben", function()
     local D = ns.Discord
     GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = true, true
     -- Getrennter Discord-Kanal, der Zeilen annimmt, aber nie zurückliefert
@@ -637,7 +637,15 @@ test("Discord: Kanal nimmt still nichts an -> Gildenchat, Offiziers-Zeilen nur v
     eq(#guildSent, 0)
     for _, fn in ipairs(timers) do fn() end
     D.Flush()
-    eq(#guildSent, 2, "nach zwei fehlenden Echos im Gildenchat nachgeholt")
+    eq(#guildSent, 0, "getrennter Discord-Chat: nie in den Gildenchat ausweichen")
+    -- Kanal nicht erreichbar: auch dann nicht in den Gildenchat
+    local sendOk = C_Club.SendMessage
+    C_Club.SendMessage = function() error("blockiert") end
+    D.Post("Offi: Test 3", true)
+    eq(#guildSent, 0, "kein Ausweichen bei Fehler")
+    C_Club.SendMessage = sendOk
+    -- Nicht getrennt: Gildenchat ist der normale Weg
+    C_GuildInfo.IsDiscordStreamSeparate = function() return false end
     -- Weitergabe: DKP eines Offiziers nur, wenn ich selbst Offizier bin (Tester ist keiner)
     local before = #guildSent
     W.Receive("Offi", "DRL:[GP] DKP #abc123 +10 Test: Anna", "GUILD")

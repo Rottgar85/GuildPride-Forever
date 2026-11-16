@@ -125,11 +125,17 @@ local function SignKey(text)
     if name and SIGN_WORDS[word] then return name .. "#" .. id end
 end
 
+-- Hat die Gildenleitung "Discord-Chat getrennt" eingeschaltet? Dann kommt
+-- aus dem Gildenchat nichts mehr in Discord an.
+local function Separated()
+    if not (C_GuildInfo and C_GuildInfo.IsDiscordStreamSeparate) then return false end
+    local ok, separate = pcall(C_GuildInfo.IsDiscordStreamSeparate)
+    return ok and separate == true
+end
+
 local function DiscordStream()
     if not (C_Club and C_Club.GetGuildClubId and C_Club.GetStreams) then return end
-    if not (C_GuildInfo and C_GuildInfo.IsDiscordStreamSeparate) then return end
-    local ok, separate = pcall(C_GuildInfo.IsDiscordStreamSeparate)
-    if not ok or separate ~= true then return end
+    if not Separated() then return end
     local clubId = C_Club.GetGuildClubId()
     if not clubId then return end
     local want = Enum.ClubStreamType and Enum.ClubStreamType.Discord
@@ -161,20 +167,37 @@ end
 -- Standard: in Blizzards eigenen Discord-Kanal der Gilde, sobald die Gilde
 -- ihn vom Gildenchat getrennt hat. Dann sieht /g die Zeilen gar nicht.
 -- Nur mit /gp discord gilde immer in den Gildenchat.
+local lastRoute, lastErr
+local separatedWarned = false
 local function SendNow(text)
     lastSent, lastSentAt = text, GetTime()
-    if not ViaGuild() and not streamBroken then
+    if not ViaGuild() then
         local clubId, streamId = DiscordStream()
-        if clubId and C_Club.SendMessage and pcall(C_Club.SendMessage, clubId, streamId, text) then
+        local ok, err = false, "kein Discord-Kanal gefunden"
+        if clubId and C_Club.SendMessage then ok, err = pcall(C_Club.SendMessage, clubId, streamId, text) end
+        if not ok then lastErr = tostring(err) end
+        if ok then
             if not streamOk then
                 awaiting[text] = GetTime()
                 C_Timer.After(ECHO_WAIT, function() Discord.CheckEcho(text) end)
             end
             MaybeSendVersion(clubId, streamId)
+            lastRoute = "stream"
             return "stream"
+        end
+        -- Getrennter Discord-Chat: Der Gildenchat erreicht Discord nicht mehr,
+        -- dorthin auszuweichen wäre nur Spam
+        if Separated() then
+            lastRoute = "none"
+            if not separatedWarned then
+                separatedWarned = true
+                ns.Print(L["Discord-Zeile konnte nicht gesendet werden: Der Discord-Chat ist vom Gildenchat getrennt, aber GuildPride erreicht den Discord-Kanal nicht. Details: /gp discord info"])
+            end
+            return
         end
     end
     local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+    lastRoute = "guild"
     if pcall(send, text, "GUILD") then
         -- Offizieren einmal pro Sitzung sagen, wie der Gildenchat frei bleibt
         if not hinted and not ViaGuild() and ns.IsOfficerName and ns.IsOfficerName(ns.Me()) then
@@ -191,11 +214,12 @@ function Discord.CheckEcho(text)
     if echoed[text] then echoed[text] = nil; streamOk = true; wipe(missed); return end
     if streamOk then return end
     missed[#missed + 1] = text
-    -- Erst nach zwei verlorenen Zeilen umschalten (eine kann Zufall sein)
-    if #missed < 2 then return end
+    -- Erst nach zwei fehlenden Echos melden (eins kann Zufall sein). Nicht auf
+    -- den Gildenchat ausweichen: Bei getrenntem Discord-Chat erreicht der
+    -- Discord ohnehin nicht, das wäre nur Spam in /g.
+    if #missed < 2 or streamBroken then return end
     streamBroken = true
-    ns.Print(L["Der Discord-Kanal der Gilde nimmt keine Zeilen vom Addon an. GuildPride nutzt in dieser Sitzung den Gildenchat."])
-    for _, t in ipairs(missed) do seen[t] = nil; Enqueue(t) end
+    ns.Print(L["Deine Discord-Zeilen kommen im Spiel nicht zurück. Prüfe in Discord, ob sie ankommen. Details: /gp discord info"])
     wipe(missed)
 end
 
@@ -408,6 +432,31 @@ function Discord.EventChanged(e)
     Discord.Post(line, true)
 end
 
+-- Fehlersuche: zeigt jeden Schritt der Kanalwahl
+function Discord.Info()
+    local function say(k, v) ns.Print(("|cffffd100%s:|r %s"):format(k, tostring(v))) end
+    say("Version", ns.VERSION)
+    say("Anbindung an / verknüpft", tostring(Enabled()) .. " / " .. tostring(Discord.IsLinked()))
+    say("Immer Gildenchat (Einstellung)", ViaGuild())
+    say("C_GuildInfo.IsDiscordStreamSeparate", C_GuildInfo and C_GuildInfo.IsDiscordStreamSeparate and "vorhanden" or "FEHLT")
+    if C_GuildInfo and C_GuildInfo.IsDiscordStreamSeparate then
+        local ok, v = pcall(C_GuildInfo.IsDiscordStreamSeparate)
+        say("  getrennt", ok and tostring(v) or ("Fehler: " .. tostring(v)))
+    end
+    say("Enum.ClubStreamType.Discord", Enum and Enum.ClubStreamType and Enum.ClubStreamType.Discord)
+    local clubId = C_Club and C_Club.GetGuildClubId and C_Club.GetGuildClubId()
+    say("Gilden-Club", clubId)
+    if clubId and C_Club.GetStreams then
+        for _, st in ipairs(C_Club.GetStreams(clubId) or {}) do
+            say("  Kanal", ("%s · Typ %s · %s"):format(tostring(st.streamId), Secret(st.streamType) and "geheim" or tostring(st.streamType), Secret(st.name) and "?" or tostring(st.name)))
+        end
+    end
+    say("C_Club.SendMessage", C_Club and C_Club.SendMessage and "vorhanden" or "FEHLT")
+    say("Gefundener Discord-Kanal", DiscordStream() and "ja" or "nein")
+    say("Echo fehlte (Zeilen kamen nicht zurück)", streamBroken)
+    say("Letzter Weg / letzter Fehler", tostring(lastRoute) .. " / " .. tostring(lastErr))
+end
+
 function Discord.Test()
     if not Enabled() then ns.Print(L["Die Discord-Anbindung ist aus (Einstellungen > Gilde)."]); return end
     Discord.Post(("%s: Test %s"):format(Name(ns.Me()), ns.VERSION or ""), true)
@@ -431,8 +480,11 @@ SlashCmdList.GUILDPRIDE = function(arg)
     elseif rest == "test" then
         Discord.Test()
         return
+    elseif rest == "info" then
+        Discord.Info()
+        return
     end
-    local stream = (DiscordStream() and not streamBroken) and L["eigener Discord-Kanal"] or L["Gildenchat"]
+    local stream = DiscordStream() and L["eigener Discord-Kanal"] or L["Gildenchat"]
     ns.Print(("Discord: %s · %s: %s · %s: %s · %s · %s: %d"):format(
         Enabled() and L["an"] or L["aus"],
         L["verknüpft"], Discord.IsLinked() and L["ja"] or L["nein"],
