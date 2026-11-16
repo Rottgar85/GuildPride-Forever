@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.15.0
+
+**Deutsch**
+- Scales: Waffenvergleich überarbeitet – Nebenhand-Waffen zählen mit halbem Schaden, Fernkampf-DPS wird getrennt bewertet (Jäger: Bogen zählt, Nahkampfwaffe kaum)
+- Scales: Einhänder gegen getragenen Zweihänder wird mit dem besten Nebenhand-Teil aus den Taschen verglichen
+- Scales: Ringe und Schmuckstücke füllen zuerst einen freien Platz und ersetzen ein gleiches Teil
+- Scales: Waffen, Schilde und Relikte, die deine Klasse nicht tragen kann, werden als unbrauchbar erkannt (inkl. Beidhändigkeit, Angelruten, Berufswerkzeug)
+
+**English**
+- Scales: reworked weapon comparison – off-hand weapons count half damage, ranged DPS is weighted separately (Hunters: the bow matters, the melee weapon barely)
+- Scales: a one-hander against an equipped two-hander is paired with the best off-hand piece from your bags
+- Scales: rings and trinkets fill an empty slot first and replace an identical item
+- Scales: weapons, shields and relics your class cannot use are marked unusable (incl. dual wield, fishing poles, profession tools)
+
 ## 2.14.1
 
 **Deutsch**
