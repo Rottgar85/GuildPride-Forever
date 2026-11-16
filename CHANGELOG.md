@@ -7,12 +7,16 @@
 - Anmeldungen werden 10 Sekunden zurückgehalten: Wer schnell umentscheidet (Zusage, Vielleicht, Absage …), erzeugt nur eine Zeile mit dem letzten Stand
 - Boss-Erstkills gehen nicht mehr einzeln von jedem Raidmitglied an Discord; die Bosse stehen in der Raid-Zusammenfassung
 - Meilensteine (Level, Mythisch+) gehen nur noch von Offizieren an Discord; GameBot nimmt Meilensteine und Umfragen nur von Offizieren an
+- Nimmt der Discord-Kanal der Gilde die Zeilen still nicht an (sie kommen nicht zurück), schaltet GuildPride für die Sitzung auf den Gildenchat um und holt die fehlenden Zeilen nach
+- Offiziere ohne verknüpftes Discord bekommen einen Hinweis, dass DKP, Ankündigungen und Umfragen sonst nur über einen verknüpften Offizier ankommen. Solche Zeilen geben nur noch Offiziere weiter
 
 **English**
 - Less guild chat spam from the Discord bridge: `[GP]` lines now automatically go to Blizzard's own Discord channel of the guild once the guild leader has turned on **Separate Discord chat** (Guild Settings → Discord Settings). Players without GuildPride no longer see them in /g. If the lines still end up in guild chat, officers get a one-time hint. `/gp discord guild` still forces guild chat
 - Sign-ups are held back for 10 seconds: changing your mind quickly (attending, maybe, declined …) produces only one line with the final choice
 - First boss kills are no longer sent to Discord by every raid member separately; the bosses are listed in the raid summary
 - Milestones (level, Mythic+) are only sent to Discord by officers; GameBot only accepts milestones and polls from officers
+- If the guild's Discord channel silently does not accept the lines (they never come back), GuildPride switches to guild chat for the session and resends the missing lines
+- Officers without a linked Discord get a hint that DKP, announcements and polls otherwise only arrive through a linked officer. Only officers pass such lines on
 
 ## 2.19.1
 

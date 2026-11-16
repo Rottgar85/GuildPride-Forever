@@ -91,6 +91,23 @@ local hinted = false
 -- Anmeldungen kurz zurückhalten: wer schnell umentscheidet (Zusage, dann
 -- Vielleicht …), erzeugt nur eine Zeile statt mehrerer
 local SIGN_HOLD = 10
+
+-- Zeilen, die nur von Offizieren angenommen werden (GameBot prüft das)
+local OFFICER_LINES = { "DKP ", "Raid: ", "Ankündigung: ", "Announcement: ", "Umfrage #", "Poll #", "Meilenstein: ", "Milestone: " }
+local function OfficerLine(text)
+    local body = text:sub(1, #TAG + 1) == TAG .. " " and text:sub(#TAG + 2) or text
+    for _, p in ipairs(OFFICER_LINES) do if body:sub(1, #p) == p then return true end end
+    return false
+end
+Discord.OfficerLine = OfficerLine
+
+-- Kommt eine über den Discord-Kanal gesendete Zeile nicht zurück, nimmt
+-- Blizzard sie offenbar still nicht an: dann in dieser Sitzung Gildenchat
+local ECHO_WAIT = 10
+local echoed, awaiting, missed = {}, {}, {}
+local streamOk, streamBroken = false, false
+local officerHinted = false
+local Enqueue
 local SIGN_WORDS = { Zusage = true, Vielleicht = true, Absage = true, Attending = true, Maybe = true, Declined = true }
 local function SignKey(text)
     local name, word, id = text:match("^%[GP%] ([^:]+): (%S+) #(%w+)")
@@ -117,9 +134,13 @@ end
 -- Nur mit /gp discord gilde immer in den Gildenchat.
 local function SendNow(text)
     local o = Opt()
-    if o.via ~= "guild" then
+    if o.via ~= "guild" and not streamBroken then
         local clubId, streamId = DiscordStream()
         if clubId and C_Club.SendMessage and pcall(C_Club.SendMessage, clubId, streamId, text) then
+            if not streamOk then
+                awaiting[text] = GetTime()
+                C_Timer.After(ECHO_WAIT, function() Discord.CheckEcho(text) end)
+            end
             return "stream"
         end
     end
@@ -133,6 +154,30 @@ local function SendNow(text)
         return "guild"
     end
 end
+
+function Discord.CheckEcho(text)
+    if not awaiting[text] then return end
+    awaiting[text] = nil
+    if echoed[text] then echoed[text] = nil; streamOk = true; wipe(missed); return end
+    if streamOk then return end
+    missed[#missed + 1] = text
+    -- Erst nach zwei verlorenen Zeilen umschalten (eine kann Zufall sein)
+    if #missed < 2 then return end
+    streamBroken = true
+    ns.Print(L["Der Discord-Kanal der Gilde nimmt keine Zeilen vom Addon an. GuildPride nutzt in dieser Sitzung den Gildenchat."])
+    for _, t in ipairs(missed) do seen[t] = nil; Enqueue(t) end
+    wipe(missed)
+end
+
+local function NoteEcho(text)
+    if type(text) ~= "string" or Secret(text) then return end
+    if awaiting[text] then echoed[text] = true; streamOk = true end
+end
+local echoFrame = CreateFrame("Frame")
+for _, ev in ipairs({ "CHAT_MSG_COMMUNITIES_CHANNEL", "CHAT_MSG_GUILD_DISCORD", "CHAT_MSG_GUILD" }) do
+    pcall(echoFrame.RegisterEvent, echoFrame, ev)
+end
+echoFrame:SetScript("OnEvent", function(_, _, text) NoteEcho(text) end)
 
 -- Aus einer Spieleraktion heraus aufrufen (Klick, Tastendruck)
 function Discord.Flush()
@@ -158,7 +203,7 @@ function Discord.Flush()
     end
 end
 
-local function Enqueue(text)
+function Enqueue(text)
     text = text:sub(1, 255)
     for _, q in ipairs(queue) do if q == text then return end end
     -- Neue Anmeldung desselben Spielers zum selben Event ersetzt die wartende
@@ -181,6 +226,13 @@ function Discord.Post(text, now)
         Enqueue(text)
         if now then Discord.Flush() end
     else
+        -- Offiziers-Zeilen nimmt GameBot nur von einem Offizier an. Ein
+        -- verknüpfter Offizier kann sie weitergeben – sicherer ist, selbst
+        -- zu verknüpfen
+        if OfficerLine(text) and not officerHinted then
+            officerHinted = true
+            ns.Print(L["Dein Discord ist nicht verknüpft: DKP, Ankündigungen und Umfragen kommen nur in Discord an, wenn gerade ein verknüpfter Offizier online ist. Verknüpfe Discord (Optionen > Soziales) und gib /gp discord verknuepft ein."])
+        end
         ns.SendAddonMsg(PREFIX, "DRL:" .. text, "GUILD")
         if not o.hinted then
             o.hinted = true
@@ -194,9 +246,10 @@ end
 ns.On("DRL", function(payload, sender)
     if not Enabled() or not Discord.IsLinked() or sender == ns.Me() then return end
     if not ns.IsGuildMember(sender) or not ns.IsBridgeLine(payload) then return end
-    -- DKP-Zeilen nur von Offizieren weitergeben (sonst könnte jeder über uns
-    -- gefälschte Buchungen an den Discord-Bot schicken)
-    if payload:sub(#TAG + 2, #TAG + 4) == "DKP" and not ns.IsOfficerName(sender) then return end
+    -- Offiziers-Zeilen nur von Offizieren und nur durch Offiziere weitergeben:
+    -- sonst könnte jeder über uns Buchungen fälschen, und GameBot würde
+    -- Zeilen eines Nicht-Offiziers ohnehin ablehnen (unnötige Zeile im Chat)
+    if OfficerLine(payload) and not (ns.IsOfficerName(sender) and ns.IsOfficerName(ns.Me())) then return end
     local text = payload:sub(1, 255)
     C_Timer.After(math.random() * 4, function()
         if not Seen(text) then Enqueue(text) end
@@ -218,6 +271,7 @@ keys:EnableKeyboard(true)
 local AddFilter = ChatFrame_AddMessageEventFilter or (ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter)
 local function Filter(_, _, text)
     if not ns.IsBridgeLine(text) then return false end
+    NoteEcho(text)
     MarkSeen(text)
     for i = #queue, 1, -1 do if queue[i] == text then notBefore[text] = nil; table.remove(queue, i) end end
     return not (GuildPrideDB and Opt().showRaw)
@@ -289,7 +343,7 @@ SlashCmdList.GUILDPRIDE = function(arg)
         ns.Print(Discord.IsLinked() and L["Discord-Test gesendet."] or L["Discord-Test an ein verknüpftes Mitglied gegeben."])
         return
     end
-    local stream = DiscordStream() and L["eigener Discord-Kanal"] or L["Gildenchat"]
+    local stream = (DiscordStream() and not streamBroken) and L["eigener Discord-Kanal"] or L["Gildenchat"]
     ns.Print(("Discord: %s · %s: %s · %s: %s · %s · %s: %d"):format(
         Enabled() and L["an"] or L["aus"],
         L["verknüpft"], Discord.IsLinked() and L["ja"] or L["nein"],

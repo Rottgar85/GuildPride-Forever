@@ -56,5 +56,9 @@ client.on('messageCreate', async (msg) => {
 });
 ```
 
-Umgesetzt in GameBot (`src/wowbridge.js`, Nov. 2026): Regeln 1–5. Ohne
-eingestellte Offiziersrolle dürfen nur Mitglieder mit „Server verwalten“ DKP buchen.
+Umgesetzt in GameBot (`src/wowbridge.js`, Nov. 2026): Regeln 1–6. Ohne
+eingestellte Offiziersrolle dürfen nur Mitglieder mit „Server verwalten“ DKP buchen;
+das Dashboard warnt dann. Nur von Offizieren angenommen werden außerdem
+Ankündigungen, Umfragen, Meilensteine und Raid-Zusammenfassungen. Das Protokoll
+(Regel 4) geht in den Log-Kanal, der unter *WoW-Brücke* gewählt wird; bei der
+Drossel wird nur die erste Zeile über dem Limit protokolliert.

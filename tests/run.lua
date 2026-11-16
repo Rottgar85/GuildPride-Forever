@@ -613,5 +613,44 @@ test("Discord: schnelles Umentscheiden ergibt nur eine Zeile", function()
     GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = nil, nil
 end)
 
+---------------------------------------------------------------------
+test("Discord: Kanal nimmt still nichts an -> Gildenchat, Offiziers-Zeilen nur von Offizieren weitergeben", function()
+    local D = ns.Discord
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = true, true
+    -- Getrennter Discord-Kanal, der Zeilen annimmt, aber nie zurückliefert
+    local streamSent, guildSent = {}, {}
+    C_GuildInfo = { IsDiscordStreamSeparate = function() return true end }
+    Enum = { ClubStreamType = { Discord = 5 } }
+    C_Club = { GetGuildClubId = function() return 1 end, GetStreams = function() return { { streamType = 5, streamId = 9 } } end,
+        SendMessage = function(_, _, text) streamSent[#streamSent + 1] = text end }
+    local old = C_ChatInfo.SendChatMessage
+    C_ChatInfo.SendChatMessage = function(text, kind) if kind == "GUILD" then guildSent[#guildSent + 1] = text end end
+    local timers = {}
+    local oldAfter = C_Timer.After
+    C_Timer.After = function(_, fn) timers[#timers + 1] = fn end
+    D.Post("Offi: Test 1", true)
+    D.Post("Offi: Test 2", true)
+    eq(#streamSent, 2, "zuerst über den Discord-Kanal")
+    eq(#guildSent, 0)
+    for _, fn in ipairs(timers) do fn() end
+    D.Flush()
+    eq(#guildSent, 2, "nach zwei fehlenden Echos im Gildenchat nachgeholt")
+    -- Weitergabe: DKP eines Offiziers nur, wenn ich selbst Offizier bin (Tester ist keiner)
+    local before = #guildSent
+    W.Receive("Offi", "DRL:[GP] DKP #abc123 +10 Test: Anna", "GUILD")
+    for _, fn in ipairs(timers) do fn() end
+    D.Flush()
+    eq(#guildSent, before, "Nicht-Offizier gibt DKP nicht weiter")
+    W.Receive("Anna", "DRL:[GP] Anna: Test 3", "GUILD")
+    for _, fn in ipairs(timers) do fn() end
+    D.Flush()
+    eq(guildSent[#guildSent], "[GP] Anna: Test 3", "normale Zeilen werden weitergegeben")
+    eq(D.OfficerLine("[GP] Umfrage #abcde: Frage – a | b"), true)
+    eq(D.OfficerLine("[GP] Anna: Zusage #abcde Kara"), false)
+    C_ChatInfo.SendChatMessage, C_Timer.After = old, oldAfter
+    C_Club, C_GuildInfo, Enum = nil, nil, nil
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = nil, nil
+end)
+
 print(("\n%d bestanden, %d fehlgeschlagen"):format(passed, failed))
 if failed > 0 then os.exit(1) end
