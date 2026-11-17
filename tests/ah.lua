@@ -762,6 +762,26 @@ return function(test, eq, W, ns)
         C_Item = nil
         GuildPrideDB.ahLists = nil
     end)
+    test("AH: Einkaufslisten exportieren und importieren", function()
+        GuildPrideDB.ahLists = nil
+        local l = AH.NewList("Schmied")
+        AH.AddReagents(l, { { 2840, 12 } }, 1)
+        AH.AddItems(l, "765")
+        local text = AH.ExportList(l)
+        eq(text, "GP-Liste:Schmied:2840x12,765")
+        local l2, n = AH.ImportList(text)
+        eq(l2.name, "Schmied (2)"); eq(n, 2); eq(AH.ItemQty(l2, 2840), 12); eq(AH.ItemQty(l2, 765), nil)
+        local l3 = AH.ImportList("2589 2592")
+        eq(l3.name, "Import"); eq(#l3.items, 2)
+        -- Auctionator-Format: Items per Name, Menge am Ende
+        local oldInfo = AH.ItemInfo
+        AH.ItemInfo = function(x) if x == "Silberblatt" then return "Silberblatt", "|cff|Hitem:765::|h[Silberblatt]|h|r" end end
+        local l4, n4, skipped = AH.ImportList('Kräuter^"Silberblatt";;0;0;0;0;0;0;0;0;;#;;5^"Unbekannt"')
+        AH.ItemInfo = oldInfo
+        eq(l4.name, "Kräuter"); eq(n4, 1); eq(skipped, 1); eq(AH.ItemQty(l4, 765), 5)
+        eq(AH.ImportList(""), nil); eq(AH.ImportList("nichts"), nil)
+        GuildPrideDB.ahLists = nil
+    end)
     test("AH: Wer in der Gilde kann ein Item herstellen?", function()
         local old = ns.Crafts.Search
         ns.Crafts.Search = function()
@@ -1124,6 +1144,43 @@ return function(test, eq, W, ns)
         BuyThree()
         eq(AH.TempList(), nil, "alles gekauft: Liste weg")
         StaticPopup_Show = oldShow
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        GuildPrideDB.ahLists = nil
+        Modern(false)
+    end)
+    test("AH-Forever: Liste kaufen nacheinander, Export und Import", function()
+        Modern(true)
+        GuildPrideDB.ahLists, GuildPrideDB.ahBlizzard, GuildPrideDB.ahTab = nil, nil, true
+        local asked = {}
+        C_AuctionHouse.SendSearchQuery = function(k) asked[#asked + 1] = k.itemID end
+        W.Fire("AUCTION_HOUSE_SHOW")
+        local _, win = AH._ModernTab()
+        local l = AH.NewList("Mats")
+        AH.AddReagents(l, { { 2447, 4 }, { 765, 2 } }, 1)
+        win.modeList.scripts.OnClick(win.modeList)
+        local sp = win.lists
+        sp.listRows[2].scripts.OnClick(sp.listRows[2])
+        sp.buyListBtn.scripts.OnClick(sp.buyListBtn)
+        eq(win.search.detail:IsShown(), true); eq(asked[#asked], 2447); eq(win.search.nextBtn:IsShown(), true)
+        win.search.nextBtn.scripts.OnClick(win.search.nextBtn)
+        eq(asked[#asked], 765)
+        win.search.nextBtn.scripts.OnClick(win.search.nextBtn)
+        eq(win.search.nextBtn:IsShown(), false, "fertig")
+        -- Export zeigt den Text zum Kopieren
+        local shown
+        local oldCopy = ns.ShowCopy
+        ns.ShowCopy = function(_, t) shown = t end
+        win.modeList.scripts.OnClick(win.modeList)
+        sp.exportBtn.scripts.OnClick(sp.exportBtn)
+        ns.ShowCopy = oldCopy
+        eq(shown, "GP-Liste:Mats:2447x4,765x2")
+        -- Import über das Eingabefenster
+        local oldShow = StaticPopup_Show
+        StaticPopup_Show = function() end
+        sp.importBtn.scripts.OnClick(sp.importBtn)
+        StaticPopupDialogs.GUILDPRIDE_AH_LIST_IMPORT.OnAccept({ editBox = { GetText = function() return shown end } })
+        StaticPopup_Show = oldShow
+        eq(#AH.Lists(), 3); eq(AH.Lists()[3].name, "Mats (2)")
         W.Fire("AUCTION_HOUSE_CLOSED")
         GuildPrideDB.ahLists = nil
         Modern(false)

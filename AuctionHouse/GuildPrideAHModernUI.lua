@@ -30,7 +30,7 @@ local sell = { duration = 2 }    -- info, manual, setting, pending
 local ShowBlizzard               -- weiter unten: zu Blizzards Fenster wechseln
 local ShowMode                   -- weiter unten: Reiter wechseln
 -- Einkaufsliste: sel = gewählte Liste (Index in AH.Lists()), renaming/deleting = Liste im Dialog
-local shop = { sel = 1, offset = 0, listOffset = 0, ROWS = 18, ROW_H = 22, LIST_ROWS = 15, LIST_H = 20 }
+local shop = { sel = 1, offset = 0, listOffset = 0, ROWS = 18, ROW_H = 22, LIST_ROWS = 14, LIST_H = 20 }
 local searchNeed                 -- Item-Suche (Zutaten, Liste): { [itemID] = benötigte Menge }
 
 local function Skin(b) if GP.SkinButton then GP.SkinButton(b) end return b end
@@ -340,6 +340,8 @@ CloseDetail = function()
     local p = panel and panel.search
     if not p or not p.detail then return end
     buy.info, buy.selected, buy.pending = nil, nil, nil
+    shop.buyQueue = nil            -- „Zurück zur Liste“ beendet auch „Liste kaufen“
+    if p.nextBtn then p.nextBtn:Hide() end
     p.detail:Hide()
     p.listFrame:Show()
 end
@@ -391,6 +393,8 @@ local function OnBought()
         elseif changed then
             Status(L["Gekauft und auf der temporären Liste abgehakt."])
         end
+        -- „Liste kaufen“ läuft: gleich das nächste Item zeigen
+        if shop.buyQueue and shop.BuyNext then shop.BuyNext(); return end
     end
     buy.selected = nil
     RequestOffers()
@@ -476,6 +480,10 @@ local function MakeDetail(p)
     p.total = Label(d, "", "GameFontHighlight"); p.total:SetPoint("TOPLEFT", 210, y - 5)
     p.buyBtn = Button(d, L["Kaufen"], 140); p.buyBtn:SetPoint("TOPLEFT", 8, y - 32)
     p.buyBtn:SetScript("OnClick", Buy)
+    -- nur während „Liste kaufen“: dieses Item überspringen
+    p.nextBtn = Button(d, L["Weiter ›"], 110); p.nextBtn:SetPoint("LEFT", p.buyBtn, "RIGHT", 10, 0)
+    p.nextBtn:SetScript("OnClick", function() if shop.BuyNext then shop.BuyNext() end end)
+    p.nextBtn:Hide()
 end
 
 local function MakeSearchPane()
@@ -594,6 +602,15 @@ local function RefreshShop()
         .. (unknown > 0 and ("  ·  " .. (L["%d ohne bekannten Preis"]):format(unknown)) or "")) or "")
 end
 
+-- Item aus der Liste suchen: direkt die Kaufansicht unter „Suchen“ öffnen
+local function SearchItem(id)
+    if not id then return end
+    ShowMode("search")
+    local _, _, quality = AH.ItemInfo(id)
+    OpenDetail({ entry = { itemKey = { itemID = id, itemLevel = 0, itemSuffix = 0, battlePetSpeciesID = 0 },
+        key = AH.Key(id), name = AH.ItemName(id), icon = AH.ItemIcon(id), quality = quality } })
+end
+
 -- Alle Items der gewählten Liste suchen: unter „Suchen“ stehen dann nur diese
 local function SearchList()
     local list = CurrentList()
@@ -603,20 +620,42 @@ local function SearchList()
     if not AH.ShowItemSearch(list.items, need, list.name) then Status(L["Auktionshaus: Erst das Auktionshaus öffnen."]) end
 end
 
+-- „Liste kaufen“: Items nacheinander in der Kaufansicht zeigen (Menge = was noch fehlt)
+shop.BuyNext = function()
+    local q = shop.buyQueue
+    local id = q and table.remove(q, 1)
+    if not id then
+        shop.buyQueue = nil
+        if panel.search.nextBtn then panel.search.nextBtn:Hide() end
+        Status(L["Liste kaufen: fertig."])
+        return
+    end
+    SearchItem(id)
+    shop.buyQueue = q                -- SearchItem darf die Warteschlange nicht beenden
+    local left = AH.Remaining(q.list, id)
+    if left and left > 0 then panel.search.qty:SetText(tostring(left)) end
+    panel.search.nextBtn:Show()
+    Status((L["Liste kaufen: %s – Menge prüfen und „Kaufen“ klicken (noch %d danach)."]):format(AH.ItemName(id) or ("#" .. id), #q))
+end
+
+local function BuyList()
+    local list = CurrentList()
+    local q = { list = list }
+    for _, id in ipairs(list.items) do
+        local left = AH.Remaining(list, id)
+        if left == nil or left > 0 then q[#q + 1] = id end
+    end
+    if #q == 0 then Status(L["Nichts mehr zu kaufen – du hast alles."]); return end
+    if not AH.IsOpen() then Status(L["Auktionshaus: Erst das Auktionshaus öffnen."]); return end
+    shop.buyQueue = q
+    shop.BuyNext()
+end
+
 local function SaveQty(row)
     if not row.itemID then return end
     AH.SetItemQty(CurrentList(), row.itemID, tonumber(row.qtyBox:GetText()))
     row.qtyBox:ClearFocus()
     RefreshShop()
-end
-
--- Item aus der Liste suchen: direkt die Kaufansicht unter „Suchen“ öffnen
-local function SearchItem(id)
-    if not id then return end
-    ShowMode("search")
-    local _, _, quality = AH.ItemInfo(id)
-    OpenDetail({ entry = { itemKey = { itemID = id, itemLevel = 0, itemSuffix = 0, battlePetSpeciesID = 0 },
-        key = AH.Key(id), name = AH.ItemName(id), icon = AH.ItemIcon(id), quality = quality } })
 end
 
 local function AddIDs()
@@ -688,6 +727,28 @@ StaticPopupDialogs["GUILDPRIDE_AH_ALERT"] = {
     EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
     timeout = 0, whileDead = true, hideOnEscape = true,
 }
+local function ImportAccepted(text)
+    local l, n, skipped = AH.ImportList(text)
+    if not l then Status(L["Nichts erkannt – keine Items im Text."]); return end
+    for i, x in ipairs(AH.Lists()) do if x == l then shop.sel = i end end
+    shop.offset = 0
+    Status((L["Liste „%s“ eingelesen: %d Items"]):format(l.name, n)
+        .. ((skipped or 0) > 0 and (" · " .. (L["%d nicht erkannt"]):format(skipped)) or ""))
+    RefreshShop()
+end
+StaticPopupDialogs["GUILDPRIDE_AH_LIST_IMPORT"] = {
+    text = L["Einkaufsliste einfügen (Strg+V):\nGuildPride-Text, Auctionator-Liste oder Item-IDs"],
+    button1 = OKAY, button2 = CANCEL,
+    hasEditBox = true, maxLetters = 0, editBoxWidth = 320,
+    OnShow = function(self) local eb = self.editBox or self.EditBox; eb:SetText(""); eb:SetFocus() end,
+    OnAccept = function(self) ImportAccepted((self.editBox or self.EditBox):GetText()) end,
+    EditBoxOnEnterPressed = function(eb)
+        local dlg = eb:GetParent()
+        ImportAccepted(eb:GetText()); dlg:Hide()
+    end,
+    EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
 StaticPopupDialogs["GUILDPRIDE_AH_LIST_DELETE"] = {
     text = "%s",
     button1 = DELETE or OKAY, button2 = CANCEL,
@@ -713,8 +774,21 @@ local function MakeShopPane()
     p.addBtn = Button(p, L["Eintragen"], 100); p.addBtn:SetPoint("LEFT", p.idBox, "RIGHT", 8, 0)
     p.addBtn:SetScript("OnClick", AddIDs)
     p.idBox:SetScript("OnEnterPressed", AddIDs)
-    local hint = Label(p, L["Mehrere mit Komma trennen. Umschalt+Klick auf ein Item oder ein Wowhead-Link geht auch."], "GameFontDisableSmall")
-    hint:SetPoint("LEFT", p.addBtn, "RIGHT", 12, 0); hint:SetPoint("RIGHT", p, "RIGHT", -18, 0)
+    p.idBox:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(L["Item-IDs:"])
+        GameTooltip:AddLine(L["Mehrere mit Komma trennen. Umschalt+Klick auf ein Item oder ein Wowhead-Link geht auch."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    p.idBox:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- Teilen: Liste als Text zeigen (kopieren) oder Text einlesen (auch Auctionator-Listen)
+    p.exportBtn = Button(p, L["Exportieren"], 100); p.exportBtn:SetPoint("LEFT", p.addBtn, "RIGHT", 24, 0)
+    p.exportBtn:SetScript("OnClick", function()
+        local list = CurrentList()
+        if GP.ShowCopy then GP.ShowCopy((L["Einkaufsliste „%s“ – Text kopieren und teilen"]):format(list.name), AH.ExportList(list)) end
+    end)
+    p.importBtn = Button(p, L["Importieren"], 100); p.importBtn:SetPoint("LEFT", p.exportBtn, "RIGHT", 6, 0)
+    p.importBtn:SetScript("OnClick", function() StaticPopup_Show("GUILDPRIDE_AH_LIST_IMPORT") end)
 
     -- links: Listen
     local lh = Label(p, L["Listen"], "GameFontNormalSmall"); lh:SetPoint("TOPLEFT", 16, -43)
@@ -734,6 +808,15 @@ local function MakeShopPane()
         end)
         p.listRows[i] = b
     end
+    p.buyListBtn = Button(p, L["Liste kaufen"], CAT_W - 20); p.buyListBtn:SetPoint("BOTTOMLEFT", 14, 152)
+    p.buyListBtn:SetScript("OnClick", BuyList)
+    p.buyListBtn:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Liste kaufen"])
+        GameTooltip:AddLine(L["Zeigt die Items der Liste nacheinander zum Kaufen, mit der noch fehlenden Menge. Jeder Kauf wird wie gewohnt bestätigt, „Weiter ›“ überspringt ein Item."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    p.buyListBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     p.tempBtn = Button(p, L["Temporäre Liste"], CAT_W - 20); p.tempBtn:SetPoint("BOTTOMLEFT", 14, 126)
     p.tempBtn:SetScript("OnClick", function()
         local t = AH.TempList(true)

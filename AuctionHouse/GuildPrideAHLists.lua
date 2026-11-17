@@ -222,6 +222,73 @@ function AH.CheckAlerts(rows)
     return hits
 end
 
+---------------------------------------------------------------------
+-- Teilen: Liste als Text („GP-Liste:Name:2840x12,765“) und wieder einlesen.
+-- Eingelesen wird auch das Auctionator-Format (Name^"Item";…;#;;Menge^…) und reine Item-IDs.
+---------------------------------------------------------------------
+function AH.ExportList(list)
+    local parts = {}
+    for _, id in ipairs(list and list.items or {}) do
+        local q = AH.ItemQty(list, id)
+        parts[#parts + 1] = q and (id .. "x" .. q) or tostring(id)
+    end
+    return "GP-Liste:" .. (list and list.name or ""):gsub("[:\n]", " ") .. ":" .. table.concat(parts, ",")
+end
+
+-- Freien Namen finden: „Name“, sonst „Name (2)“, „Name (3)“ …
+local function FreeName(name)
+    name = strtrim(name or "")
+    name = name:match("^" .. ("[%z\1-\127\194-\244][\128-\191]*"):rep(MAX_NAME - 4)) or name
+    if name == "" then name = L["Import"] end
+    if CheckName(name) then return name end
+    for i = 2, 99 do
+        local n = ("%s (%d)"):format(name, i)
+        if CheckName(n) then return n end
+    end
+end
+
+local function ItemIDByName(name)
+    local _, link = AH.ItemInfo(name)
+    return type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
+end
+
+-- Gibt die neue Liste, die Zahl der eingetragenen und der nicht erkannten Items zurück (nil bei leerem Text)
+function AH.ImportList(text)
+    text = strtrim(tostring(text or ""))
+    if text == "" then return nil end
+    local name, entries, skipped = nil, {}, 0
+    local gpName, body = text:match("^GP%-Liste:([^:]*):(.*)$")
+    if gpName then
+        name = gpName
+        for part in body:gmatch("[^,%s]+") do
+            local id, q = part:match("^(%d+)x(%d+)$")
+            id = tonumber(id or part:match("^(%d+)$"))
+            if id then entries[#entries + 1] = { id, tonumber(q) } end
+        end
+    elseif text:find("^", 1, true) then
+        local first = true
+        for term in (text .. "^"):gmatch("([^%^]*)%^") do
+            if first then name, first = term, false
+            elseif term ~= "" then
+                local iname = term:match('^"([^"]+)"') or term:match("^([^;]+)")
+                local id = iname and ItemIDByName(iname)
+                if id then entries[#entries + 1] = { id, tonumber(term:match(";#;;(%d+)")) }
+                else skipped = skipped + 1 end
+            end
+        end
+    else
+        for _, id in ipairs(AH.ParseItemIDs(text)) do entries[#entries + 1] = { id } end
+    end
+    if #entries == 0 then return nil end
+    local list = AH.NewList(FreeName(name))
+    if not list then return nil end
+    for _, e in ipairs(entries) do
+        AH.AddItems(list, e[1])
+        if e[2] then AH.SetItemQty(list, e[1], e[2]) end
+    end
+    return list, #list.items, skipped
+end
+
 -- Wie viele hast du schon (Taschen und Bank)?
 function AH.ItemCount(id)
     local f = (C_Item and C_Item.GetItemCount) or GetItemCount
