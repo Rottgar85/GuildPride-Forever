@@ -183,4 +183,33 @@ return function(test, eq, W, ns)
         eq(AH.PriceFor("2589"), 33); eq(#out, 0)
         W.canGetAll = false
     end)
+
+    -----------------------------------------------------------------
+    -- Tooltip
+    -----------------------------------------------------------------
+    W.Load("GuildPrideAHTooltip.lua")
+
+    test("AH-Tooltip: Zeile mit Herkunft und Alter", function()
+        AH.RecordOwn("3000", 30, 5, W.server - 7200)
+        local L3000 = "|cffffffff|Hitem:3000:0:0:0:0:0:0:0|h[x]|h|r"
+        eq(AH.TooltipLine(L3000, 1, W.server, false), "Auktionshaus: 30c (vor 2 Std.)")
+        eq(AH.TooltipLine(L3000, 20, W.server, true), "Auktionshaus: 600c (x20) (vor 2 Std.)")
+        eq(AH.TooltipLine(L3000, 1, W.server - 7200 + 30, false), "Auktionshaus: 30c (gerade eben)")
+        AH.RecordServer("3001", 44, 1, W.server - 600, "Anna")
+        eq(AH.TooltipLine("|Hitem:3001:0:0:0:0:0:0:0|h", 1, W.server, false), "Auktionshaus: 44c (Server, vor 10 Min.)")
+        eq(AH.TooltipLine("|Hitem:3002:0:0:0:0:0:0:0|h", 1, W.server, false), nil)
+        AH.RecordOwn("3003", 5, 1, W.server - 3 * 86400)
+        eq(AH.TooltipLine("|Hitem:3003:0:0:0:0:0:0:0|h", 1, W.server, false), "Auktionshaus: 5c (vor 3 Tagen)")
+    end)
+
+    test("AH-Tooltip: seelengebunden/Quest/grau → nicht handelbar", function()
+        W.itemInfo[5000] = { quality = 1, bindType = 1, classID = 0, sellPrice = 10 }
+        W.itemInfo[5001] = { quality = 1, bindType = 0, classID = 12, sellPrice = 0 }
+        W.itemInfo[5002] = { quality = 0, bindType = 0, classID = 0, sellPrice = 5 }
+        W.itemInfo[5003] = { quality = 2, bindType = 2, classID = 4, sellPrice = 50 }
+        eq(AH.Tradeable("|Hitem:5000:0:0:0:0:0:0:0|h"), false)
+        eq(AH.Tradeable("|Hitem:5001:0:0:0:0:0:0:0|h"), false)
+        eq(AH.Tradeable("|Hitem:5002:0:0:0:0:0:0:0|h"), false)
+        eq(AH.Tradeable("|Hitem:5003:0:0:0:0:0:0:0|h"), true)
+    end)
 end
