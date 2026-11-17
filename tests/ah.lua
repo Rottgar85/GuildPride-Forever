@@ -1345,6 +1345,36 @@ return function(test, eq, W, ns)
         AH.Print = oldPrint
         GetInboxNumItems, GetInboxHeaderInfo, AutoLootMailItem, TakeInboxMoney, C_Container, MailFrame, CloseMail = nil, nil, nil, nil, nil, nil, nil
     end)
+    test("AH: Briefkasten – Twinks als Empfänger wählen", function()
+        UnitFactionGroup = function() return "Alliance" end
+        GuildPrideDB.ahChars = { Alliance = { ["Anna Stern"] = { game = "Anna-Stern", class = "MAGE" } },
+                                 Horde = { ["Hordi"] = { game = "Hordi" } } }
+        local oldMine = ns.IsMyChar
+        ns.IsMyChar = function(n) return n == "Bert" end      -- per Ausweis erkannter Twink in der Gilde
+        AH.RememberChar()
+        eq(GuildPrideDB.ahChars.Alliance[ns.Me()] ~= nil, true, "eigener Charakter gemerkt")
+        local chars = AH.MyChars()
+        eq(#chars, 2, "ohne mich selbst, nur gleiche Fraktion"); eq(chars[1].show, "Anna Stern"); eq(chars[1].game, "Anna-Stern")
+        eq(chars[2].show, "Bert")
+        -- Menü am Empfänger-Feld
+        local typed
+        SendMailNameEditBox = CreateFrame()
+        SendMailNameEditBox.SetText = function(_, v) typed = v end
+        W.Fire("MAIL_SHOW")
+        local btn = AH._TwinkButton()
+        btn.scripts.OnClick(btn)
+        local menu = AH._TwinkMenu()
+        eq(menu:IsShown(), true); eq(menu.buttons[1]:IsShown(), true); eq(menu.buttons[3]:IsShown(), false)
+        menu.buttons[1].scripts.OnClick(menu.buttons[1], "LeftButton")
+        eq(typed, "Anna-Stern"); eq(menu:IsShown(), false)
+        -- Rechtsklick vergisst einen Charakter
+        btn.scripts.OnClick(btn)
+        menu.buttons[1].scripts.OnClick(menu.buttons[1], "RightButton")
+        eq(#AH.MyChars(), 1); eq(AH.MyChars()[1].show, "Bert")
+        W.Fire("MAIL_CLOSED")
+        ns.IsMyChar = oldMine
+        GuildPrideDB.ahChars, UnitFactionGroup, SendMailNameEditBox = nil, nil, nil
+    end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
         local old = GetCoinTextureString
         GetCoinTextureString = nil
