@@ -486,27 +486,49 @@ return function(test, eq, W, ns)
         eq(AH.TooltipText(L(30052), 1, W.server, false), nil)
     end)
     W.Load("GuildPrideAHModernUI.lua")
-    test("AH-Forever: eigenes Fenster – Knopf neben dem X öffnet und schließt es", function()
+    test("AH-Forever: GuildPride ersetzt Blizzards Auktionshaus, Knöpfe schalten um", function()
         Modern(true)
+        GuildPrideDB.ahBlizzard = nil
         AuctionHouseFrame = CreateFrame()
         AuctionHouseFrame.GetFrameLevel = function() return 5 end
         AuctionHouseFrame.CloseButton = CreateFrame()
+        AuctionHouseFrame.shown = true
+        local scale, alpha = 1, 1
+        AuctionHouseFrame.SetScale = function(_, v) scale = v end
+        AuctionHouseFrame.GetScale = function() return scale end
+        AuctionHouseFrame.SetAlpha = function(_, v) alpha = v end
+        AuctionHouseFrame.GetAlpha = function() return alpha end
+        local closed = 0
+        HideUIPanel = function(f) if f == AuctionHouseFrame then closed = closed + 1 end end
         local before = #W.frames
         W.Fire("AUCTION_HOUSE_SHOW")
         eq(#W.frames > before + 20, true)
         local button, win = AH._ModernTab()
-        eq(win:IsShown(), false)
-        button.scripts.OnClick(button)
-        eq(win:IsShown(), true, "Knopf öffnet das GuildPride-Fenster")
-        win.modeSell.scripts.OnClick(win.modeSell)   -- Verkaufen mit Taschen-Liste
+        eq(win:IsShown(), true, "GuildPride-Fenster statt Blizzard")
+        eq(scale < 0.01, true); eq(alpha, 0)
+        win.modeSell.scripts.OnClick(win.modeSell)
         win.modeScan.scripts.OnClick(win.modeScan)
         win.modeSearch.scripts.OnClick(win.modeSearch)
         W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        -- zu Blizzard wechseln: Fenster weg, Blizzard wieder sichtbar, Auktionshaus bleibt offen
+        win.blizzard.scripts.OnClick(win.blizzard)
+        eq(win:IsShown(), false); eq(scale, 1); eq(alpha, 1); eq(closed, 0)
+        eq(GuildPrideDB.ahBlizzard, true, "Wahl wird gemerkt")
+        -- zurück zu GuildPride
         button.scripts.OnClick(button)
-        eq(win:IsShown(), false, "zweiter Klick schließt es")
-        button.scripts.OnClick(button)
+        eq(win:IsShown(), true); eq(scale < 0.01, true); eq(GuildPrideDB.ahBlizzard, false)
+        -- GuildPride-Fenster schließen (X/ESC) schließt das ganze Auktionshaus
+        win:Hide(); win.scripts.OnHide(win)
+        eq(closed, 1)
         W.Fire("AUCTION_HOUSE_CLOSED")
-        eq(win:IsShown(), false, "schließt mit dem Auktionshaus")
+        eq(scale, 1); eq(alpha, 1)
+        -- gemerkte Wahl Blizzard: beim nächsten Öffnen bleibt Blizzard sichtbar
+        GuildPrideDB.ahBlizzard = true
+        W.Fire("AUCTION_HOUSE_SHOW")
+        eq(win:IsShown(), false); eq(scale, 1)
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        GuildPrideDB.ahBlizzard = nil
+        HideUIPanel = nil
         Modern(false)
     end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()

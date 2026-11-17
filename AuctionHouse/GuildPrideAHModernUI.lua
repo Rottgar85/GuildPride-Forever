@@ -1,6 +1,8 @@
--- GuildPride Auktionshaus: eigenes Fenster „GuildPride – Auktionshaus“ neben dem
--- neuen Auktionshaus (C_AuctionHouse, WoW Forever) mit Suchen, Verkaufen und Scanner.
--- Geöffnet über den Knopf „GuildPride“ oben rechts neben dem X des Auktionshauses.
+-- GuildPride Auktionshaus: eigenes Fenster „GuildPride – Auktionshaus“ für das neue
+-- Auktionshaus (C_AuctionHouse, WoW Forever) mit Suchen, Verkaufen und Scanner.
+-- Es ersetzt Blizzards Auktionshaus-Fenster: Blizzards Fenster wird unsichtbar (nicht
+-- geschlossen – das würde die Sitzung am Auktionator beenden). Knopf „Blizzard-Auktionshaus“
+-- schaltet zurück, Knopf „GuildPride“ in Blizzards Fenster wieder hierher.
 -- Gekauft wird über Blizzards Kaufansicht (Klick auf eine Zeile).
 local ADDON, GP = ...
 local AH = GP.AH
@@ -17,6 +19,7 @@ local mode = "search"            -- "search" | "sell" | "scan"
 local rows, offset = {}, 0
 local bagItems, bagOffset = {}, 0
 local sell = { duration = 2 }    -- info, manual, setting, pending
+local ShowBlizzard               -- weiter unten: zu Blizzards Fenster wechseln
 
 local function Skin(b) if GP.SkinButton then GP.SkinButton(b) end return b end
 local function EditSkin(e) if GP.SkinEditBox then GP.SkinEditBox(e) end return e end
@@ -85,10 +88,12 @@ local function StartSearch(text)
     if AH.ModernBrowse(text) then Status(L["Suche läuft …"]) end
 end
 
--- Zeile anklicken: Blizzards Kaufansicht für dieses Item öffnen (unser Fenster bleibt offen)
+-- Zeile anklicken: Blizzards Kaufansicht für dieses Item öffnen.
+-- Die gemerkte Wahl bleibt GuildPride; der Knopf „GuildPride“ führt zurück.
 local function OpenBuy(row)
     local e = row.entry
     if not e then return end
+    ShowBlizzard(false)
     if AuctionHouseFrame.SelectBrowseResult then
         local ok = pcall(AuctionHouseFrame.SelectBrowseResult, AuctionHouseFrame, e.result)
         if ok then return end
@@ -539,15 +544,52 @@ local function ShowMode(m)
     if m == "search" then RefreshList() elseif m == "scan" then RefreshScan() elseif m == "sell" then RefreshBags() end
 end
 
-local function Toggle()
-    if panel:IsShown() then panel:Hide(); return end
-    -- Standardplatz rechts neben dem Auktionshaus, bis der Spieler das Fenster verschiebt
+-- Blizzards Fenster unsichtbar machen statt schließen (Schließen beendet die Sitzung)
+local hidden, saved, switching = false, nil, false
+local function HideBlizzard()
+    if hidden or not AuctionHouseFrame then return end
+    saved = { scale = AuctionHouseFrame:GetScale(), alpha = AuctionHouseFrame:GetAlpha() }
+    hidden = true
+    AuctionHouseFrame:SetAlpha(0)
+    AuctionHouseFrame:SetScale(0.001)   -- winzig: nichts davon lässt sich mehr anklicken
+end
+
+local function RestoreBlizzard()
+    if not hidden then return end
+    hidden = false
+    AuctionHouseFrame:SetScale(saved and saved.scale or 1)
+    AuctionHouseFrame:SetAlpha(saved and saved.alpha or 1)
+end
+
+local function Remember(blizzard)
+    if type(GuildPrideDB) == "table" then GuildPrideDB.ahBlizzard = blizzard end
+end
+
+local function ShowGuildPride()
+    Remember(false)
+    HideBlizzard()
     if not panel.moved then
         panel:ClearAllPoints()
-        panel:SetPoint("TOPLEFT", AuctionHouseFrame, "TOPRIGHT", 4, 0)
+        panel:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
     end
     panel:Show()
     ShowMode(mode)
+end
+
+-- remember = false: nur kurz (z. B. zum Kaufen), die Wahl bleibt GuildPride
+ShowBlizzard = function(remember)
+    if remember ~= false then Remember(true) end
+    switching = true
+    panel:Hide()
+    switching = false
+    RestoreBlizzard()
+end
+
+-- X oder ESC am GuildPride-Fenster: das ganze Auktionshaus schließen wie bei Blizzard
+local function OnWindowHide()
+    if switching or not hidden then return end
+    RestoreBlizzard()
+    if HideUIPanel then HideUIPanel(AuctionHouseFrame) end
 end
 
 local function MakeButton()
@@ -562,12 +604,12 @@ local function MakeButton()
     b:Show()
     b:SetScript("OnClick", function()
         if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
-        Toggle()
+        ShowGuildPride()
     end)
     b:SetScript("OnEnter", function()
         GameTooltip:SetOwner(b, "ANCHOR_BOTTOM")
         GameTooltip:SetText(L["GuildPride – Auktionshaus"])
-        GameTooltip:AddLine(L["Suchen, Verkaufen und Scanner im eigenen Fenster."], 1, 1, 1, true)
+        GameTooltip:AddLine(L["Zum GuildPride-Auktionshaus wechseln."], 1, 1, 1, true)
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -577,7 +619,7 @@ end
 local function Build()
     panel = CreateFrame("Frame", "GuildPrideAHWindow", UIParent, "BackdropTemplate")
     panel:SetSize(WIN_W, WIN_H)
-    panel:SetPoint("TOPLEFT", AuctionHouseFrame, "TOPRIGHT", 4, 0)
+    panel:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
     panel:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8x8",
         edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 24,
@@ -591,6 +633,7 @@ local function Build()
     panel:RegisterForDrag("LeftButton")
     panel:SetScript("OnDragStart", panel.StartMoving)
     panel:SetScript("OnDragStop", function(f) f:StopMovingOrSizing(); f.moved = true end)
+    panel:SetScript("OnHide", OnWindowHide)
     panel:Hide()
     tinsert(UISpecialFrames, "GuildPrideAHWindow")   -- ESC schließt
 
@@ -598,6 +641,19 @@ local function Build()
     title:SetPoint("TOPLEFT", 20, -16)
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -4, -4)
+    panel.blizzard = Button(panel, L["Blizzard-Auktionshaus"], 160)
+    panel.blizzard:SetPoint("RIGHT", close, "LEFT", -4, 0)
+    panel.blizzard:SetScript("OnClick", function()
+        if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
+        ShowBlizzard()
+    end)
+    panel.blizzard:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(L["Blizzard-Auktionshaus"])
+        GameTooltip:AddLine(L["Zurück zu Blizzards Auktionshaus. Der Knopf „GuildPride“ dort bringt dich wieder hierher."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    panel.blizzard:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     panel.modeSearch = Button(panel, L["Suchen"], 110); panel.modeSearch:SetPoint("LEFT", title, "RIGHT", 24, 0)
     panel.modeSell = Button(panel, L["Verkaufen"], 110); panel.modeSell:SetPoint("LEFT", panel.modeSearch, "RIGHT", 8, 0)
@@ -644,12 +700,18 @@ function AH.ToggleWindow()
     if not AH.IsModern() or not (AuctionHouseFrame and AuctionHouseFrame:IsShown()) then return false end
     Setup()
     if not panel then return false end
-    Toggle()
+    if panel:IsShown() then ShowBlizzard() else ShowGuildPride() end
     return true
 end
 
--- Nach den anderen Addons (z. B. Auctionator) aufbauen
-AH.Listen("AUCTION_HOUSE_SHOW", function() C_Timer.After(0.2, Setup) end)
+-- Beim Öffnen sofort ersetzen (außer der Spieler hat zuletzt Blizzard gewählt)
+local function OnAuctionHouseShow()
+    Setup()
+    if panel and not AH.Opt("ahBlizzard") then ShowGuildPride() end
+end
+AH.Listen("AUCTION_HOUSE_SHOW", function()
+    if AuctionHouseFrame then OnAuctionHouseShow() else C_Timer.After(0, OnAuctionHouseShow) end
+end)
 
 local function OnBrowse()
     if panel and panel:IsShown() and mode == "search" then
@@ -685,6 +747,7 @@ AH.Listen("AUCTION_HOUSE_AUCTION_CREATED", function()
 end)
 
 AH.Listen("AUCTION_HOUSE_CLOSED", function()
+    RestoreBlizzard()   -- zuerst, damit das Ausblenden unten das Auktionshaus nicht erneut schließt
     if panel then panel:Hide() end
     sell.pending = nil
 end)
