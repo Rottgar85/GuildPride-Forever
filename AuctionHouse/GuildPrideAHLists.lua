@@ -28,11 +28,15 @@ local function DB()
     local d = GuildPrideDB.ahLists
     if type(d) ~= "table" then d = {}; GuildPrideDB.ahLists = d end
     if type(d.fav) ~= "table" then d.fav = {} end
+    if type(d.favQty) ~= "table" then d.favQty = {} end
     if type(d.lists) ~= "table" then d.lists = {} end
     for i = #d.lists, 1, -1 do
         local l = d.lists[i]
         if type(l) ~= "table" or type(l.name) ~= "string" or l.name == "" then table.remove(d.lists, i)
-        elseif type(l.items) ~= "table" then l.items = {} end
+        else
+            if type(l.items) ~= "table" then l.items = {} end
+            if type(l.qty) ~= "table" then l.qty = {} end
+        end
     end
     return d
 end
@@ -70,7 +74,7 @@ end
 function AH.Lists()
     local d = DB()
     d.fav = CleanIDs(d.fav)
-    local out = { { fav = true, name = L["Favoriten"], items = d.fav } }
+    local out = { { fav = true, name = L["Favoriten"], items = d.fav, qty = d.favQty } }
     for _, l in ipairs(d.lists) do out[#out + 1] = l end
     return out
 end
@@ -92,7 +96,7 @@ end
 function AH.NewList(name)
     local ok, why = CheckName(name)
     if not ok then return nil, why end
-    local l = { name = ok, items = {} }
+    local l = { name = ok, items = {}, qty = {} }
     local lists = DB().lists
     lists[#lists + 1] = l
     return l
@@ -151,6 +155,43 @@ function AH.RemoveItem(list, id)
     local i = list and id and Find(list.items, id)
     if not i then return false end
     table.remove(list.items, i)
+    if list.qty then list.qty[id] = nil end
     if list.fav then SyncBlizzard(id, false) end
     return true
+end
+
+-- Gewünschte Menge eines Items in der Liste (nil = keine Menge angegeben)
+function AH.ItemQty(list, id)
+    return list and list.qty and list.qty[tonumber(id)]
+end
+
+-- Menge setzen; 0 oder leer löscht die Menge. Nur für Items, die in der Liste stehen
+function AH.SetItemQty(list, id, n)
+    id = tonumber(id)
+    if not (list and id and Find(list.items, id)) then return false end
+    list.qty = list.qty or {}
+    n = tonumber(n)
+    list.qty[id] = (n and n >= 1) and math.min(math.floor(n), 999999) or nil
+    return true
+end
+
+-- Zutaten eines Rezepts eintragen: reagents = { { itemID, Menge je Herstellung }, … }, crafts = wie oft.
+-- Mengen werden zu schon eingetragenen addiert (mehrere Rezepte in einer Liste). Gibt die Zahl der Zutaten zurück.
+function AH.AddReagents(list, reagents, crafts)
+    if not list or type(reagents) ~= "table" then return 0 end
+    crafts = math.max(1, math.min(math.floor(tonumber(crafts) or 1), 9999))
+    list.qty = list.qty or {}
+    local n = 0
+    for _, r in ipairs(reagents) do
+        local id, per = tonumber(r[1]), tonumber(r[2]) or 1
+        if id and id >= 1 and id <= MAX_ID then
+            if not Find(list.items, id) then
+                list.items[#list.items + 1] = id
+                if list.fav then SyncBlizzard(id, true) end
+            end
+            list.qty[id] = math.min((list.qty[id] or 0) + per * crafts, 999999)
+            n = n + 1
+        end
+    end
+    return n
 end

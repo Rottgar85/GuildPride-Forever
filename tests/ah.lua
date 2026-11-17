@@ -642,6 +642,91 @@ return function(test, eq, W, ns)
         eq(#lists, 2); eq(#lists[1].items, 0); eq(lists[2].name, "Ok"); eq(#lists[2].items, 0)
         GuildPrideDB.ahLists = nil
     end)
+    test("AH: Mengen in Einkaufslisten", function()
+        GuildPrideDB.ahLists = nil
+        local l = AH.NewList("Schmied")
+        eq(AH.AddReagents(l, { { 2840, 6 }, { 2880, 1 } }, 2), 2)
+        eq(AH.ItemQty(l, 2840), 12); eq(AH.ItemQty(l, 2880), 2)
+        eq(AH.AddReagents(l, { { 2840, 4 } }, 1), 1)
+        eq(AH.ItemQty(l, 2840), 16); eq(#l.items, 2)
+        eq(AH.SetItemQty(l, 2880, 5), true); eq(AH.ItemQty(l, 2880), 5)
+        eq(AH.SetItemQty(l, 2880, 0), true); eq(AH.ItemQty(l, 2880), nil)
+        eq(AH.SetItemQty(l, 9999, 3), false, "nicht in der Liste")
+        eq(AH.RemoveItem(l, 2840), true); eq(AH.ItemQty(l, 2840), nil)
+        local fav = AH.Lists()[1]
+        eq(AH.AddReagents(fav, { { 2589, 3 } }, 2), 1); eq(AH.IsFavorite(2589), true)
+        eq(AH.ItemQty(AH.Lists()[1], 2589), 6)
+        eq(AH.AddReagents(l, { { 2840, 1 } }, 0), 1); eq(AH.ItemQty(l, 2840), 1, "mindestens einmal")
+        GuildPrideDB.ahLists = nil
+    end)
+    W.Load("GuildPrideAHCrafting.lua")
+    local function RecipeMocks(count)
+        C_TradeSkillUI = { GetRecipeSchematic = function(id)
+            eq(id, 2660)
+            return { reagentSlotSchematics = {
+                { reagentType = 1, quantityRequired = 2, reagents = { { itemID = 2840 } } },
+                { reagentType = 0, quantityRequired = 1, reagents = { { itemID = 999 } } },   -- Zusatz: nicht nötig
+                { reagentType = 1, quantityRequired = 1, reagents = { { itemID = 2880 } } },
+                { reagentType = 1, quantityRequired = 1, reagents = { { itemID = 2840 } } },
+                { reagentType = 1, quantityRequired = 1, reagents = {} } } }
+        end }
+        ProfessionsFrame = { CraftingPage = {
+            SchematicForm = { GetRecipeInfo = function() return { recipeID = 2660, name = "Kupferkettenweste" } end },
+            CreateMultipleInputBox = { GetValue = function() return count end } } }
+    end
+    test("AH: Rezept-Zutaten aus dem Berufsfenster", function()
+        RecipeMocks(3)
+        local r = AH.RecipeReagents(2660)
+        eq(#r, 2); eq(r[1][1], 2840); eq(r[1][2], 3); eq(r[2][1], 2880); eq(r[2][2], 1)
+        local rec = AH.CurrentRecipe()
+        eq(rec.name, "Kupferkettenweste"); eq(#rec.reagents, 2); eq(AH.CraftCount(), 3)
+        GuildPrideDB.ahLists = nil
+        local l = AH.NewList("Schmied")
+        eq(AH.CraftToList(l, 3), true); eq(AH.ItemQty(l, 2840), 9); eq(AH.ItemQty(l, 2880), 3)
+        eq(AH.CraftToList(l, 1), true); eq(AH.ItemQty(l, 2840), 12, "zweites Rezept addiert")
+        -- Suche nur bei offenem Auktionshaus
+        local isOpen, show = AH.IsOpen, AH.ShowItemSearch
+        AH.IsOpen = function() return false end
+        eq(AH.CraftSearch(2), false)
+        AH.IsOpen = function() return true end
+        local got
+        AH.ShowItemSearch = function(ids, need, title) got = { ids = ids, need = need, title = title }; return true end
+        eq(AH.CraftSearch(2), true)
+        eq(#got.ids, 2); eq(got.need[2840], 6); eq(got.need[2880], 2); eq(got.title, "Kupferkettenweste")
+        AH.ShowItemSearch, AH.IsOpen = show, isOpen
+        -- kein Rezept gewählt
+        ProfessionsFrame = { CraftingPage = { SchematicForm = { GetRecipeInfo = function() return nil end } } }
+        eq(AH.CurrentRecipe(), nil); eq(AH.CraftToList(l, 1), false); eq(AH.CraftCount(), 1)
+        C_TradeSkillUI, ProfessionsFrame = nil, nil
+        GuildPrideDB.ahLists = nil
+    end)
+    test("AH-Forever: nur bestimmte Items suchen (Zutaten)", function()
+        Modern(true)
+        local asked = {}
+        C_AuctionHouse.SendBrowseQuery = function(q) asked[#asked + 1] = q.searchString end
+        local updates = 0
+        local oldCb = AH.onMultiUpdate
+        AH.onMultiUpdate = function() updates = updates + 1 end
+        eq(AH.SearchItems({ 2447, 765 }), true)
+        eq(asked[1], "Item2447"); eq(#asked, 1)
+        M.browse = { { itemKey = { itemID = 2447, itemSuffix = 0 }, totalQuantity = 10, minPrice = 5 },
+                     { itemKey = { itemID = 24470, itemSuffix = 0 }, totalQuantity = 1, minPrice = 9 } }
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        eq(asked[2], "Item765")
+        M.browse = {}
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        eq(#asked, 2)
+        local rows = AH.BrowseRows()
+        eq(#rows, 1); eq(rows[1].itemKey.itemID, 2447)
+        local st = AH.MultiState()
+        eq(st.done, true); eq(#st.missing, 1); eq(st.missing[1], 765); eq(updates >= 2, true)
+        -- eine normale Suche beendet die Zutaten-Suche
+        AH.ModernBrowse("Erz")
+        eq(AH.MultiState(), nil)
+        eq(AH.SearchItems({}), false)
+        AH.onMultiUpdate = oldCb
+        Modern(false)
+    end)
     W.Load("GuildPrideAHModernUI.lua")
     test("AH-Forever: GuildPride ersetzt Blizzards Auktionshaus, Knöpfe schalten um", function()
         Modern(true)
@@ -828,6 +913,72 @@ return function(test, eq, W, ns)
         W.Fire("AUCTION_HOUSE_CLOSED")
         GuildPrideDB.ahLists = nil
         Modern(false)
+    end)
+    test("AH-Forever: Zutaten-Suche im Fenster und Mengen in der Einkaufsliste", function()
+        Modern(true)
+        GuildPrideDB.ahLists, GuildPrideDB.ahBlizzard, GuildPrideDB.ahTab = nil, nil, true
+        local asked = {}
+        C_AuctionHouse.SendBrowseQuery = function(q) asked[#asked + 1] = q.searchString end
+        C_AuctionHouse.SendSearchQuery = function() end
+        W.Fire("AUCTION_HOUSE_SHOW")
+        local _, win = AH._ModernTab()
+        eq(AH.ShowItemSearch({ 2447 }, { [2447] = 12 }, "Test"), true)
+        eq(win.search:IsShown(), true); eq(asked[#asked], "Item2447")
+        M.browse = { { itemKey = { itemID = 2447, itemSuffix = 0 }, totalQuantity = 10, minPrice = 5 } }
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        eq(win.search.rows[1].entry.itemKey.itemID, 2447)
+        eq(win.search.rows[2]:IsShown(), false, "nur die gesuchten Items")
+        -- Einkaufsliste: Menge ändern, alles suchen
+        local l = AH.NewList("Mats")
+        AH.AddItems(l, "2447 765")
+        win.modeList.scripts.OnClick(win.modeList)
+        local sp = win.lists
+        sp.listRows[2].scripts.OnClick(sp.listRows[2])
+        eq(sp.rows[1].itemID, 2447)
+        local box = sp.rows[1].qtyBox
+        box.GetText = function() return "20" end
+        box.scripts.OnEnterPressed(box)
+        eq(AH.ItemQty(l, 2447), 20)
+        local n = #asked
+        sp.searchAllBtn.scripts.OnClick(sp.searchAllBtn)
+        eq(win.search:IsShown(), true); eq(asked[n + 1], "Item2447")
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        AuctionHouseFrame.shown = false
+        eq(AH.ShowItemSearch({ 2447 }, {}, "Test"), false, "Auktionshaus zu")
+        AuctionHouseFrame.shown = true
+        GuildPrideDB.ahLists = nil
+        M.browse = {}
+        Modern(false)
+    end)
+    test("AH: Knöpfe im Berufsfenster – Zutaten in eine Einkaufsliste", function()
+        RecipeMocks(2)
+        ProfessionsFrame.CraftingPage.CreateAllButton = CreateFrame()
+        W.Fire("ADDON_LOADED", "Blizzard_Professions")
+        local bar = AH._CraftBar()
+        eq(bar ~= nil, true)
+        GuildPrideDB.ahLists = nil
+        local l = AH.NewList("Schmied")
+        bar.listBtn.scripts.OnClick(bar.listBtn)
+        local pk = AH._CraftPicker()
+        eq(pk:IsShown(), true)
+        eq(pk.buttons[1]:IsShown(), true); eq(pk.buttons[2]:IsShown(), true); eq(pk.buttons[3]:IsShown(), false)
+        pk.qtyBox.GetText = function() return "4" end
+        pk.buttons[2].scripts.OnClick(pk.buttons[2])
+        eq(AH.ItemQty(l, 2840), 12); eq(AH.ItemQty(l, 2880), 4); eq(pk:IsShown(), false)
+        -- neue Liste direkt aus der Auswahl (Anzahl wie im Berufsfenster)
+        bar.listBtn.scripts.OnClick(bar.listBtn)
+        pk.qtyBox.GetText = function() return tostring(AH.CraftCount()) end
+        local popup
+        local oldShow = StaticPopup_Show
+        StaticPopup_Show = function(name) popup = name end
+        pk.newBtn.scripts.OnClick(pk.newBtn)
+        eq(popup, "GUILDPRIDE_AH_CRAFT_NEWLIST")
+        StaticPopupDialogs.GUILDPRIDE_AH_CRAFT_NEWLIST.OnAccept({ editBox = { GetText = function() return "Weste" end } })
+        StaticPopup_Show = oldShow
+        local lists = AH.Lists()
+        eq(#lists, 3); eq(lists[3].name, "Weste"); eq(AH.ItemQty(lists[3], 2840), 6, "Anzahl aus dem Berufsfenster"); eq(AH.ItemQty(lists[3], 2880), 2)
+        C_TradeSkillUI, ProfessionsFrame = nil, nil
+        GuildPrideDB.ahLists = nil
     end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
         local old = GetCoinTextureString

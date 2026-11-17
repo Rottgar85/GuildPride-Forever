@@ -1,0 +1,266 @@
+-- GuildPride Auktionshaus: Berufsfenster
+-- Zwei Knöpfe unten im Berufsfenster (neben „Alle herstellen“):
+--   „AH: Zutaten“      sucht im GuildPride-Auktionshaus nur die Zutaten des gewählten Rezepts
+--                      (Menge = eingestellte Anzahl zum Herstellen)
+--   „Zur Einkaufsliste“ trägt die Zutaten mit Menge in eine Einkaufsliste ein (Mengen addieren sich)
+-- Gelesen wird wie bei Auctionator über C_TradeSkillUI.GetRecipeSchematic (WoW Forever: ProfessionsFrame).
+local ADDON, GP = ...
+GP.AH = GP.AH or {}
+local AH = GP.AH
+local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
+
+-- Nur Pflicht-Zutaten (keine optionalen oder verändernden Zutaten)
+local function BasicType()
+    local t = Enum and Enum.CraftingReagentType
+    local v = type(t) == "table" and t.Basic
+    return type(v) == "number" and v or 1
+end
+
+-- Zutaten eines Rezepts: { { itemID, Menge je Herstellung }, … } (doppelte zusammengefasst)
+function AH.RecipeReagents(recipeID, level)
+    local T = C_TradeSkillUI
+    if not (T and T.GetRecipeSchematic and recipeID) then return {} end
+    local ok, schematic = pcall(T.GetRecipeSchematic, recipeID, false, level)
+    if not ok or type(schematic) ~= "table" or type(schematic.reagentSlotSchematics) ~= "table" then return {} end
+    local basic, out, at = BasicType(), {}, {}
+    for _, slot in ipairs(schematic.reagentSlotSchematics) do
+        local first = type(slot.reagents) == "table" and slot.reagents[1]
+        local id = first and tonumber(first.itemID)
+        if id and slot.reagentType == basic then
+            local n = tonumber(slot.quantityRequired) or 1
+            if at[id] then out[at[id]][2] = out[at[id]][2] + n
+            else out[#out + 1] = { id, n }; at[id] = #out end
+        end
+    end
+    return out
+end
+
+local function Page()
+    local f = ProfessionsFrame
+    return type(f) == "table" and type(f.CraftingPage) == "table" and f.CraftingPage or nil
+end
+
+-- Gerade gewähltes Rezept im Berufsfenster: { id, name, reagents } oder nil
+function AH.CurrentRecipe()
+    local page = Page()
+    local form = page and page.SchematicForm
+    if type(form) ~= "table" or type(form.GetRecipeInfo) ~= "function" then return nil end
+    local ok, info = pcall(form.GetRecipeInfo, form)
+    if not ok or type(info) ~= "table" or not info.recipeID then return nil end
+    local level
+    if type(form.GetCurrentRecipeLevel) == "function" then
+        local ok2, lv = pcall(form.GetCurrentRecipeLevel, form)
+        if ok2 then level = lv end
+    end
+    return { id = info.recipeID, name = info.name or ("#" .. tostring(info.recipeID)),
+             reagents = AH.RecipeReagents(info.recipeID, level) }
+end
+
+-- Anzahl zum Herstellen aus dem Berufsfenster (Feld neben „Herstellen“), sonst 1
+function AH.CraftCount()
+    local page = Page()
+    local box = page and page.CreateMultipleInputBox
+    local n
+    if type(box) == "table" and type(box.GetValue) == "function" then
+        local ok, v = pcall(box.GetValue, box)
+        if ok then n = tonumber(v) end
+    end
+    return (n and n >= 1) and math.floor(n) or 1
+end
+
+-- Zutaten des gewählten Rezepts in eine Liste eintragen
+function AH.CraftToList(list, crafts)
+    local r = AH.CurrentRecipe()
+    if not r or #r.reagents == 0 or not list then return false end
+    AH.AddReagents(list, r.reagents, crafts)
+    if AH.ListsChanged then AH.ListsChanged() end
+    return true, r
+end
+
+-- Nur die Zutaten im GuildPride-Auktionshaus suchen
+function AH.CraftSearch(crafts)
+    local r = AH.CurrentRecipe()
+    if not r or #r.reagents == 0 then return false, L["Dieses Rezept braucht keine Zutaten aus dem Auktionshaus."] end
+    if not AH.IsOpen() then return false, L["Auktionshaus: Erst das Auktionshaus öffnen."] end
+    crafts = math.max(1, math.floor(tonumber(crafts) or 1))
+    local ids, need = {}, {}
+    for _, x in ipairs(r.reagents) do
+        ids[#ids + 1] = x[1]
+        need[x[1]] = x[2] * crafts
+    end
+    if not (AH.ShowItemSearch and AH.ShowItemSearch(ids, need, r.name)) then
+        return false, L["Das GuildPride-Auktionshaus ist ausgeschaltet (/gp ah an)."]
+    end
+    return true
+end
+
+---------------------------------------------------------------------
+-- Auswahl „Zur Einkaufsliste“: Anzahl und Liste wählen
+---------------------------------------------------------------------
+local MAX_PICK = 12
+local picker
+local function AddTo(list)
+    local crafts = tonumber(picker.qtyBox:GetText()) or 1
+    local ok, r = AH.CraftToList(list, crafts)
+    if ok then
+        AH.Print((L["%s ×%d: Zutaten in „%s“ eingetragen."]):format(r.name, math.max(1, math.floor(crafts)), list.name))
+    else
+        AH.Print(L["Bitte im Berufsfenster ein Rezept mit Zutaten wählen."])
+    end
+    picker:Hide()
+end
+
+StaticPopupDialogs["GUILDPRIDE_AH_CRAFT_NEWLIST"] = {
+    text = "%s",
+    button1 = OKAY, button2 = CANCEL,
+    hasEditBox = true, maxLetters = 60,
+    OnShow = function(self)
+        local eb = self.editBox or self.EditBox
+        local r = AH.CurrentRecipe()
+        eb:SetText(r and r.name or ""); eb:SetFocus(); eb:HighlightText()
+    end,
+    OnAccept = function(self)
+        local l, why = AH.NewList((self.editBox or self.EditBox):GetText())
+        if not l then AH.Print(why) return end
+        if picker then AddTo(l) end
+    end,
+    EditBoxOnEnterPressed = function(eb)
+        local dlg = eb:GetParent()
+        StaticPopupDialogs.GUILDPRIDE_AH_CRAFT_NEWLIST.OnAccept(dlg); dlg:Hide()
+    end,
+    EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+
+local function BuildPicker()
+    local f = CreateFrame("Frame", "GuildPrideCraftListPicker", UIParent, "BackdropTemplate")
+    f:SetSize(240, 120)
+    f:SetFrameStrata("DIALOG")
+    f:SetClampedToScreen(true)
+    f:EnableMouse(true)
+    f:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        edgeSize = 14, insets = { left = 3, right = 3, top = 3, bottom = 3 },
+    })
+    f:SetBackdropColor(0.06, 0.06, 0.08, 0.96)
+    f:Hide()
+    tinsert(UISpecialFrames, "GuildPrideCraftListPicker")   -- ESC schließt
+    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", 0, 0)
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    f.title:SetPoint("TOPLEFT", 12, -12); f.title:SetPoint("RIGHT", -28, 0)
+    f.title:SetJustifyH("LEFT"); f.title:SetWordWrap(false)
+    local ql = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    ql:SetPoint("TOPLEFT", 12, -38); ql:SetText(L["Anzahl herstellen:"])
+    f.qtyBox = CreateFrame("EditBox", nil, f, "InputBoxTemplate")
+    f.qtyBox:SetSize(50, 20); f.qtyBox:SetPoint("LEFT", ql, "RIGHT", 10, 0)
+    f.qtyBox:SetAutoFocus(false); f.qtyBox:SetNumeric(true)
+    f.qtyBox:SetScript("OnEscapePressed", function() f:Hide() end)
+    if GP.SkinEditBox then GP.SkinEditBox(f.qtyBox) end
+    local hl = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    hl:SetPoint("TOPLEFT", 12, -62); hl:SetText(L["In welche Liste?"])
+    f.buttons = {}
+    for i = 1, MAX_PICK do
+        local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+        b:SetSize(216, 20)
+        b:SetPoint("TOPLEFT", 12, -78 - (i - 1) * 22)
+        if GP.SkinButton then GP.SkinButton(b) end
+        b:SetScript("OnClick", function() if b.list then AddTo(b.list) end end)
+        b:Hide()
+        f.buttons[i] = b
+    end
+    f.newBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.newBtn:SetSize(216, 20)
+    if GP.SkinButton then GP.SkinButton(f.newBtn) end
+    f.newBtn:SetText(L["Neue Liste …"])
+    f.newBtn:SetScript("OnClick", function()
+        StaticPopup_Show("GUILDPRIDE_AH_CRAFT_NEWLIST", L["Name der neuen Einkaufsliste:"])
+    end)
+    return f
+end
+
+local function ShowPicker(anchor)
+    local r = AH.CurrentRecipe()
+    if not r or #r.reagents == 0 then
+        AH.Print(L["Bitte im Berufsfenster ein Rezept mit Zutaten wählen."])
+        return
+    end
+    picker = picker or BuildPicker()
+    picker.title:SetText((L["Zur Einkaufsliste: %s"]):format(r.name))
+    picker.qtyBox:SetText(tostring(AH.CraftCount()))
+    local lists = AH.Lists()
+    local shown = math.min(#lists, MAX_PICK)
+    for i, b in ipairs(picker.buttons) do
+        local l = i <= shown and lists[i] or nil
+        b.list = l
+        if l then b:SetText(l.name); b:Show() else b:Hide() end
+    end
+    picker.newBtn:ClearAllPoints()
+    picker.newBtn:SetPoint("TOPLEFT", 12, -82 - shown * 22)
+    picker:SetHeight(120 + shown * 22)
+    picker:ClearAllPoints()
+    if anchor then picker:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4) else picker:SetPoint("CENTER") end
+    picker:Show()
+end
+
+---------------------------------------------------------------------
+-- Knöpfe im Berufsfenster
+---------------------------------------------------------------------
+local bar
+local function UpdateBar()
+    if not bar then return end
+    bar.searchBtn:SetEnabled(AH.IsOpen() and true or false)
+end
+
+local function Tip(b, title, text)
+    b:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(b, "ANCHOR_TOP")
+        GameTooltip:SetText(title)
+        GameTooltip:AddLine(text, 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
+local function BuildBar()
+    local page = Page()
+    if bar or not page then return end
+    bar = CreateFrame("Frame", "GuildPrideCraftBar", page)
+    bar:SetSize(250, 22)
+    if type(page.CreateAllButton) == "table" then
+        bar:SetPoint("RIGHT", page.CreateAllButton, "LEFT", -10, 0)
+    else
+        bar:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -330, 10)
+    end
+    bar:SetFrameLevel((page.GetFrameLevel and page:GetFrameLevel() or 1) + 10)
+    bar.listBtn = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
+    bar.listBtn:SetSize(130, 22); bar.listBtn:SetPoint("RIGHT")
+    bar.listBtn:SetText(L["Zur Einkaufsliste"])
+    bar.searchBtn = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
+    bar.searchBtn:SetSize(112, 22); bar.searchBtn:SetPoint("RIGHT", bar.listBtn, "LEFT", -6, 0)
+    bar.searchBtn:SetText(L["AH: Zutaten"])
+    if GP.SkinButton then GP.SkinButton(bar.listBtn); GP.SkinButton(bar.searchBtn) end
+    bar.searchBtn:SetScript("OnClick", function()
+        local ok, why = AH.CraftSearch(AH.CraftCount())
+        if not ok and why then AH.Print(why) end
+    end)
+    bar.listBtn:SetScript("OnClick", function() ShowPicker(bar.listBtn) end)
+    Tip(bar.searchBtn, L["GuildPride: Zutaten im Auktionshaus"],
+        L["Sucht im GuildPride-Auktionshaus nur die Zutaten dieses Rezepts, mit der Menge für die eingestellte Anzahl. Das Auktionshaus muss offen sein."])
+    Tip(bar.listBtn, L["GuildPride: Zur Einkaufsliste"],
+        L["Trägt die Zutaten mit Menge in eine Einkaufsliste ein. Mehrere Rezepte in einer Liste werden zusammengezählt."])
+    bar:SetScript("OnShow", UpdateBar)
+    UpdateBar()
+end
+
+function AH._CraftBar() return bar end          -- für Tests
+function AH._CraftPicker() return picker end    -- für Tests
+
+AH.Listen("ADDON_LOADED", function(name)
+    if name == "Blizzard_Professions" then BuildBar() end
+end)
+AH.Listen("TRADE_SKILL_SHOW", function() BuildBar(); UpdateBar() end)
+AH.Listen("AUCTION_HOUSE_SHOW", UpdateBar)
+AH.Listen("AUCTION_HOUSE_CLOSED", function()
+    if bar then bar.searchBtn:SetEnabled(false) end
+end)

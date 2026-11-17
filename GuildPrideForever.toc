@@ -67,6 +67,7 @@ AuctionHouse\GuildPrideAHComm.lua
 AuctionHouse\GuildPrideAHScan.lua
 AuctionHouse\GuildPrideAHModern.lua
 AuctionHouse\GuildPrideAHLists.lua
+AuctionHouse\GuildPrideAHCrafting.lua
 AuctionHouse\GuildPrideAHTooltip.lua
 AuctionHouse\GuildPrideAHUI.lua
 AuctionHouse\GuildPrideAHModernUI.lua

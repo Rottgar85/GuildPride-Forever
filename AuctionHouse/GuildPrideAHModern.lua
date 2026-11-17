@@ -165,6 +165,7 @@ end
 -- filters: itemClassFilters einer Kategorie ({ { classID, subClassID, inventoryType }, … })
 function AH.ModernBrowse(text, filters)
     if not AH.IsModern() then return false end
+    AH.StopItemSearch()
     C_AuctionHouse.SendBrowseQuery({ searchString = text or "", sorts = Sorts(), filters = {},
         itemClassFilters = filters or {} })
     return true
@@ -195,21 +196,125 @@ function AH.CategoryRows(expanded)
     return out
 end
 
--- Aktuelle Übersicht als Zeilen, billigste zuerst
+local function BrowseRow(b)
+    local k = b.itemKey
+    if not (k and k.itemID) or TOKEN_IDS[k.itemID] then return nil end
+    local info = C_AuctionHouse.GetItemKeyInfo and C_AuctionHouse.GetItemKeyInfo(k)
+    return {
+        result = b, itemKey = k, key = AH.Key(k.itemID, k.itemSuffix),
+        min = b.minPrice, qty = b.totalQuantity or 0, mine = b.containsOwnerItem and true or false,
+        name = info and info.itemName or AH.ItemName(k.itemID),
+        icon = info and info.iconFileID, quality = info and info.quality,
+        commodity = info and info.isCommodity,   -- nil: noch unbekannt
+    }
+end
+
+---------------------------------------------------------------------
+-- Nur bestimmte Items suchen (Rezept-Zutaten, Einkaufsliste): wie Auctionator nacheinander
+-- je Item eine Suche nach seinem Namen; behalten werden nur Treffer mit genau dieser Item-ID.
+---------------------------------------------------------------------
+local multi   -- { queue, want, rows, missing, total, current, done }
+local MULTI_WAIT = 6            -- Sekunden ohne Antwort: nächstes Item
+
+local function MultiChanged()
+    if AH.onMultiUpdate then AH.onMultiUpdate(multi) end
+end
+
+local NextMulti
+local function SendMulti(id)
+    local name = AH.ItemName(id)
+    if not name then
+        multi.missing[#multi.missing + 1] = id
+        return NextMulti()
+    end
+    multi.current = id
+    C_AuctionHouse.SendBrowseQuery({ searchString = name, sorts = Sorts(), filters = {}, itemClassFilters = {} })
+    if multi.timer and multi.timer.Cancel then multi.timer:Cancel() end
+    local m = multi
+    multi.timer = C_Timer and C_Timer.NewTimer and C_Timer.NewTimer(MULTI_WAIT, function()
+        if multi == m and m.current == id then m.missing[#m.missing + 1] = id; NextMulti() end
+    end)
+end
+
+NextMulti = function()
+    if not multi then return end
+    multi.current = nil
+    local id = table.remove(multi.queue, 1)
+    if not id then
+        multi.done = true
+        MultiChanged()
+        return
+    end
+    MultiChanged()
+    -- Blizzard drosselt Suchen: warten, bis wieder eine erlaubt ist
+    local ready = C_AuctionHouse.IsThrottledMessageSystemReady
+    if ready and not ready() then multi.waitingFor = id return end
+    SendMulti(id)
+end
+
+function AH.SearchItems(ids)
+    if not AH.IsModern() or type(ids) ~= "table" or #ids == 0 then return false end
+    multi = { queue = {}, want = {}, rows = {}, missing = {}, total = 0 }
+    for _, id in ipairs(ids) do
+        id = tonumber(id)
+        if id and not multi.want[id] then
+            multi.want[id] = true
+            multi.queue[#multi.queue + 1] = id
+            multi.total = multi.total + 1
+        end
+    end
+    NextMulti()
+    return true
+end
+
+-- Stand der Item-Suche (nil = gerade keine): done, total, missing = { itemID, … }, found = Anzahl
+function AH.MultiState()
+    if not multi then return nil end
+    return { done = multi.done and true or false, total = multi.total, missing = multi.missing,
+             found = #multi.rows, left = #multi.queue + (multi.current and 1 or 0) }
+end
+
+AH.Listen("AUCTION_HOUSE_THROTTLED_SYSTEM_READY", function()
+    if multi and multi.waitingFor then
+        local id = multi.waitingFor
+        multi.waitingFor = nil
+        SendMulti(id)
+    end
+end)
+
+local function OnMultiResults()
+    if not multi or not multi.current then return end
+    local id = multi.current
+    local hit = false
+    for _, b in ipairs(C_AuctionHouse.GetBrowseResults() or {}) do
+        local k = b.itemKey
+        if k and k.itemID == id then
+            local row = BrowseRow(b)
+            if row then multi.rows[#multi.rows + 1] = row; hit = true end
+        end
+    end
+    if not hit then multi.missing[#multi.missing + 1] = id end
+    if multi.timer and multi.timer.Cancel then multi.timer:Cancel() end
+    NextMulti()
+end
+AH.Listen("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", OnMultiResults)
+
+-- Item-Suche beenden (normale Suche, Auktionshaus zu)
+function AH.StopItemSearch()
+    if multi and multi.timer and multi.timer.Cancel then multi.timer:Cancel() end
+    multi = nil
+end
+AH.Listen("AUCTION_HOUSE_CLOSED", function() AH.StopItemSearch() end)
+
+-- Aktuelle Übersicht als Zeilen, billigste zuerst (während einer Item-Suche: deren Treffer)
 function AH.BrowseRows()
     local rows = {}
     if not AH.IsModern() then return rows end
-    for _, b in ipairs(C_AuctionHouse.GetBrowseResults() or {}) do
-        local k = b.itemKey
-        if k and k.itemID and not TOKEN_IDS[k.itemID] then
-            local info = C_AuctionHouse.GetItemKeyInfo and C_AuctionHouse.GetItemKeyInfo(k)
-            rows[#rows + 1] = {
-                result = b, itemKey = k, key = AH.Key(k.itemID, k.itemSuffix),
-                min = b.minPrice, qty = b.totalQuantity or 0, mine = b.containsOwnerItem and true or false,
-                name = info and info.itemName or AH.ItemName(k.itemID),
-                icon = info and info.iconFileID, quality = info and info.quality,
-                commodity = info and info.isCommodity,   -- nil: noch unbekannt
-            }
+    if multi then
+        for _, r in ipairs(multi.rows) do rows[#rows + 1] = r end
+    else
+        for _, b in ipairs(C_AuctionHouse.GetBrowseResults() or {}) do
+            rows[#rows + 1] = BrowseRow(b)
         end
     end
     table.sort(rows, function(a, b)
