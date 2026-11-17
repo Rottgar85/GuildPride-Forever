@@ -35,6 +35,47 @@ function AH.RecipeReagents(recipeID, level)
     return out
 end
 
+-- Was ein Rezept kostet und bringt (je Herstellung, mit den bekannten GuildPride-Preisen):
+-- { cost, missing = Zutaten ohne Preis, output = itemID, made = Stück, sell = Verkaufswert, profit = nach 5 % Gebühr }
+local AH_CUT = 0.95
+function AH.RecipeValue(recipeID, level)
+    local v = { cost = 0, missing = 0 }
+    for _, r in ipairs(AH.RecipeReagents(recipeID, level)) do
+        local p = AH.PriceFor(AH.Key(r[1]))
+        if p then v.cost = v.cost + p * r[2] else v.missing = v.missing + 1 end
+    end
+    local T = C_TradeSkillUI
+    if not (T and T.GetRecipeSchematic) then return v end
+    local ok, sch = pcall(T.GetRecipeSchematic, recipeID, false, level)
+    local out = ok and type(sch) == "table" and tonumber(sch.outputItemID)
+    if not out and T.GetRecipeOutputItemData then
+        local ok2, d = pcall(T.GetRecipeOutputItemData, recipeID)
+        out = ok2 and type(d) == "table" and (tonumber(d.itemID) or (d.hyperlink and tonumber(d.hyperlink:match("item:(%d+)"))))
+    end
+    if out then
+        v.output = out
+        v.made = ok and type(sch) == "table" and tonumber(sch.quantityMin) or 1
+        local p = AH.PriceFor(AH.Key(out))
+        if p then
+            v.sell = p * v.made
+            v.profit = math.floor(v.sell * AH_CUT - v.cost)
+        end
+    end
+    return v
+end
+
+function AH.RecipeValueText(v)
+    local parts = { (L["Zutaten: %s"]):format(AH.Money(v.cost)) .. (v.missing > 0 and (" (+" .. (L["%d ohne Preis"]):format(v.missing) .. ")") or "") }
+    if v.sell then
+        parts[#parts + 1] = (L["Verkauf: %s"]):format(AH.Money(v.sell))
+        local pr = v.profit
+        parts[#parts + 1] = (pr >= 0 and "|cff40ff40" or "|cffff4040") .. (L["Gewinn: %s"]):format((pr < 0 and "-" or "") .. AH.Money(math.abs(pr))) .. "|r"
+    elseif v.output then
+        parts[#parts + 1] = L["Verkaufspreis noch unbekannt"]
+    end
+    return table.concat(parts, "  ·  ")
+end
+
 local function Page()
     local f = ProfessionsFrame
     return type(f) == "table" and type(f.CraftingPage) == "table" and f.CraftingPage or nil
@@ -86,7 +127,7 @@ function AH.CraftSearch(crafts)
     local ids, need = {}, {}
     for _, x in ipairs(r.reagents) do
         ids[#ids + 1] = x[1]
-        need[x[1]] = x[2] * crafts
+        need[x[1]] = math.max(0, x[2] * crafts - AH.ItemCount(x[1]))   -- was du schon hast, zählt mit
     end
     if not (AH.ShowItemSearch and AH.ShowItemSearch(ids, need, r.name)) then
         return false, L["Das GuildPride-Auktionshaus ist ausgeschaltet (/gp ah an)."]
@@ -264,6 +305,20 @@ local function BuildBar()
         L["Sucht im GuildPride-Auktionshaus nur die Zutaten dieses Rezepts, mit der Menge für die eingestellte Anzahl. Das Auktionshaus muss offen sein."])
     Tip(bar.listBtn, L["GuildPride: Zur Einkaufsliste"],
         L["Trägt die Zutaten mit Menge in eine Einkaufsliste ein. Mehrere Rezepte in einer Liste werden zusammengezählt."])
+    -- Kosten und Gewinn des gewählten Rezepts über den Knöpfen; neu gerechnet, wenn ein anderes
+    -- Rezept gewählt wird, sonst alle 5 Sekunden (neue Preise)
+    bar.info = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    bar.info:SetPoint("BOTTOMRIGHT", bar, "TOPRIGHT", 0, 4)
+    bar.info:SetJustifyH("RIGHT")
+    local last, wait = nil, 0
+    bar:SetScript("OnUpdate", function(_, elapsed)
+        wait = wait - (elapsed or 0)
+        local r = AH.CurrentRecipe()
+        local id = r and r.id
+        if id == last and wait > 0 then return end
+        last, wait = id, 5
+        bar.info:SetText(id and AH.RecipeValueText(AH.RecipeValue(id)) or "")
+    end)
     bar:SetScript("OnShow", UpdateBar)
     UpdateBar()
 end

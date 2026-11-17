@@ -691,7 +691,7 @@ return function(test, eq, W, ns)
     local function RecipeMocks(count)
         C_TradeSkillUI = { GetRecipeSchematic = function(id)
             eq(id, 2660)
-            return { reagentSlotSchematics = {
+            return { outputItemID = 2870, quantityMin = 1, reagentSlotSchematics = {
                 { reagentType = 1, quantityRequired = 2, reagents = { { itemID = 2840 } } },
                 { reagentType = 0, quantityRequired = 1, reagents = { { itemID = 999 } } },   -- Zusatz: nicht nötig
                 { reagentType = 1, quantityRequired = 1, reagents = { { itemID = 2880 } } },
@@ -726,6 +726,40 @@ return function(test, eq, W, ns)
         ProfessionsFrame = { CraftingPage = { SchematicForm = { GetRecipeInfo = function() return nil end } } }
         eq(AH.CurrentRecipe(), nil); eq(AH.CraftToList(l, 1), false); eq(AH.CraftCount(), 1)
         C_TradeSkillUI, ProfessionsFrame = nil, nil
+        GuildPrideDB.ahLists = nil
+    end)
+    test("AH: Kosten und Gewinn eines Rezepts", function()
+        RecipeMocks(1)
+        local old = AH.PriceFor
+        local P = { ["2840"] = 100, ["2880"] = 50, ["2870"] = 1000 }
+        AH.PriceFor = function(k) return P[k] end
+        local v = AH.RecipeValue(2660)
+        eq(v.cost, 350); eq(v.missing, 0); eq(v.sell, 1000); eq(v.profit, 600); eq(v.output, 2870)
+        eq(type(AH.RecipeValueText(v)), "string")
+        P["2880"] = nil
+        v = AH.RecipeValue(2660)
+        eq(v.cost, 300); eq(v.missing, 1)
+        P["2870"] = nil
+        v = AH.RecipeValue(2660)
+        eq(v.sell, nil); eq(v.profit, nil)
+        eq(type(AH.RecipeValueText(v)), "string")
+        AH.PriceFor = old
+        C_TradeSkillUI, ProfessionsFrame = nil, nil
+    end)
+    test("AH: Einkaufsliste rechnet Bestand und Gesamtkosten", function()
+        GuildPrideDB.ahLists = nil
+        local l = AH.NewList("Calc")
+        AH.AddReagents(l, { { 2840, 12 }, { 2880, 2 }, { 2589, 1 } }, 1)
+        AH.AddItems(l, "765")
+        C_Item = { GetItemCount = function(id) return ({ [2840] = 5, [2589] = 3 })[id] or 0 end }
+        local old = AH.PriceFor
+        AH.PriceFor = function(k) return ({ ["2840"] = 100, ["2589"] = 7, ["765"] = 9 })[k] end
+        eq(AH.ItemCount(2840), 5)
+        eq(AH.Remaining(l, 2840), 7); eq(AH.Remaining(l, 2589), 0); eq(AH.Remaining(l, 765), nil)
+        local total, unknown = AH.ListCost(l)
+        eq(total, 700); eq(unknown, 1, "2880 ohne Preis")
+        AH.PriceFor = old
+        C_Item = nil
         GuildPrideDB.ahLists = nil
     end)
     test("AH-Forever: nur bestimmte Items suchen (Zutaten)", function()

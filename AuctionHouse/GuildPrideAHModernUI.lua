@@ -532,10 +532,20 @@ local function RefreshShop()
             if color then row.name:SetTextColor(color.r, color.g, color.b) else row.name:SetTextColor(1, 1, 1) end
             row.id:SetText(tostring(id))
             if not row.qtyBox:HasFocus() then row.qtyBox:SetText(tostring(AH.ItemQty(list, id) or "")) end
+            -- Bestand: mit Menge „hast 5 · noch 7“, ohne Menge nur „hast 5“
+            local have, left = AH.ItemCount(id), AH.Remaining(list, id)
+            if left == 0 then row.have:SetText("|cff40ff40" .. (L["genug (%d)"]):format(have) .. "|r")
+            elseif left then row.have:SetText((L["hast %d · noch %d"]):format(have, left))
+            else row.have:SetText(have > 0 and (L["hast %d"]):format(have) or "") end
+            -- Preis: für die noch fehlende Menge, sonst je Stück
             local price = AH.PriceFor(AH.Key(id))
-            row.price:SetText(price and Money(price) or "-")
+            if price and left and left > 0 then row.price:SetText(Money(price * left))
+            else row.price:SetText(price and Money(price) or "-") end
         end
     end
+    local total, unknown = AH.ListCost(list)
+    p.total:SetText(total > 0 and ((L["Noch zu kaufen, ungefähr: %s"]):format(Money(total))
+        .. (unknown > 0 and ("  ·  " .. (L["%d ohne bekannten Preis"]):format(unknown)) or "")) or "")
 end
 
 -- Alle Items der gewählten Liste suchen: unter „Suchen“ stehen dann nur diese
@@ -543,7 +553,7 @@ local function SearchList()
     local list = CurrentList()
     if #list.items == 0 then Status(L["Die Liste ist leer."]); return end
     local need = {}
-    for id, n in pairs(list.qty or {}) do need[id] = n end
+    for _, id in ipairs(list.items) do need[id] = AH.Remaining(list, id) end
     if not AH.ShowItemSearch(list.items, need, list.name) then Status(L["Auktionshaus: Erst das Auktionshaus öffnen."]) end
 end
 
@@ -696,7 +706,8 @@ local function MakeShopPane()
 
     -- rechts: Items der Liste
     local cols = { { L["Item"], CAT_W + 44 }, { L["Menge"], CAT_W + 296 }, { L["Item-ID"], CAT_W + 361 },
-                   { L["Bekannter Preis"], CAT_W + 470 } }
+                   { L["Preis"], CAT_W + 510 }, { L["Bestand"], CAT_W + 574 } }
+    p.total = Label(p, "", "GameFontHighlight"); p.total:SetPoint("BOTTOMLEFT", CAT_W + 20, 16)
     for _, c in ipairs(cols) do
         local h = Label(p, c[1], "GameFontNormalSmall"); h:SetPoint("TOPLEFT", c[2], -43)
     end
@@ -714,9 +725,10 @@ local function MakeShopPane()
         row.qtyBox:SetScript("OnEditFocusLost", function() SaveQty(row) end)
         row.id = Label(row, "", "GameFontDisableSmall"); row.id:SetPoint("LEFT", 345, 0); row.id:SetWidth(60)
         row.price = Label(row, "", "GameFontHighlightSmall"); row.price:SetPoint("LEFT", 410, 0); row.price:SetWidth(140)
+        row.have = Label(row, "", "GameFontDisableSmall"); row.have:SetPoint("LEFT", 558, 0); row.have:SetWidth(110)
         row.price:SetJustifyH("RIGHT")
         row.remove = Button(row, "X", 26); row.remove:SetPoint("RIGHT", -2, 0)
-        row.search = Button(row, L["Suchen"], 90); row.search:SetPoint("RIGHT", row.remove, "LEFT", -4, 0)
+        row.search = Button(row, L["Suchen"], 70); row.search:SetPoint("RIGHT", row.remove, "LEFT", -4, 0)
         row.search:SetScript("OnClick", function() SearchItem(row.itemID) end)
         row.remove:SetScript("OnClick", function()
             if AH.RemoveItem(CurrentList(), row.itemID) then RefreshShop() end

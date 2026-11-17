@@ -164,6 +164,34 @@ function AH.RemoveItem(list, id)
     return true
 end
 
+-- Wie viele hast du schon (Taschen und Bank)?
+function AH.ItemCount(id)
+    local f = (C_Item and C_Item.GetItemCount) or GetItemCount
+    if not (f and id) then return 0 end
+    local ok, n = pcall(f, id, true)
+    return ok and tonumber(n) or 0
+end
+
+-- Noch zu kaufen: gewünschte Menge minus Bestand (nil = keine Menge angegeben)
+function AH.Remaining(list, id)
+    local want = AH.ItemQty(list, id)
+    if not want then return nil end
+    return math.max(0, want - AH.ItemCount(id))
+end
+
+-- Was die Liste ungefähr noch kostet (nur Items mit Menge): Summe, Zahl der Items ohne bekannten Preis
+function AH.ListCost(list)
+    local total, unknown = 0, 0
+    for _, id in ipairs(list and list.items or {}) do
+        local left = AH.Remaining(list, id)
+        if left and left > 0 then
+            local p = AH.PriceFor(AH.Key(id))
+            if p then total = total + p * left else unknown = unknown + 1 end
+        end
+    end
+    return total, unknown
+end
+
 -- Temporäre Einkaufsliste (genau eine, gleich unter den Favoriten). create = true legt sie an.
 -- Käufe im GuildPride-Auktionshaus haken sie ab; ist alles gekauft, verschwindet sie.
 function AH.TempList(create)
