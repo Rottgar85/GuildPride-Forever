@@ -121,6 +121,31 @@ local function OnWindowHide()
     if CloseMail then CloseMail() end
 end
 
+-- Blizzards Fenster sichtbar auf „Brief schreiben“ stellen. Erst Blizzards eigener Weg
+-- (Reiter-Funktion bzw. Klick auf den Reiter); klappt das nicht, Schreib-Fenster direkt zeigen.
+function AH.OpenSendMail()
+    if not MailFrame then return false end
+    if hidden then RestoreBlizzard() end
+    if MailFrame:GetScale() < 0.1 then MailFrame:SetScale(1) end   -- nie winzig zurücklassen
+    if MailFrame:GetAlpha() < 0.1 then MailFrame:SetAlpha(1) end
+    if not MailFrame:IsShown() then
+        if ShowUIPanel then ShowUIPanel(MailFrame) else MailFrame:Show() end
+    end
+    local tab = MailFrameTab2
+    if tab then
+        if MailFrameTab_OnClick then pcall(MailFrameTab_OnClick, tab, 2)
+        elseif tab.Click then pcall(tab.Click, tab) end
+    end
+    if SendMailFrame and not SendMailFrame:IsShown() then
+        if InboxFrame then InboxFrame:Hide() end
+        if OpenMailFrame and OpenMailFrame.Hide then OpenMailFrame:Hide() end
+        SendMailFrame:Show()
+        if PanelTemplates_SetTab then pcall(PanelTemplates_SetTab, MailFrame, 2) end
+    end
+    if SendMailNameEditBox and SendMailNameEditBox.SetFocus then SendMailNameEditBox:SetFocus() end
+    return SendMailFrame == nil or SendMailFrame:IsShown()
+end
+
 local function MakeButton()
     local b = Skin(CreateFrame("Button", "GuildPrideMailOpenButton", MailFrame, "UIPanelButtonTemplate"))
     b:SetSize(96, 20); b:SetText("GuildPride")
@@ -162,7 +187,7 @@ local function Build()
     panel.write = Button(panel, L["Brief schreiben"], 130); panel.write:SetPoint("RIGHT", panel.blizzard, "LEFT", -6, 0)
     panel.write:SetScript("OnClick", function()
         ShowBlizzard(false)                      -- nur kurz: die Wahl bleibt GuildPride
-        if MailFrameTab2 and MailFrameTab2.Click then MailFrameTab2:Click() end
+        AH.OpenSendMail()
     end)
     Tip(panel.write, L["Brief schreiben"], L["Öffnet Blizzards Fenster zum Schreiben. Beim nächsten Öffnen kommt wieder GuildPride."])
 

@@ -3,6 +3,8 @@
 ## 2.23.0
 
 **Deutsch**
+- Auktionshaus: Beim Öffnen kommt jetzt standardmäßig wieder **Blizzards Auktionshaus**. Das GuildPride-Fenster erscheint erst, wenn du einmal selbst auf den Knopf **GuildPride** klickst – ab dann merkt es sich deine Wahl, bis du wieder **Blizzard-AH** wählst. Die Zutaten-Suche aus dem Berufsfenster öffnet es nur für dieses eine Mal
+- Briefkasten: **Brief schreiben** im GuildPride-Briefkasten öffnet Blizzards Schreiben-Fenster jetzt zuverlässig
 - Auktionshaus: **Favoriten** – der Stern an jeder Zeile unter **Suchen** und in der Kaufansicht merkt ein Item als Favorit (auch in Blizzards eigenen Auktionshaus-Favoriten, wenn das Spiel es zulässt)
 - Neuer Reiter **Einkaufsliste**: links **Favoriten** und deine eigenen Listen (**Neue Liste**, **Umbenennen**, **Liste löschen**; den Namen bestimmst du selbst), rechts die Items der gewählten Liste mit Item-ID und bekanntem Preis. Oben **Item-IDs eintragen** – mehrere mit Komma getrennt, Umschalt+Klick auf ein Item oder ein Wowhead-Link gehen auch. **Suchen** (oder Klick auf die Zeile) öffnet gleich die Kaufansicht des Items, **X** nimmt es aus der Liste
 - Neu im **Berufsfenster** (unten neben „Alle herstellen“): **AH: Zutaten** sucht im GuildPride-Auktionshaus nur die Zutaten des gewählten Rezepts – unter **Suchen** stehen dann nur diese Items, jeweils mit „benötigt N“ für die eingestellte Anzahl; fehlt etwas im Auktionshaus, steht es oben. **Zur Einkaufsliste** fragt nach der Anzahl zum Herstellen und der Liste (oder **Neue Liste …**) und trägt die Zutaten mit Menge ein – mehrere verschiedene Rezepte in einer Liste werden zusammengezählt
@@ -22,6 +24,8 @@
 - Discord: neue und angenommene Gildenaufträge gehen über die Discord-Anbindung an Discord; in der Kaufansicht meldet **Preis an Discord** den aktuellen Preis (mit aktuellem GameBot als Karte)
 
 **English**
+- Auction house: opening it now shows **Blizzard's auction house** by default again. The GuildPride window only appears once you click the **GuildPride** button yourself – from then on your choice is remembered until you pick **Blizzard AH** again. The reagent search from the profession window opens it just that one time
+- Mailbox: **Write letter** in the GuildPride mailbox now reliably opens Blizzard's send window
 - Auction house: **Favorites** – the star on every row under **Search** and in the buy view marks an item as favorite (also in Blizzard's own auction house favorites if the game allows it)
 - New **Shopping list** tab: on the left **Favorites** and your own lists (**New list**, **Rename**, **Delete list**; you pick the name), on the right the items of the chosen list with item ID and known price. At the top **enter item IDs** – separate several with commas, shift-click on an item or a Wowhead link work too. **Search** (or a click on the row) opens the item's buy view right away, **X** removes it from the list
 - New in the **profession window** (at the bottom next to "Create All"): **AH: reagents** searches the GuildPride auction house for the chosen recipe's reagents only – **Search** then shows only these items, each with "need N" for the chosen amount; anything missing from the auction house is listed at the top. **To shopping list** asks for the amount to craft and the list (or **New list …**) and adds the reagents with quantities – several different recipes in one list are added up

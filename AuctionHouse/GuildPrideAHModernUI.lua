@@ -1649,12 +1649,15 @@ local function RestoreBlizzard()
     AuctionHouseFrame:SetAlpha(saved and saved.alpha or 1)
 end
 
+-- Standard ist Blizzards Auktionshaus; erst wer einmal auf „GuildPride“ klickt, bekommt
+-- beim Öffnen das GuildPride-Fenster (ahGuildPride = true), bis er wieder Blizzard wählt.
 local function Remember(blizzard)
-    if type(GuildPrideDB) == "table" then GuildPrideDB.ahBlizzard = blizzard end
+    if type(GuildPrideDB) == "table" then GuildPrideDB.ahGuildPride = not blizzard end
 end
 
-local function ShowGuildPride()
-    Remember(false)
+-- remember = false: nur dieses Mal (z. B. Zutaten-Suche aus dem Berufsfenster), die Wahl bleibt
+local function ShowGuildPride(remember)
+    if remember ~= false then Remember(false) end
     HideBlizzard()
     if not panel.moved then
         panel:ClearAllPoints()
@@ -1818,11 +1821,12 @@ function AH.SetModernUI(on)
     end
 end
 
--- Beim Öffnen sofort ersetzen (außer der Spieler hat zuletzt Blizzard gewählt oder es ausgeschaltet)
+-- Beim Öffnen bleibt Blizzards Fenster; GuildPride ersetzt es nur, wenn der Spieler zuletzt
+-- selbst GuildPride gewählt hat (Knopf „GuildPride“) und es nicht ausgeschaltet ist
 local function OnAuctionHouseShow()
     Setup()
     if button then button:SetShown(AH.Opt("ahTab") and true or false) end
-    if panel and AH.Opt("ahTab") and not AH.Opt("ahBlizzard") then ShowGuildPride() end
+    if panel and AH.Opt("ahTab") and GuildPrideDB and GuildPrideDB.ahGuildPride == true then ShowGuildPride() end
 end
 AH.Listen("AUCTION_HOUSE_SHOW", function()
     if AuctionHouseFrame then OnAuctionHouseShow() else C_Timer.After(0, OnAuctionHouseShow) end
@@ -1834,7 +1838,7 @@ function AH.ShowItemSearch(ids, need, title)
     if not AH.IsModern() or not AH.Opt("ahTab") or not AH.IsOpen() then return false end
     Setup()
     if not panel then return false end
-    if not panel:IsShown() then ShowGuildPride() end
+    if not panel:IsShown() then ShowGuildPride(false) end
     ShowMode("search")
     CloseDetail()
     offset = 0

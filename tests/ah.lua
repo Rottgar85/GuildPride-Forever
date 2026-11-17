@@ -862,7 +862,7 @@ return function(test, eq, W, ns)
     W.Load("GuildPrideAHModernUI.lua")
     test("AH-Forever: GuildPride ersetzt Blizzards Auktionshaus, Knöpfe schalten um", function()
         Modern(true)
-        GuildPrideDB.ahBlizzard = nil
+        GuildPrideDB.ahGuildPride = nil
         AuctionHouseFrame = CreateFrame()
         AuctionHouseFrame.GetFrameLevel = function() return 5 end
         AuctionHouseFrame.CloseButton = CreateFrame()
@@ -878,6 +878,9 @@ return function(test, eq, W, ns)
         W.Fire("AUCTION_HOUSE_SHOW")
         eq(#W.frames > before + 20, true)
         local button, win = AH._ModernTab()
+        eq(win:IsShown(), false, "Standard: Blizzard bleibt"); eq(scale, 1); eq(button:IsShown(), true)
+        button.scripts.OnClick(button)
+        eq(GuildPrideDB.ahGuildPride, true, "einmal GuildPride gewählt")
         eq(win:IsShown(), true, "GuildPride-Fenster statt Blizzard")
         eq(scale < 0.01, true); eq(alpha, 0)
         win.modeSell.scripts.OnClick(win.modeSell)
@@ -916,27 +919,27 @@ return function(test, eq, W, ns)
         -- zu Blizzard wechseln: Fenster weg, Blizzard wieder sichtbar, Auktionshaus bleibt offen
         win.blizzard.scripts.OnClick(win.blizzard)
         eq(win:IsShown(), false); eq(scale, 1); eq(alpha, 1); eq(closed, 0)
-        eq(GuildPrideDB.ahBlizzard, true, "Wahl wird gemerkt")
+        eq(GuildPrideDB.ahGuildPride, false, "Wahl wird gemerkt")
         -- zurück zu GuildPride
         button.scripts.OnClick(button)
-        eq(win:IsShown(), true); eq(scale < 0.01, true); eq(GuildPrideDB.ahBlizzard, false)
+        eq(win:IsShown(), true); eq(scale < 0.01, true); eq(GuildPrideDB.ahGuildPride, true)
         -- GuildPride-Fenster schließen (X/ESC) schließt das ganze Auktionshaus
         win:Hide(); win.scripts.OnHide(win)
         eq(closed, 1)
         W.Fire("AUCTION_HOUSE_CLOSED")
         eq(scale, 1); eq(alpha, 1)
         -- gemerkte Wahl Blizzard: beim nächsten Öffnen bleibt Blizzard sichtbar
-        GuildPrideDB.ahBlizzard = true
+        GuildPrideDB.ahGuildPride = false
         W.Fire("AUCTION_HOUSE_SHOW")
         eq(win:IsShown(), false); eq(scale, 1)
         W.Fire("AUCTION_HOUSE_CLOSED")
-        GuildPrideDB.ahBlizzard = nil
+        GuildPrideDB.ahGuildPride = nil
         HideUIPanel = nil
         Modern(false)
     end)
     test("AH-Forever: GuildPride-Auktionshaus lässt sich sofort ausschalten", function()
         Modern(true)
-        GuildPrideDB.ahBlizzard = nil
+        GuildPrideDB.ahGuildPride = true
         local scale, alpha = 1, 1
         AuctionHouseFrame.SetScale = function(_, v) scale = v end
         AuctionHouseFrame.GetScale = function() return scale end
@@ -951,7 +954,7 @@ return function(test, eq, W, ns)
         AH.SetModernUI(false)
         eq(GuildPrideDB.ahTab, false); eq(win:IsShown(), false); eq(button:IsShown(), false, "kein Knopf")
         eq(scale, 1); eq(alpha, 1); eq(closed, 0)
-        eq(GuildPrideDB.ahBlizzard ~= true, true, "Ausschalten ist nicht dieselbe Wahl wie der Blizzard-Knopf")
+        eq(GuildPrideDB.ahGuildPride, true, "Ausschalten ist nicht dieselbe Wahl wie der Blizzard-Knopf")
         W.Fire("AUCTION_HOUSE_CLOSED")
         W.Fire("AUCTION_HOUSE_SHOW")
         eq(win:IsShown(), false, "bleibt aus"); eq(scale, 1); eq(button:IsShown(), false)
@@ -974,7 +977,7 @@ return function(test, eq, W, ns)
     end)
     test("AH-Forever: Favoriten-Stern und Einkaufsliste", function()
         Modern(true)
-        GuildPrideDB.ahLists, GuildPrideDB.ahBlizzard, GuildPrideDB.ahTab = nil, nil, true
+        GuildPrideDB.ahLists, GuildPrideDB.ahGuildPride, GuildPrideDB.ahTab = nil, true, true
         local asked
         C_AuctionHouse.SendSearchQuery = function(k) asked = k end
         AuctionHouseFrame.SetScale = function() end
@@ -1048,7 +1051,7 @@ return function(test, eq, W, ns)
     end)
     test("AH-Forever: Zutaten-Suche im Fenster und Mengen in der Einkaufsliste", function()
         Modern(true)
-        GuildPrideDB.ahLists, GuildPrideDB.ahBlizzard, GuildPrideDB.ahTab = nil, nil, true
+        GuildPrideDB.ahLists, GuildPrideDB.ahGuildPride, GuildPrideDB.ahTab = nil, true, true
         local asked = {}
         C_AuctionHouse.SendBrowseQuery = function(q) asked[#asked + 1] = q.searchString end
         C_AuctionHouse.SendSearchQuery = function() end
@@ -1119,7 +1122,7 @@ return function(test, eq, W, ns)
     end)
     test("AH-Forever: Kauf hakt die temporäre Liste ab", function()
         Modern(true)
-        GuildPrideDB.ahLists, GuildPrideDB.ahBlizzard, GuildPrideDB.ahTab = nil, nil, true
+        GuildPrideDB.ahLists, GuildPrideDB.ahGuildPride, GuildPrideDB.ahTab = nil, true, true
         C_AuctionHouse.SendSearchQuery = function() end
         local confirmed = 0
         C_AuctionHouse.StartCommoditiesPurchase = function() end
@@ -1158,7 +1161,7 @@ return function(test, eq, W, ns)
     end)
     test("AH-Forever: Liste kaufen nacheinander, Export und Import", function()
         Modern(true)
-        GuildPrideDB.ahLists, GuildPrideDB.ahBlizzard, GuildPrideDB.ahTab = nil, nil, true
+        GuildPrideDB.ahLists, GuildPrideDB.ahGuildPride, GuildPrideDB.ahTab = nil, true, true
         local asked = {}
         C_AuctionHouse.SendSearchQuery = function(k) asked[#asked + 1] = k.itemID end
         W.Fire("AUCTION_HOUSE_SHOW")
@@ -1195,7 +1198,7 @@ return function(test, eq, W, ns)
     end)
     test("AH-Forever: Zurückgekommene einstellen (leere Taschen)", function()
         Modern(true)
-        GuildPrideDB.ahTab, GuildPrideDB.ahBlizzard = true, nil
+        GuildPrideDB.ahTab, GuildPrideDB.ahGuildPride = true, true
         W.Fire("AUCTION_HOUSE_SHOW")
         local _, win = AH._ModernTab()
         win.modeSell.scripts.OnClick(win.modeSell)
@@ -1325,6 +1328,18 @@ return function(test, eq, W, ns)
         eq(win:IsShown(), false); eq(scale, 1); eq(alpha, 1); eq(GuildPrideDB.mailBlizzard, true); eq(closed, 0)
         button.scripts.OnClick(button)
         eq(win:IsShown(), true); eq(scale < 0.01, true); eq(GuildPrideDB.mailBlizzard, false)
+        -- Brief schreiben: Blizzards Fenster sichtbar auf dem Schreiben-Reiter, auch wenn der
+        -- Reiter-Klick nichts tut; die Wahl bleibt GuildPride
+        SendMailFrame, InboxFrame, MailFrameTab2 = CreateFrame(), CreateFrame(), CreateFrame()
+        InboxFrame.shown, SendMailFrame.shown = true, false
+        MailFrameTab2.Click = function() end
+        win.write.scripts.OnClick(win.write)
+        eq(win:IsShown(), false); eq(scale, 1); eq(alpha, 1); eq(closed, 0)
+        eq(SendMailFrame:IsShown(), true, "Schreiben-Fenster offen"); eq(InboxFrame:IsShown(), false)
+        eq(GuildPrideDB.mailBlizzard, false, "Wahl bleibt GuildPride")
+        SendMailFrame, InboxFrame, MailFrameTab2 = nil, nil, nil
+        button.scripts.OnClick(button)
+        eq(win:IsShown(), true)
         -- X am GuildPride-Fenster schließt den Briefkasten
         win:Hide(); win.scripts.OnHide(win)
         eq(closed, 1)
@@ -1435,7 +1450,7 @@ return function(test, eq, W, ns)
     test("AH-Forever: Reiter Aufträge und Preis an Discord", function()
         local function msg(kind, ...) return kind .. ":" .. table.concat({ ... }, "\031") end
         Modern(true)
-        GuildPrideDB.ahTab, GuildPrideDB.ahBlizzard, GuildPrideDB.discordBridge = true, nil, true
+        GuildPrideDB.ahTab, GuildPrideDB.ahGuildPride, GuildPrideDB.discordBridge = true, true, true
         local posted = {}
         local oldDiscord = ns.Discord
         ns.Discord = { Post = function(text) posted[#posted + 1] = text end }
