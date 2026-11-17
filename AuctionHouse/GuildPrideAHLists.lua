@@ -164,6 +164,64 @@ function AH.RemoveItem(list, id)
     return true
 end
 
+---------------------------------------------------------------------
+-- Preisalarm: Hinweis, wenn ein Item höchstens zum Wunschpreis im Auktionshaus steht
+-- GuildPrideDB.ahAlerts = { [itemID] = Kupfer je Stück }
+---------------------------------------------------------------------
+local ALERT_GAP = 600            -- dasselbe Item höchstens alle 10 Minuten melden
+local alerted = {}
+
+-- Geldbetrag aus Text: „1g 50s 3c“, „75s“, „12c“ oder Gold als Zahl („2,5“ = 2g 50s)
+function AH.ParseMoney(text)
+    text = strtrim(tostring(text or "")):lower()
+    if text == "" then return nil end
+    local c, any = 0, false
+    for n, u in text:gmatch("(%d+)%s*([gsck])") do
+        any = true
+        n = tonumber(n)
+        if u == "g" then c = c + n * 10000 elseif u == "s" then c = c + n * 100 else c = c + n end
+    end
+    if not any then
+        local g = tonumber((text:gsub(",", ".")))
+        if not g then return nil end
+        c = math.floor(g * 10000 + 0.5)
+    end
+    return c > 0 and c or nil
+end
+
+local function Alerts()
+    if type(GuildPrideDB) ~= "table" then GuildPrideDB = {} end
+    if type(GuildPrideDB.ahAlerts) ~= "table" then GuildPrideDB.ahAlerts = {} end
+    return GuildPrideDB.ahAlerts
+end
+
+function AH.Alert(id) return Alerts()[tonumber(id) or 0] end
+
+function AH.SetAlert(id, copper)
+    id, copper = tonumber(id), tonumber(copper)
+    if not id then return end
+    Alerts()[id] = (copper and copper > 0) and math.floor(copper) or nil
+    alerted[id] = nil
+end
+
+-- rows = { { itemID, min = Stückpreis }, … }; meldet Treffer im Chat (mit Ton). Gibt die Treffer zurück.
+function AH.CheckAlerts(rows)
+    local hits, a = {}, Alerts()
+    if not next(a) then return hits end
+    local now = GetTime()
+    for _, r in ipairs(rows or {}) do
+        local want = a[r.itemID]
+        if want and r.min and r.min <= want and (not alerted[r.itemID] or now - alerted[r.itemID] >= ALERT_GAP) then
+            alerted[r.itemID] = now
+            hits[#hits + 1] = r
+            local name = AH.ItemName(r.itemID) or ("#" .. r.itemID)
+            AH.Print((L["|cffffd100Preisalarm:|r %s für %s je Stück (dein Alarm: höchstens %s)"]):format(name, AH.Money(r.min), AH.Money(want)))
+            if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING) end
+        end
+    end
+    return hits
+end
+
 -- Wie viele hast du schon (Taschen und Bank)?
 function AH.ItemCount(id)
     local f = (C_Item and C_Item.GetItemCount) or GetItemCount

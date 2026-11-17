@@ -65,6 +65,22 @@ AH.Listen("AUCTION_HOUSE_BROWSE_RESULTS_ADDED", function(added)
     if Reading() then ReadBrowse(added) end
 end)
 
+-- Preisalarm (GuildPrideAHLists.lua): bei jeder Suche prüfen, egal wer sucht (auch Blizzard/Auctionator)
+local function AlertRows(list)
+    local rows = {}
+    for _, b in ipairs(list or {}) do
+        local k = b.itemKey
+        if k and k.itemID and b.minPrice and not b.containsOwnerItem then rows[#rows + 1] = { itemID = k.itemID, min = b.minPrice } end
+    end
+    return rows
+end
+AH.Listen("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", function()
+    if AH.CheckAlerts and AH.IsModern() then AH.CheckAlerts(AlertRows(C_AuctionHouse.GetBrowseResults())) end
+end)
+AH.Listen("AUCTION_HOUSE_BROWSE_RESULTS_ADDED", function(added)
+    if AH.CheckAlerts and AH.IsModern() then AH.CheckAlerts(AlertRows(added)) end
+end)
+
 ---------------------------------------------------------------------
 -- Waren (stapelbar, z. B. Stoff, Kräuter): Stückpreise, aufsteigend
 ---------------------------------------------------------------------

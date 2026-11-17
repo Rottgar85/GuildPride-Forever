@@ -286,6 +286,31 @@ local function RequestOffers()
     end
 end
 
+-- Preisverlauf (Tagestiefstwerte, bis 7 Tage) als Balken und wer in der Gilde es herstellen kann
+local function DrawHistory(p, key)
+    local h = AH.History(key)
+    local lo, hi
+    for _, x in ipairs(h) do lo = math.min(lo or x.p, x.p); hi = math.max(hi or x.p, x.p) end
+    local n = #p.histBars
+    for i, bar in ipairs(p.histBars) do
+        local x = h[#h - n + i]          -- neueste rechts
+        if x then
+            local f = (hi > lo) and (x.p - lo) / (hi - lo) or 1
+            bar:SetHeight(6 + f * 70); bar:Show()
+        else bar:Hide() end
+    end
+    p.histInfo:SetText(#h == 0 and L["Noch kein Verlauf – er entsteht mit jeder Suche."]
+        or (L["tiefster %s · höchster %s"]):format(Money(lo), Money(hi)))
+end
+
+local function DrawCrafters(p, name)
+    local who = AH.GuildCrafters and AH.GuildCrafters(name) or {}
+    if #who == 0 then p.crafters:SetText(""); return end
+    local shown = {}
+    for i = 1, math.min(#who, 6) do shown[i] = who[i] end
+    p.crafters:SetText((L["In der Gilde herstellbar von: %s"]):format(table.concat(shown, ", ") .. (#who > 6 and " …" or "")))
+end
+
 local function OpenDetail(row)
     local e = row.entry
     if not e then return end
@@ -302,6 +327,8 @@ local function OpenDetail(row)
     local color = e.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[e.quality]
     if color then p.dName:SetTextColor(color.r, color.g, color.b) else p.dName:SetTextColor(1, 1, 1) end
     SetStar(p.dFav, AH.IsFavorite(e.itemKey.itemID))
+    DrawHistory(p, e.key)
+    DrawCrafters(p, e.name)
     p.qty:SetText("1")
     p.listFrame:Hide()
     p.detail:Show()
@@ -422,6 +449,24 @@ local function MakeDetail(p)
     end
     p.more = Label(d, "", "GameFontDisableSmall"); p.more:SetPoint("TOPLEFT", 12, -92 - DETAIL_ROWS * DETAIL_H)
 
+    -- rechts neben den Angeboten: Preisverlauf und Gilden-Hersteller
+    local ht = Label(d, L["Preisverlauf (bis 7 Tage)"], "GameFontNormalSmall"); ht:SetPoint("TOPLEFT", 470, -72)
+    local chart = CreateFrame("Frame", nil, d)
+    chart:SetPoint("TOPLEFT", 470, -90); chart:SetSize(7 * 34, 80)
+    local base = chart:CreateTexture(nil, "BORDER"); base:SetColorTexture(1, 0.82, 0, 0.3)
+    base:SetPoint("BOTTOMLEFT"); base:SetPoint("BOTTOMRIGHT"); base:SetHeight(1)
+    p.histBars = {}
+    for i = 1, 7 do
+        local bar = chart:CreateTexture(nil, "ARTWORK")
+        bar:SetColorTexture(1, 0.82, 0, 0.6)
+        bar:SetWidth(26); bar:SetPoint("BOTTOMLEFT", (i - 1) * 34 + 4, 1)
+        bar:Hide()
+        p.histBars[i] = bar
+    end
+    p.histInfo = Label(d, "", "GameFontHighlightSmall"); p.histInfo:SetPoint("TOPLEFT", chart, "BOTTOMLEFT", 0, -6)
+    p.crafters = Label(d, "", "GameFontHighlightSmall"); p.crafters:SetPoint("TOPLEFT", p.histInfo, "BOTTOMLEFT", 0, -14)
+    p.crafters:SetWidth(280); p.crafters:SetWordWrap(true)
+
     local y = -100 - DETAIL_ROWS * DETAIL_H - 14
     p.qtyRow = CreateFrame("Frame", nil, d)
     p.qtyRow:SetSize(200, 24); p.qtyRow:SetPoint("TOPLEFT", 8, y)
@@ -537,6 +582,7 @@ local function RefreshShop()
             if left == 0 then row.have:SetText("|cff40ff40" .. (L["genug (%d)"]):format(have) .. "|r")
             elseif left then row.have:SetText((L["hast %d · noch %d"]):format(have, left))
             else row.have:SetText(have > 0 and (L["hast %d"]):format(have) or "") end
+            row.alarm:SetText(AH.Alert(id) and ("|cffffd100" .. L["Alarm"] .. "|r") or L["Alarm"])
             -- Preis: für die noch fehlende Menge, sonst je Stück
             local price = AH.PriceFor(AH.Key(id))
             if price and left and left > 0 then row.price:SetText(Money(price * left))
@@ -610,6 +656,34 @@ StaticPopupDialogs["GUILDPRIDE_AH_LIST_NAME"] = {
     EditBoxOnEnterPressed = function(eb)
         local dlg = eb:GetParent()
         ShopNameAccepted(eb:GetText()); dlg:Hide()
+    end,
+    EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+local function AlertAccepted(text)
+    local id = shop.alerting
+    shop.alerting = nil
+    if not id then return end
+    local c = AH.ParseMoney(text)
+    AH.SetAlert(id, c)
+    Status(c and (L["Preisalarm: höchstens %s je Stück."]):format(Money(c)) or L["Preisalarm aus."])
+    RefreshShop()
+end
+StaticPopupDialogs["GUILDPRIDE_AH_ALERT"] = {
+    text = L["Preisalarm für %s:\nHinweis, wenn es je Stück höchstens so viel kostet (z. B. 1g 50s oder 1,5). Leer = aus."],
+    button1 = OKAY, button2 = CANCEL,
+    hasEditBox = true, maxLetters = 20,
+    OnShow = function(self)
+        local eb = self.editBox or self.EditBox
+        local a = shop.alerting and AH.Alert(shop.alerting)
+        eb:SetText(a and (a % 10000 == 0 and tostring(a / 10000) or (math.floor(a / 10000) .. "g " .. math.floor(a / 100) % 100 .. "s " .. a % 100 .. "c")) or "")
+        eb:SetFocus(); eb:HighlightText()
+    end,
+    OnAccept = function(self) AlertAccepted((self.editBox or self.EditBox):GetText()) end,
+    OnCancel = function() shop.alerting = nil end,
+    EditBoxOnEnterPressed = function(eb)
+        local dlg = eb:GetParent()
+        AlertAccepted(eb:GetText()); dlg:Hide()
     end,
     EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
     timeout = 0, whileDead = true, hideOnEscape = true,
@@ -706,7 +780,7 @@ local function MakeShopPane()
 
     -- rechts: Items der Liste
     local cols = { { L["Item"], CAT_W + 44 }, { L["Menge"], CAT_W + 296 }, { L["Item-ID"], CAT_W + 361 },
-                   { L["Preis"], CAT_W + 510 }, { L["Bestand"], CAT_W + 574 } }
+                   { L["Preis"], CAT_W + 494 }, { L["Bestand"], CAT_W + 542 } }
     p.total = Label(p, "", "GameFontHighlight"); p.total:SetPoint("BOTTOMLEFT", CAT_W + 20, 16)
     for _, c in ipairs(cols) do
         local h = Label(p, c[1], "GameFontNormalSmall"); h:SetPoint("TOPLEFT", c[2], -43)
@@ -724,12 +798,27 @@ local function MakeShopPane()
         row.qtyBox:SetScript("OnEnterPressed", function() SaveQty(row) end)
         row.qtyBox:SetScript("OnEditFocusLost", function() SaveQty(row) end)
         row.id = Label(row, "", "GameFontDisableSmall"); row.id:SetPoint("LEFT", 345, 0); row.id:SetWidth(60)
-        row.price = Label(row, "", "GameFontHighlightSmall"); row.price:SetPoint("LEFT", 410, 0); row.price:SetWidth(140)
-        row.have = Label(row, "", "GameFontDisableSmall"); row.have:SetPoint("LEFT", 558, 0); row.have:SetWidth(110)
+        row.price = Label(row, "", "GameFontHighlightSmall"); row.price:SetPoint("LEFT", 410, 0); row.price:SetWidth(110)
+        row.have = Label(row, "", "GameFontDisableSmall"); row.have:SetPoint("LEFT", 526, 0); row.have:SetWidth(90)
         row.price:SetJustifyH("RIGHT")
         row.remove = Button(row, "X", 26); row.remove:SetPoint("RIGHT", -2, 0)
         row.search = Button(row, L["Suchen"], 70); row.search:SetPoint("RIGHT", row.remove, "LEFT", -4, 0)
         row.search:SetScript("OnClick", function() SearchItem(row.itemID) end)
+        row.alarm = Button(row, L["Alarm"], 54); row.alarm:SetPoint("RIGHT", row.search, "LEFT", -4, 0)
+        row.alarm:SetScript("OnClick", function()
+            if not row.itemID then return end
+            shop.alerting = row.itemID
+            StaticPopup_Show("GUILDPRIDE_AH_ALERT", AH.ItemName(row.itemID) or ("#" .. row.itemID))
+        end)
+        row.alarm:SetScript("OnEnter", function(b)
+            local a = row.itemID and AH.Alert(row.itemID)
+            GameTooltip:SetOwner(b, "ANCHOR_TOP")
+            GameTooltip:SetText(L["Preisalarm"])
+            GameTooltip:AddLine(a and (L["Hinweis, sobald es je Stück höchstens %s kostet."]):format(Money(a))
+                or L["Klick: Wunschpreis eingeben. Taucht es so billig im Auktionshaus auf, gibt es einen Hinweis."], 1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        row.alarm:SetScript("OnLeave", function() GameTooltip:Hide() end)
         row.remove:SetScript("OnClick", function()
             if AH.RemoveItem(CurrentList(), row.itemID) then RefreshShop() end
         end)

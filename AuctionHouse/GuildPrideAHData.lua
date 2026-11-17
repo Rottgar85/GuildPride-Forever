@@ -137,6 +137,15 @@ function AH.PriceFor(key)
     return nil
 end
 
+-- Preisverlauf: Tagestiefstwerte eigener Suchen (höchstens 7 Tage), älteste zuerst
+function AH.History(key)
+    local e = key and Entry(key)
+    local out = {}
+    for _, h in ipairs(e and e.hist or {}) do out[#out + 1] = { d = h.d, p = h.p } end
+    table.sort(out, function(a, b) return a.d < b.d end)
+    return out
+end
+
 function AH.Suggest(key, freshForeignMin, now)
     if freshForeignMin then return math.max(1, freshForeignMin - 1), "fresh" end
     local e = key and Entry(key)

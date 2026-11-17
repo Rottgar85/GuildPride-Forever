@@ -76,6 +76,23 @@ function AH.RecipeValueText(v)
     return table.concat(parts, "  ·  ")
 end
 
+-- Wer in der Gilde kann das Item herstellen? Über GuildPrides Handwerker-Verzeichnis: das Rezept
+-- heißt wie das Item (Classic-Inhalte). Gibt Namen sortiert und ohne Doppelte zurück.
+function AH.GuildCrafters(itemName)
+    local C = GP.Crafts
+    if type(itemName) ~= "string" or itemName == "" or not (C and C.Search) then return {} end
+    local want, seen, out = itemName:lower(), {}, {}
+    local ok, rows = pcall(C.Search, itemName)
+    for _, r in ipairs(ok and rows or {}) do
+        if r.recipe and r.recipe:lower() == want and not seen[r.name] then
+            seen[r.name] = true
+            out[#out + 1] = r.name
+        end
+    end
+    table.sort(out)
+    return out
+end
+
 local function Page()
     local f = ProfessionsFrame
     return type(f) == "table" and type(f.CraftingPage) == "table" and f.CraftingPage or nil

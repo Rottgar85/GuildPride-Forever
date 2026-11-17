@@ -762,6 +762,48 @@ return function(test, eq, W, ns)
         C_Item = nil
         GuildPrideDB.ahLists = nil
     end)
+    test("AH: Wer in der Gilde kann ein Item herstellen?", function()
+        local old = ns.Crafts.Search
+        ns.Crafts.Search = function()
+            return { { name = "Anna", recipe = "Kupferkettenweste" }, { name = "Bert", recipe = "Kupferkettenweste der Stärke" },
+                     { name = "Anna", recipe = "Kupferkettenweste" }, { name = "Carl" }, { name = "Bert", recipe = "kupferkettenweste" } }
+        end
+        local who = AH.GuildCrafters("Kupferkettenweste")
+        eq(#who, 2); eq(who[1], "Anna"); eq(who[2], "Bert")
+        eq(#AH.GuildCrafters(nil), 0)
+        ns.Crafts.Search = old
+    end)
+    test("AH: Preisalarm und Preisverlauf", function()
+        eq(AH.ParseMoney("1g 50s"), 15000); eq(AH.ParseMoney("2,5"), 25000); eq(AH.ParseMoney("75s 3c"), 7503)
+        eq(AH.ParseMoney("12c"), 12); eq(AH.ParseMoney(""), nil); eq(AH.ParseMoney("abc"), nil); eq(AH.ParseMoney("0"), nil)
+        GuildPrideDB.ahAlerts = nil
+        AH.SetAlert(2840, 100); eq(AH.Alert(2840), 100)
+        local printed = {}
+        local oldPrint = AH.Print
+        AH.Print = function(m) printed[#printed + 1] = m end
+        eq(#AH.CheckAlerts({ { itemID = 2840, min = 150 } }), 0)
+        eq(#AH.CheckAlerts({ { itemID = 2840, min = 90 } }), 1); eq(#printed, 1)
+        eq(#AH.CheckAlerts({ { itemID = 2840, min = 80 } }), 0, "nicht gleich noch einmal")
+        W.Advance(601)
+        eq(#AH.CheckAlerts({ { itemID = 2840, min = 80 } }), 1)
+        AH.SetAlert(2840, nil); eq(AH.Alert(2840), nil)
+        -- Suchergebnisse lösen den Alarm aus
+        Modern(true)
+        AH.SetAlert(2447, 10)
+        M.browse = { { itemKey = { itemID = 2447, itemSuffix = 0 }, totalQuantity = 1, minPrice = 5 } }
+        local n = #printed
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        eq(#printed, n + 1)
+        M.browse = {}
+        Modern(false)
+        AH.Print = oldPrint
+        GuildPrideDB.ahAlerts = nil
+        -- Verlauf: Tagestiefstwerte
+        AH.RecordOwn("777", 500, 1, 86400 * 10); AH.RecordOwn("777", 400, 1, 86400 * 11)
+        local h = AH.History("777")
+        eq(#h, 2); eq(h[1].p, 500); eq(h[2].p, 400)
+        eq(#AH.History("778"), 0)
+    end)
     test("AH-Forever: nur bestimmte Items suchen (Zutaten)", function()
         Modern(true)
         local asked = {}
