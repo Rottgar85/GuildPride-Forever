@@ -135,7 +135,7 @@ local function RefreshCategories()
             b:Show()
             local mark = r.hasSub and (catExpanded[r.cat] and "– " or "+ ") or "   "
             b.text:SetText(mark .. r.name)
-            b.text:SetPoint("LEFT", 6 + r.depth * 12, 0)
+            b.text:SetPoint("LEFT", 8 + r.depth * 12, 0)
             local on = r.cat == catSel
             b.sel:SetShown(on)
             if r.depth == 0 then b.text:SetFontObject(on and "GameFontHighlight" or "GameFontNormal")
@@ -146,11 +146,12 @@ end
 
 local function MakeCategoryList(p, box)
     local side = CreateFrame("Frame", nil, p)
-    side:SetPoint("TOPLEFT", 14, -44); side:SetSize(CAT_W - 10, CAT_ROWS * CAT_H)
+    -- genau innerhalb des Rahmens (Abschnitt x 8..CAT_W+2, Rand 1 px), damit der Auswahlbalken bündig sitzt
+    side:SetPoint("TOPLEFT", 9, -41); side:SetSize(CAT_W - 8, CAT_ROWS * CAT_H)
     p.catButtons = {}
     for i = 1, CAT_ROWS do
         local b = CreateFrame("Button", nil, side)
-        b:SetSize(CAT_W - 10, CAT_H)
+        b:SetSize(CAT_W - 8, CAT_H)
         b:SetPoint("TOPLEFT", 0, -(i - 1) * CAT_H)
         b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         b.sel = b:CreateTexture(nil, "BACKGROUND"); b.sel:SetAllPoints(); b.sel:SetColorTexture(1, 0.82, 0, 0.18); b.sel:Hide()
