@@ -60,6 +60,29 @@ end
 
 local function Status(text) if panel then panel.status:SetText(text or "") end end
 
+-- Geld als einfacher Text (für Discord-Zeilen: dort gibt es keine Münz-Symbole)
+local function PlainMoney(c)
+    c = math.floor(tonumber(c) or 0)
+    local g, sv, cu = math.floor(c / 10000), math.floor(c / 100) % 100, c % 100
+    local parts = {}
+    if g > 0 then parts[#parts + 1] = g .. "g" end
+    if sv > 0 then parts[#parts + 1] = sv .. "s" end
+    if cu > 0 or #parts == 0 then parts[#parts + 1] = cu .. "c" end
+    return table.concat(parts, " ")
+end
+
+-- Zeile an Discord (GuildPrideDiscord.lua). quiet: ohne Hinweis, wenn die Anbindung aus ist
+local function ToDiscord(line, quiet)
+    if not (GP.Discord and GP.Discord.Post) or not (GuildPrideDB and GuildPrideDB.discordBridge) then
+        if not quiet then Status(L["Die Discord-Anbindung ist aus (Einstellungen › Gilde)."]) end
+        return false
+    end
+    GP.Discord.Post(line, true)
+    return true
+end
+
+local RefreshOrders, MakeOrdersPane   -- weiter unten: Reiter „Aufträge“
+
 -- Bereich unter Titel und Umschalt-Knöpfen
 local function Pane()
     local p = CreateFrame("Frame", nil, panel.content)
@@ -412,6 +435,18 @@ local function MakeDetail(p)
     p.dName = Label(d, "", "GameFontNormalLarge"); p.dName:SetPoint("LEFT", p.dIcon, "RIGHT", 10, 0)
     p.dFav = StarButton(d, 22, function() return buy.info and buy.info.itemID end)
     p.dFav:SetPoint("LEFT", p.dName, "RIGHT", 10, 0)
+    -- Preis an Discord (über die Discord-Anbindung der Gilde, nur auf Klick)
+    p.discordBtn = Button(d, L["Preis an Discord"], 140); p.discordBtn:SetPoint("TOPRIGHT", -6, 0)
+    p.discordBtn:SetScript("OnClick", function()
+        local info = buy.info
+        if not info then return end
+        local o = buy.offers and buy.offers[1]
+        local price = o and o.unit or AH.PriceFor(info.key)
+        if not price then Status(L["Noch kein Preis bekannt."]); return end
+        if ToDiscord(("Preis: %s – %s je Stück"):format(AH.ItemName(info.itemID) or ("#" .. info.itemID), PlainMoney(price))) then
+            Status(L["Preis an Discord gemeldet."])
+        end
+    end)
     local hp = Label(d, L["Stückpreis"], "GameFontNormalSmall"); hp:SetPoint("TOPLEFT", 60, -72)
     local hq = Label(d, L["Menge"], "GameFontNormalSmall"); hq:SetPoint("TOPLEFT", 186, -72)
     p.empty = Label(d, "", "GameFontDisableSmall"); p.empty:SetPoint("TOPLEFT", 12, -92)
@@ -927,6 +962,132 @@ local function MakeShopPane()
         hooksecurefunc("ChatEdit_InsertLink", function(link)
             local id = type(link) == "string" and link:match("item:(%d+)")
             if id and p:IsShown() and p.idBox:HasFocus() then p.idBox:Insert(id .. " ") end
+        end)
+    end
+    return p
+end
+
+---------------------------------------------------------------------
+-- Gildenaufträge (GuildPrideAHOrders.lua): eigene einstellen, fremde annehmen
+---------------------------------------------------------------------
+local orderRows = { offset = 0, list = {} }
+local ORD_ROWS, ORD_H = 18, 22
+
+local function Age(t)
+    local h = math.floor((GetServerTime() - (t or 0)) / 3600)
+    if h < 1 then return L["vor < 1 Std."] end
+    if h < 48 then return (L["vor %d Std."]):format(h) end
+    return (L["vor %d Tag(en)"]):format(math.floor(h / 24))
+end
+
+local function ItemText(id) return AH.ItemName(id) or ("#" .. id) end
+
+RefreshOrders = function()
+    local p = panel and panel.orders
+    if not p or not p:IsShown() then return end
+    orderRows.list = AH.Orders()
+    local list, me = orderRows.list, GP.Me()
+    orderRows.offset = math.max(0, math.min(orderRows.offset, #list - ORD_ROWS))
+    p.empty:SetText(#list == 0 and L["Noch keine Aufträge in der Gilde. Stell oben einen ein – Hersteller sehen ihn hier."] or "")
+    for i, row in ipairs(p.rows) do
+        local o = list[orderRows.offset + i]
+        row.order = o
+        if not o then row:Hide() else
+            row:Show()
+            row.icon:SetTexture(AH.ItemIcon(o.item))
+            row.name:SetText(ItemText(o.item))
+            row.qty:SetText(tostring(o.qty))
+            row.owner:SetText(o.mine and ("|cff66ccff" .. L["du"] .. "|r") or o.owner)
+            row.age:SetText(Age(o.t))
+            if o.by == me then row.status:SetText("|cff40ff40" .. L["du stellst es her"] .. "|r")
+            elseif o.by then row.status:SetText("|cff40ff40" .. (L["übernommen von %s"]):format(o.by) .. "|r")
+            else row.status:SetText(L["offen"]) end
+            if o.mine then row.action:SetText(L["Löschen"]); row.action:Show()
+            elseif o.by == me then row.action:SetText(L["Abgeben"]); row.action:Show()
+            elseif not o.by then row.action:SetText(L["Annehmen"]); row.action:Show()
+            else row.action:Hide() end
+        end
+    end
+end
+AH.OrdersChanged = function() if panel and panel:IsShown() and mode == "orders" then RefreshOrders() end end
+
+local function OrderAction(o)
+    if not o then return end
+    local me = GP.Me()
+    if o.mine then
+        AH.RemoveOrder(o.id)
+        Status(L["Auftrag gelöscht."])
+    elseif o.by == me then
+        AH.TakeOrder(o.owner, o.id, false)
+        Status(L["Auftrag abgegeben."])
+    elseif not o.by and AH.TakeOrder(o.owner, o.id, true) then
+        Status((L["Du stellst %dx %s für %s her."]):format(o.qty, ItemText(o.item), o.owner))
+        ToDiscord(("Auftrag angenommen: %dx %s für %s – macht %s"):format(o.qty, ItemText(o.item), o.owner, me), true)
+    end
+    RefreshOrders()
+end
+
+local function AddOrderClicked()
+    local p = panel.orders
+    local o, why = AH.AddOrder(p.itemBox:GetText(), tonumber(p.qtyBox:GetText()) or 1)
+    if not o then Status(why); return end
+    p.itemBox:SetText(""); p.itemBox:ClearFocus(); p.qtyBox:SetText("1")
+    Status((L["Auftrag eingestellt: %dx %s."]):format(o.qty, ItemText(o.item)))
+    ToDiscord(("Auftrag: %dx %s (von %s)"):format(o.qty, ItemText(o.item), GP.Me()), true)
+    RefreshOrders()
+end
+
+MakeOrdersPane = function()
+    local p = Pane()
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -6 }, { "BOTTOMRIGHT", "TOPRIGHT", -10, -36 })
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -40 }, { "BOTTOMRIGHT", "BOTTOMRIGHT", -10, 8 }, 18)
+    local nl = Label(p, L["Neuer Auftrag – Item-ID:"]); nl:SetPoint("TOPLEFT", 20, -16)
+    p.itemBox = Edit(p, 150); p.itemBox:SetPoint("LEFT", nl, "RIGHT", 8, 0)
+    local ql = Label(p, L["Menge:"]); ql:SetPoint("LEFT", p.itemBox, "RIGHT", 12, 0)
+    p.qtyBox = Edit(p, 50, true); p.qtyBox:SetPoint("LEFT", ql, "RIGHT", 8, 0); p.qtyBox:SetText("1")
+    p.addBtn = Button(p, L["Auftrag einstellen"], 150); p.addBtn:SetPoint("LEFT", p.qtyBox, "RIGHT", 10, 0)
+    p.addBtn:SetScript("OnClick", AddOrderClicked)
+    p.itemBox:SetScript("OnEnterPressed", AddOrderClicked)
+    local hint = Label(p, L["Die Gilde sieht ihn hier, Hersteller können ihn annehmen. Umschalt+Klick auf ein Item trägt es ein."], "GameFontDisableSmall")
+    hint:SetPoint("LEFT", p.addBtn, "RIGHT", 12, 0); hint:SetPoint("RIGHT", p, "RIGHT", -18, 0)
+    local cols = { { L["Item"], 44 }, { L["Menge"], 330 }, { L["Auftraggeber"], 400 }, { L["Alter"], 540 }, { L["Status"], 630 } }
+    for _, c in ipairs(cols) do
+        local h = Label(p, c[1], "GameFontNormalSmall"); h:SetPoint("TOPLEFT", c[2], -43)
+    end
+    p.empty = Label(p, "", "GameFontDisableSmall"); p.empty:SetPoint("TOPLEFT", 20, -64)
+    p.rows = {}
+    for i = 1, ORD_ROWS do
+        local row = CreateFrame("Button", nil, p)
+        row:SetHeight(ORD_H)
+        row:SetPoint("TOPLEFT", 16, -60 - (i - 1) * ORD_H); row:SetPoint("RIGHT", p, "RIGHT", -16, 0)
+        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        row.icon = row:CreateTexture(nil, "ARTWORK"); row.icon:SetSize(ORD_H - 2, ORD_H - 2); row.icon:SetPoint("LEFT")
+        row.name = Label(row, "", "GameFontHighlightSmall"); row.name:SetPoint("LEFT", 28, 0); row.name:SetWidth(280)
+        row.qty = Label(row, "", "GameFontHighlightSmall"); row.qty:SetPoint("LEFT", 314, 0); row.qty:SetWidth(60)
+        row.owner = Label(row, "", "GameFontHighlightSmall"); row.owner:SetPoint("LEFT", 384, 0); row.owner:SetWidth(130)
+        row.age = Label(row, "", "GameFontDisableSmall"); row.age:SetPoint("LEFT", 524, 0); row.age:SetWidth(84)
+        row.status = Label(row, "", "GameFontHighlightSmall"); row.status:SetPoint("LEFT", 614, 0); row.status:SetWidth(150)
+        row.search = Button(row, L["Suchen"], 70); row.search:SetPoint("RIGHT", -2, 0)
+        row.search:SetScript("OnClick", function() if row.order then SearchItem(row.order.item) end end)
+        row.action = Button(row, L["Annehmen"], 90); row.action:SetPoint("RIGHT", row.search, "LEFT", -4, 0)
+        row.action:SetScript("OnClick", function() OrderAction(row.order) end)
+        row:SetScript("OnEnter", function()
+            if not row.order then return end
+            GameTooltip:SetOwner(row, "ANCHOR_RIGHT"); GameTooltip:SetItemByID(row.order.item); GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row:Hide()
+        p.rows[i] = row
+    end
+    p:EnableMouseWheel(true)
+    p:SetScript("OnMouseWheel", function(_, d)
+        orderRows.offset = math.max(0, math.min(orderRows.offset - d * 3, math.max(0, #orderRows.list - ORD_ROWS)))
+        RefreshOrders()
+    end)
+    if hooksecurefunc and ChatEdit_InsertLink then
+        hooksecurefunc("ChatEdit_InsertLink", function(link)
+            local id = type(link) == "string" and link:match("item:(%d+)")
+            if id and p:IsShown() and p.itemBox:HasFocus() then p.itemBox:SetText(id) end
         end)
     end
     return p
@@ -1454,6 +1615,8 @@ ShowMode = function(m)
     mode = m
     panel.search:SetShown(m == "search")
     panel.lists:SetShown(m == "list")
+    panel.orders:SetShown(m == "orders")
+    panel.modeOrders:SetEnabled(m ~= "orders")
     panel.modeList:SetEnabled(m ~= "list")
     panel.sell:SetShown(m == "sell")
     panel.scan:SetShown(m == "scan")
@@ -1465,6 +1628,7 @@ ShowMode = function(m)
     Status("")
     if m == "search" then RefreshCategories(); RefreshList() elseif m == "scan" then RefreshScan() elseif m == "sell" then RefreshBags()
     elseif m == "list" then RefreshShop()
+    elseif m == "orders" then AH.RequestOrders(); RefreshOrders()
     elseif m == "own" then RefreshOwn(); if AH.QueryOwned() then Status(L["Lade deine Auktionen …"]) end end
 end
 
@@ -1566,7 +1730,7 @@ local function Build()
     title:SetPoint("TOPLEFT", 20, -16)
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -4, -4)
-    panel.blizzard = Button(panel, L["Blizzard-Auktionshaus"], 160)
+    panel.blizzard = Button(panel, L["Blizzard-AH"], 110)
     panel.blizzard:SetPoint("RIGHT", close, "LEFT", -4, 0)
     panel.blizzard:SetScript("OnClick", function()
         if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
@@ -1581,11 +1745,13 @@ local function Build()
     end)
     panel.blizzard:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    panel.modeSearch = Button(panel, L["Suchen"], 90); panel.modeSearch:SetPoint("LEFT", title, "RIGHT", 18, 0)
-    panel.modeList = Button(panel, L["Einkaufsliste"], 110); panel.modeList:SetPoint("LEFT", panel.modeSearch, "RIGHT", 6, 0)
-    panel.modeSell = Button(panel, L["Verkaufen"], 90); panel.modeSell:SetPoint("LEFT", panel.modeList, "RIGHT", 6, 0)
-    panel.modeOwn = Button(panel, L["Meine Auktionen"], 124); panel.modeOwn:SetPoint("LEFT", panel.modeSell, "RIGHT", 6, 0)
-    panel.modeScan = Button(panel, L["Scanner"], 84); panel.modeScan:SetPoint("LEFT", panel.modeOwn, "RIGHT", 6, 0)
+    panel.modeSearch = Button(panel, L["Suchen"], 76); panel.modeSearch:SetPoint("LEFT", title, "RIGHT", 14, 0)
+    panel.modeList = Button(panel, L["Einkaufsliste"], 100); panel.modeList:SetPoint("LEFT", panel.modeSearch, "RIGHT", 5, 0)
+    panel.modeSell = Button(panel, L["Verkaufen"], 82); panel.modeSell:SetPoint("LEFT", panel.modeList, "RIGHT", 5, 0)
+    panel.modeOwn = Button(panel, L["Meine Auktionen"], 116); panel.modeOwn:SetPoint("LEFT", panel.modeSell, "RIGHT", 5, 0)
+    panel.modeOrders = Button(panel, L["Aufträge"], 80); panel.modeOrders:SetPoint("LEFT", panel.modeOwn, "RIGHT", 5, 0)
+    panel.modeScan = Button(panel, L["Scanner"], 74); panel.modeScan:SetPoint("LEFT", panel.modeOrders, "RIGHT", 5, 0)
+    panel.modeOrders:SetScript("OnClick", function() ShowMode("orders") end)
     panel.modeList:SetScript("OnClick", function() ShowMode("list") end)
     panel.modeOwn:SetScript("OnClick", function() ShowMode("own") end)
     panel.modeSearch:SetScript("OnClick", function() ShowMode("search") end)
@@ -1602,6 +1768,7 @@ local function Build()
     panel.scan = MakeScanPane()
     panel.own = MakeOwnPane()
     panel.lists = MakeShopPane()
+    panel.orders = MakeOrdersPane()
     ClearSell()
     ShowMode(mode)
     panel:Hide()

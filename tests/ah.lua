@@ -1375,6 +1375,115 @@ return function(test, eq, W, ns)
         ns.IsMyChar = oldMine
         GuildPrideDB.ahChars, UnitFactionGroup, SendMailNameEditBox = nil, nil, nil
     end)
+    W.Load("GuildPrideAHOrders.lua")
+    test("AH: Gildenaufträge – einstellen, abgleichen, annehmen", function()
+        local function msg(kind, ...) return kind .. ":" .. table.concat({ ... }, "\031") end
+        local function Find(owner, id)
+            for _, o in ipairs(AH.Orders()) do if o.owner == owner and o.id == id then return o end end
+        end
+        local function Count(owner, now)
+            local n = 0
+            for _, o in ipairs(AH.Orders(now)) do if o.owner == owner then n = n + 1 end end
+            return n
+        end
+        W.sent = {}
+        local o = AH.AddOrder("2870", 3)
+        eq(o.qty, 3); eq(o.item, 2870); eq(o.owner, ns.Me())
+        local sent
+        for _, m in ipairs(W.sent) do if m.kind == "ORD" then sent = m end end
+        eq(sent ~= nil, true, "an die Gilde"); eq(sent.target, nil)
+        eq(select(2, AH.AddOrder("abc", 1)) ~= nil, true, "keine Item-ID")
+        eq(AH.AddOrder("2871", 5000).qty, 999)
+        -- Aufträge anderer
+        W.Receive("Anna", msg("ORD", W.server, "a1:765:20:" .. W.server .. ",a2:2447:5:" .. W.server))
+        eq(Count("Anna"), 2); eq(Find("Anna", "a1").qty, 20); eq(Find("Anna", "a1").item, 765)
+        W.Receive("Fremd", msg("ORD", W.server, "x1:1:1:" .. W.server), "WHISPER")
+        eq(Count("Fremd"), 0, "kein Mitglied")
+        W.Receive("Bert", msg("FWD", "Carl", "9", msg("ORD", W.server, "c1:1:1:" .. W.server)))
+        eq(Count("Carl"), 0, "weitergeleitet")
+        W.Receive("Anna", msg("ORD", W.server - 100, "a1:765:1:" .. W.server))
+        eq(Find("Anna", "a1").qty, 20, "älterer Stand überschreibt nicht")
+        -- annehmen und abgeben
+        W.sent = {}
+        eq(AH.TakeOrder("Anna", "a1", true), true)
+        local ora
+        for _, m in ipairs(W.sent) do if m.kind == "ORA" then ora = m end end
+        eq(ora ~= nil, true); eq(Find("Anna", "a1").by, ns.Me())
+        eq(AH.TakeOrder(ns.Me(), o.id, true), false, "eigenen Auftrag nicht annehmen")
+        W.Receive("Bert", msg("ORA", "Anna", "a2", "1"))
+        eq(Find("Anna", "a2").by, "Bert")
+        W.Receive("Carl", msg("ORA", "Anna", "a2", "1"))
+        eq(Find("Anna", "a2").by, "Bert", "schon vergeben")
+        W.Receive("Carl", msg("ORA", "Anna", "a2", "0"))
+        eq(Find("Anna", "a2").by, "Bert", "nur Bert kann abgeben")
+        W.Receive("Bert", msg("ORA", "Anna", "a2", "0"))
+        eq(Find("Anna", "a2").by, nil)
+        W.Receive("Bert", msg("FWD", "Carl", "9", msg("ORA", "Anna", "a2", "1")))
+        eq(Find("Anna", "a2").by, nil, "Annahme nie weitergeleitet")
+        -- Anfrage: Antwort mit den eigenen Aufträgen per Flüstern
+        W.sent = {}
+        W.Receive("Carl", msg("ORQ", "1"))
+        local reply
+        for _, m in ipairs(W.sent) do if m.kind == "ORD" then reply = m end end
+        eq(reply ~= nil, true); eq(reply.target, "Carl")
+        -- löschen, Liste leeren, verfallen
+        eq(AH.RemoveOrder(o.id), true); eq(Count(ns.Me()), 1)
+        W.Receive("Anna", msg("ORD", W.server + 10, ""))
+        eq(Count("Anna"), 0, "Liste geleert")
+        eq(Count(ns.Me(), W.server + 15 * 86400), 0, "nach 14 Tagen verfallen")
+    end)
+    test("AH-Forever: Reiter Aufträge und Preis an Discord", function()
+        local function msg(kind, ...) return kind .. ":" .. table.concat({ ... }, "\031") end
+        Modern(true)
+        GuildPrideDB.ahTab, GuildPrideDB.ahBlizzard, GuildPrideDB.discordBridge = true, nil, true
+        local posted = {}
+        local oldDiscord = ns.Discord
+        ns.Discord = { Post = function(text) posted[#posted + 1] = text end }
+        C_AuctionHouse.SendSearchQuery = function() end
+        W.Fire("AUCTION_HOUSE_SHOW")
+        local _, win = AH._ModernTab()
+        win.modeOrders.scripts.OnClick(win.modeOrders)
+        local op = win.orders
+        eq(op:IsShown(), true); eq(win.search:IsShown(), false)
+        -- eigenen Auftrag einstellen
+        op.itemBox.GetText = function() return "2870" end
+        op.qtyBox.GetText = function() return "3" end
+        op.addBtn.scripts.OnClick(op.addBtn)
+        local mine
+        for _, o in ipairs(AH.Orders()) do if o.mine and o.item == 2870 then mine = o end end
+        eq(mine ~= nil, true); eq(mine.qty, 3)
+        eq(posted[#posted], "Auftrag: 3x Item2870 (von " .. ns.Me() .. ")")
+        -- fremden Auftrag annehmen
+        W.Receive("Anna", msg("ORD", W.server + 50, "q1:765:20:" .. W.server))
+        local row
+        for _, r in ipairs(op.rows) do if r.order and r.order.owner == "Anna" then row = r end end
+        eq(row ~= nil, true)
+        row.action.scripts.OnClick(row.action)
+        local taken
+        for _, o in ipairs(AH.Orders()) do if o.owner == "Anna" then taken = o end end
+        eq(taken.by, ns.Me())
+        eq(posted[#posted], "Auftrag angenommen: 20x Item765 für Anna – macht " .. ns.Me())
+        -- eigenen Auftrag löschen
+        local own
+        for _, r in ipairs(op.rows) do if r.order and r.order.mine and r.order.item == 2870 then own = r end end
+        own.action.scripts.OnClick(own.action)
+        for _, o in ipairs(AH.Orders()) do eq(o.mine and o.item == 2870, false) end
+        -- Preis an Discord aus der Kaufansicht
+        local oldPrice = AH.PriceFor
+        AH.PriceFor = function() return 1234 end
+        win.modeSearch.scripts.OnClick(win.modeSearch)
+        M.browse = { { itemKey = { itemID = 30070, itemSuffix = 0 }, totalQuantity = 4, minPrice = 25 } }
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        win.search.rows[1].scripts.OnClick(win.search.rows[1])
+        win.search.discordBtn.scripts.OnClick(win.search.discordBtn)
+        eq(posted[#posted]:match("^Preis: Item30070 – [%dgsc ]+ je Stück$") ~= nil, true, posted[#posted])
+        AH.PriceFor = oldPrice
+        ns.Discord = oldDiscord
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        M.browse = {}
+        GuildPrideDB.discordBridge = nil
+        Modern(false)
+    end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
         local old = GetCoinTextureString
         GetCoinTextureString = nil
