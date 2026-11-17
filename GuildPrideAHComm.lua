@@ -18,6 +18,9 @@ local ANSWER_MAX_AGE = 6 * 3600 -- nur mit eigenem Preis, der jünger ist
 local MAX_PRICE = 1000000000    -- 100 000 Gold
 local MAX_QTY = 100000
 local MAX_AGE = 7 * 86400
+local RECV_PER_MIN = 45         -- mehr als die eigene Sendebremse erlaubt (60 / 1,5 = 40)
+local NEW_KEYS_PER_HOUR = 200   -- neue Items je Absender und Stunde (Schutz der SavedVariables)
+local MAX_QUEUE = 30
 
 AH.stats = { sent = 0, received = 0, dropped = 0 }
 
@@ -65,6 +68,12 @@ function AH.SendRaw(msg, key)
     key = key or msg
     for i = #queue, 1, -1 do if queue[i].key == key then table.remove(queue, i) end end
     queue[#queue + 1] = { key = key, msg = msg }
+    -- Warteschlange begrenzen: zuerst alte Preislisten verwerfen, Nachfragen behalten
+    while #queue > MAX_QUEUE do
+        local drop = 1
+        for i = 1, #queue do if queue[i].msg:sub(1, 2) == "P:" then drop = i; break end end
+        table.remove(queue, drop)
+    end
 end
 C_Timer.NewTicker(0.5, function()
     if #queue == 0 or GetTime() - lastSend < SEND_GAP then return end
@@ -82,7 +91,8 @@ local function Send(msg, key)
 end
 
 local function ValidKey(k)
-    return type(k) == "string" and (k:match("^%d+$") or k:match("^%d+%.%d+$")) and true or false
+    -- Item-ID bis 6 Stellen, Zufalls-Suffix 1–4 Stellen (Classic-IDs liegen weit darunter)
+    return type(k) == "string" and (k:match("^%d%d?%d?%d?%d?%d?$") or k:match("^%d%d?%d?%d?%d?%d?%.[1-9]%d?%d?%d?$")) and true or false
 end
 local function KnownItem(k)
     local id = tonumber(k:match("^(%d+)"))
@@ -190,9 +200,24 @@ local function Allowed(sender)
     if s.blockedUntil and now < s.blockedUntil then return false end
     if now - s.since > 60 then s.n, s.since = 0, now end
     s.n = s.n + 1
-    if s.n > 10 then s.blockedUntil = now + 300; return false end
+    if s.n > RECV_PER_MIN then s.blockedUntil = now + 300; return false end
     return true
 end
+-- Neue Items je Absender begrenzen, damit niemand die gespeicherten Daten aufbläht
+local function NewKeyAllowed(sender)
+    local s, now = perSender[sender], GetTime()
+    if not s.keysSince or now - s.keysSince > 3600 then s.keys, s.keysSince = 0, now end
+    if s.keys >= NEW_KEYS_PER_HOUR then return false end
+    s.keys = s.keys + 1
+    return true
+end
+-- Absender, die lange nichts geschickt haben, vergessen
+C_Timer.NewTicker(600, function()
+    local now = GetTime()
+    for name, s in pairs(perSender) do
+        if now - s.since > 3600 and not (s.blockedUntil and now < s.blockedUntil) then perSender[name] = nil end
+    end
+end)
 
 function AH.OnMessage(msg, sender)
     if type(msg) ~= "string" or type(sender) ~= "string" or #msg > MAX_LEN then return end
@@ -203,7 +228,12 @@ function AH.OnMessage(msg, sender)
         local side, items = AH.DecodeP(msg)
         if not side or #items == 0 then AH.stats.dropped = AH.stats.dropped + 1; return end
         if side ~= AH.Side() then return end
+        local store = AH.Store()
         for _, it in ipairs(items) do
+            if not store[it.key] and not NewKeyAllowed(sender) then
+                AH.stats.dropped = AH.stats.dropped + 1
+                break
+            end
             AH.RecordServer(it.key, it.p, it.q, it.t, sender)
             local a = pending[it.key]
             if a and it.t >= a.t then pending[it.key] = nil end

@@ -85,19 +85,37 @@ local function FindOffer(name, o)
     end
 end
 
+-- Kaufen mit Rückfrage (wie Blizzard); OnAccept ist ebenfalls ein Klick-Ereignis
+StaticPopupDialogs["GUILDPRIDE_AH_BUY"] = {
+    text = L["%s kaufen für %s?"],
+    button1 = YES, button2 = NO,
+    OnAccept = function(_, data)
+        local i = FindOffer(data.name, data.o)
+        if not i then AH.Print(L["Auktionshaus: Angebot nicht mehr da – suche neu."]); return end
+        PlaceAuctionBid("list", i, data.o.buyout)
+        data.o.bought = true      -- Zeile bleibt stehen, Knopf aus: kein Doppelkauf
+        RefreshList()
+    end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+
 local function Buy(row)
     local entry = row.entry
-    if not entry or not entry.offer then return end
+    if not entry or not entry.offer or entry.offer.o.bought then return end
     local r, o = results[detailKey], entry.offer.o
-    local i = r and FindOffer(r.name, o)
-    if not i then
-        AH.Print(L["Auktionshaus: Angebot nicht mehr da – suche neu."])
-        StartSearch(r and r.name or "")
+    if not r then return end
+    if not FindOffer(r.name, o) then
+        -- Angebot steht auf einer anderen Ergebnisseite: diese laden, dann erneut klicken
+        if o.page and AH.LoadPage(r.name, o.page) then
+            panel.status:SetText(L["Seite wird geladen – bitte noch einmal auf Kaufen klicken."])
+        else
+            AH.Print(L["Auktionshaus: Angebot nicht mehr da – suche neu."])
+            StartSearch(r.name)
+        end
         return
     end
-    PlaceAuctionBid("list", i, o.buyout)   -- direkt im OnClick
-    o.buyout = 0                            -- nicht doppelt kaufen
-    RefreshList()
+    local dlg = StaticPopup_Show("GUILDPRIDE_AH_BUY", ("%s x%d"):format(r.name, o.count), Money(o.buyout))
+    if dlg then dlg.data = { name = r.name, o = o } end
 end
 
 local function MakeSearchPane()
@@ -172,6 +190,8 @@ RefreshList = function()
                 row.price:SetText(Money(e.offer.unit))
                 row.info:SetText(e.offer.mine and L["eigenes Angebot"] or (o.owner or ""))
                 row.buy:SetShown(not e.offer.mine and o.buyout > 0)
+                row.buy:SetEnabled(not o.bought)
+                if o.bought then row.info:SetText(L["gekauft"]) end
             else
                 row.name:SetText(e.link or e.name)
                 row.price:SetText(e.r.min and Money(e.r.min) or "-")
@@ -333,6 +353,8 @@ local function ShowMode(m)
     panel.sell:SetShown(m == "sell")
     panel.modeSearch:SetEnabled(m ~= "search")
     panel.modeSell:SetEnabled(m ~= "sell")
+    -- Rechtsklick in den Taschen: beim Verkaufen ins Verkaufsfeld, sonst nichts benutzen
+    if SetAuctionsTabShowing and panel:IsShown() then SetAuctionsTabShowing(m == "sell") end
     if m == "sell" then LoadSellItem() else RefreshList() end
 end
 

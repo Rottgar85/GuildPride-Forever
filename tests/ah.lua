@@ -37,7 +37,7 @@ return function(test, eq, W, ns)
     test("AH: älterer Serverwert verdrängt neueren nicht; Aufräumen", function()
         AH.RecordServer("7", 50, 1, W.server, "Anna")
         eq(AH.RecordServer("7", 10, 1, W.server - 100, "Carl"), false)
-        eq(AH.PriceFor("7"), 50)
+        eq(AH.Store()["7"].srv.p, 50); eq(AH.Store()["7"].srv.from.Carl, 10)
         AH.Prune(W.server + 8 * 86400); eq(AH.PriceFor("7"), nil)
     end)
 
@@ -81,7 +81,7 @@ return function(test, eq, W, ns)
     end)
 
     test("AH-Comm: Spammer bestätigt nichts", function()
-        for _ = 1, 12 do AH.OnMessage("P:A:11=1,1," .. W.server, "Spam") end
+        for _ = 1, 50 do AH.OnMessage("P:A:11=1,1," .. W.server, "Spam") end
         eq(AH.ServerConfirmed("11"), nil); eq(AH.stats.dropped > 0, true)
     end)
 
@@ -211,5 +211,68 @@ return function(test, eq, W, ns)
         eq(AH.Tradeable("|Hitem:5001:0:0:0:0:0:0:0|h"), false)
         eq(AH.Tradeable("|Hitem:5002:0:0:0:0:0:0:0|h"), false)
         eq(AH.Tradeable("|Hitem:5003:0:0:0:0:0:0:0|h"), true)
+    end)
+
+    -----------------------------------------------------------------
+    -- Review-Fixes
+    -----------------------------------------------------------------
+    test("AH-Fix: 40 Nachrichten pro Minute (volle Sendebremse) sperren niemanden", function()
+        local before = AH.stats.dropped
+        for i = 1, 40 do AH.OnMessage("P:A:" .. (60000 + i) .. "=100,1," .. W.server, "Viel") end
+        eq(AH.stats.dropped, before)
+    end)
+
+    test("AH-Fix: Spammer mit Zukunftszeit steuert Preis nicht und sperrt Ehrliche nicht aus", function()
+        for _, n in ipairs({ "Hon1", "Hon2", "Hon3" }) do AH.RecordServer("4000", 100, 1, W.server - 100, n) end
+        AH.OnMessage("P:A:4000=999999,1," .. (W.server + 60), "Spam2")
+        eq(AH.PriceFor("4000"), 100)
+        eq(AH.Store()["4000"].srv.t <= W.server, true)
+        AH.OnMessage("P:A:4000=101,1," .. (W.server - 50), "Dora")
+        eq(AH.Store()["4000"].srv.from.Dora, 101)
+    end)
+
+    test("AH-Fix: absurde Suffixe und Schlüssel-Flut werden verworfen", function()
+        eq(#select(2, AH.DecodeP("P:A:123.99999=5,1," .. W.server)), 0)
+        eq(#select(2, AH.DecodeP("P:A:123.1017=5,1," .. W.server)), 1)
+        for m = 0, 29 do
+            local parts = {}
+            for i = 1, 8 do parts[i] = (70000 + m * 8 + i) .. "=5,1," .. W.server end
+            AH.OnMessage("P:A:" .. table.concat(parts, ";"), "Flut")
+        end
+        local n = 0
+        for k in pairs(AH.Store()) do local id = tonumber(k); if id and id > 70000 and id <= 70240 then n = n + 1 end end
+        eq(n <= 200, true, "höchstens 200 neue Items je Absender und Stunde")
+    end)
+
+    test("AH-Fix: unvollständige Zeilen – Suche wartet auf vollständige Daten", function()
+        local res
+        W.Advance(3600)
+        W.auctions = { { nil, 1, 1, 25, "Bert", LINK_2589 }, { "Leinen", 1, 1, 5, nil, LINK_2589 } }
+        AH.Search("Leinen", function(r) res = r end)
+        W.Fire("AUCTION_ITEM_LIST_UPDATE"); eq(res, nil)
+        W.auctions = { { "Leinen", 1, 1, 25, "Bert", LINK_2589 }, { "Leinen", 1, 1, 5, "Tester", LINK_2589 } }
+        W.Fire("AUCTION_ITEM_LIST_UPDATE")
+        eq(res and res["2589"].min, 25)
+    end)
+
+    test("AH-Fix: Angebote merken ihre Seite, Seite kann nachgeladen werden", function()
+        local res
+        W.Advance(3600)
+        W.auctions = {}
+        for i = 1, 60 do W.auctions[i] = { "Leinen", 1, 1, 30 + i, "Bert", LINK_2589 } end
+        AH.Search("Leinen", function(r) res = r end)
+        W.Fire("AUCTION_ITEM_LIST_UPDATE"); W.Fire("AUCTION_ITEM_LIST_UPDATE")
+        eq(res["2589"].offers[1].page, 0); eq(res["2589"].offers[61].page, 1)
+        W.queries = 0; eq(AH.LoadPage("Leinen", 0), true); eq(W.queries, 1)
+    end)
+
+    test("AH-Fix: großes Auctionator-Ergebnis wird gedrosselt gelesen", function()
+        W.addons.Auctionator = true
+        W.Advance(3600)
+        W.auctions = {}
+        for i = 1, 250 do W.auctions[i] = { "Leinen", 1, 1, 40, "Bert", LINK_2589 } end
+        W.Fire("AUCTION_ITEM_LIST_UPDATE"); W.Fire("AUCTION_ITEM_LIST_UPDATE")
+        eq(AH.Store()["2589"].own.q, 250)
+        W.addons.Auctionator = nil
     end)
 end

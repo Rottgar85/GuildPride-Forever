@@ -80,24 +80,38 @@ end
 
 function AH.RecordServer(key, p, q, t, sender)
     if not key or not p or not sender then return false end
+    local now = GetServerTime()
+    if t > now then t = now end          -- Zeit aus der Zukunft: auf jetzt kürzen
     local e = Entry(key, true)
     local s = e.srv
-    if s and s.t and t < s.t then return false end
     if not s then s = {}; e.srv = s end
-    s.p, s.q, s.t = p, q or 0, t
     s.from = s.from or {}
     s.seen = s.seen or {}
+    -- Jeder Absender zählt unabhängig vom Zeitstempel; „seen“ ist die Empfangszeit
     s.from[sender] = p
-    s.seen[sender] = t
-    -- höchstens 5 Absender: ältesten entfernen
+    s.seen[sender] = now
+    -- höchstens 5 Absender: den am längsten nicht gehörten entfernen
     local count, oldest, oldestT = 0, nil, nil
     for name in pairs(s.from) do
         count = count + 1
         local st = s.seen[name] or 0
         if not oldestT or st < oldestT then oldest, oldestT = name, st end
     end
-    if count > MAX_FROM and oldest then s.from[oldest] = nil; s.seen[oldest] = nil end
+    if count > MAX_FROM and oldest and oldest ~= sender then s.from[oldest] = nil; s.seen[oldest] = nil end
+    if s.t and t < s.t then return false end
+    s.p, s.q, s.t = p, q or 0, t
     return true
+end
+
+-- Median der Absenderpreise: ein einzelner Ausreißer steuert den Preis nicht
+local function Median(from)
+    local v = {}
+    for _, p in pairs(from or {}) do v[#v + 1] = p end
+    if #v == 0 then return nil end
+    table.sort(v)
+    local m = math.floor((#v + 1) / 2)
+    if #v % 2 == 1 then return v[m] end
+    return math.floor((v[m] + v[m + 1]) / 2 + 0.5)
 end
 
 function AH.ServerConfirmed(key)
@@ -119,7 +133,7 @@ function AH.PriceFor(key)
     if not e then return nil end
     local o, s = e.own, e.srv
     if o and (not s or o.t >= s.t) then return o.p, o.t, "own" end
-    if s and s.p then return s.p, s.t, "srv" end
+    if s and s.p then return Median(s.from) or s.p, s.t, "srv" end
     return nil
 end
 

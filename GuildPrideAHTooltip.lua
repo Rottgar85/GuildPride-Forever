@@ -38,14 +38,20 @@ local function Show()
     return not AH.AuctionatorLoaded() or AH.Opt("ahTooltipWithAuctionator")
 end
 
+-- done[tooltip] = true (schon behandelt) oder Nummer der eigenen Zeile
 local done = {}
+local function LineText(link, count)
+    local ok, line = pcall(AH.TooltipLine, link, count, GetServerTime(), IsShiftKeyDown())
+    return ok and line and ("|cffffd100" .. line .. "|r") or nil
+end
 local function AddLine(tooltip, link, count)
     if not link or done[tooltip] or not Show() then return end
     if issecretvalue and issecretvalue(link) then return end
     done[tooltip] = true
-    local ok, line = pcall(AH.TooltipLine, link, count, GetServerTime(), IsShiftKeyDown())
-    if ok and line then
-        tooltip:AddLine("|cffffd100" .. line .. "|r")
+    local text = LineText(link, count)
+    if text then
+        tooltip:AddLine(text)
+        done[tooltip] = tooltip:NumLines()
         tooltip:Show()
     end
     -- Kein oder alter Preis: beim Server nachfragen (gebremst in AH.Ask)
@@ -61,12 +67,19 @@ local function FromTooltip(tooltip) local _, link = tooltip:GetItem(); AddLine(t
 function AH.OnPrice(key)
     if not GameTooltip or not GameTooltip.IsShown or not GameTooltip:IsShown() then return end
     local _, link = GameTooltip:GetItem()
-    if link and AH.KeyFromLink(link) == key and not done.refreshing then
-        done[GameTooltip] = nil
-        done.refreshing = true
-        AddLine(GameTooltip, link)
-        done.refreshing = nil
+    if not link or AH.KeyFromLink(link) ~= key or not Show() then return end
+    local idx = done[GameTooltip]
+    local text = LineText(link)
+    if not text then return end
+    if type(idx) == "number" then
+        -- vorhandene eigene Zeile ersetzen statt eine zweite anzuhängen
+        local fs = _G[GameTooltip:GetName() .. "TextLeft" .. idx]
+        if fs then fs:SetText(text) end
+    else
+        GameTooltip:AddLine(text)
+        done[GameTooltip] = GameTooltip:NumLines()
     end
+    GameTooltip:Show()
 end
 
 if GameTooltip and GameTooltip.HookScript then
@@ -86,8 +99,15 @@ if GameTooltip and GameTooltip.HookScript then
                 count = select(2, GetContainerItemInfo(bag, slot)) or 1
             end
             local _, link = self:GetItem()
-            done[self] = nil
-            AddLine(self, link, count)
+            -- OnTooltipSetItem hat die Zeile evtl. schon gesetzt: dann nur mit Stapelgröße neu schreiben
+            local idx = done[self]
+            if type(idx) == "number" then
+                local text = count > 1 and LineText(link, count)
+                local fs = text and _G[self:GetName() .. "TextLeft" .. idx]
+                if fs then fs:SetText(text); self:Show() end
+            elseif not idx then
+                AddLine(self, link, count)
+            end
         end)
     end
     for _, method in ipairs({ "SetAuctionItem", "SetAuctionSellItem", "SetBuybackItem", "SetHyperlink",
