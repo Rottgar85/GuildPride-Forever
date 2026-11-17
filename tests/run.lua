@@ -297,6 +297,40 @@ test("Berufe: weitergeleitet oder von Fremden verworfen", function()
     eq(ns.GuildTable("crafts")["Fremd"], nil, "kein Mitglied")
 end)
 
+test("Berufe: offenes Berufsfenster wird erkannt", function()
+    ProfessionsFrame, TradeSkillFrame = nil, nil
+    eq(ns.Crafts.ProfessionShown(), false)
+    ProfessionsFrame = CreateFrame(); ProfessionsFrame.shown = false
+    eq(ns.Crafts.ProfessionShown(), false, "zu")
+    ProfessionsFrame:Show()
+    eq(ns.Crafts.ProfessionShown(), true)
+    ProfessionsFrame = nil
+end)
+
+test("Tastendruck-Aktion: Tastatur nur, wenn etwas wartet und kein Kampf ist", function()
+    local work, hits, fight = false, 0, false
+    local oldCombat = InCombatLockdown
+    InCombatLockdown = function() return fight end
+    local Sync, f = ns.KeyAction(function() return work end, function() hits = hits + 1 end)
+    eq(f.IsListening(), false, "nichts wartet")
+    work = true; Sync()
+    eq(f.IsListening(), true)
+    -- Kampfbeginn: sofort aus, im Kampf wieder einschalten geht nicht
+    f.scripts.OnEvent(f, "PLAYER_REGEN_DISABLED")
+    eq(f.IsListening(), false, "Kampfbeginn")
+    fight = true; Sync()
+    eq(f.IsListening(), false, "im Kampf")
+    f.scripts.OnKeyDown(f)
+    eq(hits, 0, "im Kampf nichts senden")
+    fight = false
+    f.scripts.OnEvent(f, "PLAYER_REGEN_ENABLED")
+    eq(f.IsListening(), true, "nach dem Kampf")
+    work = false
+    f.scripts.OnKeyDown(f)
+    eq(hits, 1); eq(f.IsListening(), false, "erledigt: wieder aus")
+    InCombatLockdown = oldCombat
+end)
+
 test("Berufe: Suche nach Beruf und Name", function()
     eq(#ns.Crafts.Search("schnei"), 1)
     eq(#ns.Crafts.Search("anna"), 2)

@@ -104,6 +104,31 @@ function ns.On(kind, fn)
     table.insert(ns.Handlers[kind], fn)
 end
 ns.SEP = "\031"
+
+-- Tastendruck als Spieleraktion (Forever lässt Gildenchat nur aus einer Aktion zu):
+-- Ein unsichtbares Fenster hört nur dann auf die Tastatur, wenn etwas wartet
+-- (hasWork()) und kein Kampf ist – im Kampf blockiert das Spiel Tastatur-Fenster
+-- von Addons („Aktion blockiert“). Die Taste selbst geht normal weiter.
+-- Rückgabe: Sync() – nach dem Einreihen aufrufen, damit es sofort bereit ist.
+function ns.KeyAction(hasWork, onKey)
+    local f = CreateFrame("Frame", nil, UIParent)
+    local on, propagate = false, false
+    local function Sync(fight)
+        local want = (not fight and not InCombatLockdown() and hasWork()) and true or false
+        if want and not propagate then f:SetPropagateKeyboardInput(true); propagate = true end
+        if want ~= on then f:EnableKeyboard(want); on = want end
+    end
+    f:SetScript("OnKeyDown", function()
+        if not InCombatLockdown() then onKey() end
+        Sync()
+    end)
+    f:RegisterEvent("PLAYER_REGEN_DISABLED")
+    f:RegisterEvent("PLAYER_REGEN_ENABLED")
+    f:SetScript("OnEvent", function(_, event) Sync(event == "PLAYER_REGEN_DISABLED") end)
+    if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(1, function() Sync() end) end
+    f.Sync, f.IsListening = Sync, function() return on end   -- für Tests
+    return Sync, f
+end
 -- WoW Forever: Vor- plus Nachname ist regionsweit eindeutig, ein Realm gehört
 -- nicht dazu. Das Spiel liefert den Nachnamen teils dort, wo sonst der Realm
 -- steht („Reon-Strobek“). Einheitliche Form hier: „Reon Strobek“.

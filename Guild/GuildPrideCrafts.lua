@@ -328,6 +328,14 @@ function Crafts.OpenProfession(data, prof)
     return false
 end
 
+-- Ist gerade ein Berufsfenster offen (das neue oder das alte)?
+function Crafts.ProfessionShown()
+    for _, f in ipairs({ ProfessionsFrame, TradeSkillFrame }) do
+        if type(f) == "table" and f.IsShown and f:IsShown() == true then return true end
+    end
+    return false
+end
+
 local function RosterSkill(name, prof)
     for _, p in ipairs(GuildProfs()[name] or {}) do
         if p.n == prof then return p.id end
@@ -641,7 +649,7 @@ function page:Refresh()
                 -- aus – Klick öffnet ein Flüstern mit der Bitte, den Beruf zu verlinken.
                 local countText = p.count > 0 and (L["%d Rezepte"]):format(p.count)
                     or (c.roster and L["ohne GuildPride"] or L["Rezepte unbekannt"])
-                local action = p.link and L["Berufsfenster öffnen"] or (p.count > 0 and L["Rezepte zeigen"]) or L["Anfragen"]
+                local action = (p.link and not Crafts.linksBroken) and L["Berufsfenster öffnen"] or (p.count > 0 and L["Rezepte zeigen"]) or L["Anfragen"]
                 prow.right:SetText("|cffffd100" .. action .. "|r  ·  " .. countText)
                 local function Ask()
                     local short = Ambiguate(c.name, "none"):gsub(" ", "-")
@@ -649,7 +657,17 @@ function page:Refresh()
                     if ChatFrame_OpenChat then ChatFrame_OpenChat("/w " .. short .. " " .. msg) end
                 end
                 prow:SetScript("OnMouseUp", function(_, button)
-                    if button ~= "RightButton" and p.link and Crafts.OpenProfession(p.link, p.n) then return end
+                    if button ~= "RightButton" and p.link and not Crafts.linksBroken and Crafts.OpenProfession(p.link, p.n) then
+                        -- Öffnet das Spiel das fremde Berufsfenster nicht (Forevers Server liefert
+                        -- fremde Berufe nicht aus), die geteilten Rezepte hier aufklappen
+                        C_Timer.After(1.5, function()
+                            if Crafts.ProfessionShown() then return end
+                            Crafts.linksBroken = true
+                            ns.Print(L["Das Spiel öffnet fremde Berufsfenster hier nicht – GuildPride zeigt die geteilten Rezepte in der Liste."])
+                            if p.count > 0 then openProf[key] = true; page:Refresh() else Ask() end
+                        end)
+                        return
+                    end
                     if p.count == 0 then Ask() return end
                     openProf[key] = not popen
                     page:Refresh()
@@ -657,7 +675,7 @@ function page:Refresh()
                 prow:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:SetText(("%s – %s"):format(Ambiguate(c.name, "guild"), p.n))
-                    if p.link then
+                    if p.link and not Crafts.linksBroken then
                         GameTooltip:AddLine(L["Klick: sein Berufsfenster mit allen Rezepten öffnen"], 1, 1, 1, true)
                         if p.count > 0 then GameTooltip:AddLine(L["Rechtsklick: Rezeptliste hier aufklappen"], 0.7, 0.7, 0.7, true) end
                     elseif p.count > 0 then

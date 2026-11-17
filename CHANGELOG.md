@@ -5,11 +5,15 @@
 **Deutsch**
 - Gildenfenster › **Berufe**: Vor den Namen standen Kästchen statt Pfeilen – jetzt Plus- und Minus-Symbole zum Auf- und Zuklappen
 - Berufe: Die Berufssymbole stehen jetzt rechts am Zeilenende
+- Berufe: **Berufsfenster öffnen** – öffnet das Spiel das Fenster eines Mitspielers nicht, klappt GuildPride stattdessen seine geteilten Rezepte in der Liste auf
+- Begrüßung neuer Mitglieder und Discord-Zeilen: Im Kampf kam es zu einer Fehlermeldung („Aktion blockiert“). GuildPride hört jetzt nur noch auf die Tastatur, wenn etwas wartet und du nicht im Kampf bist
 - Briefkasten: Der Knopf **Twinks** beim Schreiben ist wieder entfernt – GuildPride verändert den Briefkasten nicht mehr
 
 **English**
 - Guild window › **Professions**: boxes showed in front of the names instead of arrows – now plus and minus icons to expand and collapse
 - Professions: the profession icons now sit at the right end of the row
+- Professions: **Open profession window** – if the game does not open another player's window, GuildPride expands their shared recipes in the list instead
+- Welcome message for new members and Discord lines: in combat an error ("action blocked") could appear. GuildPride now only listens to the keyboard while something is waiting and you are not in combat
 - Mailbox: the **Alts** button when writing is removed again – GuildPride no longer changes the mailbox
 
 ## 2.23.0

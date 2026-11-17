@@ -110,12 +110,9 @@ local function SendPendingWelcome()
     pcall(SendChat, w.text, "GUILD")
 end
 
-local welcomeKeys = CreateFrame("Frame", nil, UIParent)
-welcomeKeys:SetPropagateKeyboardInput(true)
-welcomeKeys:SetScript("OnKeyDown", function()
-    if #pendingWelcome > 0 then SendPendingWelcome() end
-end)
-welcomeKeys:EnableKeyboard(true)
+-- Tastatur nur abhören, solange eine Begrüßung wartet und kein Kampf ist
+local SyncWelcomeKeys, welcomeKeys = ns.KeyAction(function() return #pendingWelcome > 0 end, SendPendingWelcome)
+ns._WelcomeKeys = welcomeKeys   -- für Tests
 
 local function Welcome(name)
     if not GuildPrideDB.welcome then return end
@@ -128,6 +125,7 @@ local function Welcome(name)
         for _, w in ipairs(pendingWelcome) do if w.short == short then return end end
         pendingWelcome[#pendingWelcome + 1] = { short = short, t = GetTime(),
             text = (text:gsub("{name}", Ambiguate(name, "guild"))) }
+        SyncWelcomeKeys()
     end)
 end
 

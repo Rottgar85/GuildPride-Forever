@@ -364,12 +364,9 @@ end)
 
 -- Jeder Tastendruck außerhalb des Kampfes darf eine wartende Zeile senden.
 -- Die Taste selbst wird normal weitergereicht.
-local keys = CreateFrame("Frame", nil, UIParent)
-keys:SetPropagateKeyboardInput(true)
-keys:SetScript("OnKeyDown", function()
-    if #queue > 0 then Discord.Flush() end
-end)
-keys:EnableKeyboard(true)
+-- Tastatur nur abhören, solange Zeilen warten und kein Kampf ist (sonst blockiert
+-- das Spiel im Kampf); die Prüfung läuft jede Sekunde und bei Kampfbeginn/-ende
+ns.KeyAction(function() return #queue > 0 end, function() Discord.Flush() end)
 
 ---------------------------------------------------------------------
 -- Zeilen im Chat ausblenden und als gesehen merken

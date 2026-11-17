@@ -964,6 +964,7 @@ local enUS = {
     ["GuildPride – Schiffe"] = "GuildPride – Ships",
     ["Fahr einmal mit – dann misst GuildPride die Zeiten für dich und deine Gilde."] = "Ride along once – then GuildPride measures the times for you and your guild.",
     ["%s nach %s"] = "%s to %s",
+    ["Das Spiel öffnet fremde Berufsfenster hier nicht – GuildPride zeigt die geteilten Rezepte in der Liste."] = "The game does not open other players' profession windows here – GuildPride shows the shared recipes in the list.",
     ["Ø %s"] = "avg %s",
     ["legt ab"] = "leaves",
     ["kommt an"] = "arrives",
