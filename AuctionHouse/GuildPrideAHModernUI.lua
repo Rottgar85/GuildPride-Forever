@@ -19,6 +19,9 @@ local button, panel, setupError
 local mode = "search"            -- "search" | "sell" | "scan"
 local rows, offset = {}, 0
 local catSel, catExpanded, catOffset, catRows = nil, {}, 0, {}
+local buy = {}                   -- entry, info, offers, selected, loaded, pending, confirm
+local DETAIL_ROWS, DETAIL_H = 15, 20
+local CloseDetail                -- weiter unten: Kaufansicht schließen
 local bagItems, bagOffset = {}, 0
 local sell = { duration = 2 }    -- info, manual, setting, pending
 local ShowBlizzard               -- weiter unten: zu Blizzards Fenster wechseln
@@ -87,6 +90,7 @@ end
 
 local function StartSearch(text)
     offset = 0
+    if CloseDetail then CloseDetail() end
     if AH.ModernBrowse(text, catSel and catSel.filters) then Status(L["Suche läuft …"]) end
 end
 
@@ -144,15 +148,193 @@ end
 
 -- Zeile anklicken: Blizzards Kaufansicht für dieses Item öffnen.
 -- Die gemerkte Wahl bleibt GuildPride; der Knopf „GuildPride“ führt zurück.
-local function OpenBuy(row)
+---------------------------------------------------------------------
+-- Kaufansicht: Angebote eines Items, Menge wählen, kaufen
+---------------------------------------------------------------------
+StaticPopupDialogs["GUILDPRIDE_AH_BUY"] = {
+    text = "%s",
+    button1 = L["Kaufen"], button2 = CANCEL,
+    OnAccept = function()
+        local f = buy.confirm
+        buy.confirm = nil
+        if f then f() end
+    end,
+    OnCancel = function() buy.confirm, buy.pending = nil, nil end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+
+local function AskBuy(text, fn)
+    buy.confirm = fn
+    StaticPopup_Show("GUILDPRIDE_AH_BUY", text)
+end
+
+local function DetailQty()
+    return tonumber(panel.search.qty:GetText()) or 0
+end
+
+local function RefreshDetail()
+    local p = panel and panel.search
+    if not p or not p.detail:IsShown() or not buy.info then return end
+    local info = buy.info
+    buy.offers = AH.CurrentOffers(info)
+    local list = buy.offers
+    p.empty:SetText(#list == 0 and (buy.loaded and L["Keine Angebote im Auktionshaus."] or L["Angebote werden geladen …"]) or "")
+    for i, row in ipairs(p.detailRows) do
+        local o = list[i]
+        row.offer = o
+        if not o then row:Hide() else
+            row:Show()
+            row.price:SetText(Money(o.unit))
+            row.qty:SetText((L["%d Stück"]):format(o.qty))
+            row.mine:SetText(o.mine and L["eigenes"] or "")
+            row.sel:SetShown(not info.commodity and buy.selected == o)
+        end
+    end
+    p.more:SetText(#list > DETAIL_ROWS and (L["+%d weitere"]):format(#list - DETAIL_ROWS) or "")
+    p.qtyRow:SetShown(info.commodity == true)
+    if info.commodity then
+        local total, have = AH.CommodityCost(list, DetailQty())
+        p.total:SetText(have > 0 and (L["Gesamt: %s"]):format(Money(total))
+            .. (have < DetailQty() and ("  " .. (L["(nur %d verfügbar)"]):format(have)) or "") or "")
+        p.buyBtn:SetEnabled(have > 0 and DetailQty() > 0)
+    else
+        local o = buy.selected
+        p.total:SetText(o and (L["Gesamt: %s"]):format(Money(o.buyout)) or L["Angebot in der Liste wählen."])
+        p.buyBtn:SetEnabled(o ~= nil and not o.mine)
+    end
+end
+
+local function RequestOffers()
+    buy.loaded = nil
+    if buy.info and buy.info.itemKey and AH.IsModern() then
+        C_AuctionHouse.SendSearchQuery(buy.info.itemKey, {}, true)
+    end
+end
+
+local function OpenDetail(row)
     local e = row.entry
     if not e then return end
-    ShowBlizzard(false)
-    if AuctionHouseFrame.SelectBrowseResult then
-        local ok = pcall(AuctionHouseFrame.SelectBrowseResult, AuctionHouseFrame, e.result)
-        if ok then return end
+    local p = panel.search
+    local commodity = e.commodity
+    if commodity == nil and C_AuctionHouse.GetItemKeyInfo then
+        local ki = C_AuctionHouse.GetItemKeyInfo(e.itemKey)
+        commodity = ki and ki.isCommodity
     end
-    AH.Print(L["Auktionshaus: Bitte im Reiter „Kaufen“ nach dem Item suchen."])
+    buy.entry, buy.selected = e, nil
+    buy.info = { itemID = e.itemKey.itemID, itemKey = e.itemKey, key = e.key, commodity = commodity }
+    p.dIcon:SetTexture(e.icon or AH.ItemIcon(e.itemKey.itemID))
+    p.dName:SetText(e.name or ("#" .. e.itemKey.itemID))
+    local color = e.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[e.quality]
+    if color then p.dName:SetTextColor(color.r, color.g, color.b) else p.dName:SetTextColor(1, 1, 1) end
+    p.qty:SetText("1")
+    p.listFrame:Hide()
+    p.detail:Show()
+    RequestOffers()
+    RefreshDetail()
+end
+
+CloseDetail = function()
+    local p = panel and panel.search
+    if not p or not p.detail then return end
+    buy.info, buy.selected, buy.pending = nil, nil, nil
+    p.detail:Hide()
+    p.listFrame:Show()
+end
+
+local function Buy()
+    local info = buy.info
+    if not info then return end
+    if info.commodity then
+        local qty = DetailQty()
+        if AH.BuyCommodity(info.itemID, qty) then
+            buy.pending = { itemID = info.itemID, qty = qty }
+            Status(L["Preis wird geprüft …"])
+        end
+    else
+        local o = buy.selected
+        if not o or o.mine then return end
+        AskBuy((L["%s für %s kaufen?"]):format(o.link or panel.search.dName:GetText(), Money(o.buyout)), function()
+            if AH.BuyItem(o) then Status(L["Kauf läuft …"]) end
+        end)
+    end
+end
+
+-- Blizzard hat den genauen Preis der Ware ermittelt: jetzt nachfragen
+local function OnCommodityPrice(unit, total)
+    local p = buy.pending
+    if not p then return end
+    AskBuy((L["%d Stück für %s kaufen (%s je Stück)?"]):format(p.qty, Money(total), Money(unit)), function()
+        buy.pending = nil
+        if AH.ConfirmCommodity(p.itemID, p.qty) then Status(L["Kauf läuft …"]) end
+    end)
+end
+
+local function OnBought()
+    Status(L["Gekauft."])
+    buy.selected = nil
+    RequestOffers()
+    RefreshDetail()
+end
+
+local function MakeDetail(p)
+    local d = CreateFrame("Frame", nil, p)
+    d:SetPoint("TOPLEFT", CAT_W + 10, -40); d:SetPoint("BOTTOMRIGHT", -12, 8)
+    d:Hide()
+    p.detail = d
+    p.back = Button(d, L["‹ Zurück zur Liste"], 150); p.back:SetPoint("TOPLEFT", 6, 0)
+    p.back:SetScript("OnClick", function() CloseDetail() end)
+    p.dIcon = d:CreateTexture(nil, "ARTWORK"); p.dIcon:SetSize(32, 32); p.dIcon:SetPoint("TOPLEFT", 8, -30)
+    p.dName = Label(d, "", "GameFontNormalLarge"); p.dName:SetPoint("LEFT", p.dIcon, "RIGHT", 10, 0)
+    local hp = Label(d, L["Stückpreis"], "GameFontNormalSmall"); hp:SetPoint("TOPLEFT", 60, -72)
+    local hq = Label(d, L["Menge"], "GameFontNormalSmall"); hq:SetPoint("TOPLEFT", 186, -72)
+    p.empty = Label(d, "", "GameFontDisableSmall"); p.empty:SetPoint("TOPLEFT", 12, -92)
+    p.detailRows = {}
+    for i = 1, DETAIL_ROWS do
+        local row = CreateFrame("Button", nil, d)
+        row:SetSize(420, DETAIL_H)
+        row:SetPoint("TOPLEFT", 6, -88 - (i - 1) * DETAIL_H)
+        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        row.sel = row:CreateTexture(nil, "BACKGROUND"); row.sel:SetAllPoints(); row.sel:SetColorTexture(1, 0.82, 0, 0.18); row.sel:Hide()
+        row.price = Label(row, "", "GameFontHighlightSmall"); row.price:SetPoint("LEFT", 4, 0); row.price:SetWidth(150)
+        row.price:SetJustifyH("RIGHT")
+        row.qty = Label(row, "", "GameFontHighlightSmall"); row.qty:SetPoint("LEFT", 180, 0); row.qty:SetWidth(110)
+        row.mine = Label(row, "", "GameFontDisableSmall"); row.mine:SetPoint("LEFT", 300, 0)
+        row:SetScript("OnClick", function()
+            local o = row.offer
+            if not o or not buy.info then return end
+            if buy.info.commodity then
+                -- wie bei Blizzard: Menge bis einschließlich dieser Zeile
+                local n = 0
+                for j = 1, i do
+                    local x = buy.offers[j]
+                    if x and not x.mine then n = n + x.qty end
+                end
+                panel.search.qty:SetText(tostring(math.max(1, n)))
+            else
+                buy.selected = o
+            end
+            RefreshDetail()
+        end)
+        row:SetScript("OnEnter", function()
+            local o = row.offer
+            if not o or not o.link then return end
+            GameTooltip:SetOwner(row, "ANCHOR_RIGHT"); GameTooltip:SetHyperlink(o.link); GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row:Hide()
+        p.detailRows[i] = row
+    end
+    p.more = Label(d, "", "GameFontDisableSmall"); p.more:SetPoint("TOPLEFT", 12, -92 - DETAIL_ROWS * DETAIL_H)
+
+    local y = -100 - DETAIL_ROWS * DETAIL_H - 14
+    p.qtyRow = CreateFrame("Frame", nil, d)
+    p.qtyRow:SetSize(200, 24); p.qtyRow:SetPoint("TOPLEFT", 8, y)
+    local ql = Label(p.qtyRow, L["Menge"]); ql:SetPoint("LEFT")
+    p.qty = Edit(p.qtyRow, 60, true); p.qty:SetPoint("LEFT", 70, 0)
+    p.qty:SetScript("OnTextChanged", function() RefreshDetail() end)
+    p.total = Label(d, "", "GameFontHighlight"); p.total:SetPoint("TOPLEFT", 210, y - 5)
+    p.buyBtn = Button(d, L["Kaufen"], 140); p.buyBtn:SetPoint("TOPLEFT", 8, y - 32)
+    p.buyBtn:SetScript("OnClick", Buy)
 end
 
 local function MakeSearchPane()
@@ -163,15 +345,17 @@ local function MakeSearchPane()
     go:SetPoint("LEFT", box, "RIGHT", 8, 0)
     go:SetScript("OnClick", function() box:ClearFocus(); StartSearch(box:GetText()) end)
     box:SetScript("OnEnterPressed", function() box:ClearFocus(); StartSearch(box:GetText()) end)
-    local hint = Label(p, L["Klick auf eine Zeile öffnet Blizzards Kaufansicht."], "GameFontDisableSmall")
+    local hint = Label(p, L["Klick auf eine Zeile zeigt die Angebote zum Kaufen."], "GameFontDisableSmall")
     hint:SetPoint("LEFT", go, "RIGHT", 12, 0)
 
     MakeCategoryList(p, box)
-    local head = Label(p, L["Item"], "GameFontNormalSmall"); head:SetPoint("TOPLEFT", CAT_W + 44, -42)
-    local headP = Label(p, L["Stückpreis"], "GameFontNormalSmall"); headP:SetPoint("TOPLEFT", CAT_W + 334, -42)
+    p.listFrame = CreateFrame("Frame", nil, p)
+    p.listFrame:SetAllPoints()
+    local head = Label(p.listFrame, L["Item"], "GameFontNormalSmall"); head:SetPoint("TOPLEFT", CAT_W + 44, -42)
+    local headP = Label(p.listFrame, L["Stückpreis"], "GameFontNormalSmall"); headP:SetPoint("TOPLEFT", CAT_W + 334, -42)
     p.rows = {}
     for i = 1, ROWS do
-        local row = CreateFrame("Button", nil, p)
+        local row = CreateFrame("Button", nil, p.listFrame)
         row:SetHeight(ROW_H)
         row:SetPoint("TOPLEFT", CAT_W + 16, -58 - (i - 1) * ROW_H)
         row:SetPoint("RIGHT", p, "RIGHT", -16, 0)
@@ -181,7 +365,7 @@ local function MakeSearchPane()
         row.price = Label(row, "", "GameFontHighlightSmall"); row.price:SetPoint("LEFT", 290, 0); row.price:SetWidth(150)
         row.price:SetJustifyH("RIGHT")
         row.info = Label(row, "", "GameFontDisableSmall"); row.info:SetPoint("LEFT", 460, 0); row.info:SetWidth(300)
-        row:SetScript("OnClick", OpenBuy)
+        row:SetScript("OnClick", OpenDetail)
         row:SetScript("OnEnter", function()
             local e = row.entry
             if not e then return end
@@ -199,6 +383,7 @@ local function MakeSearchPane()
         offset = math.max(0, math.min(offset - d * 3, math.max(0, #rows - ROWS)))
         RefreshList()
     end)
+    MakeDetail(p)
     return p
 end
 
@@ -252,7 +437,10 @@ local RefreshOffers
 local function ApplySuggestion()
     if not sell.info then return end
     local key = sell.info.key
-    local p, tag = AH.Suggest(key, AH.lastSeen[key], GetServerTime())
+    -- immer zuerst der niedrigste Preis, der gerade im Auktionshaus steht
+    local low = sell.loaded and AH.LowestSellPrice(AH.CurrentOffers(sell.info))
+    local p, tag
+    if low then p, tag = low, "fresh" else p, tag = AH.Suggest(key, nil, GetServerTime()) end
     if not sell.manual then SetPrice(p) end
     panel.sell.tag:SetText(TagText(p and tag, key))
 end
@@ -558,7 +746,7 @@ local function RefreshScan()
     p.last:SetText(st.read > 0 and (L["Letzter Komplett-Scan: %d Angebote gelesen."]):format(st.read) or "")
     p.known:SetText((L["Bekannte Preise: %d"]):format(CountPrices()))
     local s = AH.stats
-    p.share:SetText(L["Preise teilen: "] .. (AH.Opt("ahShare") and L["an"] or L["aus"])
+    p.share:SetText(L["Preise werden mit allen GuildPride-Spielern geteilt."]
         .. "  ·  " .. (L["Gesendet: %d · Empfangen: %d · Verworfen: %d"]):format(s.sent, s.received, s.dropped))
 end
 
@@ -786,6 +974,25 @@ local function OnSellPrice()
 end
 AH.Listen("COMMODITY_SEARCH_RESULTS_UPDATED", OnSellPrice)
 AH.Listen("ITEM_SEARCH_RESULTS_UPDATED", OnSellPrice)
+
+-- Kaufansicht: Ergebnisse zeigen; ob Ware oder Einzel-Item, verrät das Ereignis
+AH.Listen("COMMODITY_SEARCH_RESULTS_UPDATED", function(itemID)
+    if not buy.info or buy.info.itemID ~= itemID then return end
+    buy.info.commodity, buy.loaded = true, true
+    RefreshDetail()
+end)
+AH.Listen("ITEM_SEARCH_RESULTS_UPDATED", function(itemKey)
+    if not buy.info or type(itemKey) ~= "table" or itemKey.itemID ~= buy.info.itemID then return end
+    buy.info.commodity, buy.loaded = false, true
+    RefreshDetail()
+end)
+AH.Listen("COMMODITY_PRICE_UPDATED", OnCommodityPrice)
+AH.Listen("COMMODITY_PRICE_UNAVAILABLE", function()
+    if buy.pending then buy.pending = nil; Status(L["Preis nicht mehr verfügbar – bitte erneut versuchen."]) end
+end)
+AH.Listen("COMMODITY_PURCHASE_SUCCEEDED", OnBought)
+AH.Listen("AUCTION_HOUSE_PURCHASE_COMPLETED", OnBought)
+AH.Listen("COMMODITY_PURCHASE_FAILED", function() Status(L["Kauf fehlgeschlagen."]) end)
 AH.Listen("BAG_UPDATE_DELAYED", function()
     if panel and panel:IsShown() and mode == "sell" then RefreshBags() end
 end)
@@ -802,6 +1009,7 @@ AH.Listen("AUCTION_HOUSE_AUCTION_CREATED", function()
 end)
 
 AH.Listen("AUCTION_HOUSE_CLOSED", function()
+    buy.pending, buy.confirm = nil, nil
     RestoreBlizzard()   -- zuerst, damit das Ausblenden unten das Auktionshaus nicht erneut schließt
     if panel then panel:Hide() end
     sell.pending = nil

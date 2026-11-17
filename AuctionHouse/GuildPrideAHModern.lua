@@ -170,6 +170,13 @@ function AH.ModernBrowse(text, filters)
     return true
 end
 
+-- WoW-Marke: wird in GuildPride nicht angeboten
+local TOKEN_IDS = { [122270] = true, [122284] = true }
+function AH.IsTokenCategory(cat)
+    if type(cat.flags) == "table" and cat.flags.WOW_TOKEN_FLAG then return true end
+    return type(TOKEN_FILTER_LABEL) == "string" and cat.name == TOKEN_FILTER_LABEL
+end
+
 -- Blizzards Kategorien (AuctionCategories, wie links im Blizzard-Auktionshaus) als flache Liste.
 -- expanded[cat] = true: Unterkategorien dieser Kategorie zeigen.
 function AH.CategoryRows(expanded)
@@ -177,7 +184,7 @@ function AH.CategoryRows(expanded)
     local function Add(list, depth)
         if type(list) ~= "table" then return end
         for _, cat in ipairs(list) do
-            if type(cat) == "table" and cat.name then
+            if type(cat) == "table" and cat.name and not AH.IsTokenCategory(cat) then
                 local subs = type(cat.subCategories) == "table" and #cat.subCategories > 0
                 out[#out + 1] = { cat = cat, name = cat.name, depth = depth, hasSub = subs and true or false }
                 if subs and expanded and expanded[cat] then Add(cat.subCategories, depth + 1) end
@@ -194,13 +201,14 @@ function AH.BrowseRows()
     if not AH.IsModern() then return rows end
     for _, b in ipairs(C_AuctionHouse.GetBrowseResults() or {}) do
         local k = b.itemKey
-        if k and k.itemID then
+        if k and k.itemID and not TOKEN_IDS[k.itemID] then
             local info = C_AuctionHouse.GetItemKeyInfo and C_AuctionHouse.GetItemKeyInfo(k)
             rows[#rows + 1] = {
                 result = b, itemKey = k, key = AH.Key(k.itemID, k.itemSuffix),
                 min = b.minPrice, qty = b.totalQuantity or 0, mine = b.containsOwnerItem and true or false,
                 name = info and info.itemName or AH.ItemName(k.itemID),
                 icon = info and info.iconFileID, quality = info and info.quality,
+                commodity = info and info.isCommodity,   -- nil: noch unbekannt
             }
         end
     end
@@ -284,12 +292,61 @@ function AH.CurrentOffers(info)
             local r = C_AuctionHouse.GetItemSearchResultInfo(info.itemKey, i)
             if r and r.buyoutAmount and r.buyoutAmount > 0 then
                 local q = (r.quantity and r.quantity > 0) and r.quantity or 1
-                out[#out + 1] = { unit = math.floor(r.buyoutAmount / q), qty = q, mine = r.containsOwnerItem and true or false }
+                out[#out + 1] = { unit = math.floor(r.buyoutAmount / q), qty = q, mine = r.containsOwnerItem and true or false,
+                                  auctionID = r.auctionID, buyout = r.buyoutAmount, link = r.itemLink }
             end
         end
     end
     table.sort(out, function(a, b) return a.unit < b.unit end)
     return out
+end
+
+-- Preis zum Einstellen: das billigste Angebot im Auktionshaus (offers aufsteigend sortiert).
+-- Fremd: 1 Kupfer darunter, damit man selbst der Niedrigste ist; eigenes: gleicher Preis.
+function AH.LowestSellPrice(offers)
+    local o = offers and offers[1]
+    if not o then return nil end
+    if o.mine then return o.unit end
+    return math.max(1, o.unit - 1)
+end
+
+---------------------------------------------------------------------
+-- Kaufen (nur aus einem Klick aufrufen)
+---------------------------------------------------------------------
+-- Was kosten qty Stück einer Ware, wenn die billigsten fremden Angebote zuerst gekauft werden?
+-- Liefert Gesamtpreis und die tatsächlich verfügbare Menge.
+function AH.CommodityCost(offers, qty)
+    local total, have = 0, 0
+    for _, o in ipairs(offers or {}) do
+        if have >= qty then break end
+        if not o.mine then
+            local take = math.min(o.qty, qty - have)
+            total, have = total + take * o.unit, have + take
+        end
+    end
+    return total, have
+end
+
+-- Ware: Blizzard meldet danach den genauen Preis (COMMODITY_PRICE_UPDATED), erst dann bestätigen
+function AH.BuyCommodity(itemID, qty)
+    qty = math.floor(tonumber(qty) or 0)
+    if not itemID or qty < 1 or not AH.IsModern() or not C_AuctionHouse.StartCommoditiesPurchase then return false end
+    C_AuctionHouse.StartCommoditiesPurchase(itemID, qty)
+    return true
+end
+
+function AH.ConfirmCommodity(itemID, qty)
+    if not itemID or not AH.IsModern() or not C_AuctionHouse.ConfirmCommoditiesPurchase then return false end
+    C_AuctionHouse.ConfirmCommoditiesPurchase(itemID, qty)
+    return true
+end
+
+-- Einzel-Item zum Sofortkaufpreis; eigene Angebote nie
+function AH.BuyItem(offer)
+    if not offer or offer.mine or not offer.auctionID or not offer.buyout or not AH.IsModern() then return false end
+    if not C_AuctionHouse.PlaceBid then return false end
+    C_AuctionHouse.PlaceBid(offer.auctionID, offer.buyout)
+    return true
 end
 
 function AH.Deposit(info, qty, duration)

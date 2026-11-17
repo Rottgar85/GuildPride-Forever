@@ -1765,8 +1765,6 @@ local options = {
     { key = "ahTab",         label = L["Eigenes Fenster „GuildPride“ im Auktionshaus (Knopf neben dem X, nach /reload)"] },
     { key = "ahTooltip",     label = L["Auktionshauspreis im Item-Tooltip zeigen"] },
     { key = "ahTooltipWithAuctionator", label = L["Tooltip-Preis auch zeigen, wenn Auctionator geladen ist"] },
-    { key = "ahShare",       label = L["Auktionshauspreise serverweit teilen (eigener Kanal GPAuktionF)"],
-      changed = function() if ns.AH and ns.AH.UpdateChannel then ns.AH.UpdateChannel() end end },
     { header = L["Gilde"] },
     { key = "welcome",       label = L["Neue Mitglieder automatisch im Gildenchat begrüßen"] },
     { key = "discordBridge", label = L["Discord-Anbindung nutzen (Events, Anmeldungen, DKP an Discord)"] },

@@ -414,6 +414,15 @@ return function(test, eq, W, ns)
         Modern(false)
     end)
 
+    test("AH-Forever: Einstellen übernimmt immer den niedrigsten Preis im Auktionshaus", function()
+        eq(AH.LowestSellPrice({}), nil)
+        -- fremdes Angebot ist das billigste: 1 Kupfer darunter
+        eq(AH.LowestSellPrice({ { unit = 50, qty = 1 }, { unit = 70, qty = 2, mine = true } }), 49)
+        -- eigenes Angebot ist schon das billigste: gleicher Preis, sich selbst nicht unterbieten
+        eq(AH.LowestSellPrice({ { unit = 40, qty = 1, mine = true }, { unit = 50, qty = 1 } }), 40)
+        eq(AH.LowestSellPrice({ { unit = 1, qty = 1 } }), 1)
+    end)
+
     local function SellMock(commodity, posted)
         C_Item = {
             GetItemID = function() return 30014 end,
@@ -501,8 +510,40 @@ return function(test, eq, W, ns)
         eq(sent.itemClassFilters, swords.filters); eq(sent.searchString, "")
         AH.ModernBrowse("Erz")
         eq(#sent.itemClassFilters, 0)
+        -- WoW-Marke wird nie angezeigt
+        AuctionCategories = { { name = "WoW-Marke", flags = { WOW_TOKEN_FLAG = true } }, { name = "Stoff" } }
+        rows = AH.CategoryRows({})
+        eq(#rows, 1); eq(rows[1].name, "Stoff")
         AuctionCategories = nil
         Modern(false)
+    end)
+    test("AH-Forever: Kaufen – Kosten der billigsten Waren, Kauf von Ware und Einzel-Item", function()
+        Modern(true)
+        local offers = { { unit = 10, qty = 5, mine = true }, { unit = 20, qty = 3 }, { unit = 30, qty = 10 } }
+        local total, have = AH.CommodityCost(offers, 5)
+        eq(total, 20 * 3 + 30 * 2); eq(have, 5)
+        total, have = AH.CommodityCost(offers, 50)
+        eq(have, 13); eq(total, 20 * 3 + 30 * 10)
+        local calls = {}
+        C_AuctionHouse.StartCommoditiesPurchase = function(id, q) calls.start = { id, q } end
+        C_AuctionHouse.ConfirmCommoditiesPurchase = function(id, q) calls.confirm = { id, q } end
+        C_AuctionHouse.PlaceBid = function(id, amount) calls.bid = { id, amount } end
+        eq(AH.BuyCommodity(30060, 4), true); eq(calls.start[1], 30060); eq(calls.start[2], 4)
+        eq(AH.BuyCommodity(30060, 0), false)
+        eq(AH.ConfirmCommodity(30060, 4), true); eq(calls.confirm[2], 4)
+        eq(AH.BuyItem({ auctionID = 77, buyout = 900 }), true); eq(calls.bid[1], 77); eq(calls.bid[2], 900)
+        eq(AH.BuyItem({ auctionID = 78, buyout = 900, mine = true }), false)
+        eq(AH.BuyItem({ buyout = 900 }), false)
+        -- Einzel-Items: Angebote tragen auctionID und Sofortkaufpreis
+        M.items = { { buyoutAmount = 900, quantity = 3, itemLink = L(30061), auctionID = 5 } }
+        local list = AH.CurrentOffers({ itemID = 30061, itemKey = { itemID = 30061 } })
+        eq(list[1].auctionID, 5); eq(list[1].buyout, 900); eq(list[1].unit, 300)
+        Modern(false)
+    end)
+    test("AH: Preise teilen ist Pflicht für alle", function()
+        GuildPrideDB.ahShare = false
+        eq(AH.Opt("ahShare"), true)
+        GuildPrideDB.ahShare = nil
     end)
     W.Load("GuildPrideAHModernUI.lua")
     test("AH-Forever: GuildPride ersetzt Blizzards Auktionshaus, Knöpfe schalten um", function()
@@ -528,7 +569,18 @@ return function(test, eq, W, ns)
         win.modeSell.scripts.OnClick(win.modeSell)
         win.modeScan.scripts.OnClick(win.modeScan)
         win.modeSearch.scripts.OnClick(win.modeSearch)
+        local asked
+        C_AuctionHouse.SendSearchQuery = function(k) asked = k end
+        M.browse = { { itemKey = { itemID = 30070, itemSuffix = 0 }, totalQuantity = 4, minPrice = 25 } }
         W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        local row = win.search.rows[1]
+        row.scripts.OnClick(row)
+        eq(asked.itemID, 30070, "Klick fragt die Angebote an")
+        eq(win.search.detail:IsShown(), true, "Kaufansicht im GuildPride-Fenster")
+        eq(scale < 0.01, true, "Blizzard bleibt unsichtbar")
+        W.Fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID = 30070 })
+        win.search.back.scripts.OnClick(win.search.back)
+        eq(win.search.detail:IsShown(), false)
         -- zu Blizzard wechseln: Fenster weg, Blizzard wieder sichtbar, Auktionshaus bleibt offen
         win.blizzard.scripts.OnClick(win.blizzard)
         eq(win:IsShown(), false); eq(scale, 1); eq(alpha, 1); eq(closed, 0)

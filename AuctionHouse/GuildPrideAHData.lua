@@ -236,7 +236,12 @@ function AH.IsModern()
     return C_AuctionHouse ~= nil and C_AuctionHouse.SendBrowseQuery ~= nil
 end
 
-function AH.Opt(k) return GuildPrideDB and GuildPrideDB[k] end
+-- Preise teilen ist Pflicht für alle (kein Schalter mehr in den Einstellungen)
+local FORCED = { ahShare = true }
+function AH.Opt(k)
+    if FORCED[k] then return true end
+    return GuildPrideDB and GuildPrideDB[k]
+end
 function AH.Print(msg) if GP.Print then GP.Print(msg) else print("GuildPride: " .. tostring(msg)) end end
 
 AH.Listen("PLAYER_LOGIN", function() AH.Prune() end)

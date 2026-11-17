@@ -945,6 +945,20 @@ local enUS = {
     ["Zum GuildPride-Auktionshaus wechseln."] = "Switch to the GuildPride auction house.",
     ["Zurück zu Blizzards Auktionshaus. Der Knopf „GuildPride“ dort bringt dich wieder hierher."] = "Back to Blizzard's auction house. The \"GuildPride\" button there brings you back here.",
     ["Alle Kategorien"] = "All categories",
+    ["Angebote werden geladen …"] = "Loading offers …",
+    ["Gesamt: %s"] = "Total: %s",
+    ["(nur %d verfügbar)"] = "(only %d available)",
+    ["Angebot in der Liste wählen."] = "Pick an offer in the list.",
+    ["Preis wird geprüft …"] = "Checking price …",
+    ["%s für %s kaufen?"] = "Buy %s for %s?",
+    ["Kauf läuft …"] = "Buying …",
+    ["%d Stück für %s kaufen (%s je Stück)?"] = "Buy %d for %s (%s each)?",
+    ["Gekauft."] = "Bought.",
+    ["‹ Zurück zur Liste"] = "‹ Back to the list",
+    ["Klick auf eine Zeile zeigt die Angebote zum Kaufen."] = "Click a row to see the offers and buy.",
+    ["Preis nicht mehr verfügbar – bitte erneut versuchen."] = "Price no longer available – please try again.",
+    ["Kauf fehlgeschlagen."] = "Purchase failed.",
+    ["Preise werden mit allen GuildPride-Spielern geteilt."] = "Prices are shared with all GuildPride players.",
 }
 
 -- Fehlende Übersetzung -> deutscher Text als Rückfall
