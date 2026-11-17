@@ -289,6 +289,33 @@ function AH.ImportList(text)
     return list, #list.items, skipped
 end
 
+---------------------------------------------------------------------
+-- Zurückgekommene Auktionen: was dieser Charakter eingestellt hat (14 Tage gemerkt).
+-- Liegt so ein Item wieder in den Taschen, kam es meist unverkauft per Post zurück.
+-- GuildPrideDB.ahPosted = { ["Name-Realm"] = { [Item-Schlüssel] = Zeit } }
+---------------------------------------------------------------------
+local POSTED_KEEP = 14 * 86400
+local function Posted()
+    if type(GuildPrideDB) ~= "table" then GuildPrideDB = {} end
+    local all = GuildPrideDB.ahPosted
+    if type(all) ~= "table" then all = {}; GuildPrideDB.ahPosted = all end
+    local realm = (GetNormalizedRealmName and GetNormalizedRealmName()) or (GetRealmName and GetRealmName()) or "?"
+    local me = (UnitName("player") or "?") .. "-" .. realm
+    if type(all[me]) ~= "table" then all[me] = {} end
+    return all[me]
+end
+
+function AH.MarkPosted(key)
+    if key then Posted()[key] = GetServerTime() end
+end
+
+function AH.WasPosted(key, now)
+    local t = key and Posted()[key]
+    if not t then return false end
+    if (now or GetServerTime()) - t > POSTED_KEEP then Posted()[key] = nil; return false end
+    return true
+end
+
 -- Wie viele hast du schon (Taschen und Bank)?
 function AH.ItemCount(id)
     local f = (C_Item and C_Item.GetItemCount) or GetItemCount

@@ -1144,7 +1144,8 @@ local function RefreshBags()
         if not e then row:Hide() else
             row:Show()
             row.icon:SetTexture(e.icon or AH.ItemIcon(e.itemID))
-            row.name:SetText(("%s |cffffffffx%d|r"):format(e.link or e.name or "?", e.count))
+            row.name:SetText(("%s |cffffffffx%d|r"):format(e.link or e.name or "?", e.count)
+                .. (AH.WasPosted(e.key) and (" |cff66ccff" .. L["(zurück)"] .. "|r") or ""))
             local price = AH.PriceFor(e.key)
             row.price:SetText(price and Money(price) or "|cff808080–|r")
             row.selected:SetShown(sell.info ~= nil and sell.info.key == e.key)
@@ -1152,11 +1153,32 @@ local function RefreshBags()
     end
 end
 
+-- Zurückgekommene Items nacheinander zum Einstellen wählen (mit aktuellem Preisvorschlag)
+local function NextReturned()
+    for _, e in ipairs(AH.BagItems()) do
+        if e.loc and AH.WasPosted(e.key) then
+            SelectItem(e.loc); RefreshBags()
+            Status((L["Zurückgekommen: %s – Preis prüfen und „Einstellen“ klicken."]):format(e.name or "?"))
+            return true
+        end
+    end
+    sell.returning = nil
+    Status(L["Keine zurückgekommenen Items in den Taschen."])
+    return false
+end
+
 local function MakeBagList(p)
     p.bagTitle = Label(p, "", "GameFontNormal")
     p.bagTitle:SetPoint("TOPLEFT", p, "TOP", 10, -16)
-    local hint = Label(p, L["Klick wählt das Item zum Verkaufen."], "GameFontDisableSmall")
-    hint:SetPoint("LEFT", p.bagTitle, "RIGHT", 10, 0)
+    p.returnBtn = Button(p, L["Zurückgekommene einstellen"], 190); p.returnBtn:SetPoint("TOPRIGHT", -16, -12)
+    p.returnBtn:SetScript("OnClick", function() sell.returning = true; NextReturned() end)
+    p.returnBtn:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(L["Zurückgekommene einstellen"])
+        GameTooltip:AddLine(L["Wählt nacheinander die Items, die du schon einmal eingestellt hattest und die wieder in den Taschen liegen (z. B. unverkauft per Post zurück). Klick auf eine Zeile wählt ein Item von Hand."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    p.returnBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     p.bagRows = {}
     for i = 1, BAG_ROWS do
         local row = CreateFrame("Button", nil, p)
@@ -1734,7 +1756,11 @@ AH.Listen("AUCTION_HOUSE_AUCTION_CREATED", function()
     if not p then return end
     -- Den zuvor gesehenen Marktpreis teilen (der eigene Einstellpreis zählt nie)
     AH.Share({ p.info.key })
-    if panel then ClearSell(); Status(L["Eingestellt."]); RefreshBags() end
+    AH.MarkPosted(p.info.key)          -- kommt es zurück, wird es unter „Verkaufen“ markiert
+    if panel then
+        ClearSell(); Status(L["Eingestellt."]); RefreshBags()
+        if sell.returning and C_Timer then C_Timer.After(0.3, NextReturned) end   -- Taschen erst aktualisieren lassen
+    end
 end)
 
 AH.Listen("AUCTION_HOUSE_CLOSED", function()

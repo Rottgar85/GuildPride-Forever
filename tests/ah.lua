@@ -782,6 +782,14 @@ return function(test, eq, W, ns)
         eq(AH.ImportList(""), nil); eq(AH.ImportList("nichts"), nil)
         GuildPrideDB.ahLists = nil
     end)
+    test("AH: zurückgekommene Auktionen erkennen", function()
+        GuildPrideDB.ahPosted = nil
+        eq(AH.WasPosted("2840"), false)
+        AH.MarkPosted("2840"); eq(AH.WasPosted("2840"), true)
+        eq(AH.WasPosted("2840", GetServerTime() + 15 * 86400), false, "nach 14 Tagen vergessen")
+        eq(AH.WasPosted("2840"), false)
+        GuildPrideDB.ahPosted = nil
+    end)
     test("AH: Wer in der Gilde kann ein Item herstellen?", function()
         local old = ns.Crafts.Search
         ns.Crafts.Search = function()
@@ -1183,6 +1191,17 @@ return function(test, eq, W, ns)
         eq(#AH.Lists(), 3); eq(AH.Lists()[3].name, "Mats (2)")
         W.Fire("AUCTION_HOUSE_CLOSED")
         GuildPrideDB.ahLists = nil
+        Modern(false)
+    end)
+    test("AH-Forever: Zurückgekommene einstellen (leere Taschen)", function()
+        Modern(true)
+        GuildPrideDB.ahTab, GuildPrideDB.ahBlizzard = true, nil
+        W.Fire("AUCTION_HOUSE_SHOW")
+        local _, win = AH._ModernTab()
+        win.modeSell.scripts.OnClick(win.modeSell)
+        win.sell.returnBtn.scripts.OnClick(win.sell.returnBtn)
+        eq(win.sell:IsShown(), true)
+        W.Fire("AUCTION_HOUSE_CLOSED")
         Modern(false)
     end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
