@@ -1762,7 +1762,7 @@ local options = {
     { key = "layerHelp",     label = L["Anderen mit GuildPride beim Layer-Wechsel helfen (lädt automatisch ein)"],
       public = true, forever = true },
     { header = L["Auktionshaus"] },
-    { key = "ahTab",         label = L["Eigener Reiter „GuildPride“ im Auktionshaus (ohne Auctionator, nach /reload)"], legacyAH = true },
+    { key = "ahTab",         label = L["Eigener Reiter „GuildPride“ im Auktionshaus (nach /reload)"] },
     { key = "ahTooltip",     label = L["Auktionshauspreis im Item-Tooltip zeigen"] },
     { key = "ahTooltipWithAuctionator", label = L["Tooltip-Preis auch zeigen, wenn Auctionator geladen ist"] },
     { key = "ahShare",       label = L["Auktionshauspreise serverweit teilen (eigener Kanal GPAuktionF)"],
@@ -1778,13 +1778,9 @@ local options = {
     { key = "groupAlts",     label = L["Twinks in der Mitgliederliste unter dem Main zusammenfassen"],
       changed = function() if ns.RefreshUI then ns.RefreshUI() end end },
 }
--- Serverweite Gruppensuche: in Classic-Clients nicht möglich, Schalter weglassen.
--- Eigener Auktionshaus-Reiter: nur im alten Auktionshaus (nicht im neuen C_AuctionHouse)
-local MODERN_AH = C_AuctionHouse ~= nil and C_AuctionHouse.SendBrowseQuery ~= nil
-    and not (IsUsingLegacyAuctionClient and IsUsingLegacyAuctionClient())
+-- Serverweite Gruppensuche: in Classic-Clients nicht möglich, Schalter weglassen
 for i = #options, 1, -1 do
-    if (options[i].public and not ns.HAS_PUBLIC_LFG) or (options[i].forever and not ns.IS_FOREVER)
-        or (options[i].legacyAH and MODERN_AH) then table.remove(options, i) end
+    if (options[i].public and not ns.HAS_PUBLIC_LFG) or (options[i].forever and not ns.IS_FOREVER) then table.remove(options, i) end
 end
 local function SetOption(opt, on)
     GuildPrideDB[opt.key] = on and true or false

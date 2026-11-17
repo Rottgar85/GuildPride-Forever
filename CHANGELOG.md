@@ -3,19 +3,19 @@
 ## 2.21.0
 
 **Deutsch**
-- Neu: **Auktionshaus**. In WoW Forever liest GuildPride still mit, was du im Auktionshaus suchst – im Blizzard-Auktionshaus und mit Auctionator –, auch beim Komplett-Scan (`/gp ah scan`). Im alten Auktionshaus (Classic-Clients) gibt es zusätzlich einen eigenen Reiter „GuildPride“ mit **Suchen** (Liste mit Stückpreis, Klick zeigt die Einzelangebote, Knopf **Kaufen**) und **Verkaufen** (Item hineinziehen, Preisvorschlag, Stapelgröße, Stapel, Dauer 2/8/24 Std., Einzahlung, Knopf **Einstellen**)
+- Neu: **Auktionshaus**. In WoW Forever gibt es im Auktionshaus einen eigenen Reiter „GuildPride“ mit **Suchen** (Liste nach Stückpreis, Klick öffnet Blizzards Kaufansicht), **Verkaufen** (Item hineinziehen, Preisvorschlag, Menge, Dauer 12/24/48 Std., Einzahlung, **Einstellen**; Ausrüstung immer einzeln) und **Scanner** (Komplett-Scan alle 15 Minuten, Stand und bekannte Preise). Zusätzlich liest GuildPride still mit, was du im Blizzard-Auktionshaus oder mit Auctionator suchst. Im alten Auktionshaus (Classic-Clients) hat der Reiter **Suchen** (Liste mit Stückpreis, Klick zeigt die Einzelangebote, Knopf **Kaufen**) und **Verkaufen** (Item hineinziehen, Preisvorschlag, Stapelgröße, Stapel, Dauer 2/8/24 Std., Einzahlung, Knopf **Einstellen**)
 - Preisvorschlag: günstigstes fremdes Angebot −1 Kupfer; sonst dein eigener Preis der letzten Stunde, ein bestätigter Serverpreis oder ein älterer Preis – jeweils gekennzeichnet. Deine eigenen Auktionen zählen nie als Marktpreis
 - Preis im Item-Tooltip: „Auktionshaus: … (vor 2 Std.)“, mit Umschalt der Preis für den ganzen Stapel
 - Preise werden **serverweit geteilt** über den eigenen, ausgeblendeten Kanal `GPAuktionF`: Wer sucht oder einstellt, teilt die gefundenen Preise; fehlt dir ein Preis, fragt GuildPride kurz nach. Nur gleiche Fraktion, Goblin-Auktionshäuser getrennt; ein Serverpreis gilt erst als bestätigt, wenn ihn mindestens zwei Spieler ähnlich melden
-- Mit **Auctionator**: kein eigener Reiter, aber GuildPride liest Auctionators Suchergebnisse still mit und teilt sie
+- Mit **Auctionator**: GuildPride liest Auctionators Suchergebnisse still mit und teilt sie; in WoW Forever bleibt der Reiter „GuildPride“ zusätzlich da
 - Einstellungen › Auktionshaus: Reiter, Tooltip-Preis, Tooltip auch mit Auctionator, Preise teilen. Befehle: `/gp ah status`, `/gp ah scan`
 
 **English**
-- New: **Auction House**. In WoW Forever GuildPride quietly reads what you search in the auction house – in the Blizzard auction house and with Auctionator – including the full scan (`/gp ah scan`). In the old auction house (Classic clients) there is also an own "GuildPride" tab with **Search** (list with price per item, click shows the single offers, **Buy** button) and **Sell** (drag an item in, price suggestion, stack size, stacks, duration 2/8/24 hr, deposit, **Post** button)
+- New: **Auction House**. In WoW Forever the auction house gets its own "GuildPride" tab with **Search** (list by price per item, click opens Blizzard's buy view), **Sell** (drag an item in, price suggestion, quantity, duration 12/24/48 hr, deposit, **Post**; gear always one at a time) and **Scanner** (full scan every 15 minutes, status and known prices). GuildPride also quietly reads what you search in the Blizzard auction house or with Auctionator. In the old auction house (Classic clients) the tab has **Search** (list with price per item, click shows the single offers, **Buy** button) and **Sell** (drag an item in, price suggestion, stack size, stacks, duration 2/8/24 hr, deposit, **Post** button)
 - Price suggestion: cheapest offer from others −1 copper; otherwise your own price from the last hour, a confirmed server price or an older price – each one labelled. Your own auctions never count as market price
 - Price in the item tooltip: "Auction House: … (2 hr ago)", hold Shift for the whole stack
 - Prices are **shared server-wide** through the own hidden channel `GPAuktionF`: whoever searches or posts shares the prices found; if you lack a price, GuildPride asks briefly. Same faction only, goblin auction houses kept apart; a server price only counts as confirmed once at least two players report it similarly
-- With **Auctionator**: no own tab, but GuildPride quietly reads Auctionator's search results and shares them
+- With **Auctionator**: GuildPride quietly reads Auctionator's search results and shares them; in WoW Forever the "GuildPride" tab stays as well
 - Settings › Auction House: tab, tooltip price, tooltip with Auctionator too, share prices. Commands: `/gp ah status`, `/gp ah scan`
 
 ## 2.20.0

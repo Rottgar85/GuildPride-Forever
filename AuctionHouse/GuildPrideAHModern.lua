@@ -10,6 +10,16 @@ local SCAN_GAP = 15 * 60        -- Blizzard erlaubt den Komplett-Scan nur alle 1
 local CHUNK = 2000              -- Komplett-Scan stückweise lesen, damit das Spiel nicht ruckelt
 local BIG_READ_GAP = 30         -- Auctionators Komplett-Scan höchstens alle 30 s lesen
 
+-- Zuletzt gesehener fremder Mindestpreis je Item (für den Verkaufsvorschlag)
+AH.lastSeen = {}
+
+-- Blizzard-Sortierung: billigste zuerst
+local function Sorts()
+    local o = Enum and Enum.AuctionHouseSortOrder
+    if not o then return {} end
+    return { { sortOrder = o.Price, reverseSort = false }, { sortOrder = o.Name, reverseSort = false } }
+end
+
 local function Reading()
     if not AH.IsModern() then return false end
     if AH.AuctionatorLoaded() and not AH.Opt("ahReadAuctionator") then return false end
@@ -28,6 +38,7 @@ local function RecordAll(res, share)
     local now, keys = GetServerTime(), {}
     for key, r in pairs(res) do
         AH.RecordOwn(key, r.min, r.qty, now)
+        AH.lastSeen[key] = r.min
         keys[#keys + 1] = key
     end
     if share and #keys > 0 and #keys <= SHARE_MAX then AH.Share(keys) end
@@ -89,13 +100,14 @@ end)
 -- Komplett-Scan (ReplicateItems): nur speichern, nicht rundsenden –
 -- andere bekommen die Preise auf Nachfrage
 ---------------------------------------------------------------------
-local scanning, lastScan, lastBigRead = false, nil, -BIG_READ_GAP
+local scanning, reading, lastScan, lastBigRead, scanRead = false, false, nil, -BIG_READ_GAP, 0
 
 local function ReadReplicate(report)
     local n = C_AuctionHouse.GetNumReplicateItems() or 0
     local me, res, i = UnitName("player"), {}, 1
+    reading = report
     local function Step()
-        if not AH.IsModern() then return end
+        if not AH.IsModern() then reading = false; return end
         local last = math.min(n, i + CHUNK - 1)
         for j = i, last do
             local name, _, count, _, _, _, _, _, _, buyout, _, _, _, owner, _, _, _, hasAll = C_AuctionHouse.GetReplicateItemInfo(j)
@@ -108,6 +120,7 @@ local function ReadReplicate(report)
         i = last + 1
         if i <= n then C_Timer.After(0, Step); return end
         RecordAll(res, false)
+        if report then reading, scanRead = false, n end
         if report then
             AH.Print((GP.L and GP.L["Auktionshaus: Komplett-Scan fertig, %d Angebote gelesen."] or "%d"):format(n))
         end
@@ -118,7 +131,6 @@ end
 local legacyFullScan = AH.FullScan
 function AH.FullScan()
     if not AH.IsModern() then return legacyFullScan() end
-    if AH.AuctionatorLoaded() then return false end
     if lastScan and GetTime() - lastScan < SCAN_GAP then return false end
     lastScan, scanning = GetTime(), true
     C_AuctionHouse.ReplicateItems()
@@ -140,6 +152,99 @@ AH.Listen("REPLICATE_ITEM_LIST_UPDATE", function()
 end)
 
 AH.Listen("AUCTION_HOUSE_CLOSED", function() scanning = false end)
+
+-- Stand des Komplett-Scans für die Anzeige im Scanner
+function AH.ScanStatus()
+    local wait = lastScan and math.max(0, math.ceil(SCAN_GAP - (GetTime() - lastScan))) or 0
+    return { running = scanning or reading, wait = wait, read = scanRead }
+end
+
+---------------------------------------------------------------------
+-- Für den eigenen Reiter: Suchen, Liste, Verkaufen
+---------------------------------------------------------------------
+function AH.ModernBrowse(text)
+    if not AH.IsModern() then return false end
+    C_AuctionHouse.SendBrowseQuery({ searchString = text or "", sorts = Sorts(), filters = {}, itemClassFilters = {} })
+    return true
+end
+
+-- Aktuelle Übersicht als Zeilen, billigste zuerst
+function AH.BrowseRows()
+    local rows = {}
+    if not AH.IsModern() then return rows end
+    for _, b in ipairs(C_AuctionHouse.GetBrowseResults() or {}) do
+        local k = b.itemKey
+        if k and k.itemID then
+            local info = C_AuctionHouse.GetItemKeyInfo and C_AuctionHouse.GetItemKeyInfo(k)
+            rows[#rows + 1] = {
+                result = b, itemKey = k, key = AH.Key(k.itemID, k.itemSuffix),
+                min = b.minPrice, qty = b.totalQuantity or 0, mine = b.containsOwnerItem and true or false,
+                name = info and info.itemName or GetItemInfo(k.itemID),
+                icon = info and info.iconFileID, quality = info and info.quality,
+            }
+        end
+    end
+    table.sort(rows, function(a, b)
+        if (a.min or math.huge) ~= (b.min or math.huge) then return (a.min or math.huge) < (b.min or math.huge) end
+        return tostring(a.name) < tostring(b.name)
+    end)
+    return rows
+end
+
+local function CommodityStatus()
+    local st = Enum and Enum.ItemCommodityStatus
+    return (st and type(st.Commodity) == "number") and st.Commodity or 2
+end
+
+-- Item aus den Taschen (ItemLocation) zum Verkaufen vorbereiten
+function AH.SellInfo(loc)
+    if not loc or not AH.IsModern() or not C_Item or not C_Item.GetItemLink then return nil end
+    if C_Item.DoesItemExist and not C_Item.DoesItemExist(loc) then return nil end
+    local link, id = C_Item.GetItemLink(loc), C_Item.GetItemID(loc)
+    if not id then return nil end
+    local commodity = C_AuctionHouse.GetItemCommodityStatus(loc) == CommodityStatus()
+    local max = 1
+    if commodity and C_AuctionHouse.GetAvailablePostCount then max = C_AuctionHouse.GetAvailablePostCount(loc) or 1 end
+    return {
+        loc = loc, link = link, itemID = id, key = AH.KeyFromLink(link) or AH.Key(id),
+        commodity = commodity, max = math.max(1, max),
+        itemKey = C_AuctionHouse.GetItemKeyFromItem and C_AuctionHouse.GetItemKeyFromItem(loc),
+    }
+end
+
+-- Aktuelle Angebote für das Verkaufs-Item anfragen (Ergebnis landet in AH.lastSeen)
+function AH.RequestPrice(info)
+    if not info or not info.itemKey or not AH.IsModern() then return false end
+    C_AuctionHouse.SendSearchQuery(info.itemKey, Sorts(), true)
+    return true
+end
+
+function AH.Deposit(info, qty, duration)
+    if not info or not AH.IsModern() then return nil end
+    local ok, dep
+    if info.commodity and C_AuctionHouse.CalculateCommodityDeposit then
+        ok, dep = pcall(C_AuctionHouse.CalculateCommodityDeposit, info.itemID, duration, qty)
+    elseif C_AuctionHouse.CalculateItemDeposit then
+        ok, dep = pcall(C_AuctionHouse.CalculateItemDeposit, info.loc, duration, 1)
+    end
+    return ok and type(dep) == "number" and dep or nil
+end
+
+-- Einstellen (nur aus einem Klick aufrufen). Ware: Stückpreis × Menge.
+-- Ausrüstung immer einzeln – so kann der Preis nie versehentlich für einen Stapel gelten.
+function AH.PostModern(info, unit, qty, duration)
+    if not info or not AH.IsModern() then return false end
+    unit = math.floor(tonumber(unit) or 0)
+    if unit < 1 then return false end
+    if info.commodity then
+        qty = math.floor(tonumber(qty) or 0)
+        if qty < 1 or qty > info.max then return false end
+        C_AuctionHouse.PostCommodity(info.loc, duration, qty, unit)
+    else
+        C_AuctionHouse.PostItem(info.loc, duration, 1, nil, unit)
+    end
+    return true
+end
 
 -- Ist das Auktionshaus (alt oder neu) gerade offen?
 function AH.IsOpen()

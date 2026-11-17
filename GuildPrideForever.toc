@@ -68,6 +68,7 @@ AuctionHouse\GuildPrideAHScan.lua
 AuctionHouse\GuildPrideAHModern.lua
 AuctionHouse\GuildPrideAHTooltip.lua
 AuctionHouse\GuildPrideAHUI.lua
+AuctionHouse\GuildPrideAHModernUI.lua
 Scales\GuildPrideScalesLocaleEN.lua
 Scales\GuildPrideScalesLocaleDE.lua
 Scales\GuildPrideScalesCompat.lua

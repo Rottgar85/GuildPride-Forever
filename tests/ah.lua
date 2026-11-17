@@ -389,4 +389,87 @@ return function(test, eq, W, ns)
         eq(AH.LoadPage("Leinen", 0), false); eq(W.queries, 0)
         Modern(false)
     end)
+    test("AH-Forever: Suche schickt Blizzard-Anfrage, Liste nach Preis sortiert", function()
+        Modern(true)
+        local sent
+        C_AuctionHouse.SendBrowseQuery = function(q) sent = q end
+        C_AuctionHouse.GetItemKeyInfo = function(k) return { itemName = "Item" .. k.itemID } end
+        eq(AH.ModernBrowse("Leinen"), true); eq(sent.searchString, "Leinen")
+        M.browse = {
+            { itemKey = { itemID = 30011, itemSuffix = 0 }, totalQuantity = 2, minPrice = 90 },
+            { itemKey = { itemID = 30012, itemSuffix = 0 }, totalQuantity = 7, minPrice = 15, containsOwnerItem = true },
+        }
+        local rows = AH.BrowseRows()
+        eq(#rows, 2); eq(rows[1].key, "30012"); eq(rows[1].mine, true); eq(rows[1].qty, 7)
+        eq(rows[2].name, "Item30011"); eq(rows[2].min, 90)
+        Modern(false); eq(AH.ModernBrowse("x"), false)
+    end)
+
+    test("AH-Forever: frischer Marktpreis für den Verkaufsvorschlag", function()
+        Modern(true); W.Advance(3600)
+        M.commodity[30013] = { { unitPrice = 80, quantity = 3, numOwnerItems = 0 } }
+        W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", 30013)
+        eq(AH.lastSeen["30013"], 80)
+        eq(AH.Suggest("30013", AH.lastSeen["30013"], W.server), 79)
+        Modern(false)
+    end)
+
+    local function SellMock(commodity, posted)
+        C_Item = {
+            GetItemID = function() return 30014 end,
+            GetItemLink = function() return L(30014) end,
+            DoesItemExist = function() return true end,
+        }
+        C_AuctionHouse.GetItemCommodityStatus = function() return commodity and 2 or 1 end
+        C_AuctionHouse.GetAvailablePostCount = function() return 20 end
+        C_AuctionHouse.GetItemKeyFromItem = function() return { itemID = 30014, itemSuffix = 0 } end
+        C_AuctionHouse.PostCommodity = function(...) posted.c = { ... } end
+        C_AuctionHouse.PostItem = function(...) posted.i = { ... } end
+        C_AuctionHouse.SendSearchQuery = function(k) posted.q = k end
+        C_AuctionHouse.SendSellSearchQuery = function(k) posted.q = k end
+    end
+
+    test("AH-Forever: Verkaufen – Ware mit Menge, Ausrüstung immer einzeln", function()
+        Modern(true)
+        local posted = {}
+        SellMock(true, posted)
+        local info = AH.SellInfo("LOC")
+        eq(info.key, "30014"); eq(info.commodity, true); eq(info.max, 20)
+        AH.RequestPrice(info); eq(posted.q.itemID, 30014)
+        eq(AH.PostModern(info, 55, 12, 2), true)
+        eq(posted.c[1], "LOC"); eq(posted.c[2], 2); eq(posted.c[3], 12); eq(posted.c[4], 55)
+        eq(AH.PostModern(info, 55, 21, 2), false)   -- mehr als vorhanden
+        eq(AH.PostModern(info, 0, 1, 2), false)     -- kein Preis
+        SellMock(false, posted)
+        info = AH.SellInfo("LOC"); eq(info.commodity, false); eq(info.max, 1)
+        eq(AH.PostModern(info, 700, 5, 3), true)
+        eq(posted.i[2], 3); eq(posted.i[3], 1); eq(posted.i[4], nil); eq(posted.i[5], 700)
+        C_Item = nil
+        Modern(false)
+    end)
+
+    test("AH-Forever: Scanner-Status zeigt Wartezeit bis zum nächsten Komplett-Scan", function()
+        Modern(true); W.Advance(3600)
+        eq(AH.ScanStatus().wait, 0)
+        eq(AH.FullScan(), true)
+        local st = AH.ScanStatus(); eq(st.running, true); eq(st.wait, 900)
+        M.replicate = { { name = "A", count = 1, buyout = 5, owner = "Anna", id = 30015, link = L(30015) } }
+        W.Fire("REPLICATE_ITEM_LIST_UPDATE")
+        st = AH.ScanStatus(); eq(st.running, false); eq(st.read, 1)
+        W.Advance(300); eq(AH.ScanStatus().wait, 600)
+        Modern(false)
+    end)
+    W.Load("GuildPrideAHModernUI.lua")
+    test("AH-Forever: Reiter wird beim Öffnen ohne Fehler aufgebaut", function()
+        Modern(true)
+        AuctionHouseFrame = CreateFrame()
+        AuctionHouseFrame.GetFrameLevel = function() return 5 end
+        AuctionHouseFrame.Tabs = { CreateFrame(), CreateFrame() }
+        local before = #W.frames
+        W.Fire("AUCTION_HOUSE_SHOW")
+        eq(#W.frames > before + 20, true)
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        Modern(false)
+    end)
 end

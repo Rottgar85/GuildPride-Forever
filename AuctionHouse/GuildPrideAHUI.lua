@@ -430,7 +430,7 @@ SlashCmdList.GUILDPRIDE = function(arg)
             .. "  ·  Auctionator: " .. (atr and L["ja"] or L["nein"])
             .. (atr and (" (" .. L["mitlesen: "] .. (AH.Opt("ahReadAuctionator") and L["an"] or L["aus"]) .. ")") or ""))
     elseif cmd == "ah scan" then
-        if AH.AuctionatorLoaded() then
+        if AH.AuctionatorLoaded() and not AH.IsModern() then
             AH.Print(L["Auktionshaus: Mit Auctionator bitte dessen Scan nutzen – GuildPride liest mit."])
         elseif not AH.IsOpen() then
             AH.Print(L["Auktionshaus: Erst das Auktionshaus öffnen."])
