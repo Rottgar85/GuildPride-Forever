@@ -129,16 +129,16 @@ local function Visit(period, stop, phase)
     local stay = (stop[2] - arrive) % period
     local since = (phase - arrive) % period
     if since < stay then
-        return 0, stay - since, period - since
+        return 0, stay - since, period - since, stay
     end
     local arriveIn = (arrive - phase) % period
-    return arriveIn, arriveIn + stay, arriveIn + period
+    return arriveIn, arriveIn + stay, arriveIn + period, stay
 end
 
 local OTHER = { a = "b", b = "a" }
 
 -- Fahrplan einer Verbindung ab Seite `side` ("a"|"b"):
---   { timed = true, arriveIn, departIn, nextIn (s; arriveIn 0 = liegt am Steg) }
+--   { timed = true, arriveIn, departIn, nextIn, stay = Liegezeit, period = Runde (s; arriveIn 0 = liegt am Steg) }
 --   ungemessen: { timed = false, wait = mittlere Wartezeit (s) }
 function T.Board(id, side, now)
     local s = services[id]
@@ -153,13 +153,14 @@ function T.Board(id, side, now)
         if anchor then
             local phase = (t - anchor.epoch) % route.period
             for _, i in ipairs(part[side] or {}) do
-                local a, d, n = Visit(route.period, route.stops[i], phase)
-                if not best or d < best.d then best = { a = a, d = d, n = n } end
+                local a, d, n, st = Visit(route.period, route.stops[i], phase)
+                if not best or d < best.d then best = { a = a, d = d, n = n, s = st, p = route.period } end
             end
         end
     end
     if best then
-        return { timed = true, arriveIn = pre + best.a / 1000, departIn = pre + best.d / 1000, nextIn = pre + best.n / 1000 }
+        return { timed = true, arriveIn = pre + best.a / 1000, departIn = pre + best.d / 1000, nextIn = pre + best.n / 1000,
+                 stay = best.s / 1000, period = best.p / 1000 }
     end
     return { timed = false, wait = (s.wait or {})[side] }
 end
