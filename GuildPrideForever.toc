@@ -65,6 +65,7 @@ Rares\GuildPrideRaresUI.lua
 AuctionHouse\GuildPrideAHData.lua
 AuctionHouse\GuildPrideAHComm.lua
 AuctionHouse\GuildPrideAHScan.lua
+AuctionHouse\GuildPrideAHModern.lua
 AuctionHouse\GuildPrideAHTooltip.lua
 AuctionHouse\GuildPrideAHUI.lua
 Scales\GuildPrideScalesLocaleEN.lua

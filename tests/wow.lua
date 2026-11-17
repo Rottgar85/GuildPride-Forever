@@ -37,12 +37,16 @@ function Ambiguate(name) return name end
 function geterrorhandler() return function(e) error(e, 0) end end
 
 -- Frames: Skripte und Events merken, alles andere schlucken
-W.frames = {}
+W.frames, W.unknownEvents = {}, {}
 local function NewFrame()
     local f = { scripts = {}, events = {} }
     function f:SetScript(k, fn) self.scripts[k] = fn end
     function f:GetScript(k) return self.scripts[k] end
-    function f:RegisterEvent(e) self.events[e] = true end
+    -- W.unknownEvents[e]: Event gibt es in diesem Client nicht (wie im Spiel: Fehler)
+    function f:RegisterEvent(e)
+        if W.unknownEvents[e] then error("Attempt to register unknown event \"" .. e .. "\"") end
+        self.events[e] = true
+    end
     function f:UnregisterEvent(e) self.events[e] = nil end
     setmetatable(f, { __index = function() return magic end })
     W.frames[#W.frames + 1] = f
@@ -139,7 +143,7 @@ local NILS = { GuildPrideDB = true, GuildPrideBackupDB = true, issecretvalue = t
     C_RestrictedActions = true, GetNumGuildEvents = true, GetGuildEventInfo = true,
     QueryGuildEventLog = true, C_DateAndTime = true, Settings = true, C_MythicPlus = true,
     JoinTemporaryChannel = true, C_Club = true, C_ChallengeMode = true,
-    GuildPrideAHDB = true, Auctionator = true }
+    GuildPrideAHDB = true, Auctionator = true, C_AuctionHouse = true, IsUsingLegacyAuctionClient = true }
 
 -- Rest: Alles-Objekt
 setmetatable(_G, { __index = function(_, k) if NILS[k] then return nil end return magic end })

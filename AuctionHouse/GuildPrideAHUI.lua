@@ -432,7 +432,7 @@ SlashCmdList.GUILDPRIDE = function(arg)
     elseif cmd == "ah scan" then
         if AH.AuctionatorLoaded() then
             AH.Print(L["Auktionshaus: Mit Auctionator bitte dessen Scan nutzen – GuildPride liest mit."])
-        elseif not (AuctionFrame and AuctionFrame:IsShown()) then
+        elseif not AH.IsOpen() then
             AH.Print(L["Auktionshaus: Erst das Auktionshaus öffnen."])
         elseif AH.FullScan() then
             AH.Print(L["Auktionshaus: Komplett-Scan läuft …"])

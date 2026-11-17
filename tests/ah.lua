@@ -275,4 +275,118 @@ return function(test, eq, W, ns)
         eq(AH.Store()["2589"].own.q, 250)
         W.addons.Auctionator = nil
     end)
+    -----------------------------------------------------------------
+    -- Neues Auktionshaus (C_AuctionHouse) – so läuft WoW Forever
+    -----------------------------------------------------------------
+    test("AH-Forever: unbekannte Events werden übersprungen statt Fehler", function()
+        W.unknownEvents = { NEW_AUCTION_UPDATE = true }
+        eq(AH.Listen("NEW_AUCTION_UPDATE", function() end), false)
+        eq(AH.Listen("AUCTION_HOUSE_CLOSED", function() end), true)
+        W.unknownEvents = {}
+    end)
+
+    W.Load("GuildPrideAHModern.lua")
+    local M = { browse = {}, commodity = {}, items = {}, replicate = {}, replicated = 0 }
+    local function Modern(on)
+        if not on then C_AuctionHouse = nil; return end
+        C_AuctionHouse = {
+            SendBrowseQuery = function() end,
+            GetBrowseResults = function() return M.browse end,
+            GetNumCommoditySearchResults = function(id) return #(M.commodity[id] or {}) end,
+            GetCommoditySearchResultInfo = function(id, i) return (M.commodity[id] or {})[i] end,
+            GetNumItemSearchResults = function() return #M.items end,
+            GetItemSearchResultInfo = function(_, i) return M.items[i] end,
+            ReplicateItems = function() M.replicated = M.replicated + 1 end,
+            GetNumReplicateItems = function() return #M.replicate end,
+            GetReplicateItemInfo = function(i)
+                local a = M.replicate[i]
+                return a.name, nil, a.count, 1, true, 1, 0, 0, 0, a.buyout, 0, false, nil, a.owner, nil, 0, a.id, a.hasAll ~= false
+            end,
+            GetReplicateItemLink = function(i) return M.replicate[i].link end,
+        }
+    end
+    local function L(id) return "|cffffffff|Hitem:" .. id .. ":0:0:0:0:0:0:0|h[x]|h|r" end
+
+    test("AH-Forever: Client mit C_AuctionHouse erkannt", function()
+        Modern(false); eq(AH.IsModern(), false)
+        Modern(true); eq(AH.IsModern(), true)
+        IsUsingLegacyAuctionClient = function() return true end; eq(AH.IsModern(), false)
+        IsUsingLegacyAuctionClient = nil
+    end)
+
+    test("AH-Forever: Übersicht wird gelesen und geteilt, eigene ausgelassen", function()
+        Modern(true); W.Advance(3600); out = {}
+        M.browse = {
+            { itemKey = { itemID = 30001, itemSuffix = 0 }, totalQuantity = 20, minPrice = 40 },
+            { itemKey = { itemID = 30002, itemSuffix = 0 }, totalQuantity = 3, minPrice = 99, containsOwnerItem = true },
+        }
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        eq(AH.PriceFor("30001"), 40); eq(AH.Store()["30001"].own.q, 20)
+        eq(AH.Store()["30002"], nil)
+        eq(#out, 1)
+        Modern(false)
+    end)
+
+    test("AH-Forever: Waren-Suche nimmt den günstigsten fremden Preis", function()
+        Modern(true); W.Advance(3600)
+        M.commodity[30003] = {
+            { unitPrice = 50, quantity = 5, numOwnerItems = 5 },
+            { unitPrice = 60, quantity = 10, numOwnerItems = 0 },
+            { unitPrice = 70, quantity = 4, numOwnerItems = 1 },
+        }
+        W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", 30003)
+        eq(AH.PriceFor("30003"), 60); eq(AH.Store()["30003"].own.q, 13)
+        Modern(false)
+    end)
+
+    test("AH-Forever: Item-Suche – Stückpreis, ohne eigene und ohne Sofortkauf", function()
+        Modern(true); W.Advance(3600)
+        M.items = {
+            { buyoutAmount = 100, quantity = 1, itemLink = L(30004), containsOwnerItem = true },
+            { buyoutAmount = 900, quantity = 3, itemLink = L(30004) },
+            { bidAmount = 10, quantity = 1, itemLink = L(30004) },
+            { buyoutAmount = 700, quantity = 1, itemLink = L(30004) },
+        }
+        W.Fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID = 30004, itemSuffix = 0 })
+        eq(AH.PriceFor("30004"), 300); eq(AH.Store()["30004"].own.q, 4)
+        Modern(false)
+    end)
+
+    test("AH-Forever: Auctionator-Mitlesen abschaltbar", function()
+        Modern(true); W.Advance(3600)
+        W.addons.Auctionator = true; GuildPrideDB.ahReadAuctionator = false
+        M.browse = { { itemKey = { itemID = 30005, itemSuffix = 0 }, totalQuantity = 1, minPrice = 5 } }
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED"); eq(AH.Store()["30005"], nil)
+        GuildPrideDB.ahReadAuctionator = true
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED"); eq(AH.PriceFor("30005"), 5)
+        W.addons.Auctionator = nil
+        Modern(false)
+    end)
+
+    test("AH-Forever: Komplett-Scan über ReplicateItems, höchstens alle 15 Minuten", function()
+        Modern(true); W.Advance(3600); out = {}
+        M.replicated = 0
+        M.replicate = {
+            { name = "A", count = 2, buyout = 100, owner = "Anna", id = 30006, link = L(30006) },
+            { name = "A", count = 1, buyout = 40, owner = W.me, id = 30006, link = L(30006) },
+            { name = "A", count = 1, buyout = 10, owner = "Bert", id = 30006, link = L(30006), hasAll = false },
+            { name = "B", count = 1, buyout = 0, owner = "Bert", id = 30007, link = L(30007) },
+        }
+        eq(AH.FullScan(), true); eq(M.replicated, 1)
+        W.Fire("REPLICATE_ITEM_LIST_UPDATE")
+        eq(AH.PriceFor("30006"), 50); eq(AH.Store()["30007"], nil); eq(#out, 0)
+        -- ohne laufenden Scan (und ohne Auctionator) nicht erneut lesen
+        M.replicate[1].buyout = 2
+        W.Fire("REPLICATE_ITEM_LIST_UPDATE"); eq(AH.PriceFor("30006"), 50)
+        W.Advance(60); eq(AH.FullScan(), false); eq(M.replicated, 1)
+        W.Advance(900); eq(AH.FullScan(), true)
+        Modern(false)
+    end)
+
+    test("AH-Forever: alte Suche bleibt im neuen Auktionshaus aus", function()
+        Modern(true); W.queries = 0
+        eq(AH.Search("Leinen", function() end), false)
+        eq(AH.LoadPage("Leinen", 0), false); eq(W.queries, 0)
+        Modern(false)
+    end)
 end

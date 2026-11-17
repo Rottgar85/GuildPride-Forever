@@ -92,7 +92,7 @@ local function TrySend()
 end
 
 function AH.Search(text, onDone)
-    if AH.AuctionatorLoaded() then return false end
+    if AH.AuctionatorLoaded() or AH.IsModern() then return false end
     search = { text = text or "", page = 0, results = {}, onDone = onDone, waiting = false }
     TrySend()
     return true
@@ -101,7 +101,7 @@ function AH.Searching() return search ~= nil end
 
 -- Eine bestimmte Ergebnisseite erneut laden (zum Kaufen eines Angebots von dort)
 function AH.LoadPage(text, page)
-    if AH.AuctionatorLoaded() or not CanSendAuctionQuery() then return false end
+    if AH.AuctionatorLoaded() or AH.IsModern() or not CanSendAuctionQuery() then return false end
     search = nil
     QueryAuctionItems(text or "", nil, nil, page or 0, false, nil, false, false)
     return true

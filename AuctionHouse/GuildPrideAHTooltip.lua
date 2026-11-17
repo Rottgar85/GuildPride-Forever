@@ -118,3 +118,11 @@ if GameTooltip and GameTooltip.HookScript then
     end
     if ItemRefTooltip and ItemRefTooltip.SetHyperlink then hooksecurefunc(ItemRefTooltip, "SetHyperlink", FromTooltip) end
 end
+-- Neuere Clients (wie WoW Forever): Tooltip-Daten kommen über TooltipDataProcessor
+if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
+        if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end
+        local _, link = tooltip:GetItem()
+        AddLine(tooltip, link or (data and data.hyperlink))
+    end)
+end

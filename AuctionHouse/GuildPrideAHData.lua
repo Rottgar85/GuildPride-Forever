@@ -184,12 +184,20 @@ AH.frame:SetScript("OnEvent", function(_, event, ...)
         if not ok then geterrorhandler()(err) end
     end
 end)
+-- Unbekannte Events (altes vs. neues Auktionshaus je nach Client) still überspringen
 function AH.Listen(event, fn)
     if not handlers[event] then
+        if not pcall(AH.frame.RegisterEvent, AH.frame, event) then return false end
         handlers[event] = {}
-        AH.frame:RegisterEvent(event)
     end
     table.insert(handlers[event], fn)
+    return true
+end
+
+-- Neues Auktionshaus (C_AuctionHouse, wie Retail) – WoW Forever nutzt dieses
+function AH.IsModern()
+    if IsUsingLegacyAuctionClient and IsUsingLegacyAuctionClient() then return false end
+    return C_AuctionHouse ~= nil and C_AuctionHouse.SendBrowseQuery ~= nil
 end
 
 function AH.Opt(k) return GuildPrideDB and GuildPrideDB[k] end
