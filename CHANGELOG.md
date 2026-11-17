@@ -8,6 +8,13 @@
 - Neu im **Berufsfenster** (unten neben „Alle herstellen“): **AH: Zutaten** sucht im GuildPride-Auktionshaus nur die Zutaten des gewählten Rezepts – unter **Suchen** stehen dann nur diese Items, jeweils mit „benötigt N“ für die eingestellte Anzahl; fehlt etwas im Auktionshaus, steht es oben. **Zur Einkaufsliste** fragt nach der Anzahl zum Herstellen und der Liste (oder **Neue Liste …**) und trägt die Zutaten mit Menge ein – mehrere verschiedene Rezepte in einer Liste werden zusammengezählt
 - Einkaufsliste: Spalte **Menge** je Item (änderbar), Knopf **Alle im AH suchen** zeigt unter **Suchen** nur die Items der Liste mit der benötigten Menge
 - **Temporäre Liste** (Knopf im Reiter Einkaufsliste oder im Berufsfenster unter **Zur Einkaufsliste**): für einen Einkauf. Jeder Kauf im GuildPride-Auktionshaus zieht die gekaufte Menge ab, erledigte Items verschwinden – ist alles gekauft, entfernt sich die Liste von selbst. Deine festen Listen bleiben unverändert
+- Berufsfenster: über den Knöpfen stehen **Kosten der Zutaten**, **Verkaufswert** und **Gewinn** (nach 5 % Gebühr) des gewählten Rezepts – mit den geteilten GuildPride-Preisen. Was du schon in Taschen oder Bank hast, wird bei **AH: Zutaten** abgezogen
+- Einkaufsliste: Spalte **Bestand** („hast 5 · noch 7“, grün „genug“), Preis für die noch fehlende Menge und unten **noch zu kaufen, ungefähr …** für die ganze Liste
+- **Preisalarm**: Knopf **Alarm** je Zeile der Einkaufsliste – Wunschpreis eingeben (z. B. 1g 50s oder 1,5). Taucht das Item bei einer Suche so billig auf (auch im Blizzard-Fenster oder mit Auctionator), gibt es einen Hinweis mit Ton
+- Kaufansicht: **Preisverlauf** der letzten 7 Tage als Balken (tiefster und höchster Preis) und **wer in der Gilde das Item herstellen kann** (aus dem Handwerker-Verzeichnis)
+- **Liste kaufen**: zeigt die Items einer Einkaufsliste nacheinander in der Kaufansicht, mit der noch fehlenden Menge; nach jedem Kauf kommt das nächste, **Weiter ›** überspringt
+- Einkaufslisten **exportieren** (Text zum Kopieren und Teilen) und **importieren** – GuildPride-Text, Auctionator-Listen oder einfach Item-IDs
+- Verkaufen: Items, die du schon einmal eingestellt hattest und die wieder in den Taschen liegen (z. B. unverkauft zurück), sind mit **(zurück)** markiert. **Zurückgekommene einstellen** wählt sie nacheinander mit aktuellem Preisvorschlag
 
 **English**
 - Auction house: **Favorites** – the star on every row under **Search** and in the buy view marks an item as favorite (also in Blizzard's own auction house favorites if the game allows it)
@@ -15,6 +22,13 @@
 - New in the **profession window** (at the bottom next to "Create All"): **AH: reagents** searches the GuildPride auction house for the chosen recipe's reagents only – **Search** then shows only these items, each with "need N" for the chosen amount; anything missing from the auction house is listed at the top. **To shopping list** asks for the amount to craft and the list (or **New list …**) and adds the reagents with quantities – several different recipes in one list are added up
 - Shopping list: **Quantity** column per item (editable), the **Search all in the AH** button shows only the list's items under **Search**, with the quantity needed
 - **Temporary list** (button in the Shopping list tab or in the profession window under **To shopping list**): for one shopping trip. Every purchase in the GuildPride auction house subtracts the amount bought, finished items disappear – once everything is bought, the list removes itself. Your regular lists stay unchanged
+- Profession window: above the buttons you see the **reagent cost**, **sale value** and **profit** (after the 5 % cut) of the chosen recipe – using the shared GuildPride prices. What you already have in bags or bank is subtracted for **AH: reagents**
+- Shopping list: **Stock** column ("have 5 · need 7", green "enough"), price for the quantity still missing and at the bottom **still to buy, about …** for the whole list
+- **Price alert**: **Alert** button on every shopping list row – enter a target price (e.g. 1g 50s or 1.5). If the item shows up that cheap in any search (also in Blizzard's window or with Auctionator), you get a notice with a sound
+- Buy view: **price history** of the last 7 days as bars (lowest and highest price) and **who in the guild can craft the item** (from the crafter directory)
+- **Buy list**: shows the items of a shopping list one after another in the buy view, with the quantity still missing; after each purchase the next one comes up, **Next ›** skips
+- **Export** shopping lists (text to copy and share) and **import** them – GuildPride text, Auctionator lists or simply item IDs
+- Sell: items you posted before that are back in your bags (e.g. returned unsold) are marked **(returned)**. **Repost returned items** picks them one after another with the current price suggestion
 
 ## 2.22.1
 
