@@ -66,6 +66,7 @@ GuildPrideAHData.lua
 GuildPrideAHComm.lua
 GuildPrideAHScan.lua
 GuildPrideAHTooltip.lua
+GuildPrideAHUI.lua
 GuildPrideScalesLocaleEN.lua
 GuildPrideScalesLocaleDE.lua
 GuildPrideScalesCompat.lua
