@@ -16,6 +16,7 @@
 - Einkaufslisten **exportieren** (Text zum Kopieren und Teilen) und **importieren** – GuildPride-Text, Auctionator-Listen oder einfach Item-IDs
 - Verkaufen: Items, die du schon einmal eingestellt hattest und die wieder in den Taschen liegen (z. B. unverkauft zurück), sind mit **(zurück)** markiert. **Zurückgekommene einstellen** wählt sie nacheinander mit aktuellem Preisvorschlag
 - Neu: **Briefkasten** – über dem Postfenster eine GuildPride-Leiste: **Abgelaufene** (abgelaufene und abgebrochene Auktionen), **Gold** (verkaufte Auktionen und Überboten-Rückzahlungen), **Gekauftes** (gewonnene Auktionen) und **Andere Post** (alles andere, z. B. von deinen Twinks) – jeweils mit Anzahl. Ein Klick holt nur diese Post ab, Brief für Brief; Nachnahme bleibt liegen, bei vollen Taschen hält es an, **Stopp** bricht ab, am Ende steht eine Zusammenfassung im Chat
+- Neu: Fenster **GuildPride – Briefkasten** statt Blizzards Postfenster (wie beim Auktionshaus): Liste aller Briefe mit Absender, Betreff, Gold, Items, Resttagen und Sorte, **Abholen** je Brief, die Sorten-Knöpfe und **Alles abholen**. **Blizzard-Briefkasten** schaltet zurück, der Knopf **GuildPride** in Blizzards Fenster wieder hierher (die Wahl wird gemerkt); **Brief schreiben** öffnet Blizzards Schreiben-Reiter. Ausschalten: Einstellungen › Auktionshaus › **GuildPride-Briefkasten nutzen** (wirkt sofort)
 
 **English**
 - Auction house: **Favorites** – the star on every row under **Search** and in the buy view marks an item as favorite (also in Blizzard's own auction house favorites if the game allows it)
@@ -31,6 +32,7 @@
 - **Export** shopping lists (text to copy and share) and **import** them – GuildPride text, Auctionator lists or simply item IDs
 - Sell: items you posted before that are back in your bags (e.g. returned unsold) are marked **(returned)**. **Repost returned items** picks them one after another with the current price suggestion
 - New: **Mailbox** – a GuildPride bar above the mail window: **Expired** (expired and cancelled auctions), **Gold** (sold auctions and outbid refunds), **Bought** (won auctions) and **Other mail** (everything else, e.g. from your alts) – each with a count. One click collects only that mail, letter by letter; cash on delivery stays, it stops when your bags are full, **Stop** cancels, and a summary appears in chat at the end
+- New: **GuildPride – Mailbox** window instead of Blizzard's mail window (like the auction house): list of all letters with sender, subject, gold, items, days left and type, **Collect** per letter, the type buttons and **Collect all**. **Blizzard mailbox** switches back, the **GuildPride** button in Blizzard's window switches again (your choice is remembered); **Write letter** opens Blizzard's send tab. Turn it off: Settings › Auction House › **Use the GuildPride mailbox** (takes effect right away)
 
 ## 2.22.1
 

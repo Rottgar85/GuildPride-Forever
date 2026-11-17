@@ -1274,6 +1274,77 @@ return function(test, eq, W, ns)
         AH.Print = oldPrint
         GetInboxNumItems, GetInboxHeaderInfo, AutoLootMailItem, TakeInboxMoney, C_Container = nil, nil, nil, nil, nil
     end)
+    W.Load("GuildPrideAHMailUI.lua")
+    test("AH: GuildPride-Briefkasten ersetzt Blizzards Postfenster, Knöpfe schalten um", function()
+        local mails = {
+            { sender = "Auktionshaus", subject = "Auktion abgelaufen: Kupfererz", money = 0, cod = 0, items = 1 },
+            { sender = "Auktionshaus", subject = "Auktion erfolgreich: Leinenstoff", money = 500, cod = 0, items = 0 },
+            { sender = "Twink", subject = "Mats", money = 100, cod = 0, items = 2 },
+            { sender = "Fremder", subject = "Nachnahme", money = 0, cod = 50, items = 1 },
+        }
+        GetInboxNumItems = function() return #mails, #mails end
+        GetInboxHeaderInfo = function(i)
+            local m = mails[i]
+            if not m then return end
+            return nil, nil, m.sender, m.subject, m.money, m.cod, 10, m.items, false, false, false, true, false
+        end
+        AutoLootMailItem = function(i) table.remove(mails, i) end
+        TakeInboxMoney = function(i) if mails[i].items == 0 then table.remove(mails, i) else mails[i].money = 0 end end
+        C_Container = { GetContainerNumFreeSlots = function(bag) return bag == 0 and 10 or 0 end }
+        local oldPrint = AH.Print
+        AH.Print = function() end
+        MailFrame = CreateFrame()
+        MailFrame.GetFrameLevel = function() return 5 end
+        MailFrame.shown = true
+        local scale, alpha, closed = 1, 1, 0
+        MailFrame.SetScale = function(_, v) scale = v end
+        MailFrame.GetScale = function() return scale end
+        MailFrame.SetAlpha = function(_, v) alpha = v end
+        MailFrame.GetAlpha = function() return alpha end
+        CloseMail = function() closed = closed + 1 end
+        GuildPrideDB.mailUI, GuildPrideDB.mailBlizzard = true, nil
+
+        W.Fire("MAIL_SHOW")
+        local button, win = AH._MailWindow()
+        eq(win:IsShown(), true, "GuildPride statt Blizzard"); eq(scale < 0.01, true); eq(alpha, 0)
+        W.Fire("MAIL_INBOX_UPDATE")
+        eq(win.rows[1]:IsShown(), true); eq(win.rows[4]:IsShown(), true); eq(win.rows[5]:IsShown(), false)
+        eq(win.rows[4].take:IsShown(), false, "Nachnahme: kein Abholen")
+        -- ein Brief einzeln abholen (Twink)
+        eq(win.rows[3].mail.sender, "Twink")
+        win.rows[3].take.scripts.OnClick(win.rows[3].take)
+        eq(#mails, 3)
+        -- nur das Gold
+        win.cats.gold.scripts.OnClick(win.cats.gold)
+        eq(#mails, 2)
+        -- alles abholen: nur die Nachnahme bleibt
+        win.allBtn.scripts.OnClick(win.allBtn)
+        eq(#mails, 1); eq(mails[1].subject, "Nachnahme")
+        -- zu Blizzard und zurück
+        win.blizzard.scripts.OnClick(win.blizzard)
+        eq(win:IsShown(), false); eq(scale, 1); eq(alpha, 1); eq(GuildPrideDB.mailBlizzard, true); eq(closed, 0)
+        button.scripts.OnClick(button)
+        eq(win:IsShown(), true); eq(scale < 0.01, true); eq(GuildPrideDB.mailBlizzard, false)
+        -- X am GuildPride-Fenster schließt den Briefkasten
+        win:Hide(); win.scripts.OnHide(win)
+        eq(closed, 1)
+        W.Fire("MAIL_CLOSED")
+        eq(scale, 1)
+        -- ausschalten: nur noch Blizzard, kein Knopf
+        W.Fire("MAIL_SHOW")
+        eq(win:IsShown(), true)
+        AH.SetMailUI(false)
+        eq(GuildPrideDB.mailUI, false); eq(win:IsShown(), false); eq(button:IsShown(), false); eq(scale, 1)
+        W.Fire("MAIL_CLOSED")
+        W.Fire("MAIL_SHOW")
+        eq(win:IsShown(), false, "bleibt aus")
+        AH.SetMailUI(true)
+        eq(button:IsShown(), true)
+        W.Fire("MAIL_CLOSED")
+        GuildPrideDB.mailUI, GuildPrideDB.mailBlizzard = true, nil
+        AH.Print = oldPrint
+        GetInboxNumItems, GetInboxHeaderInfo, AutoLootMailItem, TakeInboxMoney, C_Container, MailFrame, CloseMail = nil, nil, nil, nil, nil, nil, nil
+    end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
         local old = GetCoinTextureString
         GetCoinTextureString = nil

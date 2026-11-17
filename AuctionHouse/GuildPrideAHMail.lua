@@ -14,7 +14,9 @@ local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
 local STEP = 0.4                 -- Sekunden zwischen zwei Briefen
 local MAX_TRIES = 3              -- so oft derselbe Brief, dann überspringen (z. B. Einzigartig-Item)
 local CATS = { "expired", "gold", "won", "other" }
-local LABEL = { expired = L["Abgelaufene"], gold = L["Gold"], won = L["Gekauftes"], other = L["Andere Post"] }
+local LABEL = { expired = L["Abgelaufene"], gold = L["Gold"], won = L["Gekauftes"], other = L["Andere Post"],
+                all = L["Alles"] }
+AH.MAIL_CATS, AH.MAIL_LABEL = CATS, LABEL
 local TIP = {
     expired = L["Holt nur abgelaufene und abgebrochene Auktionen ab (die Items kommen zurück in die Taschen)."],
     gold = L["Holt nur das Gold aus verkauften Auktionen und Überboten-Rückzahlungen ab."],
@@ -108,7 +110,7 @@ local function Step()
         local cat, money, items = AH.MailCategory(i)
         local _, _, sender, subject = GetInboxHeaderInfo(i)
         local key = tostring(sender) .. "\031" .. tostring(subject) .. "\031" .. tostring(money) .. "\031" .. tostring(items)
-        if cat == run.cat and not run.skip[key] then
+        if cat and (run.cat == "all" or cat == run.cat) and not run.skip[key] then
             if run.last == key then run.tries = run.tries + 1 else run.last, run.tries = key, 1 end
             if run.tries > MAX_TRIES then
                 run.skip[key] = true          -- klappt nicht (z. B. Einzigartig-Item): liegen lassen
@@ -139,12 +141,41 @@ end
 function AH.StopMail() if run then Finish(L["Angehalten."]) end end
 function AH.MailRunning() return run ~= nil end
 
+-- Alle Briefe für die Anzeige: { index, sender, subject, money, cod, items, days, icon, cat }
+function AH.MailList()
+    local out = {}
+    for i = 1, NumMails() do
+        local icon, _, sender, subject, money, cod, days, items = GetInboxHeaderInfo(i)
+        if sender ~= nil or subject ~= nil then
+            out[#out + 1] = { index = i, sender = sender, subject = subject, money = tonumber(money) or 0,
+                              cod = tonumber(cod) or 0, items = tonumber(items) or 0, days = tonumber(days),
+                              icon = icon, cat = (AH.MailCategory(i)) }
+        end
+    end
+    return out
+end
+
+-- Einen Brief abholen (Items und Gold); Nachnahme nie
+function AH.CollectOne(i)
+    local cat, _, items = AH.MailCategory(i)
+    if not cat or run then return false end
+    if items > 0 then
+        if FreeSlots() < 1 then AH.Print(L["Taschen voll – angehalten."]); return false end
+        AutoLootMailItem(i)
+    else
+        TakeInboxMoney(i)
+    end
+    if UpdateBar then UpdateBar() end
+    return true
+end
+
 ---------------------------------------------------------------------
 -- Leiste über dem Postfenster
 ---------------------------------------------------------------------
 local bar
 
 UpdateBar = function()
+    if AH.onMailChanged then AH.onMailChanged() end   -- GuildPride-Briefkasten-Fenster (GuildPrideAHMailUI.lua)
     if not bar then return end
     local c = AH.MailCounts()
     for _, cat in ipairs(CATS) do

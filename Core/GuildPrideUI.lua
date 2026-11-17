@@ -1815,6 +1815,8 @@ local options = {
     { header = L["Auktionshaus"] },
     { key = "ahTab",         label = L["GuildPride-Auktionshaus nutzen (aus = nur Blizzards Auktionshaus)"],
       changed = function() if ns.AH and ns.AH.SetModernUI then ns.AH.SetModernUI(GuildPrideDB.ahTab) end end },
+    { key = "mailUI",        label = L["GuildPride-Briefkasten nutzen (aus = nur Blizzards Postfenster)"],
+      changed = function() if ns.AH and ns.AH.SetMailUI then ns.AH.SetMailUI(GuildPrideDB.mailUI) end end },
     { key = "ahTooltip",     label = L["Auktionshauspreis im Item-Tooltip zeigen"] },
     { key = "ahTooltipWithAuctionator", label = L["Tooltip-Preis auch zeigen, wenn Auctionator geladen ist"] },
     { header = L["Gilde"] },
