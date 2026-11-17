@@ -90,7 +90,7 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    guildTab = true, wishTooltip = true, wishDropHint = true,
                    remindMin = 15, layerHelp = true, layerShow = true,
                    ahTab = true, ahTooltip = true, ahShare = true, ahReadAuctionator = true,
-                   ahTooltipWithAuctionator = false }
+                   ahTooltipWithAuctionator = false, transitUI = true, transitShare = true }
 
 -- Weitere Meilensteine neben LEVEL (Wert ist Text bzw. ID)
 local EXTRA_KINDS = { ACH = true, BOSS = true, MPLUS = true, MOUNT = true }
@@ -555,7 +555,7 @@ local multipart = {}   -- ["Sender:id"] = { n, got, parts, t }
 local NO_RELAY = { DKP = true, DRW = true, ALT = true, AUS = true, AUSX = true, AUSL = true,
                    AUC = true, AUH = true, AUE = true, CKY = true, DEL = true, JHL = true, LAY = true, RCP = true, APK = true,
                    CRF = true, CRR = true, GOL = true, BRD = true, LFJ = true, LFJA = true, WSH = true, GPS = true,
-                   ORD = true, ORA = true }
+                   ORD = true, ORA = true, TRS = true }
 local recent, recentSweep = {}, 0   -- zuletzt empfangene Nachrichten (gegen Doppelte)
 local forwarded = {}   -- ["Name:id"] = Zeit, gegen doppelte Weiterleitungen
 local MP_MAX = 100
@@ -563,7 +563,7 @@ local MP_MAX = 100
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
 local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
-               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true }
+               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender

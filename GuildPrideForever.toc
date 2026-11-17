@@ -73,6 +73,9 @@ AuctionHouse\GuildPrideAHOrders.lua
 AuctionHouse\GuildPrideAHTooltip.lua
 AuctionHouse\GuildPrideAHUI.lua
 AuctionHouse\GuildPrideAHModernUI.lua
+Travel\GuildPrideTransitData.lua
+Travel\GuildPrideTransit.lua
+Travel\GuildPrideTransitUI.lua
 Scales\GuildPrideScalesLocaleEN.lua
 Scales\GuildPrideScalesLocaleDE.lua
 Scales\GuildPrideScalesCompat.lua
