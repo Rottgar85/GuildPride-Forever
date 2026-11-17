@@ -47,6 +47,17 @@ if AddFilter then
     end)
 end
 
+-- Gemeinsamer Kanal: Raren und Auktionshaus teilen sich Kanal und Sendebremse
+-- (zusammen höchstens 1 Nachricht pro 1,5 s). Gleicher Schlüssel ersetzt älteren Eintrag.
+GP.SharedChannel = GP.SharedChannel or {}
+function GP.SharedChannel.Send(prefix, msg, key)
+    key = prefix .. "|" .. (key or msg)
+    for i = #queue, 1, -1 do if queue[i].key == key then table.remove(queue, i) end end
+    queue[#queue + 1] = { key = key, msg = msg, prefix = prefix }
+end
+function GP.SharedChannel.Want(_, on) if on then Join() end end
+GP.SharedChannel.Id = ChannelId
+
 function ns.Send(...)
     if not ns.Opt("share") or not ns.Enabled() then return end
     local parts = { ... }
@@ -54,9 +65,7 @@ function ns.Send(...)
     local msg = table.concat(parts, ":")
     if #msg > 250 then return end
     -- gleiche Art für denselben Gegner: nur der neueste Stand zählt
-    local key = parts[1] .. ":" .. parts[2]
-    for i = #queue, 1, -1 do if queue[i].key == key then table.remove(queue, i) end end
-    queue[#queue + 1] = { key = key, msg = msg }
+    GP.SharedChannel.Send(PREFIX, msg, parts[1] .. ":" .. parts[2])
 end
 
 local warned = false
@@ -67,7 +76,7 @@ C_Timer.NewTicker(0.5, function()
     if C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown() then return end
     local item = table.remove(queue, 1)
     lastSend = GetTime()
-    local res = C_ChatInfo.SendAddonMessage(PREFIX, item.msg, "CHANNEL", id)
+    local res = C_ChatInfo.SendAddonMessage(item.prefix or PREFIX, item.msg, "CHANNEL", id)
     ns.stats.sent = ns.stats.sent + 1
     ns.stats.lastRes = res
     if Enum and Enum.SendAddonMessageResult and res == Enum.SendAddonMessageResult.InvalidChatType and not warned then

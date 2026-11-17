@@ -53,4 +53,67 @@ return function(test, eq, W, ns)
         AH.SetSide("N"); eq(AH.PriceFor("6"), nil)
         AH.SetSide(nil); eq(AH.Side(), "A")
     end)
+
+    -----------------------------------------------------------------
+    -- Teilen (Weg C)
+    -----------------------------------------------------------------
+    W.Load("GuildPrideAHComm.lua")
+    local out = {}
+    AH.SendRaw = function(msg) out[#out + 1] = msg end
+
+    test("AH-Comm: P kodieren/dekodieren, 250 Zeichen, max 8 Items", function()
+        local items = {}
+        for i = 1, 20 do items[i] = { key = tostring(1000 + i), p = 12345, q = 20, t = W.server } end
+        local msgs = AH.EncodeP("A", items)
+        eq(#msgs, 3)
+        for _, m in ipairs(msgs) do eq(#m <= 250, true) end
+        local side, got = AH.DecodeP(msgs[1]); eq(side, "A"); eq(#got, 8); eq(got[1].p, 12345)
+        eq(got[1].key, "1001")
+        local _, sfx = AH.DecodeP("P:A:15210.1017=5,1," .. W.server); eq(sfx[1].key, "15210.1017")
+    end)
+
+    test("AH-Comm: Unsinn wird verworfen", function()
+        local _, a = AH.DecodeP("P:A:abc=1,1," .. W.server); eq(#a, 0)
+        local _, b = AH.DecodeP("P:A:9=0,1," .. W.server .. ";10=5,1," .. (W.server + 3600)); eq(#b, 0)
+        local _, c = AH.DecodeP("P:A:9=5,0," .. W.server .. ";10=5,1," .. (W.server - 8 * 86400)); eq(#c, 0)
+        local _, d = AH.DecodeP("P:A:9=2000000000,1," .. W.server); eq(#d, 0)
+        eq(select(2, AH.DecodeP("Müll")), nil)
+    end)
+
+    test("AH-Comm: Spammer bestätigt nichts", function()
+        for _ = 1, 12 do AH.OnMessage("P:A:11=1,1," .. W.server, "Spam") end
+        eq(AH.ServerConfirmed("11"), nil); eq(AH.stats.dropped > 0, true)
+    end)
+
+    test("AH-Comm: andere Seite wird nicht gespeichert", function()
+        AH.OnMessage("P:H:12=100,1," .. W.server, "Horde1"); eq(AH.PriceFor("12"), nil)
+    end)
+
+    test("AH-Comm: fremder Preis wird gespeichert", function()
+        AH.OnMessage("P:A:14=77,3," .. W.server, "Anna")
+        local p, _, src = AH.PriceFor("14"); eq(p, 77); eq(src, "srv")
+    end)
+
+    test("AH-Comm: Q nur mit eigenem Preis < 6 Std.; fremdes P stoppt Antwort", function()
+        AH.RecordOwn("13", 100, 1, W.server - 7 * 3600)
+        AH.OnMessage("Q:A:13", "Anna"); eq(AH._answerPlanned("13"), false)
+        AH.RecordOwn("13", 100, 1, W.server)
+        AH.OnMessage("Q:A:13", "Bert"); eq(AH._answerPlanned("13"), true)
+        AH.OnMessage("P:A:13=101,1," .. W.server, "Carl"); eq(AH._answerPlanned("13"), false)
+    end)
+
+    test("AH-Comm: geplante Antwort geht nach Ablauf raus", function()
+        AH.RecordOwn("15", 100, 1, W.server)
+        AH.OnMessage("Q:A:15", "Bert"); eq(AH._answerPlanned("15"), true)
+        out = {}; AH._tick(GetTime() + 5)
+        eq(AH._answerPlanned("15"), false); eq(#out, 1); eq(out[1]:find("15=100,1,", 1, true) ~= nil, true)
+    end)
+
+    test("AH-Comm: Share je Item höchstens alle 30 Min., Ask gebremst", function()
+        AH.RecordOwn("16", 50, 1, W.server)
+        out = {}; AH.Share({ "16" }); AH.Share({ "16" }); eq(#out, 1)
+        out = {}; AH.Ask("17"); AH.Ask("17"); eq(#out, 1)
+        for i = 1, 20 do AH.Ask(tostring(200 + i)) end
+        eq(#out, 10, "höchstens 10 Nachfragen pro Minute")
+    end)
 end
