@@ -88,7 +88,9 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    publicLFG = true, publicAlerts = false, lfgPublic = false, lfgScope = "all",
                    mapShow = true, mapShare = true, ausweisAuto = true, groupAlts = true, compactMenu = true,
                    guildTab = true, wishTooltip = true, wishDropHint = true,
-                   remindMin = 15, layerHelp = true, layerShow = true }
+                   remindMin = 15, layerHelp = true, layerShow = true,
+                   ahTab = true, ahTooltip = true, ahShare = true, ahReadAuctionator = true,
+                   ahTooltipWithAuctionator = false }
 
 -- Weitere Meilensteine neben LEVEL (Wert ist Text bzw. ID)
 local EXTRA_KINDS = { ACH = true, BOSS = true, MPLUS = true, MOUNT = true }

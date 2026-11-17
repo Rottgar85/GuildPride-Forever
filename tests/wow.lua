@@ -107,6 +107,7 @@ function InCombatLockdown() return false end
 function IsInRaid() return false end
 function IsInGroup() return false end
 function UnitExists() return false end
+function UnitFactionGroup() return "Alliance", "Allianz" end
 function time() return W.server end
 date = os.date
 
@@ -115,7 +116,8 @@ date = os.date
 local NILS = { GuildPrideDB = true, GuildPrideBackupDB = true, issecretvalue = true,
     C_RestrictedActions = true, GetNumGuildEvents = true, GetGuildEventInfo = true,
     QueryGuildEventLog = true, C_DateAndTime = true, Settings = true, C_MythicPlus = true,
-    JoinTemporaryChannel = true, C_Club = true, C_ChallengeMode = true }
+    JoinTemporaryChannel = true, C_Club = true, C_ChallengeMode = true,
+    GuildPrideAHDB = true, Auctionator = true }
 
 -- Rest: Alles-Objekt
 setmetatable(_G, { __index = function(_, k) if NILS[k] then return nil end return magic end })
