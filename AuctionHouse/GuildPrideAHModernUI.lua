@@ -40,6 +40,14 @@ local function Money(c) return AH.Money(c) end
 local function Button(parent, text, w)
     local b = Skin(CreateFrame("Button", nil, parent, "UIPanelButtonTemplate"))
     b:SetSize(w or 100, 22); b:SetText(text)
+    -- Schrift immer mittig; ist der Text breiter als der Knopf, wird der Knopf breiter
+    -- (sonst rutscht er bei der GuildPride-Schrift aus der Mitte)
+    local fs = b.GetFontString and b:GetFontString()
+    if type(fs) == "table" and fs.ClearAllPoints then
+        fs:ClearAllPoints(); fs:SetPoint("CENTER", b, "CENTER", 0, 0)
+        local tw = fs.GetStringWidth and fs:GetStringWidth()
+        if type(tw) == "number" and tw + 20 > (w or 100) then b:SetWidth(math.ceil(tw + 20)) end
+    end
     return b
 end
 
@@ -1751,7 +1759,7 @@ local function Build()
     panel.modeSearch = Button(panel, L["Suchen"], 76); panel.modeSearch:SetPoint("LEFT", title, "RIGHT", 14, 0)
     -- Reihenfolge: Suchen · Verkaufen · Meine Auktionen · Einkaufsliste · Aufträge · Scanner
     panel.modeSell = Button(panel, L["Verkaufen"], 82); panel.modeSell:SetPoint("LEFT", panel.modeSearch, "RIGHT", 5, 0)
-    panel.modeOwn = Button(panel, L["Meine Auktionen"], 116); panel.modeOwn:SetPoint("LEFT", panel.modeSell, "RIGHT", 5, 0)
+    panel.modeOwn = Button(panel, L["Meine Auktionen"], 124); panel.modeOwn:SetPoint("LEFT", panel.modeSell, "RIGHT", 5, 0)
     panel.modeList = Button(panel, L["Einkaufsliste"], 100); panel.modeList:SetPoint("LEFT", panel.modeOwn, "RIGHT", 5, 0)
     panel.modeOrders = Button(panel, L["Aufträge"], 80); panel.modeOrders:SetPoint("LEFT", panel.modeList, "RIGHT", 5, 0)
     panel.modeScan = Button(panel, L["Scanner"], 74); panel.modeScan:SetPoint("LEFT", panel.modeOrders, "RIGHT", 5, 0)
