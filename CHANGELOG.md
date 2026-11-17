@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.23.1
+
+**Deutsch**
+- Gildenfenster › **Berufe**: Vor den Namen standen Kästchen statt Pfeilen – jetzt Plus- und Minus-Symbole zum Auf- und Zuklappen
+- Berufe: Die Berufssymbole stehen jetzt rechts am Zeilenende
+- Briefkasten: Der Knopf **Twinks** beim Schreiben ist wieder entfernt – GuildPride verändert den Briefkasten nicht mehr
+
+**English**
+- Guild window › **Professions**: boxes showed in front of the names instead of arrows – now plus and minus icons to expand and collapse
+- Professions: the profession icons now sit at the right end of the row
+- Mailbox: the **Alts** button when writing is removed again – GuildPride no longer changes the mailbox
+
 ## 2.23.0
 
 **Deutsch**
@@ -17,7 +29,6 @@
 - **Liste kaufen**: zeigt die Items einer Einkaufsliste nacheinander in der Kaufansicht, mit der noch fehlenden Menge; nach jedem Kauf kommt das nächste, **Weiter ›** überspringt
 - Einkaufslisten **exportieren** (Text zum Kopieren und Teilen) und **importieren** – GuildPride-Text, Auctionator-Listen oder einfach Item-IDs
 - Verkaufen: Items, die du schon einmal eingestellt hattest und die wieder in den Taschen liegen (z. B. unverkauft zurück), sind mit **(zurück)** markiert. **Zurückgekommene einstellen** wählt sie nacheinander mit aktuellem Preisvorschlag
-- Briefkasten: Knopf **Twinks** neben dem Empfänger beim Schreiben – ein kleines Menü mit deinen anderen Charakteren (in Klassenfarbe), ein Klick trägt den Namen ein, Rechtsklick nimmt einen Charakter aus der Liste. GuildPride kennt jeden Charakter, mit dem du dich einmal eingeloggt hast (gleiche Fraktion), und deine per Ausweis erkannten Twinks in der Gilde
 - Neu: Reiter **Aufträge** im Auktionshaus – **Gildenaufträge**: Item-ID (oder Umschalt+Klick) und Menge eingeben, **Auftrag einstellen**. Die ganze Gilde mit GuildPride sieht die Aufträge mit Menge, Auftraggeber, Alter und Status; Hersteller klicken **Annehmen** (und können wieder **Abgeben**), der Auftraggeber bekommt einen Hinweis. Eigene Aufträge **löschen**, **Suchen** zeigt das Item im Auktionshaus. Höchstens 20 eigene Aufträge, sie verfallen nach 14 Tagen. Abgleich wie bei der Wunschliste: jeder sendet nur seine eigenen Aufträge, angenommen wird nur vom Hersteller selbst (nie weitergeleitet)
 - Discord: neue und angenommene Gildenaufträge gehen über die Discord-Anbindung an Discord; in der Kaufansicht meldet **Preis an Discord** den aktuellen Preis (mit aktuellem GameBot als Karte)
 
@@ -36,7 +47,6 @@
 - **Buy list**: shows the items of a shopping list one after another in the buy view, with the quantity still missing; after each purchase the next one comes up, **Next ›** skips
 - **Export** shopping lists (text to copy and share) and **import** them – GuildPride text, Auctionator lists or simply item IDs
 - Sell: items you posted before that are back in your bags (e.g. returned unsold) are marked **(returned)**. **Repost returned items** picks them one after another with the current price suggestion
-- Mailbox: **Alts** button next to the recipient when writing – a small menu with your other characters (in class colour); one click fills in the name, right-click removes a character from the list. GuildPride knows every character you have logged in with once (same faction) and your alts in the guild recognised by the ID
 - New: **Orders** tab in the auction house – **guild orders**: enter an item ID (or shift-click) and a quantity, **Post order**. Everyone in the guild with GuildPride sees the orders with quantity, requester, age and status; crafters click **Accept** (and can **Give back**), the requester gets a notice. **Delete** your own orders, **Search** shows the item in the auction house. At most 20 own orders, they expire after 14 days. Synced like the wishlist: everyone only sends their own orders, only the crafter can accept for themselves (never relayed)
 - Discord: new and accepted guild orders go to Discord via the Discord bridge; in the buy view **Price to Discord** posts the current price (shown as a card with the current GameBot)
 

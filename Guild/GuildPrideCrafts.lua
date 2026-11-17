@@ -563,6 +563,9 @@ local openChar, openProf = {}, {}
 local function ProfKey(name, prof) return name .. "\030" .. prof end
 
 local CHAR_INDENT, PROF_INDENT, REC_INDENT = 8, 30, 54
+-- Auf-/Zuklappen als Spiel-Symbole: die Pfeilzeichen ▾/▸ fehlen in GuildPrides Textschrift (Kästchen)
+local OPEN, CLOSED = "|TInterface\\Buttons\\UI-MinusButton-Up:14:14|t", "|TInterface\\Buttons\\UI-PlusButton-Up:14:14|t"
+local NO_TOGGLE = "     "   -- ohne Rezepte nichts zum Aufklappen
 local function Level(p)
     if (p.m or 0) > 0 then return ("|cffffd18c%d|r|cff999999 / %d|r"):format(p.l or 0, p.m) end
     return ("|cffffd18c%d|r"):format(p.l or 0)
@@ -595,13 +598,13 @@ function page:Refresh()
         n = n + 1
         local row = Row(n, CHAR_INDENT)
         local main = ns.MainOf and ns.MainOf(c.name)
-        row.left:SetText(("%s %s%s%s"):format(open and "▾" or "▸", online[c.name] and "|cff40ff40•|r" or "|cff666666•|r",
+        row.left:SetText(("%s %s %s%s"):format(open and OPEN or CLOSED, online[c.name] and "|cff40ff40•|r" or "|cff666666•|r",
             Ambiguate(c.name, "guild"), (main and main ~= c.name) and (" |cff999999(" .. Ambiguate(main, "guild") .. ")|r") or ""))
-        -- nur Name, dahinter die Berufssymbole; Stufen im Tooltip und aufgeklappt
+        -- nur Name, rechts am Zeilenende die Berufssymbole; Stufen im Tooltip und aufgeklappt
         local icons = {}
         for _, p in ipairs(c.profs) do icons[#icons + 1] = Crafts.Icon(p, 18) end
-        row.mid:SetText(table.concat(icons, " "))
-        row.right:SetText("")
+        row.mid:SetText("")
+        row.right:SetText(table.concat(icons, " "))
         row:SetScript("OnEnter", function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetText(Ambiguate(c.name, "guild"))
@@ -631,7 +634,7 @@ function page:Refresh()
                 if popen == nil then popen = p.auto or false end
                 n = n + 1
                 local prow = Row(n, PROF_INDENT)
-                prow.left:SetText((p.count > 0 and (popen and "▾ " or "▸ ") or "   ") .. Crafts.Icon(p, 16) .. " " .. p.n)
+                prow.left:SetText((p.count > 0 and (popen and OPEN or CLOSED) or NO_TOGGLE) .. " " .. Crafts.Icon(p, 16) .. " " .. p.n)
                 prow.mid:SetText(Level(p))
                 -- Mit GuildPride: Klick öffnet sein Berufsfenster (geteilter Link), Rechtsklick
                 -- die Rezeptliste hier. Ohne GuildPride: WoW Forever liefert fremde Rezepte nicht
