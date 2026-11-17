@@ -1204,6 +1204,76 @@ return function(test, eq, W, ns)
         W.Fire("AUCTION_HOUSE_CLOSED")
         Modern(false)
     end)
+    W.Load("GuildPrideAHMail.lua")
+    test("AH: Briefkasten – Post nach Sorte abholen", function()
+        AUCTION_EXPIRED_MAIL_SUBJECT = "Auktion abgelaufen: %s"
+        AUCTION_REMOVED_MAIL_SUBJECT = "Auktion abgebrochen: %s"
+        AUCTION_SOLD_MAIL_SUBJECT = "Auktion erfolgreich: %s"
+        AUCTION_OUTBID_MAIL_SUBJECT = "Überboten für %s"
+        AUCTION_WON_MAIL_SUBJECT = "Auktion gewonnen: %s"
+        local mails
+        local function Reset()
+            mails = {
+                { sender = "Auktionshaus", subject = "Auktion abgelaufen: Kupfererz", money = 0, cod = 0, items = 1 },
+                { sender = "Auktionshaus", subject = "Auktion erfolgreich: Leinenstoff", money = 500, cod = 0, items = 0 },
+                { sender = "Twink", subject = "Mats", money = 100, cod = 0, items = 2 },
+                { sender = "Auktionshaus", subject = "Auktion gewonnen: Erz (3)", money = 0, cod = 0, items = 1 },
+                { sender = "Fremder", subject = "Nachnahme", money = 0, cod = 50, items = 1 },
+                { sender = "Auktionshaus", subject = "Auktion abgebrochen: Silberblatt", money = 0, cod = 0, items = 1 },
+                { sender = "Auktionshaus", subject = "Überboten für Zinnerz", money = 70, cod = 0, items = 0 },
+                { sender = "Freund", subject = "Hallo", money = 0, cod = 0, items = 0 },   -- nur Text: nichts abzuholen
+            }
+        end
+        Reset()
+        GetInboxNumItems = function() return #mails, #mails end
+        GetInboxHeaderInfo = function(i)
+            local m = mails[i]
+            if not m then return end
+            return nil, nil, m.sender, m.subject, m.money, m.cod, 10, m.items, false, false, false, true, false
+        end
+        local looted, moneyTaken = 0, 0
+        AutoLootMailItem = function(i) looted = looted + 1; moneyTaken = moneyTaken + mails[i].money; table.remove(mails, i) end
+        TakeInboxMoney = function(i)
+            moneyTaken = moneyTaken + mails[i].money
+            mails[i].money = 0
+            if mails[i].items == 0 then table.remove(mails, i) end
+        end
+        local free = 10
+        C_Container = { GetContainerNumFreeSlots = function(bag) return bag == 0 and free or 0 end }
+        local printed = {}
+        local oldPrint = AH.Print
+        AH.Print = function(m) printed[#printed + 1] = m end
+
+        local c = AH.MailCounts()
+        eq(c.expired, 2); eq(c.gold, 2); eq(c.won, 1); eq(c.other, 1, "Twink ja, Nachnahme und reiner Text nein")
+        eq(c.goldSum, 570)
+        -- nur das Gold
+        eq(AH.CollectMail("gold"), true)
+        eq(#mails, 6); eq(moneyTaken, 570); eq(AH.MailRunning(), false)
+        eq(#printed > 0, true)
+        -- nur abgelaufene, aber Taschen voll: hält an
+        free = 0
+        eq(AH.CollectMail("expired"), true)
+        eq(AH.MailCounts().expired, 2, "nichts genommen"); eq(AH.MailRunning(), false)
+        free = 10
+        AH.CollectMail("expired")
+        eq(AH.MailCounts().expired, 0); eq(looted, 2)
+        -- andere Post (Twink) mit Items und Gold, Nachnahme bleibt
+        AH.CollectMail("other")
+        eq(AH.MailCounts().other, 0); eq(moneyTaken, 670)
+        eq(#mails, 3, "gewonnen, Nachnahme und reiner Text bleiben")
+        eq(AH.CollectMail("nichts"), false)
+        -- Leiste am Briefkasten
+        Reset()
+        W.Fire("MAIL_SHOW")
+        local bar = AH._MailBar()
+        eq(bar ~= nil, true)
+        bar.buttons.won.scripts.OnClick(bar.buttons.won)
+        eq(AH.MailCounts().won, 0)
+        W.Fire("MAIL_CLOSED")
+        AH.Print = oldPrint
+        GetInboxNumItems, GetInboxHeaderInfo, AutoLootMailItem, TakeInboxMoney, C_Container = nil, nil, nil, nil, nil
+    end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
         local old = GetCoinTextureString
         GetCoinTextureString = nil
