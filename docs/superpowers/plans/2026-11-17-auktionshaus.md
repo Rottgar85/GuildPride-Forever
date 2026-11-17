@@ -15,7 +15,7 @@
 - Interface 16001, altes AH: `QueryAuctionItems`, `GetNumAuctionItems("list")`, `GetAuctionItemInfo("list", i)`, `GetAuctionItemLink("list", i)`, `CanSendAuctionQuery()` (2. Wert = getAll erlaubt), `PostAuction`, `PlaceAuctionBid`, Events `AUCTION_ITEM_LIST_UPDATE`, `AUCTION_HOUSE_SHOW`, `AUCTION_HOUSE_CLOSED`. Dauern 2/8/24 Std.
 - `PostAuction` und `PlaceAuctionBid` nur direkt im `OnClick` eines Knopfes aufrufen.
 - Addon-Nachrichten ≤ 250 Zeichen; Felder mit `:` getrennt.
-- Kein neuer Chatkanal: Kanal `GPRaresF`, Präfix `GPAH`; zusammen mit Raren höchstens 1 Nachricht / 1,5 s.
+- Eigener Chatkanal `GPAuktionF` (Nutzerentscheid 2026-11-17), Präfix `GPAH`, eigene Bremse 1 Nachricht / 1,5 s; `GuildPrideRaresComm.lua` bleibt unverändert.
 - Neue SavedVariable `GuildPrideAHDB` (in `.toc` ergänzen).
 - Optionen in `GuildPrideDB` mit Standard: `ahTab = true`, `ahTooltip = true`, `ahShare = true`, `ahReadAuctionator = true`, `ahTooltipWithAuctionator = false`.
 - Lua 5.1 / 200-Locals-Grenze (`luac5.1 -p`), luacheck grün (`.tools/luacheck.exe . --no-color -q`), `python .github/build-news.py` lässt git sauber.

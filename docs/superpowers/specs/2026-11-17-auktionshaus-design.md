@@ -67,7 +67,7 @@ Diese Dinge können später als eigene Schritte kommen.
 - **Mitlesen bei Auctionator (Entscheidung des Nutzers):** Ist Auctionator geladen, liest GuildPride still die Ergebnisse mit, die Auctionators Suchen ins Auktionshaus holen (`AUCTION_ITEM_LIST_UPDATE` → `GetAuctionItemInfo("list", i)`), füllt damit `own` und teilt sie nach Weg C (sendet `P` für so gesuchte Items, beantwortet `Q`). Eine eingeschaltete Tooltip-Zeile darf auch `Q` senden. Scannen-Lesen und Teilen laufen dafür **ohne** den Reiter. Komplett-Scans von Auctionator gelten wie eigene Komplett-Scans (kein Massen-`P`).
   - Der Nutzer will das **später abschalten können**, wenn genug Spieler den GuildPride-Teil nutzen. Deshalb hängt das Mitlesen an einem eigenen, zentralen Schalter (eine Konstante bzw. Option `ahReadAuctionator`, Standard **an**), sodass ein späteres Update es mit einer Zeile ausschalten kann, ohne andere Teile anzufassen.
 - **Eigener Scan geht immer vor.** Fremde Preise erscheinen im Tooltip mit Alter („Server, vor 2 Std.“). In den Verkaufsvorschlag fließen sie nur, wenn kein eigener Preis jünger als 1 Std. existiert **und** mindestens **2 verschiedene Absender** Preise gemeldet haben, die höchstens 25 % auseinanderliegen; dann als „Serverpreis“ markiert. Beim Öffnen von „Verkaufen“ wird ohnehin frisch gesucht, sobald die Drosselung es erlaubt.
-- **Kein neuer Kanal:** Das Auktionshaus nutzt den offenen Forever-Kanal `GPRaresF` mit eigenem Präfix `GPAH`. Kanalbeitritt passiert, wenn Raren-Teilen **oder** Preise-Teilen an ist.
+- **Eigener Kanal (Entscheidung des Nutzers, 2026-11-17):** Das Auktionshaus nutzt einen eigenen offenen Kanal `GPAuktionF` mit Präfix `GPAH` und eigener Sendebremse (1 Nachricht / 1,5 s). Beitritt spät (25 s nach dem Einloggen), Austritt beim Ausschalten von „Preise teilen“. Ist kein Platz mehr (10 Kanäle), gibt es einen einmaligen Hinweis.
 
 ## Teile und Verhalten
 
@@ -109,7 +109,7 @@ Findet die frische Suche nichts Fremdes (nur eigene oder gar keine Angebote), gi
 - Kein oder zu alter Preis (> 24 Std.) → Nachfrage (siehe 5); die Zeile erscheint, wenn die Antwort kommt und der Tooltip noch dasselbe Item zeigt.
 - Keine Nachfrage und keine Zeile für Items, die nicht ins Auktionshaus können: seelengebunden beim Aufheben, Questgegenstände, graue Qualität, Items mit Händlerpreis 0 und ohne Handelbarkeit. *(Entscheidung von mir.)*
 
-### 5. Teilen (Weg C) – Kanal `GPRaresF`, Präfix `GPAH`
+### 5. Teilen (Weg C) – Kanal `GPAuktionF`, Präfix `GPAH`
 
 Nachrichten, Felder mit `:`, ≤ 250 Zeichen:
 
@@ -117,7 +117,7 @@ Nachrichten, Felder mit `:`, ≤ 250 Zeichen:
 - `Q:<seite>:<item>` – **Nachfrage**, höchstens 1 pro Item alle 10 Min. und 10 pro Minute insgesamt.
 - Antwort auf `Q`: ein `P` mit genau diesem Item, nur mit **eigenem** Preis jünger als 6 Std. Jeder Antwortwillige wartet zufällig 1–4 s; hört er inzwischen ein `P` mit gleich neuem oder neuerem Stand, antwortet er nicht.
 - `<item>` = Item-ID oder `ID.Suffix`.
-- Gemeinsame Sendebremse mit dem Raren-Teilen: zusammen höchstens 1 Nachricht pro 1,5 s.
+- Eigene Sendebremse: höchstens 1 Nachricht pro 1,5 s.
 - Empfangsschutz wie `GuildPrideRaresComm.lua`: nur Kanal, nicht von sich selbst, Längengrenze, je Absender max. 10 Nachrichten/Min. (sonst 5 Min. Sperre), Zahlen in Grenzen (Preis 1 Kupfer … 100 000 Gold, Menge 1 … 100 000, Zeit nicht in der Zukunft und ≤ 7 Tage alt), Item-IDs, die `GetItemInfoInstant` nicht kennt, verwerfen.
 - Nur die eigene Seite wird gespeichert.
 - Einstellung **Preise serverweit teilen** (Standard an), unabhängig vom Raren-Teilen.

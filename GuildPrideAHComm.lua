@@ -1,12 +1,14 @@
 -- GuildPride Auktionshaus: Preise serverweit teilen (Weg C)
 --   P:<Seite>:<Schlüssel>=<Preis>,<Menge>,<Zeit>;…   Preise (max. 8 pro Nachricht)
 --   Q:<Seite>:<Schlüssel>                            Nachfrage
--- Kanal und Sendebremse teilt sich das Auktionshaus mit den Raren (GPRaresF).
+-- Eigener offener Kanal GPAuktionF mit eigener Sendebremse (1 Nachricht / 1,5 s).
 -- In den offenen Kanal kann jeder schreiben: alles wird geprüft und gebremst.
 local ADDON, GP = ...
 local AH = GP.AH
 
 local PREFIX = "GPAH"
+local CHANNEL = "GPAuktionF"    -- eigener Kanal für WoW Forever
+local SEND_GAP = 1.5            -- s zwischen eigenen Nachrichten
 local MAX_LEN = 250
 local MAX_ITEMS = 8
 local SHARE_GAP = 1800          -- je Item höchstens alle 30 Min. rundsenden
@@ -23,10 +25,56 @@ if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
     C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
 end
 
--- Senden über die gemeinsame Warteschlange (Tests ersetzen diese Funktion)
-function AH.SendRaw(msg, key)
-    if GP.SharedChannel then GP.SharedChannel.Send(PREFIX, msg, key or msg) end
+---------------------------------------------------------------------
+-- Eigener Kanal: spät beitreten, Zeilen nie im Chatfenster zeigen,
+-- Warteschlange mit Bremse (gleicher Schlüssel ersetzt älteren Eintrag)
+---------------------------------------------------------------------
+local function ChannelId()
+    local id = GetChannelName(CHANNEL)
+    return id and id > 0 and id or nil
 end
+AH.ChannelId = ChannelId
+AH.CHANNEL = CHANNEL
+
+local joinWarned = false
+function AH.UpdateChannel()
+    local on = AH.Opt("ahShare")
+    if on and not ChannelId() and JoinTemporaryChannel then
+        JoinTemporaryChannel(CHANNEL)
+        C_Timer.After(5, function()
+            if AH.Opt("ahShare") and not ChannelId() and not joinWarned then
+                joinWarned = true
+                AH.Print(GP.L and GP.L["Auktionshaus: Kanal konnte nicht betreten werden (höchstens 10 Chatkanäle). Preise teilen ist aus, bis wieder Platz ist."] or "GPAuktionF?")
+            end
+        end)
+    elseif not on and ChannelId() and LeaveChannelByName then
+        LeaveChannelByName(CHANNEL)
+    end
+end
+
+local AddFilter = ChatFrame_AddMessageEventFilter or (ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter)
+if AddFilter then
+    AddFilter("CHAT_MSG_CHANNEL", function(_, _, _, _, _, _, _, _, _, _, chanBase)
+        return type(chanBase) == "string" and not (issecretvalue and issecretvalue(chanBase)) and chanBase:lower() == CHANNEL:lower()
+    end)
+end
+
+local queue, lastSend = {}, 0
+-- Tests ersetzen diese Funktion
+function AH.SendRaw(msg, key)
+    key = key or msg
+    for i = #queue, 1, -1 do if queue[i].key == key then table.remove(queue, i) end end
+    queue[#queue + 1] = { key = key, msg = msg }
+end
+C_Timer.NewTicker(0.5, function()
+    if #queue == 0 or GetTime() - lastSend < SEND_GAP then return end
+    local id = ChannelId()
+    if not id then return end
+    if C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown() then return end
+    local item = table.remove(queue, 1)
+    lastSend = GetTime()
+    AH.stats.lastRes = C_ChatInfo.SendAddonMessage(PREFIX, item.msg, "CHANNEL", id)
+end)
 local function Send(msg, key)
     if #msg > MAX_LEN then return end
     AH.stats.sent = AH.stats.sent + 1
@@ -183,10 +231,7 @@ AH.Listen("CHAT_MSG_ADDON", function(prefix, msg, channel, sender)
     AH.OnMessage(msg, Ambiguate(sender, "none"))
 end)
 
--- Kanal betreten, wenn Teilen an ist – spät wie bei den Raren, damit
--- Allgemein/Handel ihre gewohnten Nummern behalten
+-- Spät beitreten, damit Allgemein/Handel ihre gewohnten Nummern behalten
 AH.Listen("PLAYER_ENTERING_WORLD", function()
-    C_Timer.After(25, function()
-        if GP.SharedChannel then GP.SharedChannel.Want("ah", AH.Opt("ahShare")) end
-    end)
+    C_Timer.After(25, AH.UpdateChannel)
 end)
