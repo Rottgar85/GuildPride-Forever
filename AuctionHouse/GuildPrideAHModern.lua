@@ -311,6 +311,72 @@ function AH.LowestSellPrice(offers)
 end
 
 ---------------------------------------------------------------------
+-- Meine Auktionen: was gerade im Auktionshaus steht, was es wert ist, abbrechen
+---------------------------------------------------------------------
+function AH.QueryOwned()
+    if not AH.IsModern() or not C_AuctionHouse.QueryOwnedAuctions then return false end
+    C_AuctionHouse.QueryOwnedAuctions({})
+    return true
+end
+
+-- Liste: aktive zuerst, darin die wertvollsten oben; verkaufte (warten auf Post) unten.
+-- Bei Waren ist buyoutAmount der Stückpreis, bei Einzel-Items der Gesamtpreis.
+function AH.OwnedAuctions()
+    local out = {}
+    if not AH.IsModern() or not C_AuctionHouse.GetNumOwnedAuctions then return out end
+    for i = 1, tonumber(C_AuctionHouse.GetNumOwnedAuctions()) or 0 do
+        local r = C_AuctionHouse.GetOwnedAuctionInfo(i)
+        if r and r.itemKey then
+            local info = C_AuctionHouse.GetItemKeyInfo and C_AuctionHouse.GetItemKeyInfo(r.itemKey)
+            local qty = (r.quantity and r.quantity > 0) and r.quantity or 1
+            local price = r.buyoutAmount or r.bidAmount or 0
+            local commodity = info and info.isCommodity
+            local unit = commodity and price or math.floor(price / qty)
+            local total = commodity and price * qty or price
+            out[#out + 1] = {
+                auctionID = r.auctionID, itemKey = r.itemKey, link = r.itemLink, qty = qty,
+                unit = unit, total = total, sold = r.status == 1, timeLeft = r.timeLeftSeconds,
+                name = info and info.itemName or AH.ItemName(r.itemKey.itemID),
+                icon = info and info.iconFileID, commodity = commodity and true or false,
+            }
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.sold ~= b.sold then return not a.sold end
+        if a.total ~= b.total then return a.total > b.total end
+        return (a.auctionID or 0) < (b.auctionID or 0)
+    end)
+    return out
+end
+
+function AH.OwnedSummary(list)
+    local s = { active = 0, value = 0, sold = 0, soldValue = 0 }
+    for _, a in ipairs(list or {}) do
+        if a.sold then s.sold, s.soldValue = s.sold + 1, s.soldValue + a.total
+        else s.active, s.value = s.active + 1, s.value + a.total end
+    end
+    return s
+end
+
+function AH.CanCancel(a)
+    if not a or a.sold or not a.auctionID or not AH.IsModern() or not C_AuctionHouse.CancelAuction then return false end
+    if C_AuctionHouse.CanCancelAuction and not C_AuctionHouse.CanCancelAuction(a.auctionID) then return false end
+    return true
+end
+
+function AH.CancelCost(a)
+    if not a or not a.auctionID or not AH.IsModern() or not C_AuctionHouse.GetCancelCost then return nil end
+    return C_AuctionHouse.GetCancelCost(a.auctionID)
+end
+
+-- nur aus einem Klick aufrufen
+function AH.CancelOwned(a)
+    if not AH.CanCancel(a) then return false end
+    C_AuctionHouse.CancelAuction(a.auctionID)
+    return true
+end
+
+---------------------------------------------------------------------
 -- Kaufen (nur aus einem Klick aufrufen)
 ---------------------------------------------------------------------
 -- Was kosten qty Stück einer Ware, wenn die billigsten fremden Angebote zuerst gekauft werden?

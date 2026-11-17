@@ -1,9 +1,9 @@
 -- GuildPride Auktionshaus: eigenes Fenster „GuildPride – Auktionshaus“ für das neue
--- Auktionshaus (C_AuctionHouse, WoW Forever) mit Suchen, Verkaufen und Scanner.
+-- Auktionshaus (C_AuctionHouse, WoW Forever) mit Suchen/Kaufen, Verkaufen, Meine Auktionen und Scanner.
 -- Es ersetzt Blizzards Auktionshaus-Fenster: Blizzards Fenster wird unsichtbar (nicht
 -- geschlossen – das würde die Sitzung am Auktionator beenden). Knopf „Blizzard-Auktionshaus“
 -- schaltet zurück, Knopf „GuildPride“ in Blizzards Fenster wieder hierher.
--- Gekauft wird über Blizzards Kaufansicht (Klick auf eine Zeile).
+-- Gekauft wird in der eigenen Kaufansicht (Klick auf eine Zeile unter „Suchen“).
 local ADDON, GP = ...
 local AH = GP.AH
 local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
@@ -16,7 +16,9 @@ local CAT_W, CAT_ROWS, CAT_H = 190, 22, 20
 local DURATIONS = { { 1, "12" }, { 2, "24" }, { 3, "48" } }   -- Blizzard-Dauer-Index → Stunden
 
 local button, panel, setupError
-local mode = "search"            -- "search" | "sell" | "scan"
+local mode = "search"            -- "search" | "sell" | "own" | "scan"
+local OWN_ROWS, OWN_H = 18, 22
+local own = { list = {}, offset = 0 }   -- Meine Auktionen; confirm: Abbrechen nach Bestätigung
 local rows, offset = {}, 0
 local catSel, catExpanded, catOffset, catRows = nil, {}, 0, {}
 local buy = {}                   -- entry, info, offers, selected, loaded, pending, confirm
@@ -773,6 +775,107 @@ local function MakeScanPane()
 end
 
 ---------------------------------------------------------------------
+-- Meine Auktionen: was gerade drin ist, Gesamtwert, abbrechen
+---------------------------------------------------------------------
+StaticPopupDialogs["GUILDPRIDE_AH_CANCEL"] = {
+    text = "%s",
+    button1 = L["Abbrechen"], button2 = CANCEL,
+    OnAccept = function()
+        local f = own.confirm
+        own.confirm = nil
+        if f then f() end
+    end,
+    OnCancel = function() own.confirm = nil end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+
+local function TimeLeft(sec)
+    if not sec then return "" end
+    if sec >= 3600 then return (L["%d Std."]):format(math.floor(sec / 3600)) end
+    return (L["%d Min."]):format(math.max(1, math.floor(sec / 60)))
+end
+
+local function RefreshOwn()
+    local p = panel and panel.own
+    if not p or not p:IsShown() then return end
+    own.list = AH.OwnedAuctions()
+    local list = own.list
+    own.offset = math.max(0, math.min(own.offset, #list - OWN_ROWS))
+    local sum = AH.OwnedSummary(list)
+    p.total:SetText((L["Gesamtwert: %s in %d Auktionen"]):format(Money(sum.value), sum.active)
+        .. (sum.sold > 0 and ("  ·  " .. (L["Verkauft (Geld kommt per Post): %s"]):format(Money(sum.soldValue))) or ""))
+    p.empty:SetText(#list == 0 and L["Du hast gerade nichts im Auktionshaus."] or "")
+    for i, row in ipairs(p.rows) do
+        local a = list[own.offset + i]
+        row.auction = a
+        if not a then row:Hide() else
+            row:Show()
+            row.icon:SetTexture(a.icon or AH.ItemIcon(a.itemKey.itemID))
+            row.name:SetText(a.link or a.name or ("#" .. a.itemKey.itemID))
+            row.qty:SetText(tostring(a.qty))
+            row.unit:SetText(Money(a.unit))
+            row.total:SetText(Money(a.total))
+            row.time:SetText(a.sold and L["verkauft"] or TimeLeft(a.timeLeft))
+            row.cancel:SetShown(AH.CanCancel(a))
+        end
+    end
+end
+
+local function AskCancel(a)
+    if not AH.CanCancel(a) then return end
+    local cost = AH.CancelCost(a)
+    local text = (L["Auktion abbrechen: %s (%d Stück)?"]):format(a.link or a.name or "?", a.qty)
+    if cost and cost > 0 then text = text .. "\\n" .. (L["Kosten: %s"]):format(Money(cost)) end
+    own.confirm = function()
+        if AH.CancelOwned(a) then Status(L["Auktion wird abgebrochen …"]) end
+    end
+    StaticPopup_Show("GUILDPRIDE_AH_CANCEL", text)
+end
+
+local function MakeOwnPane()
+    local p = Pane()
+    p.total = Label(p, "", "GameFontHighlight"); p.total:SetPoint("TOPLEFT", 20, -6)
+    p.refresh = Button(p, L["Aktualisieren"], 120); p.refresh:SetPoint("TOPRIGHT", -16, -22)
+    p.refresh:SetScript("OnClick", function() if AH.QueryOwned() then Status(L["Lade deine Auktionen …"]) end end)
+    local cols = { { L["Item"], 44 }, { L["Menge"], 350 }, { L["Stückpreis"], 450 }, { L["Gesamt"], 620 }, { L["Restzeit"], 760 } }
+    for _, c in ipairs(cols) do
+        local h = Label(p, c[1], "GameFontNormalSmall"); h:SetPoint("TOPLEFT", c[2], -32)
+    end
+    p.empty = Label(p, "", "GameFontDisableSmall"); p.empty:SetPoint("TOPLEFT", 20, -54)
+    p.rows = {}
+    for i = 1, OWN_ROWS do
+        local row = CreateFrame("Button", nil, p)
+        row:SetHeight(OWN_H)
+        row:SetPoint("TOPLEFT", 16, -48 - (i - 1) * OWN_H); row:SetPoint("RIGHT", p, "RIGHT", -16, 0)
+        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        row.icon = row:CreateTexture(nil, "ARTWORK"); row.icon:SetSize(18, 18); row.icon:SetPoint("LEFT", 4, 0)
+        row.name = Label(row, "", "GameFontHighlightSmall"); row.name:SetPoint("LEFT", 28, 0); row.name:SetWidth(300)
+        row.qty = Label(row, "", "GameFontHighlightSmall"); row.qty:SetPoint("LEFT", 334, 0); row.qty:SetWidth(60)
+        row.unit = Label(row, "", "GameFontHighlightSmall"); row.unit:SetPoint("LEFT", 400, 0); row.unit:SetWidth(150)
+        row.unit:SetJustifyH("RIGHT")
+        row.total = Label(row, "", "GameFontHighlightSmall"); row.total:SetPoint("LEFT", 560, 0); row.total:SetWidth(160)
+        row.total:SetJustifyH("RIGHT")
+        row.time = Label(row, "", "GameFontHighlightSmall"); row.time:SetPoint("LEFT", 744, 0); row.time:SetWidth(90)
+        row.cancel = Button(row, L["Abbrechen"], 100); row.cancel:SetPoint("RIGHT", -4, 0)
+        row.cancel:SetScript("OnClick", function() AskCancel(row.auction) end)
+        row:SetScript("OnEnter", function()
+            local a = row.auction
+            if not a or not a.link then return end
+            GameTooltip:SetOwner(row, "ANCHOR_RIGHT"); GameTooltip:SetHyperlink(a.link); GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row:Hide()
+        p.rows[i] = row
+    end
+    p:EnableMouseWheel(true)
+    p:SetScript("OnMouseWheel", function(_, d)
+        own.offset = math.max(0, math.min(own.offset - d * 3, math.max(0, #own.list - OWN_ROWS)))
+        RefreshOwn()
+    end)
+    return p
+end
+
+---------------------------------------------------------------------
 -- Eigenes Fenster und Knopf neben dem X des Auktionshauses
 ---------------------------------------------------------------------
 local function ShowMode(m)
@@ -780,11 +883,14 @@ local function ShowMode(m)
     panel.search:SetShown(m == "search")
     panel.sell:SetShown(m == "sell")
     panel.scan:SetShown(m == "scan")
+    panel.own:SetShown(m == "own")
+    panel.modeOwn:SetEnabled(m ~= "own")
     panel.modeSearch:SetEnabled(m ~= "search")
     panel.modeSell:SetEnabled(m ~= "sell")
     panel.modeScan:SetEnabled(m ~= "scan")
     Status("")
-    if m == "search" then RefreshCategories(); RefreshList() elseif m == "scan" then RefreshScan() elseif m == "sell" then RefreshBags() end
+    if m == "search" then RefreshCategories(); RefreshList() elseif m == "scan" then RefreshScan() elseif m == "sell" then RefreshBags()
+    elseif m == "own" then RefreshOwn(); if AH.QueryOwned() then Status(L["Lade deine Auktionen …"]) end end
 end
 
 -- Blizzards Fenster unsichtbar machen statt schließen (Schließen beendet die Sitzung)
@@ -900,11 +1006,14 @@ local function Build()
 
     panel.modeSearch = Button(panel, L["Suchen"], 110); panel.modeSearch:SetPoint("LEFT", title, "RIGHT", 24, 0)
     panel.modeSell = Button(panel, L["Verkaufen"], 110); panel.modeSell:SetPoint("LEFT", panel.modeSearch, "RIGHT", 8, 0)
-    panel.modeScan = Button(panel, L["Scanner"], 110); panel.modeScan:SetPoint("LEFT", panel.modeSell, "RIGHT", 8, 0)
+    panel.modeOwn = Button(panel, L["Meine Auktionen"], 130); panel.modeOwn:SetPoint("LEFT", panel.modeSell, "RIGHT", 8, 0)
+    panel.modeScan = Button(panel, L["Scanner"], 110); panel.modeScan:SetPoint("LEFT", panel.modeOwn, "RIGHT", 8, 0)
+    panel.modeOwn:SetScript("OnClick", function() ShowMode("own") end)
     panel.modeSearch:SetScript("OnClick", function() ShowMode("search") end)
     panel.modeSell:SetScript("OnClick", function() ShowMode("sell") end)
     panel.modeScan:SetScript("OnClick", function() ShowMode("scan") end)
-    panel.status = Label(panel, "", "GameFontHighlightSmall"); panel.status:SetPoint("LEFT", panel.modeScan, "RIGHT", 16, 0)
+    panel.status = Label(panel, "", "GameFontHighlightSmall")
+    panel.status:SetPoint("TOPRIGHT", -20, -42); panel.status:SetJustifyH("RIGHT")   -- unter der Titelleiste, rechts
 
     -- Inhalt unter der Titelzeile
     panel.content = CreateFrame("Frame", nil, panel)
@@ -912,6 +1021,7 @@ local function Build()
     panel.search = MakeSearchPane()
     panel.sell = MakeSellPane()
     panel.scan = MakeScanPane()
+    panel.own = MakeOwnPane()
     ClearSell()
     ShowMode(mode)
     panel:Hide()
@@ -993,6 +1103,14 @@ end)
 AH.Listen("COMMODITY_PURCHASE_SUCCEEDED", OnBought)
 AH.Listen("AUCTION_HOUSE_PURCHASE_COMPLETED", OnBought)
 AH.Listen("COMMODITY_PURCHASE_FAILED", function() Status(L["Kauf fehlgeschlagen."]) end)
+AH.Listen("OWNED_AUCTIONS_UPDATED", function()
+    if panel and panel:IsShown() and mode == "own" then Status(""); RefreshOwn() end
+end)
+AH.Listen("AUCTION_CANCELED", function()
+    if not panel or not panel:IsShown() or mode ~= "own" then return end
+    Status(L["Auktion abgebrochen."])
+    AH.QueryOwned()
+end)
 AH.Listen("BAG_UPDATE_DELAYED", function()
     if panel and panel:IsShown() and mode == "sell" then RefreshBags() end
 end)
@@ -1009,7 +1127,7 @@ AH.Listen("AUCTION_HOUSE_AUCTION_CREATED", function()
 end)
 
 AH.Listen("AUCTION_HOUSE_CLOSED", function()
-    buy.pending, buy.confirm = nil, nil
+    buy.pending, buy.confirm, own.confirm = nil, nil, nil
     RestoreBlizzard()   -- zuerst, damit das Ausblenden unten das Auktionshaus nicht erneut schließt
     if panel then panel:Hide() end
     sell.pending = nil

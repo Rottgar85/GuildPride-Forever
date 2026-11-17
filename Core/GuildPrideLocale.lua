@@ -959,6 +959,19 @@ local enUS = {
     ["Preis nicht mehr verfügbar – bitte erneut versuchen."] = "Price no longer available – please try again.",
     ["Kauf fehlgeschlagen."] = "Purchase failed.",
     ["Preise werden mit allen GuildPride-Spielern geteilt."] = "Prices are shared with all GuildPride players.",
+    ["Meine Auktionen"] = "My auctions",
+    ["%d Std."] = "%d hr",
+    ["Gesamtwert: %s in %d Auktionen"] = "Total value: %s in %d auctions",
+    ["Verkauft (Geld kommt per Post): %s"] = "Sold (money arrives by mail): %s",
+    ["Du hast gerade nichts im Auktionshaus."] = "You have nothing in the auction house right now.",
+    ["verkauft"] = "sold",
+    ["Auktion abbrechen: %s (%d Stück)?"] = "Cancel auction: %s (%d)?",
+    ["Kosten: %s"] = "Cost: %s",
+    ["Auktion wird abgebrochen …"] = "Cancelling auction …",
+    ["Lade deine Auktionen …"] = "Loading your auctions …",
+    ["Gesamt"] = "Total",
+    ["Restzeit"] = "Time left",
+    ["Auktion abgebrochen."] = "Auction cancelled.",
 }
 
 -- Fehlende Übersetzung -> deutscher Text als Rückfall

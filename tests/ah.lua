@@ -286,7 +286,7 @@ return function(test, eq, W, ns)
     end)
 
     W.Load("GuildPrideAHModern.lua")
-    local M = { browse = {}, commodity = {}, items = {}, replicate = {}, replicated = 0 }
+    local M = { browse = {}, commodity = {}, items = {}, replicate = {}, replicated = 0, owned = {} }
     local function Modern(on)
         if not on then C_AuctionHouse = nil; return end
         C_AuctionHouse = {
@@ -540,6 +540,48 @@ return function(test, eq, W, ns)
         eq(list[1].auctionID, 5); eq(list[1].buyout, 900); eq(list[1].unit, 300)
         Modern(false)
     end)
+    local function OwnedMock()
+        local calls = { queried = 0 }
+        M.owned = {
+            -- Ware: buyoutAmount ist der Stückpreis
+            { auctionID = 1, itemKey = { itemID = 30080, itemSuffix = 0 }, itemLink = L(30080), quantity = 20,
+              buyoutAmount = 50, status = 0, timeLeftSeconds = 7200 },
+            -- Einzel-Item: buyoutAmount ist der Gesamtpreis
+            { auctionID = 2, itemKey = { itemID = 30081, itemSuffix = 0 }, itemLink = L(30081), quantity = 1,
+              buyoutAmount = 3000, status = 0, timeLeftSeconds = 90000 },
+            -- schon verkauft
+            { auctionID = 3, itemKey = { itemID = 30082, itemSuffix = 0 }, itemLink = L(30082), quantity = 1,
+              buyoutAmount = 400, status = 1 },
+        }
+        C_AuctionHouse.QueryOwnedAuctions = function() calls.queried = calls.queried + 1 end
+        C_AuctionHouse.GetNumOwnedAuctions = function() return #M.owned end
+        C_AuctionHouse.GetOwnedAuctionInfo = function(i) return M.owned[i] end
+        C_AuctionHouse.GetItemKeyInfo = function(k) return { itemName = "Item" .. k.itemID, isCommodity = k.itemID == 30080 } end
+        C_AuctionHouse.CanCancelAuction = function(id) return id ~= 3 end
+        C_AuctionHouse.GetCancelCost = function() return 25 end
+        C_AuctionHouse.CancelAuction = function(id) calls.canceled = id end
+        return calls
+    end
+
+    test("AH-Forever: Meine Auktionen – Liste, Gesamtwert, Abbrechen", function()
+        Modern(true)
+        local calls = OwnedMock()
+        eq(AH.QueryOwned(), true); eq(calls.queried, 1)
+        local list = AH.OwnedAuctions()
+        eq(#list, 3)
+        -- aktive zuerst, teuerste oben
+        eq(list[1].auctionID, 2); eq(list[1].total, 3000); eq(list[1].unit, 3000); eq(list[1].sold, false)
+        eq(list[2].auctionID, 1); eq(list[2].total, 1000); eq(list[2].unit, 50); eq(list[2].qty, 20)
+        eq(list[3].auctionID, 3); eq(list[3].sold, true)
+        local sum = AH.OwnedSummary(list)
+        eq(sum.active, 2); eq(sum.value, 4000); eq(sum.sold, 1); eq(sum.soldValue, 400)
+        eq(AH.CancelOwned(list[2]), true); eq(calls.canceled, 1)
+        calls.canceled = nil
+        eq(AH.CancelOwned(list[3]), false); eq(calls.canceled, nil)   -- verkauft: nicht abbrechbar
+        eq(AH.CancelCost(list[1]), 25)
+        Modern(false)
+        eq(#AH.OwnedAuctions(), 0); eq(AH.QueryOwned(), false)
+    end)
     test("AH: Preise teilen ist Pflicht für alle", function()
         GuildPrideDB.ahShare = false
         eq(AH.Opt("ahShare"), true)
@@ -581,6 +623,24 @@ return function(test, eq, W, ns)
         W.Fire("ITEM_SEARCH_RESULTS_UPDATED", { itemID = 30070 })
         win.search.back.scripts.OnClick(win.search.back)
         eq(win.search.detail:IsShown(), false)
+        -- Meine Auktionen: Reiter fragt an, Liste, Gesamtwert, Abbrechen mit Bestätigung
+        local oc = OwnedMock()
+        win.modeOwn.scripts.OnClick(win.modeOwn)
+        eq(win.own:IsShown(), true); eq(oc.queried >= 1, true)
+        W.Fire("OWNED_AUCTIONS_UPDATED")
+        eq(win.own.rows[1]:IsShown(), true); eq(win.own.rows[3]:IsShown(), true)
+        eq(win.own.rows[3].cancel:IsShown(), false, "verkauft: kein Abbrechen")
+        eq(win.own.total:GetText() ~= "", true)
+        local popup
+        local oldShow = StaticPopup_Show
+        StaticPopup_Show = function(name) popup = name end
+        win.own.rows[1].cancel.scripts.OnClick(win.own.rows[1].cancel)
+        eq(popup, "GUILDPRIDE_AH_CANCEL")
+        StaticPopupDialogs.GUILDPRIDE_AH_CANCEL.OnAccept()
+        eq(oc.canceled, 2)
+        StaticPopup_Show = oldShow
+        W.Fire("AUCTION_CANCELED", 2)
+        win.modeSearch.scripts.OnClick(win.modeSearch)
         -- zu Blizzard wechseln: Fenster weg, Blizzard wieder sichtbar, Auktionshaus bleibt offen
         win.blizzard.scripts.OnClick(win.blizzard)
         eq(win:IsShown(), false); eq(scale, 1); eq(alpha, 1); eq(closed, 0)
