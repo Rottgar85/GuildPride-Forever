@@ -30,7 +30,7 @@ function AH.TooltipLine(link, count, now, shift)
     if shift and count > 1 then money = money .. " (x" .. count .. ")" end
     local age = Age(math.max(0, (now or GetServerTime()) - t))
     if src == "srv" then age = L["Server, "] .. age end
-    return (L["Auktionshaus: %s (%s)"]):format(money, age)
+    return (L["GuildPride Auktionshaus: %s (%s)"]):format(money, age)
 end
 
 local function Show()
@@ -42,7 +42,7 @@ end
 function AH.TooltipText(link, count, now, shift)
     local line = AH.TooltipLine(link, count, now, shift)
     if line then return "|cffffd100" .. line .. "|r" end
-    if AH.Tradeable(link) then return "|cff808080" .. L["Auktionshaus: noch kein Preis bekannt"] .. "|r" end
+    if AH.Tradeable(link) then return "|cff808080" .. L["GuildPride Auktionshaus: noch kein Preis bekannt"] .. "|r" end
     return nil
 end
 

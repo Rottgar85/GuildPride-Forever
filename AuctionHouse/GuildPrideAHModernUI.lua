@@ -63,6 +63,31 @@ local function Pane()
     return p
 end
 
+-- Optischer Abschnitt: etwas hellerer Hintergrund mit feinem goldenen Rahmen, optional eine
+-- Kopfleiste (header = Höhe in Pixeln). Nur Texturen auf dem Bereich selbst, damit alle
+-- Knöpfe, Zeilen und Texte darüber liegen. a, b = { Punkt, Bezugspunkt, x, y }.
+local function Section(parent, a, b, header)
+    local fill = parent:CreateTexture(nil, "BACKGROUND")
+    fill:SetColorTexture(1, 1, 1, 0.035)
+    fill:SetPoint(a[1], parent, a[2], a[3], a[4])
+    fill:SetPoint(b[1], parent, b[2], b[3], b[4])
+    local function Line(p1, p2, w, h)
+        local t = parent:CreateTexture(nil, "BORDER")
+        t:SetColorTexture(1, 0.82, 0, 0.25)
+        t:SetPoint(p1, fill, p1); t:SetPoint(p2, fill, p2)
+        if w then t:SetWidth(w) else t:SetHeight(h) end
+    end
+    Line("TOPLEFT", "TOPRIGHT", nil, 1); Line("BOTTOMLEFT", "BOTTOMRIGHT", nil, 1)
+    Line("TOPLEFT", "BOTTOMLEFT", 1); Line("TOPRIGHT", "BOTTOMRIGHT", 1)
+    if header then
+        local strip = parent:CreateTexture(nil, "BORDER")
+        strip:SetColorTexture(1, 0.82, 0, 0.08)
+        strip:SetPoint("TOPLEFT", fill, "TOPLEFT", 1, -1); strip:SetPoint("TOPRIGHT", fill, "TOPRIGHT", -1, -1)
+        strip:SetHeight(header)
+    end
+    return fill
+end
+
 ---------------------------------------------------------------------
 -- Suchen
 ---------------------------------------------------------------------
@@ -341,6 +366,9 @@ end
 
 local function MakeSearchPane()
     local p = Pane()
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -6 }, { "BOTTOMRIGHT", "TOPRIGHT", -10, -36 })
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -40 }, { "BOTTOMRIGHT", "BOTTOMLEFT", CAT_W + 2, 8 })
+    Section(p, { "TOPLEFT", "TOPLEFT", CAT_W + 8, -40 }, { "BOTTOMRIGHT", "BOTTOMRIGHT", -10, 8 }, 18)
     local box = Edit(p, 260)
     box:SetPoint("TOPLEFT", 20, -14)
     local go = Button(p, L["Suchen"], 100)
@@ -647,6 +675,9 @@ end
 
 local function MakeSellPane()
     local p = Pane()
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -4 }, { "BOTTOMRIGHT", "TOPLEFT", 490, -254 })
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -258 }, { "BOTTOMRIGHT", "BOTTOMLEFT", 490, 8 }, 20)
+    Section(p, { "TOPLEFT", "TOP", 0, -8 }, { "BOTTOMRIGHT", "BOTTOMRIGHT", -10, 8 }, 24)
     local card = CreateFrame("Frame", nil, p, "BackdropTemplate")
     card:SetSize(410, 70); card:SetPoint("TOPLEFT", 14, -10)
     card:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
@@ -754,6 +785,8 @@ end
 
 local function MakeScanPane()
     local p = Pane()
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -6 }, { "BOTTOMRIGHT", "TOPRIGHT", -10, -66 })
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -70 }, { "BOTTOMRIGHT", "TOPRIGHT", -10, -188 })
     local text = Label(p, L["Der Komplett-Scan liest das ganze Auktionshaus auf einmal (Blizzard erlaubt das alle 15 Minuten). Die Preise stehen danach im Item-Tooltip und beim Verkaufen; andere GuildPride-Spieler bekommen sie auf Nachfrage."], "GameFontHighlight")
     text:SetPoint("TOPLEFT", 20, -16); text:SetPoint("RIGHT", p, "RIGHT", -20, 0)
     p.go = Button(p, L["Komplett-Scan starten"], 200)
@@ -834,19 +867,21 @@ end
 
 local function MakeOwnPane()
     local p = Pane()
-    p.total = Label(p, "", "GameFontHighlight"); p.total:SetPoint("TOPLEFT", 20, -6)
-    p.refresh = Button(p, L["Aktualisieren"], 120); p.refresh:SetPoint("TOPRIGHT", -16, -22)
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -2 }, { "BOTTOMRIGHT", "TOPRIGHT", -10, -28 })
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -32 }, { "BOTTOMRIGHT", "BOTTOMRIGHT", -10, 8 }, 18)
+    p.total = Label(p, "", "GameFontHighlight"); p.total:SetPoint("TOPLEFT", 20, -10)
+    p.refresh = Button(p, L["Aktualisieren"], 120); p.refresh:SetPoint("TOPRIGHT", -16, -4)
     p.refresh:SetScript("OnClick", function() if AH.QueryOwned() then Status(L["Lade deine Auktionen …"]) end end)
     local cols = { { L["Item"], 44 }, { L["Menge"], 350 }, { L["Stückpreis"], 450 }, { L["Gesamt"], 620 }, { L["Restzeit"], 760 } }
     for _, c in ipairs(cols) do
-        local h = Label(p, c[1], "GameFontNormalSmall"); h:SetPoint("TOPLEFT", c[2], -32)
+        local h = Label(p, c[1], "GameFontNormalSmall"); h:SetPoint("TOPLEFT", c[2], -36)
     end
-    p.empty = Label(p, "", "GameFontDisableSmall"); p.empty:SetPoint("TOPLEFT", 20, -54)
+    p.empty = Label(p, "", "GameFontDisableSmall"); p.empty:SetPoint("TOPLEFT", 20, -58)
     p.rows = {}
     for i = 1, OWN_ROWS do
         local row = CreateFrame("Button", nil, p)
         row:SetHeight(OWN_H)
-        row:SetPoint("TOPLEFT", 16, -48 - (i - 1) * OWN_H); row:SetPoint("RIGHT", p, "RIGHT", -16, 0)
+        row:SetPoint("TOPLEFT", 16, -54 - (i - 1) * OWN_H); row:SetPoint("RIGHT", p, "RIGHT", -16, 0)
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         row.icon = row:CreateTexture(nil, "ARTWORK"); row.icon:SetSize(18, 18); row.icon:SetPoint("LEFT", 4, 0)
         row.name = Label(row, "", "GameFontHighlightSmall"); row.name:SetPoint("LEFT", 28, 0); row.name:SetWidth(300)
