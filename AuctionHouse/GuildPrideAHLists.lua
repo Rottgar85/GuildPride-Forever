@@ -86,7 +86,9 @@ local function CheckName(name, except)
     name = strtrim(tostring(name or ""))
     if name == "" then return nil, L["Bitte einen Namen eingeben."] end
     if Utf8Len(name) > MAX_NAME then return nil, (L["Der Name darf höchstens %d Zeichen haben."]):format(MAX_NAME) end
-    if name:lower() == L["Favoriten"]:lower() then return nil, L["Diese Liste gibt es schon."] end
+    if name:lower() == L["Favoriten"]:lower() or name:lower() == L["Temporäre Liste"]:lower() then
+        return nil, L["Diese Liste gibt es schon."]
+    end
     for _, l in ipairs(DB().lists) do
         if l ~= except and l.name:lower() == name:lower() then return nil, L["Diese Liste gibt es schon."] end
     end
@@ -104,6 +106,7 @@ end
 
 function AH.RenameList(list, name)
     if not list or list.fav then return nil, L["Die Favoriten lassen sich nicht umbenennen."] end
+    if list.temp then return nil, L["Die temporäre Liste lässt sich nicht umbenennen."] end
     local ok, why = CheckName(name, list)
     if not ok then return nil, why end
     list.name = ok
@@ -157,7 +160,33 @@ function AH.RemoveItem(list, id)
     table.remove(list.items, i)
     if list.qty then list.qty[id] = nil end
     if list.fav then SyncBlizzard(id, false) end
+    if list.temp and #list.items == 0 then AH.DeleteList(list) end   -- erledigt: verschwindet
     return true
+end
+
+-- Temporäre Einkaufsliste (genau eine, gleich unter den Favoriten). create = true legt sie an.
+-- Käufe im GuildPride-Auktionshaus haken sie ab; ist alles gekauft, verschwindet sie.
+function AH.TempList(create)
+    local lists = DB().lists
+    for _, l in ipairs(lists) do if l.temp then return l end end
+    if not create then return nil end
+    local l = { name = L["Temporäre Liste"], items = {}, qty = {}, temp = true }
+    table.insert(lists, 1, l)
+    return l
+end
+
+-- Gekauft: von der temporären Liste abziehen. Gibt zurück: etwas geändert, Liste fertig (und weg)
+function AH.Bought(id, qty)
+    id = tonumber(id)
+    local t = AH.TempList()
+    if not (t and id and Find(t.items, id)) then return false, false end
+    local left = t.qty and t.qty[id]
+    if left then
+        left = left - math.max(1, math.floor(tonumber(qty) or 1))
+        if left > 0 then t.qty[id] = left; return true, false end
+    end
+    AH.RemoveItem(t, id)
+    return true, AH.TempList() == nil
 end
 
 -- Gewünschte Menge eines Items in der Liste (nil = keine Menge angegeben)

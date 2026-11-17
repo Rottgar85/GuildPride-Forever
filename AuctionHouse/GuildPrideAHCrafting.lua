@@ -176,6 +176,19 @@ local function BuildPicker()
     f.newBtn:SetScript("OnClick", function()
         StaticPopup_Show("GUILDPRIDE_AH_CRAFT_NEWLIST", L["Name der neuen Einkaufsliste:"])
     end)
+    -- Temporäre Liste: verschwindet, sobald alles gekauft ist
+    f.tempBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    f.tempBtn:SetSize(216, 20)
+    if GP.SkinButton then GP.SkinButton(f.tempBtn) end
+    f.tempBtn:SetText(L["Temporäre Liste"])
+    f.tempBtn:SetScript("OnClick", function() AddTo(AH.TempList(true)) end)
+    f.tempBtn:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Temporäre Liste"])
+        GameTooltip:AddLine(L["Für einen Einkauf: Jeder Kauf im GuildPride-Auktionshaus zieht die gekaufte Menge ab. Ist alles gekauft, verschwindet die Liste von selbst."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    f.tempBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     return f
 end
 
@@ -197,7 +210,9 @@ local function ShowPicker(anchor)
     end
     picker.newBtn:ClearAllPoints()
     picker.newBtn:SetPoint("TOPLEFT", 12, -82 - shown * 22)
-    picker:SetHeight(120 + shown * 22)
+    picker.tempBtn:ClearAllPoints()
+    picker.tempBtn:SetPoint("TOPLEFT", 12, -104 - shown * 22)
+    picker:SetHeight(142 + shown * 22)
     picker:ClearAllPoints()
     if anchor then picker:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4) else picker:SetPoint("CENTER") end
     picker:Show()

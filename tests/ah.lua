@@ -659,6 +659,34 @@ return function(test, eq, W, ns)
         eq(AH.AddReagents(l, { { 2840, 1 } }, 0), 1); eq(AH.ItemQty(l, 2840), 1, "mindestens einmal")
         GuildPrideDB.ahLists = nil
     end)
+    test("AH: temporäre Einkaufsliste verschwindet, wenn alles gekauft ist", function()
+        GuildPrideDB.ahLists = nil
+        eq(AH.TempList(), nil)
+        local t = AH.TempList(true)
+        eq(t.temp, true); eq(AH.TempList(true), t, "nur eine")
+        AH.NewList("Dauer")
+        local lists = AH.Lists()
+        eq(#lists, 3); eq(lists[2], t, "gleich unter den Favoriten"); eq(lists[3].name, "Dauer")
+        AH.AddReagents(lists[3], { { 2840, 5 } }, 1)
+        AH.AddReagents(t, { { 2840, 10 }, { 2880, 2 } }, 1)
+        AH.AddItems(t, "765")
+        eq(select(2, AH.RenameList(t, "Anders")) ~= nil, true, "nicht umbenennbar")
+        eq(select(2, AH.NewList(t.name)) ~= nil, true, "Name ist reserviert")
+        local changed, done = AH.Bought(2840, 4)
+        eq(changed, true); eq(done, false); eq(AH.ItemQty(t, 2840), 6)
+        eq(AH.ItemQty(AH.Lists()[3], 2840), 5, "feste Listen bleiben")
+        AH.Bought(2840, 6); eq(#t.items, 2)
+        AH.Bought(765, 1); eq(#t.items, 1, "ohne Menge reicht ein Kauf")
+        eq(AH.Bought(9999, 1), false)
+        changed, done = AH.Bought(2880, 5)
+        eq(changed, true); eq(done, true); eq(AH.TempList(), nil); eq(#AH.Lists(), 2)
+        eq(AH.Bought(2880, 1), false, "ohne temporäre Liste")
+        -- letzte Zeile von Hand entfernt: Liste ist auch weg
+        t = AH.TempList(true)
+        AH.AddItems(t, "1")
+        eq(AH.RemoveItem(t, 1), true); eq(AH.TempList(), nil)
+        GuildPrideDB.ahLists = nil
+    end)
     W.Load("GuildPrideAHCrafting.lua")
     local function RecipeMocks(count)
         C_TradeSkillUI = { GetRecipeSchematic = function(id)
@@ -977,8 +1005,52 @@ return function(test, eq, W, ns)
         StaticPopup_Show = oldShow
         local lists = AH.Lists()
         eq(#lists, 3); eq(lists[3].name, "Weste"); eq(AH.ItemQty(lists[3], 2840), 6, "Anzahl aus dem Berufsfenster"); eq(AH.ItemQty(lists[3], 2880), 2)
+        -- direkt in die temporäre Liste
+        bar.listBtn.scripts.OnClick(bar.listBtn)
+        pk.qtyBox.GetText = function() return "1" end
+        pk.tempBtn.scripts.OnClick(pk.tempBtn)
+        eq(AH.TempList() ~= nil, true); eq(AH.ItemQty(AH.TempList(), 2840), 3); eq(pk:IsShown(), false)
         C_TradeSkillUI, ProfessionsFrame = nil, nil
         GuildPrideDB.ahLists = nil
+    end)
+    test("AH-Forever: Kauf hakt die temporäre Liste ab", function()
+        Modern(true)
+        GuildPrideDB.ahLists, GuildPrideDB.ahBlizzard, GuildPrideDB.ahTab = nil, nil, true
+        C_AuctionHouse.SendSearchQuery = function() end
+        local confirmed = 0
+        C_AuctionHouse.StartCommoditiesPurchase = function() end
+        C_AuctionHouse.ConfirmCommoditiesPurchase = function() confirmed = confirmed + 1 end
+        W.Fire("AUCTION_HOUSE_SHOW")
+        local _, win = AH._ModernTab()
+        win.modeList.scripts.OnClick(win.modeList)
+        local sp = win.lists
+        -- Knopf legt die temporäre Liste an und wählt sie
+        sp.tempBtn.scripts.OnClick(sp.tempBtn)
+        local t = AH.TempList()
+        eq(t ~= nil, true); eq(sp.listRows[2]:IsShown(), true)
+        AH.AddReagents(t, { { 2447, 6 } }, 1)
+        local oldShow = StaticPopup_Show
+        StaticPopup_Show = function() end
+        local function BuyThree()
+            win.modeList.scripts.OnClick(win.modeList)
+            eq(sp.rows[1].itemID, 2447)
+            sp.rows[1].search.scripts.OnClick(sp.rows[1].search)
+            W.Fire("COMMODITY_SEARCH_RESULTS_UPDATED", 2447)
+            win.search.qty.GetText = function() return "3" end
+            win.search.buyBtn.scripts.OnClick(win.search.buyBtn)
+            W.Fire("COMMODITY_PRICE_UPDATED", 5, 15)
+            StaticPopupDialogs.GUILDPRIDE_AH_MODERN_BUY.OnAccept()
+            W.Fire("COMMODITY_PURCHASE_SUCCEEDED")
+            W.Fire("AUCTION_HOUSE_PURCHASE_COMPLETED")   -- zweites Ereignis zählt nicht doppelt
+        end
+        BuyThree()
+        eq(confirmed, 1); eq(AH.ItemQty(AH.TempList(), 2447), 3)
+        BuyThree()
+        eq(AH.TempList(), nil, "alles gekauft: Liste weg")
+        StaticPopup_Show = oldShow
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        GuildPrideDB.ahLists = nil
+        Modern(false)
     end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
         local old = GetCoinTextureString

@@ -226,7 +226,7 @@ end
 ---------------------------------------------------------------------
 -- Kaufansicht: Angebote eines Items, Menge wählen, kaufen
 ---------------------------------------------------------------------
-StaticPopupDialogs["GUILDPRIDE_AH_BUY"] = {
+StaticPopupDialogs["GUILDPRIDE_AH_MODERN_BUY"] = {   -- eigener Name: das alte Auktionshaus hat GUILDPRIDE_AH_BUY
     text = "%s",
     button1 = L["Kaufen"], button2 = CANCEL,
     OnAccept = function()
@@ -240,7 +240,7 @@ StaticPopupDialogs["GUILDPRIDE_AH_BUY"] = {
 
 local function AskBuy(text, fn)
     buy.confirm = fn
-    StaticPopup_Show("GUILDPRIDE_AH_BUY", text)
+    StaticPopup_Show("GUILDPRIDE_AH_MODERN_BUY", text)
 end
 
 local function DetailQty()
@@ -330,7 +330,10 @@ local function Buy()
         local o = buy.selected
         if not o or o.mine then return end
         AskBuy((L["%s für %s kaufen?"]):format(o.link or panel.search.dName:GetText(), Money(o.buyout)), function()
-            if AH.BuyItem(o) then Status(L["Kauf läuft …"]) end
+            if AH.BuyItem(o) then
+                buy.lastBuy = { id = info.itemID, qty = o.qty or 1 }   -- für die temporäre Liste
+                Status(L["Kauf läuft …"])
+            end
         end)
     end
 end
@@ -341,12 +344,27 @@ local function OnCommodityPrice(unit, total)
     if not p then return end
     AskBuy((L["%d Stück für %s kaufen (%s je Stück)?"]):format(p.qty, Money(total), Money(unit)), function()
         buy.pending = nil
-        if AH.ConfirmCommodity(p.itemID, p.qty) then Status(L["Kauf läuft …"]) end
+        if AH.ConfirmCommodity(p.itemID, p.qty) then
+            buy.lastBuy = { id = p.itemID, qty = p.qty }   -- für die temporäre Liste
+            Status(L["Kauf läuft …"])
+        end
     end)
 end
 
+-- Kauf fertig. Blizzard meldet manchmal zwei Ereignisse: abgehakt wird nur einmal.
 local function OnBought()
     Status(L["Gekauft."])
+    local b = buy.lastBuy
+    buy.lastBuy = nil
+    if b then
+        local changed, done = AH.Bought(b.id, b.qty)
+        if done then
+            Status(L["Gekauft – die temporäre Liste ist erledigt und wurde entfernt."])
+            AH.Print(L["Auktionshaus: Alles von der temporären Liste gekauft – die Liste wurde entfernt."])
+        elseif changed then
+            Status(L["Gekauft und auf der temporären Liste abgehakt."])
+        end
+    end
     buy.selected = nil
     RequestOffers()
     RefreshDetail()
@@ -490,13 +508,13 @@ local function RefreshShop()
         b.index = idx
         if not l then b:Hide() else
             b:Show()
-            b.text:SetText(("%s |cff999999(%d)|r"):format(l.name, #l.items))
+            b.text:SetText((l.temp and "|cff66ccff%s|r |cff999999(%d)|r" or "%s |cff999999(%d)|r"):format(l.name, #l.items))
             b.sel:SetShown(idx == shop.sel)
             b.text:SetFontObject(idx == shop.sel and "GameFontHighlight" or "GameFontNormal")
         end
     end
     p.title:SetText(list.name)
-    p.renameBtn:SetEnabled(not list.fav)
+    p.renameBtn:SetEnabled(not list.fav and not list.temp)
     p.deleteBtn:SetEnabled(not list.fav)
     local items = list.items
     shop.offset = math.max(0, math.min(shop.offset, #items - shop.ROWS))
@@ -632,6 +650,21 @@ local function MakeShopPane()
         end)
         p.listRows[i] = b
     end
+    p.tempBtn = Button(p, L["Temporäre Liste"], CAT_W - 20); p.tempBtn:SetPoint("BOTTOMLEFT", 14, 126)
+    p.tempBtn:SetScript("OnClick", function()
+        local t = AH.TempList(true)
+        for i, l in ipairs(AH.Lists()) do if l == t then shop.sel = i end end
+        shop.offset = 0
+        Status(L["Temporäre Liste: Käufe hier im Auktionshaus haken sie ab, ist alles gekauft, verschwindet sie."])
+        RefreshShop()
+    end)
+    p.tempBtn:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+        GameTooltip:SetText(L["Temporäre Liste"])
+        GameTooltip:AddLine(L["Für einen Einkauf: Jeder Kauf im GuildPride-Auktionshaus zieht die gekaufte Menge ab. Ist alles gekauft, verschwindet die Liste von selbst."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    p.tempBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     p.searchAllBtn = Button(p, L["Alle im AH suchen"], CAT_W - 20); p.searchAllBtn:SetPoint("BOTTOMLEFT", 14, 100)
     p.searchAllBtn:SetScript("OnClick", SearchList)
     p.searchAllBtn:SetScript("OnEnter", function(b)
@@ -650,7 +683,7 @@ local function MakeShopPane()
     end)
     p.renameBtn:SetScript("OnClick", function()
         local l = CurrentList()
-        if l.fav then return end
+        if l.fav or l.temp then return end
         shop.renaming = l
         StaticPopup_Show("GUILDPRIDE_AH_LIST_NAME", L["Neuer Name der Liste:"])
     end)
