@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.22.1
+
+**Deutsch**
+- Der Discord-Support-Knopf im Gildenfenster ist jetzt nur noch das kleine Discord-Logo; der Tooltip nennt weiter „GuildPride Discord Support“, ein Klick zeigt den Einladungslink
+
+**English**
+- The Discord support button in the guild window is now just the small Discord logo; its tooltip still says "GuildPride Discord support", a click shows the invite link
+
 ## 2.22.0
 
 **Deutsch**

@@ -145,20 +145,25 @@ StaticPopupDialogs["GUILDPRIDE_DISCORD"] = {
     EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
     timeout = 0, whileDead = true, hideOnEscape = true,
 }
-local discord = CreateFrame("Button", "GuildPrideDiscordButton", frame, "BackdropTemplate")
-discord:SetHeight(22)
+-- Nur das Discord-Logo (Blizzards Atlas wie im Gildenchat); fehlt er im Client, ein kleines blaues „D“
+local discord = CreateFrame("Button", "GuildPrideDiscordButton", frame)
+discord:SetSize(26, 26)
 discord:SetPoint("TOPRIGHT", -16, -64)
 discord:SetFrameLevel(frame:GetFrameLevel() + 20)
-discord:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
-discord:SetBackdropColor(0.345, 0.396, 0.949, 0.95)   -- Discord-Blau
-discord:SetBackdropBorderColor(1, 1, 1, 0.4)
-local discordText = discord:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
-discordText:SetPoint("CENTER")
-discordText:SetText(L["GuildPride Discord Support"])
-discordText:SetTextColor(1, 1, 1)
-discord:SetWidth(math.max(170, (discordText:GetStringWidth() or 0) + 24))
-local discordHl = discord:CreateTexture(nil, "HIGHLIGHT")
-discordHl:SetAllPoints(); discordHl:SetColorTexture(1, 1, 1, 0.15)
+do   -- eigener Block: das Hauptstück dieser Datei ist nah an Luas Grenze von 200 lokalen Variablen
+    local DISCORD_ATLAS = "UI-ChatIcon-Discord"
+    local discordIcon = discord:CreateTexture(nil, "ARTWORK")
+    discordIcon:SetAllPoints()
+    if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(DISCORD_ATLAS) then
+        discordIcon:SetAtlas(DISCORD_ATLAS)
+    else
+        discordIcon:SetColorTexture(0.345, 0.396, 0.949, 1)   -- Discord-Blau
+        local d = discord:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
+        d:SetPoint("CENTER"); d:SetText("D"); d:SetTextColor(1, 1, 1)
+    end
+    local discordHl = discord:CreateTexture(nil, "HIGHLIGHT")
+    discordHl:SetAllPoints(); discordHl:SetColorTexture(1, 1, 1, 0.2)
+end
 discord:SetScript("OnClick", function()
     if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON) end
     StaticPopup_Show("GUILDPRIDE_DISCORD")
