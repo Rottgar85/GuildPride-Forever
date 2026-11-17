@@ -175,7 +175,7 @@ end
 local bar
 
 UpdateBar = function()
-    if AH.onMailChanged then AH.onMailChanged() end   -- GuildPride-Briefkasten-Fenster (GuildPrideAHMailUI.lua)
+    if AH.onMailChanged then AH.onMailChanged() end
     if not bar then return end
     local c = AH.MailCounts()
     for _, cat in ipairs(CATS) do
