@@ -391,3 +391,33 @@ AH.Listen("AUCTION_HOUSE_CLOSED", function()
     results, list, detailKey, offset = {}, {}, nil, 0
     sell.link, sell.key, sell.name, sell.manual = nil, nil, nil, nil
 end)
+
+---------------------------------------------------------------------
+-- /gp ah · /gp ah status · /gp ah scan
+---------------------------------------------------------------------
+local origSlash = SlashCmdList.GUILDPRIDE
+SlashCmdList.GUILDPRIDE = function(arg)
+    local cmd = strtrim(arg or ""):lower()
+    if cmd == "ah" then
+        AH.Print(L["/gp ah status – Kanal und Zähler · /gp ah scan – ganzes Auktionshaus lesen (offenes AH, ohne Auctionator)"])
+    elseif cmd == "ah status" then
+        local st, id, atr = AH.stats, AH.ChannelId(), AH.AuctionatorLoaded()
+        AH.Print(L["Preise teilen: "] .. (AH.Opt("ahShare") and L["an"] or L["aus"])
+            .. "  ·  " .. (L["Kanal %s: %s"]):format(AH.CHANNEL, id and ("#" .. id) or L["nicht beigetreten"]))
+        AH.Print((L["Gesendet: %d · Empfangen: %d · Verworfen: %d"]):format(st.sent, st.received, st.dropped)
+            .. "  ·  Auctionator: " .. (atr and L["ja"] or L["nein"])
+            .. (atr and (" (" .. L["mitlesen: "] .. (AH.Opt("ahReadAuctionator") and L["an"] or L["aus"]) .. ")") or ""))
+    elseif cmd == "ah scan" then
+        if AH.AuctionatorLoaded() then
+            AH.Print(L["Auktionshaus: Mit Auctionator bitte dessen Scan nutzen – GuildPride liest mit."])
+        elseif not (AuctionFrame and AuctionFrame:IsShown()) then
+            AH.Print(L["Auktionshaus: Erst das Auktionshaus öffnen."])
+        elseif AH.FullScan() then
+            AH.Print(L["Auktionshaus: Komplett-Scan läuft …"])
+        else
+            AH.Print(L["Auktionshaus: Komplett-Scan gerade nicht erlaubt (Blizzard erlaubt ihn nur alle 15 Minuten)."])
+        end
+    else
+        origSlash(arg)
+    end
+end
