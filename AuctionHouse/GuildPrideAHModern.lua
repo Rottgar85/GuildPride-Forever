@@ -247,6 +247,31 @@ function AH.RequestPrice(info)
     return true
 end
 
+-- Angebote, die gerade im Auktionshaus für das Verkaufs-Item stehen (nach AH.RequestPrice),
+-- billigste zuerst: { unit, qty, mine }
+function AH.CurrentOffers(info)
+    local out = {}
+    if not info or not AH.IsModern() then return out end
+    if info.commodity then
+        for i = 1, tonumber(C_AuctionHouse.GetNumCommoditySearchResults(info.itemID)) or 0 do
+            local r = C_AuctionHouse.GetCommoditySearchResultInfo(info.itemID, i)
+            if r and r.unitPrice and r.unitPrice > 0 then
+                out[#out + 1] = { unit = r.unitPrice, qty = r.quantity or 0, mine = (r.numOwnerItems or 0) > 0 }
+            end
+        end
+    elseif info.itemKey then
+        for i = 1, tonumber(C_AuctionHouse.GetNumItemSearchResults(info.itemKey)) or 0 do
+            local r = C_AuctionHouse.GetItemSearchResultInfo(info.itemKey, i)
+            if r and r.buyoutAmount and r.buyoutAmount > 0 then
+                local q = (r.quantity and r.quantity > 0) and r.quantity or 1
+                out[#out + 1] = { unit = math.floor(r.buyoutAmount / q), qty = q, mine = r.containsOwnerItem and true or false }
+            end
+        end
+    end
+    table.sort(out, function(a, b) return a.unit < b.unit end)
+    return out
+end
+
 function AH.Deposit(info, qty, duration)
     if not info or not AH.IsModern() then return nil end
     local ok, dep

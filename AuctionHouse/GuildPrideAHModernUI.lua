@@ -8,6 +8,7 @@ local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
 
 local ROWS, ROW_H = 16, 22
 local BAG_ROWS, BAG_H = 18, 20
+local OFFER_ROWS, OFFER_H = 10, 18
 local WIN_W, WIN_H = 860, 580
 local DURATIONS = { { 1, "12" }, { 2, "24" }, { 3, "48" } }   -- Blizzard-Dauer-Index → Stunden
 
@@ -186,6 +187,8 @@ local function UpdateDeposit()
     s.deposit:SetText(dep and (L["Einzahlung: %s"]):format(Money(dep)) or "")
 end
 
+local RefreshOffers
+
 local function ApplySuggestion()
     if not sell.info then return end
     local key = sell.info.key
@@ -198,19 +201,43 @@ local function ClearSell()
     sell.info, sell.manual, sell.pending = nil, nil, nil
     local s = panel.sell
     s.item.icon:SetTexture(nil)
-    s.itemName:SetText(L["Item aus den Taschen hierher ziehen"])
+    s.item.IconBorder:Hide()
+    s.itemName:SetText(L["Item rechts aus „Deine Taschen“ wählen oder hierher ziehen"])
+    s.itemName:SetTextColor(1, 0.82, 0)
+    s.itemSub:SetText("")
     s.tag:SetText(""); s.deposit:SetText(""); s.single:SetText(""); s.qtyRow:Hide()
     SetPrice(0)
+    if RefreshOffers then RefreshOffers() end
+end
+
+-- Item-Karte: großes Symbol mit Qualitätsrahmen, Name in Qualitätsfarbe, Menge, Stufe, Händlerpreis
+local function ShowItemCard(info)
+    local s = panel.sell
+    s.item.icon:SetTexture(AH.ItemIcon(info.itemID))
+    local name, _, quality, level, _, _, _, _, _, _, vendor = AH.ItemInfo(info.link or info.itemID)
+    local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    s.itemName:SetText(name or info.link or ("#" .. info.itemID))
+    if color then
+        s.itemName:SetTextColor(color.r, color.g, color.b)
+        s.item.IconBorder:SetVertexColor(color.r, color.g, color.b); s.item.IconBorder:Show()
+    else
+        s.itemName:SetTextColor(1, 1, 1); s.item.IconBorder:Hide()
+    end
+    local have = 0
+    for _, e in ipairs(AH.BagItems()) do if e.key == info.key then have = e.count end end
+    local parts = { (L["In den Taschen: %d"]):format(have) }
+    if type(level) == "number" and level > 1 then parts[#parts + 1] = (L["Stufe %d"]):format(level) end
+    if type(vendor) == "number" and vendor > 0 then parts[#parts + 1] = (L["Händler: %s"]):format(Money(vendor)) end
+    s.itemSub:SetText(table.concat(parts, "  ·  "))
 end
 
 local function SelectItem(loc)
     local info = loc and AH.SellInfo(loc)
     if not info then return end
     local s = panel.sell
-    sell.info, sell.manual = info, nil
+    sell.info, sell.manual, sell.loaded = info, nil, nil
     AH.lastSeen[info.key] = nil          -- nur frische Angebote zählen
-    s.item.icon:SetTexture(AH.ItemIcon(info.itemID))
-    s.itemName:SetText(info.link or ("#" .. info.itemID))
+    ShowItemCard(info)
     if info.commodity then
         s.qtyRow:Show()
         s.qty:SetText(tostring(info.max))
@@ -222,6 +249,7 @@ local function SelectItem(loc)
     end
     ApplySuggestion()
     UpdateDeposit()
+    RefreshOffers()
     AH.RequestPrice(info)
 end
 
@@ -257,6 +285,58 @@ StaticPopupDialogs["GUILDPRIDE_AH_POST_WARNING"] = {
     end,
     timeout = 0, whileDead = true, hideOnEscape = true,
 }
+
+-- Angebote, die gerade im Auktionshaus stehen: Klick übernimmt den Preis −1 Kupfer
+RefreshOffers = function()
+    local p = panel and panel.sell
+    if not p or not p.offerRows then return end
+    local list = sell.info and AH.CurrentOffers(sell.info) or {}
+    if sell.info and #list == 0 then
+        p.offerEmpty:SetText(sell.loaded and L["Keine Angebote im Auktionshaus."] or L["Noch keine Angebote geladen."])
+    else
+        p.offerEmpty:SetText("")
+    end
+    for i, row in ipairs(p.offerRows) do
+        local o = list[i]
+        row.offer = o
+        if not o then row:Hide() else
+            row:Show()
+            row.price:SetText(Money(o.unit))
+            row.qty:SetText((L["%d Stück"]):format(o.qty))
+            row.mine:SetText(o.mine and L["eigenes"] or "")
+        end
+    end
+    p.offerMore:SetText(#list > OFFER_ROWS and (L["+%d weitere"]):format(#list - OFFER_ROWS) or "")
+end
+
+local function MakeOfferList(p, y)
+    local title = Label(p, L["Gerade im Auktionshaus"], "GameFontNormal"); title:SetPoint("TOPLEFT", 20, y)
+    local hint = Label(p, L["Klick übernimmt den Preis −1 Kupfer."], "GameFontDisableSmall")
+    hint:SetPoint("LEFT", title, "RIGHT", 10, 0)
+    p.offerEmpty = Label(p, "", "GameFontDisableSmall"); p.offerEmpty:SetPoint("TOPLEFT", 24, y - 22)
+    p.offerRows = {}
+    for i = 1, OFFER_ROWS do
+        local row = CreateFrame("Button", nil, p)
+        row:SetSize(400, OFFER_H)
+        row:SetPoint("TOPLEFT", 20, y - 20 - (i - 1) * OFFER_H)
+        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        row.price = Label(row, "", "GameFontHighlightSmall"); row.price:SetPoint("LEFT", 4, 0); row.price:SetWidth(150)
+        row.price:SetJustifyH("RIGHT")
+        row.qty = Label(row, "", "GameFontHighlightSmall"); row.qty:SetPoint("LEFT", 180, 0); row.qty:SetWidth(110)
+        row.mine = Label(row, "", "GameFontDisableSmall"); row.mine:SetPoint("LEFT", 300, 0)
+        row:SetScript("OnClick", function()
+            local o = row.offer
+            if not o or not sell.info then return end
+            SetPrice(o.mine and o.unit or math.max(1, o.unit - 1))
+            sell.manual = true
+            UpdateDeposit()
+        end)
+        row:Hide()
+        p.offerRows[i] = row
+    end
+    p.offerMore = Label(p, "", "GameFontDisableSmall")
+    p.offerMore:SetPoint("TOPLEFT", 24, y - 22 - OFFER_ROWS * OFFER_H)
+end
 
 -- Taschen-Liste rechts: alle handelbaren Items, Klick wählt das Item zum Verkaufen
 local function RefreshBags()
@@ -317,18 +397,34 @@ end
 
 local function MakeSellPane()
     local p = Pane()
-    local item = CreateFrame("Button", nil, p)
-    item:SetSize(40, 40); item:SetPoint("TOPLEFT", 20, -16)
-    item:SetNormalTexture("Interface\\Buttons\\UI-EmptySlot-Disabled")
+    local card = CreateFrame("Frame", nil, p, "BackdropTemplate")
+    card:SetSize(410, 70); card:SetPoint("TOPLEFT", 14, -10)
+    card:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+    card:SetBackdropColor(1, 1, 1, 0.04); card:SetBackdropBorderColor(1, 0.82, 0, 0.35)
+    local item = CreateFrame("Button", nil, card)
+    item:SetSize(52, 52); item:SetPoint("LEFT", 9, 0)
+    local bg = item:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(0, 0, 0, 0.6)
     item.icon = item:CreateTexture(nil, "ARTWORK"); item.icon:SetAllPoints()
+    item.IconBorder = item:CreateTexture(nil, "OVERLAY")
+    item.IconBorder:SetTexture("Interface\\Common\\WhiteIconFrame"); item.IconBorder:SetAllPoints(); item.IconBorder:Hide()
     item:RegisterForDrag("LeftButton")
     item:SetScript("OnReceiveDrag", DropItem)
     item:SetScript("OnClick", function() if GetCursorInfo() then DropItem() end end)
+    item:SetScript("OnEnter", function()
+        if not sell.info or not sell.info.link then return end
+        GameTooltip:SetOwner(item, "ANCHOR_RIGHT"); GameTooltip:SetHyperlink(sell.info.link); GameTooltip:Show()
+    end)
+    item:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    card:EnableMouse(true)
+    card:SetScript("OnReceiveDrag", DropItem)
+    card:SetScript("OnMouseUp", function() if GetCursorInfo() then DropItem() end end)
     p.item = item
-    p.itemName = Label(p, ""); p.itemName:SetPoint("TOPLEFT", item, "TOPRIGHT", 12, -4); p.itemName:SetWidth(340)
-    p.tag = Label(p, "", "GameFontDisableSmall"); p.tag:SetPoint("TOPLEFT", p.itemName, "BOTTOMLEFT", 0, -4)
+    p.itemName = Label(card, "", "GameFontNormalLarge"); p.itemName:SetPoint("TOPLEFT", item, "TOPRIGHT", 12, -2)
+    p.itemName:SetWidth(330); p.itemName:SetWordWrap(false)
+    p.itemSub = Label(card, "", "GameFontHighlightSmall"); p.itemSub:SetPoint("TOPLEFT", p.itemName, "BOTTOMLEFT", 0, -4)
+    p.tag = Label(card, "", "GameFontDisableSmall"); p.tag:SetPoint("TOPLEFT", p.itemSub, "BOTTOMLEFT", 0, -3)
 
-    local y = -84
+    local y = -94
     local function Row(text)
         local fs = Label(p, text); fs:SetPoint("TOPLEFT", 20, y); y = y - 34
         return fs
@@ -373,6 +469,7 @@ local function MakeSellPane()
     local post = Button(p, L["Einstellen"], 140)
     post:SetPoint("TOPLEFT", 20, y - 30)
     post:SetScript("OnClick", Post)
+    MakeOfferList(p, y - 66)
     MakeBagList(p)
     return p
 end
@@ -459,7 +556,10 @@ local function MakeButton()
     local close = AuctionHouseFrame.CloseButton
     if close then b:SetPoint("RIGHT", close, "LEFT", -4, 0)
     else b:SetPoint("TOPRIGHT", AuctionHouseFrame, "TOPRIGHT", -30, -2) end
-    b:SetFrameLevel(AuctionHouseFrame:GetFrameLevel() + 20)
+    -- Über Blizzards Rahmen und Titelleiste legen, sonst verdecken die den Knopf
+    b:SetFrameStrata("HIGH")
+    b:SetFrameLevel(AuctionHouseFrame:GetFrameLevel() + 50)
+    b:Show()
     b:SetScript("OnClick", function()
         if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB) end
         Toggle()
@@ -539,6 +639,15 @@ end
 
 function AH._ModernTab() return button, panel end   -- für Tests und /gp ah status
 
+-- /gp ah fenster: Fenster auch ohne Knopf öffnen
+function AH.ToggleWindow()
+    if not AH.IsModern() or not (AuctionHouseFrame and AuctionHouseFrame:IsShown()) then return false end
+    Setup()
+    if not panel then return false end
+    Toggle()
+    return true
+end
+
 -- Nach den anderen Addons (z. B. Auctionator) aufbauen
 AH.Listen("AUCTION_HOUSE_SHOW", function() C_Timer.After(0.2, Setup) end)
 
@@ -553,7 +662,10 @@ AH.Listen("AUCTION_HOUSE_BROWSE_RESULTS_ADDED", OnBrowse)
 AH.Listen("ITEM_KEY_ITEM_INFO_RECEIVED", function() if panel and panel:IsShown() then RefreshList() end end)
 
 local function OnSellPrice()
-    if panel and panel:IsShown() and mode == "sell" and sell.info then ApplySuggestion(); RefreshBags() end
+    if panel and panel:IsShown() and mode == "sell" and sell.info then
+        sell.loaded = true
+        ApplySuggestion(); RefreshOffers(); RefreshBags()
+    end
 end
 AH.Listen("COMMODITY_SEARCH_RESULTS_UPDATED", OnSellPrice)
 AH.Listen("ITEM_SEARCH_RESULTS_UPDATED", OnSellPrice)

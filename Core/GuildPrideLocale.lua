@@ -929,6 +929,18 @@ local enUS = {
     ["Auktionshaus: GuildPride-Fenster konnte nicht aufgebaut werden: %s"] = "Auction House: could not build the GuildPride window: %s",
     ["Eigenes Fenster „GuildPride“ im Auktionshaus (Knopf neben dem X, nach /reload)"] = "Own \"GuildPride\" window in the auction house (button next to the X, after /reload)",
     ["GuildPride-Fenster: "] = "GuildPride window: ",
+    ["Auktionshaus: noch kein Preis bekannt"] = "Auction House: no price known yet",
+    ["Gerade im Auktionshaus"] = "Currently in the auction house",
+    ["Klick übernimmt den Preis −1 Kupfer."] = "Click takes the price −1 copper.",
+    ["Noch keine Angebote geladen."] = "No offers loaded yet.",
+    ["Keine Angebote im Auktionshaus."] = "No offers in the auction house.",
+    ["eigenes"] = "own",
+    ["+%d weitere"] = "+%d more",
+    ["In den Taschen: %d"] = "In your bags: %d",
+    ["Stufe %d"] = "Level %d",
+    ["Händler: %s"] = "Vendor: %s",
+    ["Item rechts aus „Deine Taschen“ wählen oder hierher ziehen"] = "Pick an item on the right from \"Your bags\" or drag it here",
+    ["/gp ah fenster – GuildPride-Fenster öffnen oder schließen (Auktionshaus offen)"] = "/gp ah window – open or close the GuildPride window (auction house open)",
 }
 
 -- Fehlende Übersetzung -> deutscher Text als Rückfall

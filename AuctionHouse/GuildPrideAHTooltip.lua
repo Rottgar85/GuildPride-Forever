@@ -38,11 +38,20 @@ local function Show()
     return not AH.AuctionatorLoaded() or AH.Opt("ahTooltipWithAuctionator")
 end
 
+-- Fertige Tooltip-Zeile: gelb mit Preis, grau „noch kein Preis“ bei handelbaren Items, sonst nil
+function AH.TooltipText(link, count, now, shift)
+    local line = AH.TooltipLine(link, count, now, shift)
+    if line then return "|cffffd100" .. line .. "|r" end
+    if AH.Tradeable(link) then return "|cff808080" .. L["Auktionshaus: noch kein Preis bekannt"] .. "|r" end
+    return nil
+end
+
 -- done[tooltip] = true (schon behandelt) oder Nummer der eigenen Zeile
 local done = {}
 local function LineText(link, count)
-    local ok, line = pcall(AH.TooltipLine, link, count, GetServerTime(), IsShiftKeyDown())
-    return ok and line and ("|cffffd100" .. line .. "|r") or nil
+    local ok, text = pcall(AH.TooltipText, link, count, GetServerTime(), IsShiftKeyDown())
+    if not ok then geterrorhandler()(text); return nil end
+    return text
 end
 local function AddLine(tooltip, link, count)
     if not link or done[tooltip] or not Show() then return end

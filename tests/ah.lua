@@ -459,6 +459,32 @@ return function(test, eq, W, ns)
         W.Advance(300); eq(AH.ScanStatus().wait, 600)
         Modern(false)
     end)
+    test("AH-Forever: aktuelle Angebote als Liste, billigste zuerst", function()
+        Modern(true)
+        M.commodity[30040] = {
+            { unitPrice = 50, quantity = 5, numOwnerItems = 5 },
+            { unitPrice = 40, quantity = 10, numOwnerItems = 0 },
+        }
+        local list = AH.CurrentOffers({ commodity = true, itemID = 30040 })
+        eq(#list, 2); eq(list[1].unit, 40); eq(list[1].qty, 10); eq(list[1].mine, false)
+        eq(list[2].unit, 50); eq(list[2].mine, true)
+        M.items = {
+            { buyoutAmount = 900, quantity = 3, itemLink = L(30041) },
+            { bidAmount = 10, quantity = 1, itemLink = L(30041) },
+            { buyoutAmount = 200, quantity = 1, itemLink = L(30041), containsOwnerItem = true },
+        }
+        list = AH.CurrentOffers({ commodity = false, itemID = 30041, itemKey = { itemID = 30041 } })
+        eq(#list, 2); eq(list[1].unit, 200); eq(list[1].mine, true); eq(list[2].unit, 300); eq(list[2].qty, 3)
+        eq(#AH.CurrentOffers(nil), 0)
+        Modern(false)
+    end)
+    test("AH-Tooltip: ohne Preis ein grauer Hinweis, mit Preis die gelbe Zeile", function()
+        eq(AH.TooltipText(L(30050), 1, W.server, false), "|cff808080Auktionshaus: noch kein Preis bekannt|r")
+        AH.RecordOwn("30051", 77, 1, W.server)
+        eq(AH.TooltipText(L(30051), 1, W.server, false), "|cffffd100Auktionshaus: 77c (gerade eben)|r")
+        W.itemInfo[30052] = { quality = 0, bindType = 0, classID = 7, sellPrice = 1 }   -- grau: nichts
+        eq(AH.TooltipText(L(30052), 1, W.server, false), nil)
+    end)
     W.Load("GuildPrideAHModernUI.lua")
     test("AH-Forever: eigenes Fenster – Knopf neben dem X öffnet und schließt es", function()
         Modern(true)

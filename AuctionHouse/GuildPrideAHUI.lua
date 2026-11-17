@@ -422,6 +422,7 @@ SlashCmdList.GUILDPRIDE = function(arg)
     local cmd = strtrim(arg or ""):lower()
     if cmd == "ah" then
         AH.Print(L["/gp ah status – Kanal und Zähler · /gp ah scan – ganzes Auktionshaus lesen (offenes AH, ohne Auctionator)"])
+        if AH.IsModern() then AH.Print(L["/gp ah fenster – GuildPride-Fenster öffnen oder schließen (Auktionshaus offen)"]) end
     elseif cmd == "ah status" then
         local st, id, atr = AH.stats, AH.ChannelId(), AH.AuctionatorLoaded()
         AH.Print(L["Preise teilen: "] .. (AH.Opt("ahShare") and L["an"] or L["aus"])
@@ -431,6 +432,8 @@ SlashCmdList.GUILDPRIDE = function(arg)
             .. (atr and (" (" .. L["mitlesen: "] .. (AH.Opt("ahReadAuctionator") and L["an"] or L["aus"]) .. ")") or ""))
         local tabState = AH.ModernTabState and AH.ModernTabState()
         if tabState then AH.Print(L["GuildPride-Fenster: "] .. tabState) end
+    elseif cmd == "ah fenster" or cmd == "ah window" then
+        if not (AH.ToggleWindow and AH.ToggleWindow()) then AH.Print(L["Auktionshaus: Erst das Auktionshaus öffnen."]) end
     elseif cmd == "ah scan" then
         if AH.AuctionatorLoaded() and not AH.IsModern() then
             AH.Print(L["Auktionshaus: Mit Auctionator bitte dessen Scan nutzen – GuildPride liest mit."])
