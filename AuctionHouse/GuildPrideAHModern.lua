@@ -162,10 +162,30 @@ end
 ---------------------------------------------------------------------
 -- Für den eigenen Reiter: Suchen, Liste, Verkaufen
 ---------------------------------------------------------------------
-function AH.ModernBrowse(text)
+-- filters: itemClassFilters einer Kategorie ({ { classID, subClassID, inventoryType }, … })
+function AH.ModernBrowse(text, filters)
     if not AH.IsModern() then return false end
-    C_AuctionHouse.SendBrowseQuery({ searchString = text or "", sorts = Sorts(), filters = {}, itemClassFilters = {} })
+    C_AuctionHouse.SendBrowseQuery({ searchString = text or "", sorts = Sorts(), filters = {},
+        itemClassFilters = filters or {} })
     return true
+end
+
+-- Blizzards Kategorien (AuctionCategories, wie links im Blizzard-Auktionshaus) als flache Liste.
+-- expanded[cat] = true: Unterkategorien dieser Kategorie zeigen.
+function AH.CategoryRows(expanded)
+    local out = {}
+    local function Add(list, depth)
+        if type(list) ~= "table" then return end
+        for _, cat in ipairs(list) do
+            if type(cat) == "table" and cat.name then
+                local subs = type(cat.subCategories) == "table" and #cat.subCategories > 0
+                out[#out + 1] = { cat = cat, name = cat.name, depth = depth, hasSub = subs and true or false }
+                if subs and expanded and expanded[cat] then Add(cat.subCategories, depth + 1) end
+            end
+        end
+    end
+    Add(AuctionCategories, 0)
+    return out
 end
 
 -- Aktuelle Übersicht als Zeilen, billigste zuerst

@@ -485,6 +485,25 @@ return function(test, eq, W, ns)
         W.itemInfo[30052] = { quality = 0, bindType = 0, classID = 7, sellPrice = 1 }   -- grau: nichts
         eq(AH.TooltipText(L(30052), 1, W.server, false), nil)
     end)
+    test("AH-Forever: Kategorien wie bei Blizzard, aufklappbar, Suche mit Filter", function()
+        Modern(true)
+        eq(#AH.CategoryRows({}), 0)   -- ohne Blizzards Tabelle: keine Kategorien, kein Fehler
+        local swords = { name = "Schwerter", filters = { { classID = 2, subClassID = 7 } } }
+        local weapons = { name = "Waffen", filters = { { classID = 2 } }, subCategories = { swords } }
+        AuctionCategories = { weapons, { name = "Stoff", filters = { { classID = 7, subClassID = 5 } } } }
+        local rows = AH.CategoryRows({})
+        eq(#rows, 2); eq(rows[1].name, "Waffen"); eq(rows[1].depth, 0); eq(rows[1].hasSub, true)
+        rows = AH.CategoryRows({ [weapons] = true })
+        eq(#rows, 3); eq(rows[2].name, "Schwerter"); eq(rows[2].depth, 1); eq(rows[2].cat, swords)
+        local sent
+        C_AuctionHouse.SendBrowseQuery = function(q) sent = q end
+        eq(AH.ModernBrowse("", swords.filters), true)
+        eq(sent.itemClassFilters, swords.filters); eq(sent.searchString, "")
+        AH.ModernBrowse("Erz")
+        eq(#sent.itemClassFilters, 0)
+        AuctionCategories = nil
+        Modern(false)
+    end)
     W.Load("GuildPrideAHModernUI.lua")
     test("AH-Forever: GuildPride ersetzt Blizzards Auktionshaus, Knöpfe schalten um", function()
         Modern(true)

@@ -11,12 +11,14 @@ local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
 local ROWS, ROW_H = 16, 22
 local BAG_ROWS, BAG_H = 18, 20
 local OFFER_ROWS, OFFER_H = 10, 18
-local WIN_W, WIN_H = 860, 580
+local WIN_W, WIN_H = 1000, 580
+local CAT_W, CAT_ROWS, CAT_H = 190, 22, 20
 local DURATIONS = { { 1, "12" }, { 2, "24" }, { 3, "48" } }   -- Blizzard-Dauer-Index → Stunden
 
 local button, panel, setupError
 local mode = "search"            -- "search" | "sell" | "scan"
 local rows, offset = {}, 0
+local catSel, catExpanded, catOffset, catRows = nil, {}, 0, {}
 local bagItems, bagOffset = {}, 0
 local sell = { duration = 2 }    -- info, manual, setting, pending
 local ShowBlizzard               -- weiter unten: zu Blizzards Fenster wechseln
@@ -85,7 +87,59 @@ end
 
 local function StartSearch(text)
     offset = 0
-    if AH.ModernBrowse(text) then Status(L["Suche läuft …"]) end
+    if AH.ModernBrowse(text, catSel and catSel.filters) then Status(L["Suche läuft …"]) end
+end
+
+-- Kategorien links wie bei Blizzard: Klick wählt und sucht, „+“ klappt Unterkategorien auf
+local function RefreshCategories()
+    local p = panel and panel.search
+    if not p or not p.catButtons then return end
+    catRows = AH.CategoryRows(catExpanded)
+    table.insert(catRows, 1, { name = L["Alle Kategorien"], depth = 0 })
+    catOffset = math.max(0, math.min(catOffset, #catRows - CAT_ROWS))
+    for i, b in ipairs(p.catButtons) do
+        local r = catRows[catOffset + i]
+        b.row = r
+        if not r then b:Hide() else
+            b:Show()
+            local mark = r.hasSub and (catExpanded[r.cat] and "– " or "+ ") or "   "
+            b.text:SetText(mark .. r.name)
+            b.text:SetPoint("LEFT", 6 + r.depth * 12, 0)
+            local on = r.cat == catSel
+            b.sel:SetShown(on)
+            if r.depth == 0 then b.text:SetFontObject(on and "GameFontHighlight" or "GameFontNormal")
+            else b.text:SetFontObject(on and "GameFontHighlightSmall" or "GameFontNormalSmall") end
+        end
+    end
+end
+
+local function MakeCategoryList(p, box)
+    local side = CreateFrame("Frame", nil, p)
+    side:SetPoint("TOPLEFT", 14, -44); side:SetSize(CAT_W - 10, CAT_ROWS * CAT_H)
+    p.catButtons = {}
+    for i = 1, CAT_ROWS do
+        local b = CreateFrame("Button", nil, side)
+        b:SetSize(CAT_W - 10, CAT_H)
+        b:SetPoint("TOPLEFT", 0, -(i - 1) * CAT_H)
+        b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        b.sel = b:CreateTexture(nil, "BACKGROUND"); b.sel:SetAllPoints(); b.sel:SetColorTexture(1, 0.82, 0, 0.18); b.sel:Hide()
+        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal"); b.text:SetJustifyH("LEFT")
+        b.text:SetPoint("RIGHT", -4, 0)
+        b:SetScript("OnClick", function()
+            local r = b.row
+            if not r then return end
+            if r.hasSub then catExpanded[r.cat] = not catExpanded[r.cat] or nil end
+            catSel = r.cat
+            RefreshCategories()
+            StartSearch(box:GetText())
+        end)
+        p.catButtons[i] = b
+    end
+    side:EnableMouseWheel(true)
+    side:SetScript("OnMouseWheel", function(_, d)
+        catOffset = math.max(0, math.min(catOffset - d * 3, math.max(0, #catRows - CAT_ROWS)))
+        RefreshCategories()
+    end)
 end
 
 -- Zeile anklicken: Blizzards Kaufansicht für dieses Item öffnen.
@@ -112,20 +166,21 @@ local function MakeSearchPane()
     local hint = Label(p, L["Klick auf eine Zeile öffnet Blizzards Kaufansicht."], "GameFontDisableSmall")
     hint:SetPoint("LEFT", go, "RIGHT", 12, 0)
 
-    local head = Label(p, L["Item"], "GameFontNormalSmall"); head:SetPoint("TOPLEFT", 44, -42)
-    local headP = Label(p, L["Stückpreis"], "GameFontNormalSmall"); headP:SetPoint("TOPLEFT", 334, -42)
+    MakeCategoryList(p, box)
+    local head = Label(p, L["Item"], "GameFontNormalSmall"); head:SetPoint("TOPLEFT", CAT_W + 44, -42)
+    local headP = Label(p, L["Stückpreis"], "GameFontNormalSmall"); headP:SetPoint("TOPLEFT", CAT_W + 334, -42)
     p.rows = {}
     for i = 1, ROWS do
         local row = CreateFrame("Button", nil, p)
         row:SetHeight(ROW_H)
-        row:SetPoint("TOPLEFT", 16, -58 - (i - 1) * ROW_H)
+        row:SetPoint("TOPLEFT", CAT_W + 16, -58 - (i - 1) * ROW_H)
         row:SetPoint("RIGHT", p, "RIGHT", -16, 0)
         row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         row.icon = row:CreateTexture(nil, "ARTWORK"); row.icon:SetSize(ROW_H - 2, ROW_H - 2); row.icon:SetPoint("LEFT")
         row.name = Label(row, "", "GameFontHighlightSmall"); row.name:SetPoint("LEFT", 28, 0); row.name:SetWidth(260)
         row.price = Label(row, "", "GameFontHighlightSmall"); row.price:SetPoint("LEFT", 290, 0); row.price:SetWidth(150)
         row.price:SetJustifyH("RIGHT")
-        row.info = Label(row, "", "GameFontDisableSmall"); row.info:SetPoint("LEFT", 460, 0); row.info:SetWidth(360)
+        row.info = Label(row, "", "GameFontDisableSmall"); row.info:SetPoint("LEFT", 460, 0); row.info:SetWidth(300)
         row:SetScript("OnClick", OpenBuy)
         row:SetScript("OnEnter", function()
             local e = row.entry
@@ -541,7 +596,7 @@ local function ShowMode(m)
     panel.modeSell:SetEnabled(m ~= "sell")
     panel.modeScan:SetEnabled(m ~= "scan")
     Status("")
-    if m == "search" then RefreshList() elseif m == "scan" then RefreshScan() elseif m == "sell" then RefreshBags() end
+    if m == "search" then RefreshCategories(); RefreshList() elseif m == "scan" then RefreshScan() elseif m == "sell" then RefreshBags() end
 end
 
 -- Blizzards Fenster unsichtbar machen statt schließen (Schließen beendet die Sitzung)

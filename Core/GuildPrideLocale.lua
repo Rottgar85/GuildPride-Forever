@@ -944,6 +944,7 @@ local enUS = {
     ["Blizzard-Auktionshaus"] = "Blizzard auction house",
     ["Zum GuildPride-Auktionshaus wechseln."] = "Switch to the GuildPride auction house.",
     ["Zurück zu Blizzards Auktionshaus. Der Knopf „GuildPride“ dort bringt dich wieder hierher."] = "Back to Blizzard's auction house. The \"GuildPride\" button there brings you back here.",
+    ["Alle Kategorien"] = "All categories",
 }
 
 -- Fehlende Übersetzung -> deutscher Text als Rückfall
