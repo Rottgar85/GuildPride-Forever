@@ -116,4 +116,71 @@ return function(test, eq, W, ns)
         for i = 1, 20 do AH.Ask(tostring(200 + i)) end
         eq(#out, 10, "höchstens 10 Nachfragen pro Minute")
     end)
+
+    -----------------------------------------------------------------
+    -- Scan
+    -----------------------------------------------------------------
+    W.Load("GuildPrideAHScan.lua")
+    local LINK_2589 = "|cffffffff|Hitem:2589:0:0:0:0:0:0:0|h[Leinenstoff]|h|r"
+    local LINK_15210_1017 = "|cff1eff00|Hitem:15210:0:0:0:0:0:1017:0|h[x]|h|r"
+    local LINK_15210_0 = "|cff1eff00|Hitem:15210:0:0:0:0:0:0:0|h[x]|h|r"
+
+    test("AH-Scan: eigene Auktionen und Angebote ohne Sofortkauf zählen nicht", function()
+        W.auctions = {
+            { "Leinen", 20, 100, 200, "Tester", LINK_2589 },
+            { "Leinen", 10, 100, 0,   "Anna",   LINK_2589 },
+            { "Leinen", 5,  100, 150, "Bert",   LINK_2589 },
+        }
+        local r = AH.ReadList(); eq(r["2589"].min, 30); eq(#r["2589"].offers, 3)
+        eq(AH.PriceFor("2589"), 30)
+    end)
+
+    test("AH-Scan: Suffix-Items getrennt", function()
+        W.auctions = { { "x", 1, 1, 500, "Anna", LINK_15210_1017 }, { "x", 1, 1, 900, "Anna", LINK_15210_0 } }
+        local r = AH.ReadList(); eq(r["15210.1017"].min, 500); eq(r["15210"].min, 900)
+    end)
+
+    test("AH-Scan: mehrere Seiten kurz nacheinander behalten das Minimum", function()
+        W.auctions = { { "Leinen", 1, 1, 20, "Bert", LINK_2589 } }; AH.ReadList()
+        W.auctions = { { "Leinen", 1, 1, 90, "Carl", LINK_2589 } }; AH.ReadList()
+        eq(AH.PriceFor("2589"), 20)
+    end)
+
+    test("AH-Scan: Suche über Seiten, Ergebnis zusammengeführt und geteilt", function()
+        local res
+        W.queries, out = 0, {}
+        W.auctions = { { "Leinen", 1, 1, 25, "Bert", LINK_2589 } }
+        AH.Search("Leinen", function(r) res = r end); eq(W.queries, 1)
+        W.Advance(3600)
+        W.Fire("AUCTION_ITEM_LIST_UPDATE")
+        eq(res["2589"].min, 25); eq(#out, 1)
+    end)
+
+    test("AH-Scan: mit Auctionator keine eigene Suche, aber Mitlesen", function()
+        W.addons.Auctionator = true; W.queries = 0
+        AH.Search("Leinen", function() end); eq(W.queries, 0)
+        W.Advance(3600)
+        W.auctions = { { "Leinen", 1, 1, 40, "Bert", LINK_2589 } }
+        W.Fire("AUCTION_ITEM_LIST_UPDATE"); eq(AH.PriceFor("2589"), 40)
+        W.addons.Auctionator = nil
+    end)
+
+    test("AH-Scan: AH schließt mitten in der Suche", function()
+        local called = false
+        W.canQuery = false; AH.Search("Leinen", function() called = true end)
+        W.Fire("AUCTION_HOUSE_CLOSED"); W.canQuery = true; W.Fire("AUCTION_ITEM_LIST_UPDATE")
+        eq(called, false)
+    end)
+
+    test("AH-Scan: Komplett-Scan nur mit getAll, wird nicht rundgesendet", function()
+        W.canGetAll, W.queries = false, 0
+        eq(AH.FullScan(), false); eq(W.queries, 0)
+        W.canGetAll, out = true, {}
+        eq(AH.FullScan(), true); eq(W.queries, 1)
+        W.Advance(3600)
+        W.auctions = { { "Leinen", 1, 1, 33, "Bert", LINK_2589 } }
+        W.Fire("AUCTION_ITEM_LIST_UPDATE")
+        eq(AH.PriceFor("2589"), 33); eq(#out, 0)
+        W.canGetAll = false
+    end)
 end

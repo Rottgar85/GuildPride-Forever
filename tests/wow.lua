@@ -111,6 +111,28 @@ function UnitFactionGroup() return "Alliance", "Allianz" end
 function time() return W.server end
 date = os.date
 
+-- Auktionshaus (altes AH): W.auctions = { { name, count, minBid, buyout, owner, link }, … }
+W.auctions, W.canQuery, W.canGetAll, W.queries, W.addons = {}, true, false, 0, {}
+function GetNumAuctionItems() return #W.auctions, #W.auctions end
+function GetAuctionItemInfo(_, i)
+    local a = W.auctions[i]
+    if not a then return nil end
+    return a[1], 0, a[2], 1, true, 1, "", a[3], 1, a[4], 0, false, nil, a[5]
+end
+function GetAuctionItemLink(_, i) return W.auctions[i] and W.auctions[i][6] end
+function QueryAuctionItems() W.queries = W.queries + 1 end
+function CanSendAuctionQuery() return W.canQuery, W.canGetAll end
+C_AddOns = { IsAddOnLoaded = function(name) return W.addons[name] and true or false end }
+-- Items: W.itemInfo[id] = { quality, bindType, classID, sellPrice }
+W.itemInfo = {}
+function GetItemInfoInstant(id) return tonumber(id) end
+function GetItemInfo(link)
+    local id = tonumber(tostring(link):match("item:(%d+)") or link)
+    local i = W.itemInfo[id] or { quality = 1, bindType = 0, classID = 7, sellPrice = 5 }
+    return "Item" .. tostring(id), link, i.quality, 1, 1, "", "", 20, "", 0, i.sellPrice, i.classID, 0, i.bindType
+end
+function GetCoinTextureString(p) return p .. "c" end
+
 -- Diese Globalen gibt es im Test nicht (nil statt Alles-Objekt): sonst wären
 -- z. B. alle Werte "geheim" oder Tabellen würden für Zahlen gehalten
 local NILS = { GuildPrideDB = true, GuildPrideBackupDB = true, issecretvalue = true,

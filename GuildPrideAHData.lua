@@ -61,7 +61,12 @@ function AH.RecordOwn(key, p, q, t)
     if not key or not p or p < 1 then return end
     local e = Entry(key, true)
     if e.own and e.own.t and e.own.t > t then return end
-    e.own = { p = p, q = q or 0, t = t }
+    -- Mehrere Ergebnisseiten derselben Suche: das Minimum zählt, Mengen addieren
+    if e.own and t - e.own.t < 120 then
+        e.own = { p = math.min(p, e.own.p), q = (q or 0) + (e.own.q or 0), t = t }
+    else
+        e.own = { p = p, q = q or 0, t = t }
+    end
     local d = math.floor(t / DAY)
     e.hist = e.hist or {}
     local last = e.hist[#e.hist]
