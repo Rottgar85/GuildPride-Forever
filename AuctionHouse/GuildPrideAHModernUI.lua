@@ -4,6 +4,7 @@
 -- geschlossen – das würde die Sitzung am Auktionator beenden). Knopf „Blizzard-Auktionshaus“
 -- schaltet zurück, Knopf „GuildPride“ in Blizzards Fenster wieder hierher.
 -- Gekauft wird in der eigenen Kaufansicht (Klick auf eine Zeile unter „Suchen“).
+-- Reiter „Einkaufsliste“: Favoriten (Stern) und eigene, benannte Listen mit Item-IDs.
 local ADDON, GP = ...
 local AH = GP.AH
 local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
@@ -16,7 +17,7 @@ local CAT_W, CAT_ROWS, CAT_H = 190, 22, 20
 local DURATIONS = { { 1, "12" }, { 2, "24" }, { 3, "48" } }   -- Blizzard-Dauer-Index → Stunden
 
 local button, panel, setupError
-local mode = "search"            -- "search" | "sell" | "own" | "scan"
+local mode = "search"            -- "search" | "list" | "sell" | "own" | "scan"
 local OWN_ROWS, OWN_H = 18, 22
 local own = { list = {}, offset = 0 }   -- Meine Auktionen; confirm: Abbrechen nach Bestätigung
 local rows, offset = {}, 0
@@ -27,6 +28,9 @@ local CloseDetail                -- weiter unten: Kaufansicht schließen
 local bagItems, bagOffset = {}, 0
 local sell = { duration = 2 }    -- info, manual, setting, pending
 local ShowBlizzard               -- weiter unten: zu Blizzards Fenster wechseln
+local ShowMode                   -- weiter unten: Reiter wechseln
+-- Einkaufsliste: sel = gewählte Liste (Index in AH.Lists()), renaming/deleting = Liste im Dialog
+local shop = { sel = 1, offset = 0, listOffset = 0, ROWS = 18, ROW_H = 22, LIST_ROWS = 16, LIST_H = 20 }
 
 local function Skin(b) if GP.SkinButton then GP.SkinButton(b) end return b end
 local function EditSkin(e) if GP.SkinEditBox then GP.SkinEditBox(e) end return e end
@@ -89,6 +93,44 @@ local function Section(parent, a, b, header)
 end
 
 ---------------------------------------------------------------------
+-- Favoriten-Stern: Blizzards Auktionshaus-Stern, sonst der Ruf-Stern (aus = grau und blass)
+local FAV_ATLAS = "auctionhouse-icon-favorite"
+local function SetStar(b, on)
+    local t = b.tex
+    if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(FAV_ATLAS) then
+        t:SetAtlas(on and FAV_ATLAS or (FAV_ATLAS .. "-off"))
+        t:SetAlpha(1)
+    else
+        t:SetTexture("Interface\\Common\\ReputationStar")
+        t:SetTexCoord(0, 0.5, 0, 0.5)
+        t:SetDesaturated(not on)
+        t:SetAlpha(on and 1 or 0.45)
+    end
+    b.on = on and true or false
+end
+
+local function StarButton(parent, size, getID, after)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(size, size)
+    b.tex = b:CreateTexture(nil, "ARTWORK"); b.tex:SetAllPoints()
+    SetStar(b, false)
+    b:SetScript("OnClick", function()
+        local id = getID()
+        if not id then return end
+        SetStar(b, AH.ToggleFavorite(id))
+        if after then after() end
+    end)
+    b:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+        GameTooltip:SetText(b.on and L["Favorit entfernen"] or L["Zu den Favoriten"])
+        GameTooltip:AddLine(L["Favoriten findest du im Reiter „Einkaufsliste“."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    return b
+end
+
+---------------------------------------------------------------------
 -- Suchen
 ---------------------------------------------------------------------
 local function RefreshList()
@@ -111,6 +153,7 @@ local function RefreshList()
             local p2, _, src = AH.PriceFor(e.key)
             if src == "srv" and p2 then info = info .. " · " .. L["Server"] .. " " .. Money(p2) end
             row.info:SetText(info)
+            SetStar(row.fav, AH.IsFavorite(e.itemKey.itemID))
         end
     end
 end
@@ -254,6 +297,7 @@ local function OpenDetail(row)
     p.dName:SetText(e.name or ("#" .. e.itemKey.itemID))
     local color = e.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[e.quality]
     if color then p.dName:SetTextColor(color.r, color.g, color.b) else p.dName:SetTextColor(1, 1, 1) end
+    SetStar(p.dFav, AH.IsFavorite(e.itemKey.itemID))
     p.qty:SetText("1")
     p.listFrame:Hide()
     p.detail:Show()
@@ -313,6 +357,8 @@ local function MakeDetail(p)
     p.back:SetScript("OnClick", function() CloseDetail() end)
     p.dIcon = d:CreateTexture(nil, "ARTWORK"); p.dIcon:SetSize(32, 32); p.dIcon:SetPoint("TOPLEFT", 8, -30)
     p.dName = Label(d, "", "GameFontNormalLarge"); p.dName:SetPoint("LEFT", p.dIcon, "RIGHT", 10, 0)
+    p.dFav = StarButton(d, 22, function() return buy.info and buy.info.itemID end)
+    p.dFav:SetPoint("LEFT", p.dName, "RIGHT", 10, 0)
     local hp = Label(d, L["Stückpreis"], "GameFontNormalSmall"); hp:SetPoint("TOPLEFT", 60, -72)
     local hq = Label(d, L["Menge"], "GameFontNormalSmall"); hq:SetPoint("TOPLEFT", 186, -72)
     p.empty = Label(d, "", "GameFontDisableSmall"); p.empty:SetPoint("TOPLEFT", 12, -92)
@@ -376,7 +422,7 @@ local function MakeSearchPane()
     go:SetPoint("LEFT", box, "RIGHT", 8, 0)
     go:SetScript("OnClick", function() box:ClearFocus(); StartSearch(box:GetText()) end)
     box:SetScript("OnEnterPressed", function() box:ClearFocus(); StartSearch(box:GetText()) end)
-    local hint = Label(p, L["Klick auf eine Zeile zeigt die Angebote zum Kaufen."], "GameFontDisableSmall")
+    local hint = Label(p, L["Klick auf eine Zeile zeigt die Angebote zum Kaufen. Der Stern merkt ein Item als Favorit."], "GameFontDisableSmall")
     hint:SetPoint("LEFT", go, "RIGHT", 12, 0)
 
     MakeCategoryList(p, box)
@@ -395,7 +441,9 @@ local function MakeSearchPane()
         row.name = Label(row, "", "GameFontHighlightSmall"); row.name:SetPoint("LEFT", 28, 0); row.name:SetWidth(260)
         row.price = Label(row, "", "GameFontHighlightSmall"); row.price:SetPoint("LEFT", 290, 0); row.price:SetWidth(150)
         row.price:SetJustifyH("RIGHT")
-        row.info = Label(row, "", "GameFontDisableSmall"); row.info:SetPoint("LEFT", 460, 0); row.info:SetWidth(300)
+        row.info = Label(row, "", "GameFontDisableSmall"); row.info:SetPoint("LEFT", 460, 0); row.info:SetWidth(280)
+        row.fav = StarButton(row, 16, function() return row.entry and row.entry.itemKey.itemID end)
+        row.fav:SetPoint("RIGHT", -4, 0)
         row:SetScript("OnClick", OpenDetail)
         row:SetScript("OnEnter", function()
             local e = row.entry
@@ -415,6 +463,221 @@ local function MakeSearchPane()
         RefreshList()
     end)
     MakeDetail(p)
+    return p
+end
+
+---------------------------------------------------------------------
+-- Einkaufsliste: links Favoriten und eigene Listen, rechts die Items der gewählten Liste
+---------------------------------------------------------------------
+local function CurrentList()
+    local lists = AH.Lists()
+    shop.sel = math.max(1, math.min(shop.sel, #lists))
+    return lists[shop.sel], lists
+end
+
+local function RefreshShop()
+    local p = panel and panel.lists
+    if not p or not p:IsShown() then return end
+    local list, lists = CurrentList()
+    shop.listOffset = math.max(0, math.min(shop.listOffset, #lists - shop.LIST_ROWS))
+    for i, b in ipairs(p.listRows) do
+        local idx = shop.listOffset + i
+        local l = lists[idx]
+        b.index = idx
+        if not l then b:Hide() else
+            b:Show()
+            b.text:SetText(("%s |cff999999(%d)|r"):format(l.name, #l.items))
+            b.sel:SetShown(idx == shop.sel)
+            b.text:SetFontObject(idx == shop.sel and "GameFontHighlight" or "GameFontNormal")
+        end
+    end
+    p.title:SetText(list.name)
+    p.renameBtn:SetEnabled(not list.fav)
+    p.deleteBtn:SetEnabled(not list.fav)
+    local items = list.items
+    shop.offset = math.max(0, math.min(shop.offset, #items - shop.ROWS))
+    p.empty:SetText(#items == 0 and (list.fav and L["Noch keine Favoriten: Stern in der Suche anklicken oder oben Item-IDs eintragen."]
+        or L["Noch leer: oben Item-IDs eintragen."]) or "")
+    for i, row in ipairs(p.rows) do
+        local id = items[shop.offset + i]
+        row.itemID = id
+        if not id then row:Hide() else
+            row:Show()
+            local name, _, quality = AH.ItemInfo(id)
+            row.icon:SetTexture(AH.ItemIcon(id))
+            row.name:SetText(name or L["Item wird geladen …"])
+            local color = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+            if color then row.name:SetTextColor(color.r, color.g, color.b) else row.name:SetTextColor(1, 1, 1) end
+            row.id:SetText(tostring(id))
+            local price = AH.PriceFor(AH.Key(id))
+            row.price:SetText(price and Money(price) or "-")
+        end
+    end
+end
+
+-- Item aus der Liste suchen: direkt die Kaufansicht unter „Suchen“ öffnen
+local function SearchItem(id)
+    if not id then return end
+    ShowMode("search")
+    local _, _, quality = AH.ItemInfo(id)
+    OpenDetail({ entry = { itemKey = { itemID = id, itemLevel = 0, itemSuffix = 0, battlePetSpeciesID = 0 },
+        key = AH.Key(id), name = AH.ItemName(id), icon = AH.ItemIcon(id), quality = quality } })
+end
+
+local function AddIDs()
+    local p = panel.lists
+    local list = CurrentList()
+    local added, dup = AH.AddItems(list, p.idBox:GetText())
+    if added == 0 and dup == 0 then Status(L["Keine gültige Item-ID gefunden."]); return end
+    p.idBox:SetText(""); p.idBox:ClearFocus()
+    Status((L["%d eingetragen"]):format(added) .. (dup > 0 and (" · " .. (L["%d schon in der Liste"]):format(dup)) or ""))
+    RefreshShop()
+end
+
+local function ShopNameAccepted(text)
+    local why
+    if shop.renaming then
+        why = select(2, AH.RenameList(shop.renaming, text))
+    else
+        local l
+        l, why = AH.NewList(text)
+        if l then shop.sel, shop.offset = #AH.Lists(), 0 end
+    end
+    shop.renaming = nil
+    Status(why or "")
+    RefreshShop()
+end
+
+StaticPopupDialogs["GUILDPRIDE_AH_LIST_NAME"] = {
+    text = "%s",
+    button1 = OKAY, button2 = CANCEL,
+    hasEditBox = true, maxLetters = 60,
+    OnShow = function(self)
+        local eb = self.editBox or self.EditBox
+        eb:SetText(shop.renaming and shop.renaming.name or ""); eb:SetFocus(); eb:HighlightText()
+    end,
+    OnAccept = function(self) ShopNameAccepted((self.editBox or self.EditBox):GetText()) end,
+    OnCancel = function() shop.renaming = nil end,
+    EditBoxOnEnterPressed = function(eb)
+        local dlg = eb:GetParent()
+        ShopNameAccepted(eb:GetText()); dlg:Hide()
+    end,
+    EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+StaticPopupDialogs["GUILDPRIDE_AH_LIST_DELETE"] = {
+    text = "%s",
+    button1 = DELETE or OKAY, button2 = CANCEL,
+    OnAccept = function()
+        local l = shop.deleting
+        shop.deleting = nil
+        if AH.DeleteList(l) then shop.sel, shop.offset = 1, 0; Status(L["Liste gelöscht."]) end
+        RefreshShop()
+    end,
+    OnCancel = function() shop.deleting = nil end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+
+local function MakeShopPane()
+    local p = Pane()
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -6 }, { "BOTTOMRIGHT", "TOPRIGHT", -10, -36 })
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -40 }, { "BOTTOMRIGHT", "BOTTOMLEFT", CAT_W + 2, 8 }, 18)
+    Section(p, { "TOPLEFT", "TOPLEFT", CAT_W + 8, -40 }, { "BOTTOMRIGHT", "BOTTOMRIGHT", -10, 8 }, 18)
+    p.title = Label(p, "", "GameFontNormalLarge"); p.title:SetPoint("TOPLEFT", 20, -14); p.title:SetWidth(CAT_W - 20)
+    p.title:SetWordWrap(false)
+    local il = Label(p, L["Item-IDs:"]); il:SetPoint("TOPLEFT", CAT_W + 20, -16)
+    p.idBox = Edit(p, 230); p.idBox:SetPoint("LEFT", il, "RIGHT", 8, 0)
+    p.addBtn = Button(p, L["Eintragen"], 100); p.addBtn:SetPoint("LEFT", p.idBox, "RIGHT", 8, 0)
+    p.addBtn:SetScript("OnClick", AddIDs)
+    p.idBox:SetScript("OnEnterPressed", AddIDs)
+    local hint = Label(p, L["Mehrere mit Komma trennen. Umschalt+Klick auf ein Item oder ein Wowhead-Link geht auch."], "GameFontDisableSmall")
+    hint:SetPoint("LEFT", p.addBtn, "RIGHT", 12, 0); hint:SetPoint("RIGHT", p, "RIGHT", -18, 0)
+
+    -- links: Listen
+    local lh = Label(p, L["Listen"], "GameFontNormalSmall"); lh:SetPoint("TOPLEFT", 16, -43)
+    p.listRows = {}
+    for i = 1, shop.LIST_ROWS do
+        local b = CreateFrame("Button", nil, p)
+        b:SetSize(CAT_W - 8, shop.LIST_H)
+        b:SetPoint("TOPLEFT", 9, -60 - (i - 1) * shop.LIST_H)
+        b:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        b.sel = b:CreateTexture(nil, "BACKGROUND"); b.sel:SetAllPoints(); b.sel:SetColorTexture(1, 0.82, 0, 0.18); b.sel:Hide()
+        b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormal"); b.text:SetJustifyH("LEFT")
+        b.text:SetPoint("LEFT", 8, 0); b.text:SetPoint("RIGHT", -4, 0); b.text:SetWordWrap(false)
+        b:SetScript("OnClick", function()
+            shop.sel, shop.offset = b.index, 0
+            Status("")
+            RefreshShop()
+        end)
+        p.listRows[i] = b
+    end
+    p.newBtn = Button(p, L["Neue Liste"], CAT_W - 20); p.newBtn:SetPoint("BOTTOMLEFT", 14, 66)
+    p.renameBtn = Button(p, L["Umbenennen"], CAT_W - 20); p.renameBtn:SetPoint("BOTTOMLEFT", 14, 40)
+    p.deleteBtn = Button(p, L["Liste löschen"], CAT_W - 20); p.deleteBtn:SetPoint("BOTTOMLEFT", 14, 14)
+    p.newBtn:SetScript("OnClick", function()
+        shop.renaming = nil
+        StaticPopup_Show("GUILDPRIDE_AH_LIST_NAME", L["Name der neuen Einkaufsliste:"])
+    end)
+    p.renameBtn:SetScript("OnClick", function()
+        local l = CurrentList()
+        if l.fav then return end
+        shop.renaming = l
+        StaticPopup_Show("GUILDPRIDE_AH_LIST_NAME", L["Neuer Name der Liste:"])
+    end)
+    p.deleteBtn:SetScript("OnClick", function()
+        local l = CurrentList()
+        if l.fav then return end
+        shop.deleting = l
+        StaticPopup_Show("GUILDPRIDE_AH_LIST_DELETE", (L["Liste „%s“ löschen?"]):format(l.name))
+    end)
+
+    -- rechts: Items der Liste
+    local cols = { { L["Item"], CAT_W + 44 }, { L["Item-ID"], CAT_W + 334 }, { L["Bekannter Preis"], CAT_W + 430 } }
+    for _, c in ipairs(cols) do
+        local h = Label(p, c[1], "GameFontNormalSmall"); h:SetPoint("TOPLEFT", c[2], -43)
+    end
+    p.empty = Label(p, "", "GameFontDisableSmall"); p.empty:SetPoint("TOPLEFT", CAT_W + 20, -64)
+    p.rows = {}
+    for i = 1, shop.ROWS do
+        local row = CreateFrame("Button", nil, p)
+        row:SetHeight(shop.ROW_H)
+        row:SetPoint("TOPLEFT", CAT_W + 16, -60 - (i - 1) * shop.ROW_H); row:SetPoint("RIGHT", p, "RIGHT", -16, 0)
+        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        row.icon = row:CreateTexture(nil, "ARTWORK"); row.icon:SetSize(shop.ROW_H - 2, shop.ROW_H - 2); row.icon:SetPoint("LEFT")
+        row.name = Label(row, "", "GameFontHighlightSmall"); row.name:SetPoint("LEFT", 28, 0); row.name:SetWidth(280)
+        row.id = Label(row, "", "GameFontDisableSmall"); row.id:SetPoint("LEFT", 318, 0); row.id:SetWidth(80)
+        row.price = Label(row, "", "GameFontHighlightSmall"); row.price:SetPoint("LEFT", 400, 0); row.price:SetWidth(150)
+        row.price:SetJustifyH("RIGHT")
+        row.remove = Button(row, "X", 26); row.remove:SetPoint("RIGHT", -2, 0)
+        row.search = Button(row, L["Suchen"], 90); row.search:SetPoint("RIGHT", row.remove, "LEFT", -4, 0)
+        row.search:SetScript("OnClick", function() SearchItem(row.itemID) end)
+        row.remove:SetScript("OnClick", function()
+            if AH.RemoveItem(CurrentList(), row.itemID) then RefreshShop() end
+        end)
+        row:SetScript("OnClick", function() SearchItem(row.itemID) end)
+        row:SetScript("OnEnter", function()
+            if not row.itemID then return end
+            GameTooltip:SetOwner(row, "ANCHOR_RIGHT"); GameTooltip:SetItemByID(row.itemID)
+            GameTooltip:AddLine(L["Klick: im Auktionshaus suchen und kaufen"], 0.6, 0.8, 1)
+            GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row:Hide()
+        p.rows[i] = row
+    end
+    p:EnableMouseWheel(true)
+    p:SetScript("OnMouseWheel", function(_, d)
+        local list = CurrentList()
+        shop.offset = math.max(0, math.min(shop.offset - d * 3, math.max(0, #list.items - shop.ROWS)))
+        RefreshShop()
+    end)
+    -- Umschalt+Klick auf ein Item trägt die ID ins Feld ein (wie in den Chat)
+    if hooksecurefunc and ChatEdit_InsertLink then
+        hooksecurefunc("ChatEdit_InsertLink", function(link)
+            local id = type(link) == "string" and link:match("item:(%d+)")
+            if id and p:IsShown() and p.idBox:HasFocus() then p.idBox:Insert(id .. " ") end
+        end)
+    end
     return p
 end
 
@@ -914,9 +1177,11 @@ end
 ---------------------------------------------------------------------
 -- Eigenes Fenster und Knopf neben dem X des Auktionshauses
 ---------------------------------------------------------------------
-local function ShowMode(m)
+ShowMode = function(m)
     mode = m
     panel.search:SetShown(m == "search")
+    panel.lists:SetShown(m == "list")
+    panel.modeList:SetEnabled(m ~= "list")
     panel.sell:SetShown(m == "sell")
     panel.scan:SetShown(m == "scan")
     panel.own:SetShown(m == "own")
@@ -926,6 +1191,7 @@ local function ShowMode(m)
     panel.modeScan:SetEnabled(m ~= "scan")
     Status("")
     if m == "search" then RefreshCategories(); RefreshList() elseif m == "scan" then RefreshScan() elseif m == "sell" then RefreshBags()
+    elseif m == "list" then RefreshShop()
     elseif m == "own" then RefreshOwn(); if AH.QueryOwned() then Status(L["Lade deine Auktionen …"]) end end
 end
 
@@ -1042,10 +1308,12 @@ local function Build()
     end)
     panel.blizzard:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    panel.modeSearch = Button(panel, L["Suchen"], 110); panel.modeSearch:SetPoint("LEFT", title, "RIGHT", 24, 0)
-    panel.modeSell = Button(panel, L["Verkaufen"], 110); panel.modeSell:SetPoint("LEFT", panel.modeSearch, "RIGHT", 8, 0)
-    panel.modeOwn = Button(panel, L["Meine Auktionen"], 130); panel.modeOwn:SetPoint("LEFT", panel.modeSell, "RIGHT", 8, 0)
-    panel.modeScan = Button(panel, L["Scanner"], 110); panel.modeScan:SetPoint("LEFT", panel.modeOwn, "RIGHT", 8, 0)
+    panel.modeSearch = Button(panel, L["Suchen"], 90); panel.modeSearch:SetPoint("LEFT", title, "RIGHT", 18, 0)
+    panel.modeList = Button(panel, L["Einkaufsliste"], 110); panel.modeList:SetPoint("LEFT", panel.modeSearch, "RIGHT", 6, 0)
+    panel.modeSell = Button(panel, L["Verkaufen"], 90); panel.modeSell:SetPoint("LEFT", panel.modeList, "RIGHT", 6, 0)
+    panel.modeOwn = Button(panel, L["Meine Auktionen"], 124); panel.modeOwn:SetPoint("LEFT", panel.modeSell, "RIGHT", 6, 0)
+    panel.modeScan = Button(panel, L["Scanner"], 84); panel.modeScan:SetPoint("LEFT", panel.modeOwn, "RIGHT", 6, 0)
+    panel.modeList:SetScript("OnClick", function() ShowMode("list") end)
     panel.modeOwn:SetScript("OnClick", function() ShowMode("own") end)
     panel.modeSearch:SetScript("OnClick", function() ShowMode("search") end)
     panel.modeSell:SetScript("OnClick", function() ShowMode("sell") end)
@@ -1060,6 +1328,7 @@ local function Build()
     panel.sell = MakeSellPane()
     panel.scan = MakeScanPane()
     panel.own = MakeOwnPane()
+    panel.lists = MakeShopPane()
     ClearSell()
     ShowMode(mode)
     panel:Hide()
@@ -1128,6 +1397,7 @@ end
 AH.Listen("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED", OnBrowse)
 AH.Listen("AUCTION_HOUSE_BROWSE_RESULTS_ADDED", OnBrowse)
 AH.Listen("ITEM_KEY_ITEM_INFO_RECEIVED", function() if panel and panel:IsShown() then RefreshList() end end)
+AH.Listen("GET_ITEM_INFO_RECEIVED", function() if panel and panel:IsShown() and mode == "list" then RefreshShop() end end)
 
 local function OnSellPrice()
     if panel and panel:IsShown() and mode == "sell" and sell.info then

@@ -587,6 +587,61 @@ return function(test, eq, W, ns)
         eq(AH.Opt("ahShare"), true)
         GuildPrideDB.ahShare = nil
     end)
+    W.Load("GuildPrideAHLists.lua")
+    test("AH: Favoriten an/aus, auch in Blizzards Favoriten", function()
+        Modern(true)
+        GuildPrideDB.ahLists = nil
+        local synced = {}
+        C_AuctionHouse.SetFavoriteItem = function(k, on) synced[k.itemID] = on end
+        eq(AH.IsFavorite(19019), false)
+        eq(AH.ToggleFavorite(19019), true); eq(AH.IsFavorite(19019), true); eq(synced[19019], true)
+        eq(AH.ToggleFavorite(19019), false); eq(AH.IsFavorite(19019), false); eq(synced[19019], false)
+        -- Blizzard-Fehler stören nicht
+        C_AuctionHouse.SetFavoriteItem = function() error("gesperrt") end
+        eq(AH.ToggleFavorite(2589), true)
+        C_AuctionHouse.SetFavoriteItem = nil
+        local lists = AH.Lists()
+        eq(lists[1].fav, true); eq(lists[1].name, "Favoriten"); eq(#lists[1].items, 1); eq(lists[1].items[1], 2589)
+        Modern(false)
+        eq(AH.ToggleFavorite(2589), false, "geht auch ohne Auktionshaus")
+    end)
+    test("AH: Item-IDs aus Text, Links und Wowhead-Adressen lesen", function()
+        local ids = AH.ParseItemIDs("2589, 2592;  4306\n|cffffffff|Hitem:14047::::::::60:::::|h[Runenstoff]|h|r x 0 -5 abc 1234567")
+        eq(#ids, 4); eq(ids[1], 14047); eq(ids[2], 2589); eq(ids[3], 2592); eq(ids[4], 4306)
+        ids = AH.ParseItemIDs("https://www.wowhead.com/classic/item=19019/thunderfury")
+        eq(#ids, 1); eq(ids[1], 19019)
+        eq(#AH.ParseItemIDs(""), 0); eq(#AH.ParseItemIDs(nil), 0)
+    end)
+    test("AH: eigene Einkaufslisten anlegen, füllen, umbenennen, löschen", function()
+        GuildPrideDB.ahLists = nil
+        local l, why = AH.NewList("  Kräuter  ")
+        eq(l.name, "Kräuter"); eq(why, nil)
+        eq(select(2, AH.NewList("kräuter")) ~= nil, true, "doppelter Name")
+        eq(select(2, AH.NewList("   ")) ~= nil, true, "leerer Name")
+        eq(select(2, AH.NewList(string.rep("x", 31))) ~= nil, true, "zu lang")
+        local added, dup = AH.AddItems(l, "2447, 765 2447")
+        eq(added, 2); eq(dup, 0); eq(#l.items, 2)
+        added, dup = AH.AddItems(l, "765 2449")
+        eq(added, 1); eq(dup, 1, "schon in der Liste"); eq(AH.RemoveItem(l, 2449), true)
+        eq(AH.AddItems(l, 765), 0)
+        eq(AH.AddItems(l, "nichts"), 0)
+        eq(AH.RemoveItem(l, 765), true); eq(#l.items, 1); eq(AH.RemoveItem(l, 765), false)
+        eq(AH.RenameList(l, "Alchemie"), true); eq(l.name, "Alchemie")
+        local l2 = AH.NewList("Stoff")
+        eq(select(2, AH.RenameList(l2, "alchemie")) ~= nil, true)
+        local lists = AH.Lists()
+        eq(#lists, 3); eq(lists[2].name, "Alchemie"); eq(lists[3].name, "Stoff")
+        eq(AH.DeleteList(lists[1]), false, "Favoriten bleiben")
+        eq(AH.DeleteList(l), true); eq(#AH.Lists(), 2); eq(AH.Lists()[2].name, "Stoff")
+        -- Favoriten-Liste: Hinzufügen per ID macht das Item zum Favoriten
+        eq(AH.AddItems(AH.Lists()[1], "19019"), 1); eq(AH.IsFavorite(19019), true)
+        eq(AH.RemoveItem(AH.Lists()[1], 19019), true); eq(AH.IsFavorite(19019), false)
+        -- kaputte gespeicherte Daten werden repariert
+        GuildPrideDB.ahLists = { fav = "x", lists = { 5, { name = "Ok" } } }
+        lists = AH.Lists()
+        eq(#lists, 2); eq(#lists[1].items, 0); eq(lists[2].name, "Ok"); eq(#lists[2].items, 0)
+        GuildPrideDB.ahLists = nil
+    end)
     W.Load("GuildPrideAHModernUI.lua")
     test("AH-Forever: GuildPride ersetzt Blizzards Auktionshaus, Knöpfe schalten um", function()
         Modern(true)
@@ -693,10 +748,85 @@ return function(test, eq, W, ns)
         W.Fire("AUCTION_HOUSE_CLOSED")
         -- Chatbefehle (stehen in GuildPrideAHUI.lua)
         SlashCmdList.GUILDPRIDE = SlashCmdList.GUILDPRIDE or function() end
+        AuctionFrame = false   -- altes Auktionshaus gibt es in WoW Forever nicht
         W.Load("GuildPrideAHUI.lua")
         SlashCmdList.GUILDPRIDE("ah aus"); eq(GuildPrideDB.ahTab, false)
         SlashCmdList.GUILDPRIDE("ah an"); eq(GuildPrideDB.ahTab, true)
         HideUIPanel = nil
+        Modern(false)
+    end)
+    test("AH-Forever: Favoriten-Stern und Einkaufsliste", function()
+        Modern(true)
+        GuildPrideDB.ahLists, GuildPrideDB.ahBlizzard, GuildPrideDB.ahTab = nil, nil, true
+        local asked
+        C_AuctionHouse.SendSearchQuery = function(k) asked = k end
+        AuctionHouseFrame.SetScale = function() end
+        AuctionHouseFrame.SetAlpha = function() end
+        W.Fire("AUCTION_HOUSE_SHOW")
+        local _, win = AH._ModernTab()
+        eq(win:IsShown(), true)
+        win.modeSearch.scripts.OnClick(win.modeSearch)
+        M.browse = { { itemKey = { itemID = 30070, itemSuffix = 0 }, totalQuantity = 4, minPrice = 25 } }
+        W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        -- Stern in der Suchliste
+        local row = win.search.rows[1]
+        row.fav.scripts.OnClick(row.fav)
+        eq(AH.IsFavorite(30070), true)
+        -- Stern in der Kaufansicht
+        row.scripts.OnClick(row)
+        eq(win.search.detail:IsShown(), true)
+        win.search.dFav.scripts.OnClick(win.search.dFav)
+        eq(AH.IsFavorite(30070), false)
+        win.search.dFav.scripts.OnClick(win.search.dFav)
+        eq(AH.IsFavorite(30070), true)
+        win.search.back.scripts.OnClick(win.search.back)
+        -- Reiter Einkaufsliste: Favoriten zuerst
+        win.modeList.scripts.OnClick(win.modeList)
+        local sp = win.lists
+        eq(sp:IsShown(), true); eq(win.search:IsShown(), false)
+        eq(sp.listRows[1]:IsShown(), true); eq(sp.listRows[2]:IsShown(), false)
+        eq(sp.rows[1].itemID, 30070); eq(sp.rows[2]:IsShown(), false)
+        -- neue Liste über das Namensfenster
+        local popup
+        local oldShow = StaticPopup_Show
+        StaticPopup_Show = function(name) popup = name end
+        local function Accept(name, text)
+            local dlg = { editBox = { GetText = function() return text end } }
+            StaticPopupDialogs[name].OnAccept(dlg)
+        end
+        sp.newBtn.scripts.OnClick(sp.newBtn)
+        eq(popup, "GUILDPRIDE_AH_LIST_NAME")
+        Accept("GUILDPRIDE_AH_LIST_NAME", "Kräuter")
+        eq(#AH.Lists(), 2); eq(sp.listRows[2]:IsShown(), true)
+        eq(sp.rows[1]:IsShown(), false, "neue Liste ist ausgewählt und leer")
+        -- IDs eintragen
+        sp.idBox.GetText = function() return "2447, 765" end
+        sp.addBtn.scripts.OnClick(sp.addBtn)
+        eq(#AH.Lists()[2].items, 2); eq(sp.rows[1].itemID, 2447); eq(sp.rows[2].itemID, 765)
+        -- Zeile entfernen
+        sp.rows[2].remove.scripts.OnClick(sp.rows[2].remove)
+        eq(#AH.Lists()[2].items, 1); eq(sp.rows[2]:IsShown(), false)
+        -- Suchen aus der Liste öffnet die Kaufansicht
+        sp.rows[1].search.scripts.OnClick(sp.rows[1].search)
+        eq(win.search:IsShown(), true); eq(win.search.detail:IsShown(), true); eq(asked.itemID, 2447)
+        win.search.back.scripts.OnClick(win.search.back)
+        -- umbenennen und löschen
+        win.modeList.scripts.OnClick(win.modeList)
+        sp.renameBtn.scripts.OnClick(sp.renameBtn)
+        eq(popup, "GUILDPRIDE_AH_LIST_NAME")
+        Accept("GUILDPRIDE_AH_LIST_NAME", "Alchemie")
+        eq(AH.Lists()[2].name, "Alchemie"); eq(#AH.Lists(), 2)
+        sp.deleteBtn.scripts.OnClick(sp.deleteBtn)
+        eq(popup, "GUILDPRIDE_AH_LIST_DELETE")
+        StaticPopupDialogs.GUILDPRIDE_AH_LIST_DELETE.OnAccept()
+        eq(#AH.Lists(), 1); eq(sp.rows[1].itemID, 30070, "zurück bei den Favoriten")
+        -- Favoriten lassen sich nicht löschen
+        popup = nil
+        sp.deleteBtn.scripts.OnClick(sp.deleteBtn)
+        eq(popup, nil)
+        StaticPopup_Show = oldShow
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        GuildPrideDB.ahLists = nil
         Modern(false)
     end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()

@@ -1,0 +1,156 @@
+-- GuildPride Auktionshaus: Favoriten und Einkaufslisten
+-- Gespeichert in GuildPrideDB.ahLists = { fav = { itemID, … }, lists = { { name = "…", items = { itemID, … } }, … } }
+-- Favoriten werden zusätzlich in Blizzards eigene Auktionshaus-Favoriten übernommen (wenn erlaubt).
+local ADDON, GP = ...
+GP.AH = GP.AH or {}
+local AH = GP.AH
+local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
+
+local MAX_NAME = 30          -- Zeichen (UTF-8)
+local MAX_ID = 999999
+
+local function CleanIDs(t)
+    local out, seen = {}, {}
+    if type(t) == "table" then
+        for _, v in ipairs(t) do
+            local id = tonumber(v)
+            if id and id >= 1 and id <= MAX_ID and id == math.floor(id) and not seen[id] then
+                seen[id] = true; out[#out + 1] = id
+            end
+        end
+    end
+    return out
+end
+
+-- Gespeicherte Daten holen und dabei reparieren
+local function DB()
+    if type(GuildPrideDB) ~= "table" then GuildPrideDB = {} end
+    local d = GuildPrideDB.ahLists
+    if type(d) ~= "table" then d = {}; GuildPrideDB.ahLists = d end
+    if type(d.fav) ~= "table" then d.fav = {} end
+    if type(d.lists) ~= "table" then d.lists = {} end
+    for i = #d.lists, 1, -1 do
+        local l = d.lists[i]
+        if type(l) ~= "table" or type(l.name) ~= "string" or l.name == "" then table.remove(d.lists, i)
+        elseif type(l.items) ~= "table" then l.items = {} end
+    end
+    return d
+end
+
+local function Find(t, id)
+    for i, v in ipairs(t) do if v == id then return i end end
+end
+
+local function SyncBlizzard(id, on)
+    local f = C_AuctionHouse and C_AuctionHouse.SetFavoriteItem
+    if f then pcall(f, { itemID = id, itemLevel = 0, itemSuffix = 0, battlePetSpeciesID = 0 }, on and true or false) end
+end
+
+function AH.IsFavorite(id)
+    id = tonumber(id)
+    return id ~= nil and Find(DB().fav, id) ~= nil
+end
+
+function AH.SetFavorite(id, on)
+    id = tonumber(id)
+    if not id then return false end
+    local fav = DB().fav
+    local i = Find(fav, id)
+    if on and not i then fav[#fav + 1] = id
+    elseif not on and i then table.remove(fav, i) end
+    SyncBlizzard(id, on)
+    return on and true or false
+end
+
+function AH.ToggleFavorite(id)
+    return AH.SetFavorite(id, not AH.IsFavorite(id))
+end
+
+-- Alle Listen: zuerst die Favoriten (fav = true), dann die eigenen in der angelegten Reihenfolge
+function AH.Lists()
+    local d = DB()
+    d.fav = CleanIDs(d.fav)
+    local out = { { fav = true, name = L["Favoriten"], items = d.fav } }
+    for _, l in ipairs(d.lists) do out[#out + 1] = l end
+    return out
+end
+
+local function Utf8Len(s) return #(s:gsub("[\128-\191]", "")) end
+
+-- Name prüfen: nicht leer, höchstens 30 Zeichen, keinen anderen Listennamen doppelt (ohne Groß/klein)
+local function CheckName(name, except)
+    name = strtrim(tostring(name or ""))
+    if name == "" then return nil, L["Bitte einen Namen eingeben."] end
+    if Utf8Len(name) > MAX_NAME then return nil, (L["Der Name darf höchstens %d Zeichen haben."]):format(MAX_NAME) end
+    if name:lower() == L["Favoriten"]:lower() then return nil, L["Diese Liste gibt es schon."] end
+    for _, l in ipairs(DB().lists) do
+        if l ~= except and l.name:lower() == name:lower() then return nil, L["Diese Liste gibt es schon."] end
+    end
+    return name
+end
+
+function AH.NewList(name)
+    local ok, why = CheckName(name)
+    if not ok then return nil, why end
+    local l = { name = ok, items = {} }
+    local lists = DB().lists
+    lists[#lists + 1] = l
+    return l
+end
+
+function AH.RenameList(list, name)
+    if not list or list.fav then return nil, L["Die Favoriten lassen sich nicht umbenennen."] end
+    local ok, why = CheckName(name, list)
+    if not ok then return nil, why end
+    list.name = ok
+    return true
+end
+
+function AH.DeleteList(list)
+    if not list or list.fav then return false end
+    local lists = DB().lists
+    for i, l in ipairs(lists) do
+        if l == list then table.remove(lists, i); return true end
+    end
+    return false
+end
+
+-- Item-IDs aus beliebigem Text: Item-Links, Wowhead-Adressen (item=123) und einzelne Zahlen
+function AH.ParseItemIDs(text)
+    local ids, seen = {}, {}
+    local function Add(v)
+        local id = tonumber(v)
+        if id and id >= 1 and id <= MAX_ID and not seen[id] then seen[id] = true; ids[#ids + 1] = id end
+    end
+    if type(text) == "number" then Add(text); return ids end
+    if type(text) ~= "string" then return ids end
+    for id in text:gmatch("item[:=](%d+)") do Add(id) end
+    local rest = text:gsub("|H.-|h.-|h", " "):gsub("item[:=][%-%d:]*", " ")
+    -- nur alleinstehende Zahlen: nicht Teil eines Wortes, keine negativen Zahlen
+    for id in (" " .. rest .. " "):gmatch("[^%w%-](%d+)%f[^%w]") do Add(id) end
+    return ids
+end
+
+-- Items in eine Liste eintragen. Gibt zurück: neu eingetragen, schon vorhanden
+function AH.AddItems(list, text)
+    if not list then return 0, 0 end
+    local added, dup = 0, 0
+    for _, id in ipairs(AH.ParseItemIDs(text)) do
+        if Find(list.items, id) then dup = dup + 1
+        else
+            list.items[#list.items + 1] = id
+            added = added + 1
+            if list.fav then SyncBlizzard(id, true) end
+        end
+    end
+    return added, dup
+end
+
+function AH.RemoveItem(list, id)
+    id = tonumber(id)
+    local i = list and id and Find(list.items, id)
+    if not i then return false end
+    table.remove(list.items, i)
+    if list.fav then SyncBlizzard(id, false) end
+    return true
+end

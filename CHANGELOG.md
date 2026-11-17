@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.23.0
+
+**Deutsch**
+- Auktionshaus: **Favoriten** – der Stern an jeder Zeile unter **Suchen** und in der Kaufansicht merkt ein Item als Favorit (auch in Blizzards eigenen Auktionshaus-Favoriten, wenn das Spiel es zulässt)
+- Neuer Reiter **Einkaufsliste**: links **Favoriten** und deine eigenen Listen (**Neue Liste**, **Umbenennen**, **Liste löschen**; den Namen bestimmst du selbst), rechts die Items der gewählten Liste mit Item-ID und bekanntem Preis. Oben **Item-IDs eintragen** – mehrere mit Komma getrennt, Umschalt+Klick auf ein Item oder ein Wowhead-Link gehen auch. **Suchen** (oder Klick auf die Zeile) öffnet gleich die Kaufansicht des Items, **X** nimmt es aus der Liste
+
+**English**
+- Auction house: **Favorites** – the star on every row under **Search** and in the buy view marks an item as favorite (also in Blizzard's own auction house favorites if the game allows it)
+- New **Shopping list** tab: on the left **Favorites** and your own lists (**New list**, **Rename**, **Delete list**; you pick the name), on the right the items of the chosen list with item ID and known price. At the top **enter item IDs** – separate several with commas, shift-click on an item or a Wowhead link work too. **Search** (or a click on the row) opens the item's buy view right away, **X** removes it from the list
+
 ## 2.22.1
 
 **Deutsch**
