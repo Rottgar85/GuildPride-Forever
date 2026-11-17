@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.23.2
+
+**Deutsch**
+- Discord: Anmeldungen zu einem Event kommen jetzt auch dann in Discord an, wenn beim Anmelder die Discord-Anbindung aus ist – das Spiel des Event-Erstellers gibt sie nach etwa 30 Sekunden weiter (nur wenn sie nicht schon in Discord steht). Dafür muss beim Ersteller die Discord-Anbindung an sein
+
+**English**
+- Discord: event sign-ups now reach Discord even if the signer has the Discord bridge turned off – the event creator's game passes them on after about 30 seconds (only if they are not in Discord yet). The creator needs the Discord bridge turned on
+
 ## 2.23.1
 
 **Deutsch**

@@ -372,10 +372,12 @@ ns.KeyAction(function() return #queue > 0 end, function() Discord.Flush() end)
 -- Zeilen im Chat ausblenden und als gesehen merken
 ---------------------------------------------------------------------
 local AddFilter = ChatFrame_AddMessageEventFilter or (ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter)
+local signSeen = {}   -- Anmelde-Zeilen, die schon in Discord sind (10 Min.), gegen doppeltes Weiterleiten
 local function Filter(_, _, text)
     if not ns.IsBridgeLine(text) then return false end
     NoteEcho(text)
     MarkSeen(text)
+    if SignKey(text) then signSeen[text] = GetTime() end
     for i = #queue, 1, -1 do if queue[i] == text then notBefore[text] = nil; table.remove(queue, i) end end
     return not ShowRaw()
 end
@@ -417,14 +419,47 @@ end
 
 function Discord.SignedUp(e, s)
     if not e or not e.title or not s then return end
+    local _, class = UnitClass("player")
+    Discord.Post(Discord.SignLine(e, ns.Me(), s, class), true)
+end
+
+-- Anmeldung eines anderen zu MEINEM Event weitergeben: Bei vielen ist die
+-- Discord-Anbindung aus (Standard), dann käme ihre Anmeldung nie in Discord an.
+-- Der Ersteller wartet 30–40 s; hat der Anmelder die Zeile inzwischen selbst
+-- gesendet (sie tauchte im Kanal auf), entfällt die Weitergabe. GameBot nimmt
+-- weitergegebene Anmeldungen an, eine doppelte ändert dort nichts.
+local RELAY_HOLD, SIGN_MEMORY = 30, 600
+local function ClassOf(name)
+    if not GetNumGuildMembers then return nil end
+    local want = ns.Normalize and ns.Normalize(name) or name
+    for i = 1, GetNumGuildMembers() do
+        local n, _, _, _, _, _, _, _, _, _, classFile = GetGuildRosterInfo(i)
+        if n and (ns.Normalize and ns.Normalize(n) or n) == want then return classFile end
+    end
+end
+
+function Discord.SignLine(e, name, s, class)
     local parts = {}
     if s.r and ROLE_TEXT[s.r] and s.s ~= "no" then parts[#parts + 1] = ROLE_TEXT[s.r] end
-    local _, class = UnitClass("player")
     if class then parts[#parts + 1] = (LOCALIZED_CLASS_NAMES_MALE and LOCALIZED_CLASS_NAMES_MALE[class]) or class end
     local extra = #parts > 0 and (" (" .. table.concat(parts, ", ") .. ")") or ""
-    Discord.Post(("%s: %s #%s %s%s"):format(Name(ns.Me()), STATUS_TEXT[s.s] or s.s, Discord.ShortId(e.id),
-        Clean(e.title, 40), extra), true)
+    return ("%s: %s #%s %s%s"):format(Name(name), STATUS_TEXT[s.s] or s.s, Discord.ShortId(e.id), Clean(e.title, 40), extra)
 end
+
+function Discord.RelaySign(e, name, s)
+    if not Enabled() or not e or not e.title or not s or not name or name == ns.Me() then return end
+    local line = Discord.SignLine(e, name, s, ClassOf(name))
+    local text = TAG .. " " .. Clean(line, 250)
+    C_Timer.After(RELAY_HOLD + math.random() * 10, function()
+        local t = signSeen[text]
+        if t and GetTime() - t < SIGN_MEMORY then return end
+        -- inzwischen anders entschieden? Dann nur den neuesten Stand weitergeben
+        local cur = e.signups and e.signups[name]
+        if cur and cur.s ~= s.s then return end
+        Discord.Post(line)
+    end)
+end
+Discord._SignSeen = signSeen   -- für Tests
 
 function Discord.EventChanged(e)
     if not e or not e.title then return end

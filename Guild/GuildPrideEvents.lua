@@ -712,7 +712,10 @@ local function ApplySign(id, name, status, ver, role)
     local e = GetOrStub(id)
     if not e then return end
     local cur = e.signups[name]
-    if not cur or ver > cur.v then e.signups[name] = { s = status, v = ver, r = role } end
+    if not cur or ver > cur.v then
+        e.signups[name] = { s = status, v = ver, r = role }
+        return e
+    end
 end
 
 ---------------------------------------------------------------------
@@ -768,7 +771,12 @@ local function OnEventMessage(kind, payload, sender)
     elseif kind == "SGN" then
         local name = Clean(a[2], 60)
         if name == "" or not ns.IsGuildMember(name) then return end
-        ApplySign(id, name, a[3], ns.Stamp(a[4]), a[5])
+        local e = ApplySign(id, name, a[3], ns.Stamp(a[4]), a[5])
+        -- Neue Anmeldung direkt vom Spieler zu meinem Event: an Discord weitergeben
+        -- (seine eigene Discord-Anbindung ist oft aus)
+        if e and e.creator == Me() and ns.IsDirect(sender, name) and ns.Discord and ns.Discord.RelaySign then
+            ns.Discord.RelaySign(e, name, e.signups[name])
+        end
     elseif kind == "REQ" or kind == "EVQ" then
         -- Jemand hat sich eingeloggt bzw. den Reiter Events geöffnet:
         -- kurz zufällig warten, damit nicht alle gleichzeitig antworten

@@ -654,6 +654,39 @@ test("Discord: schnelles Umentscheiden ergibt nur eine Zeile", function()
     GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = nil, nil
 end)
 
+test("Discord: Ersteller gibt fremde Anmeldung weiter, außer sie ist schon in Discord", function()
+    local D = ns.Discord
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = true, true
+    local oldNames = LOCALIZED_CLASS_NAMES_MALE
+    LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Krieger" }
+    local oldRoster = W.roster
+    W.roster = { { W.me, 3 }, { "Anna", 2 } }
+    local out, old = {}, C_ChatInfo.SendChatMessage
+    C_ChatInfo.SendChatMessage = function(text, kind) if kind == "GUILD" then out[#out + 1] = text end end
+    local e = { id = "Tester-1-2", title = "Kara", signups = { Anna = { s = "yes", v = 1, r = "DAMAGER" } } }
+    D.RelaySign(e, "Anna", e.signups.Anna)
+    W.Advance(11); D.Flush()
+    eq(#out, 1, "weitergegeben")
+    eq(out[1], ("[GP] Anna: %s #%s Kara (%s, Krieger)"):format(D.DE and "Zusage" or "Attending", D.ShortId(e.id), D.DE and "DD" or "DPS"))
+    -- schon im Kanal gesehen (Anna hat selbst gesendet): nichts doppelt
+    D._SignSeen[out[1]] = GetTime()
+    D.RelaySign(e, "Anna", e.signups.Anna)
+    W.Advance(11); D.Flush()
+    eq(#out, 1, "nicht doppelt")
+    -- eigene Anmeldung wird nie weitergegeben, ohne Anbindung nichts
+    D.RelaySign(e, ns.Me(), { s = "yes", v = 1 })
+    GuildPrideDB.discordBridge = false
+    D._SignSeen[out[1]] = nil
+    D.RelaySign(e, "Anna", e.signups.Anna)
+    GuildPrideDB.discordBridge = true
+    W.Advance(11); D.Flush()
+    eq(#out, 1, "nichts weiter")
+    C_ChatInfo.SendChatMessage = old
+    LOCALIZED_CLASS_NAMES_MALE = oldNames
+    W.roster = oldRoster
+    GuildPrideDB.discordBridge, GuildPrideDB.discordLinked = nil, nil
+end)
+
 ---------------------------------------------------------------------
 test("Discord: getrennter Kanal ohne Ausweichen in /g, Offiziers-Zeilen nur von Offizieren weitergeben", function()
     local D = ns.Discord
