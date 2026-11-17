@@ -196,6 +196,34 @@ local function CommodityStatus()
     return (st and type(st.Commodity) == "number") and st.Commodity or 2
 end
 
+-- Alle handelbaren Items aus den Taschen, je Item zusammengefasst (Menge über alle Stapel).
+-- loc zeigt auf den ersten Stapel; gebundene, graue und Quest-Items fehlen.
+function AH.BagItems()
+    local out, byKey = {}, {}
+    if not (C_Container and C_Container.GetContainerNumSlots and C_Container.GetContainerItemInfo) then return out end
+    local last = tonumber(NUM_TOTAL_EQUIPPED_BAG_SLOTS) or tonumber(NUM_BAG_SLOTS) or 4
+    for bag = 0, last do
+        for slot = 1, tonumber(C_Container.GetContainerNumSlots(bag)) or 0 do
+            local it = C_Container.GetContainerItemInfo(bag, slot)
+            local link = type(it) == "table" and it.hyperlink
+            local key = type(link) == "string" and not it.isBound and AH.KeyFromLink(link)
+            if key and (byKey[key] or AH.Tradeable(link)) then
+                local e = byKey[key]
+                if not e then
+                    e = { key = key, link = link, itemID = it.itemID, count = 0, icon = it.iconFileID,
+                          name = AH.ItemName(link) or link,
+                          loc = ItemLocation and ItemLocation.CreateFromBagAndSlot and ItemLocation:CreateFromBagAndSlot(bag, slot) }
+                    byKey[key] = e
+                    out[#out + 1] = e
+                end
+                e.count = e.count + (tonumber(it.stackCount) or 1)
+            end
+        end
+    end
+    table.sort(out, function(a, b) return tostring(a.name) < tostring(b.name) end)
+    return out
+end
+
 -- Item aus den Taschen (ItemLocation) zum Verkaufen vorbereiten
 function AH.SellInfo(loc)
     if not loc or not AH.IsModern() or not C_Item or not C_Item.GetItemLink then return nil end

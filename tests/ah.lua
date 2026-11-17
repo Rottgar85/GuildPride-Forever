@@ -460,30 +460,38 @@ return function(test, eq, W, ns)
         Modern(false)
     end)
     W.Load("GuildPrideAHModernUI.lua")
-    test("AH-Forever: Reiter wird beim Öffnen ohne Fehler aufgebaut", function()
+    test("AH-Forever: eigenes Fenster – Knopf neben dem X öffnet und schließt es", function()
         Modern(true)
         AuctionHouseFrame = CreateFrame()
         AuctionHouseFrame.GetFrameLevel = function() return 5 end
-        AuctionHouseFrame.Tabs = { CreateFrame(), CreateFrame() }
-        -- wie im Spiel: die Reiter-Vorlage trägt sich selbst in AuctionHouseFrame.Tabs ein
-        local realCreate = CreateFrame
-        CreateFrame = function(kind, name, parent, tpl)
-            local f = realCreate(kind, name, parent, tpl)
-            if parent == AuctionHouseFrame and kind == "Button" and tpl then table.insert(AuctionHouseFrame.Tabs, f) end
-            return f
-        end
+        AuctionHouseFrame.CloseButton = CreateFrame()
         local before = #W.frames
         W.Fire("AUCTION_HOUSE_SHOW")
         eq(#W.frames > before + 20, true)
-        CreateFrame = realCreate
-        local tab, panel = AH._ModernTab()
-        tab.scripts.OnClick(tab)
-        eq(panel:IsShown(), true, "Klick auf GuildPride zeigt das Fenster")
-        AuctionHouseFrame.Tabs[1].scripts.OnClick(AuctionHouseFrame.Tabs[1])
-        eq(panel:IsShown(), false, "anderer Reiter blendet es aus")
+        local button, win = AH._ModernTab()
+        eq(win:IsShown(), false)
+        button.scripts.OnClick(button)
+        eq(win:IsShown(), true, "Knopf öffnet das GuildPride-Fenster")
+        win.modeSell.scripts.OnClick(win.modeSell)   -- Verkaufen mit Taschen-Liste
+        win.modeScan.scripts.OnClick(win.modeScan)
+        win.modeSearch.scripts.OnClick(win.modeSearch)
         W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
+        button.scripts.OnClick(button)
+        eq(win:IsShown(), false, "zweiter Klick schließt es")
+        button.scripts.OnClick(button)
         W.Fire("AUCTION_HOUSE_CLOSED")
+        eq(win:IsShown(), false, "schließt mit dem Auktionshaus")
         Modern(false)
+    end)
+    test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
+        local old = GetCoinTextureString
+        GetCoinTextureString = nil
+        C_CurrencyInfo = { GetCoinTextureString = function(c) return "cc" .. c end }
+        eq(AH.Money(5), "cc5")
+        C_CurrencyInfo = nil
+        local s = AH.Money(10203)
+        GetCoinTextureString = old
+        eq(type(s), "string"); eq(s:find("UI%-GoldIcon") ~= nil, true); eq(s:find("^1") ~= nil, true)
     end)
     test("AH-Forever: ohne globales GetItemInfo (nur C_Item) kein Fehler", function()
         local oldInfo, oldIcon, oldInstant, oldItem = GetItemInfo, GetItemIcon, GetItemInfoInstant, C_Item
@@ -495,6 +503,28 @@ return function(test, eq, W, ns)
             eq(AH.ItemName(30020), "Item30020")
         end)
         GetItemInfo, GetItemIcon, GetItemInfoInstant, C_Item = oldInfo, oldIcon, oldInstant, oldItem
+        assert(ok, err)
+    end)
+    test("AH-Forever: Taschen-Liste – nur handelbare Items, zusammengefasst", function()
+        local oldC, oldLoc = C_Container, ItemLocation
+        local bags = {
+            [0] = { [1] = { hyperlink = L(30030), stackCount = 5, itemID = 30030 },
+                    [2] = { hyperlink = L(30031), stackCount = 1, itemID = 30031, isBound = true } },
+            [1] = { [3] = { hyperlink = L(30030), stackCount = 15, itemID = 30030 },
+                    [4] = { hyperlink = L(30032), stackCount = 1, itemID = 30032 } },
+        }
+        W.itemInfo[30032] = { quality = 0, bindType = 0, classID = 7, sellPrice = 1 }   -- grau
+        C_Container = {
+            GetContainerNumSlots = function(b) return bags[b] and 4 or 0 end,
+            GetContainerItemInfo = function(b, s) return bags[b] and bags[b][s] end,
+        }
+        ItemLocation = { CreateFromBagAndSlot = function(_, b, s) return { bag = b, slot = s } end }
+        local ok, err = pcall(function()
+            local list = AH.BagItems()
+            eq(#list, 1); eq(list[1].key, "30030"); eq(list[1].count, 20)
+            eq(list[1].loc.bag, 0); eq(list[1].loc.slot, 1)
+        end)
+        C_Container, ItemLocation = oldC, oldLoc
         assert(ok, err)
     end)
 end

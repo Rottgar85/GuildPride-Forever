@@ -210,6 +210,26 @@ function AH.ItemIcon(item)
 end
 function AH.ItemName(item) return (AH.ItemInfo(item)) end
 
+-- Geldbetrag mit Münz-Symbolen. WoW Forever hat kein globales GetCoinTextureString mehr.
+local COIN = "|TInterface\\MoneyFrame\\UI-%sIcon:0:0:2:0|t"
+function AH.Money(copper)
+    copper = math.max(0, math.floor(tonumber(copper) or 0))
+    local fns = { C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString, GetCoinTextureString, GetMoneyString }
+    for i = 1, 3 do
+        local f = fns[i]
+        if type(f) == "function" then
+            local ok, s = pcall(f, copper)
+            if ok and type(s) == "string" then return s end
+        end
+    end
+    local g, s, c = math.floor(copper / 10000), math.floor(copper / 100) % 100, copper % 100
+    local out = {}
+    if g > 0 then out[#out + 1] = g .. COIN:format("Gold") end
+    if s > 0 then out[#out + 1] = s .. COIN:format("Silver") end
+    if c > 0 or #out == 0 then out[#out + 1] = c .. COIN:format("Copper") end
+    return table.concat(out, " ")
+end
+
 -- Neues Auktionshaus (C_AuctionHouse, wie Retail) – WoW Forever nutzt dieses
 function AH.IsModern()
     if IsUsingLegacyAuctionClient and IsUsingLegacyAuctionClient() then return false end

@@ -15,7 +15,7 @@ local sell = { duration = 2 }  -- link, key, name, manual
 
 local function Skin(b) if GP.SkinButton then GP.SkinButton(b) end return b end
 local function EditSkin(e) if GP.SkinEditBox then GP.SkinEditBox(e) end return e end
-local function Money(c) return GetCoinTextureString(math.max(0, math.floor(c or 0))) end
+local function Money(c) return AH.Money(c) end
 
 local function Button(parent, text, w)
     local b = Skin(CreateFrame("Button", nil, parent, "UIPanelButtonTemplate"))
@@ -430,7 +430,7 @@ SlashCmdList.GUILDPRIDE = function(arg)
             .. "  ·  Auctionator: " .. (atr and L["ja"] or L["nein"])
             .. (atr and (" (" .. L["mitlesen: "] .. (AH.Opt("ahReadAuctionator") and L["an"] or L["aus"]) .. ")") or ""))
         local tabState = AH.ModernTabState and AH.ModernTabState()
-        if tabState then AH.Print(L["Reiter „GuildPride“: "] .. tabState) end
+        if tabState then AH.Print(L["GuildPride-Fenster: "] .. tabState) end
     elseif cmd == "ah scan" then
         if AH.AuctionatorLoaded() and not AH.IsModern() then
             AH.Print(L["Auktionshaus: Mit Auctionator bitte dessen Scan nutzen – GuildPride liest mit."])

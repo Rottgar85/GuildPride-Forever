@@ -26,7 +26,7 @@ function AH.TooltipLine(link, count, now, shift)
     local p, t, src = AH.PriceFor(key)
     if not p then return nil end
     count = count or 1
-    local money = GetCoinTextureString(shift and count > 1 and p * count or p)
+    local money = AH.Money(shift and count > 1 and p * count or p)
     if shift and count > 1 then money = money .. " (x" .. count .. ")" end
     local age = Age(math.max(0, (now or GetServerTime()) - t))
     if src == "srv" then age = L["Server, "] .. age end

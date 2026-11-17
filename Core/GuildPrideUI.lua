@@ -1762,7 +1762,7 @@ local options = {
     { key = "layerHelp",     label = L["Anderen mit GuildPride beim Layer-Wechsel helfen (lädt automatisch ein)"],
       public = true, forever = true },
     { header = L["Auktionshaus"] },
-    { key = "ahTab",         label = L["Eigener Reiter „GuildPride“ im Auktionshaus (nach /reload)"] },
+    { key = "ahTab",         label = L["Eigenes Fenster „GuildPride“ im Auktionshaus (Knopf neben dem X, nach /reload)"] },
     { key = "ahTooltip",     label = L["Auktionshauspreis im Item-Tooltip zeigen"] },
     { key = "ahTooltipWithAuctionator", label = L["Tooltip-Preis auch zeigen, wenn Auctionator geladen ist"] },
     { key = "ahShare",       label = L["Auktionshauspreise serverweit teilen (eigener Kanal GPAuktionF)"],

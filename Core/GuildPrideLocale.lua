@@ -922,6 +922,13 @@ local enUS = {
     ["bereit"] = "ready",
     ["unvollständig"] = "incomplete",
     ["Reiter „GuildPride“: "] = "\"GuildPride\" tab: ",
+    ["Deine Taschen (%d)"] = "Your bags (%d)",
+    ["Klick wählt das Item zum Verkaufen."] = "Click picks the item to sell.",
+    ["GuildPride – Auktionshaus"] = "GuildPride – Auction House",
+    ["Suchen, Verkaufen und Scanner im eigenen Fenster."] = "Search, sell and scanner in a window of its own.",
+    ["Auktionshaus: GuildPride-Fenster konnte nicht aufgebaut werden: %s"] = "Auction House: could not build the GuildPride window: %s",
+    ["Eigenes Fenster „GuildPride“ im Auktionshaus (Knopf neben dem X, nach /reload)"] = "Own \"GuildPride\" window in the auction house (button next to the X, after /reload)",
+    ["GuildPride-Fenster: "] = "GuildPride window: ",
 }
 
 -- Fehlende Übersetzung -> deutscher Text als Rückfall
