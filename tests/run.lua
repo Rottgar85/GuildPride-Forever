@@ -307,27 +307,34 @@ test("Berufe: offenes Berufsfenster wird erkannt", function()
     ProfessionsFrame = nil
 end)
 
-test("Tastendruck-Aktion: Tastatur nur, wenn etwas wartet und kein Kampf ist", function()
+test("Tastendruck-Aktion: Tasten weiterreichen schon beim Laden, im Kampf versteckt", function()
     local work, hits, fight = false, 0, false
-    local oldCombat = InCombatLockdown
+    local oldCombat, oldCreate = InCombatLockdown, CreateFrame
+    local calls = {}
+    CreateFrame = function(...)
+        local fr = oldCreate(...)
+        fr.SetPropagateKeyboardInput = function(_, v) calls[#calls + 1] = "propagate" .. tostring(v) end
+        fr.EnableKeyboard = function(_, v) calls[#calls + 1] = "keyboard" .. tostring(v) end
+        return fr
+    end
     InCombatLockdown = function() return fight end
-    local Sync, f = ns.KeyAction(function() return work end, function() hits = hits + 1 end)
-    eq(f.IsListening(), false, "nichts wartet")
-    work = true; Sync()
-    eq(f.IsListening(), true)
-    -- Kampfbeginn: sofort aus, im Kampf wieder einschalten geht nicht
+    local _, f = ns.KeyAction(function() return work end, function() hits = hits + 1 end)
+    CreateFrame = oldCreate
+    eq(calls[1], "propagatetrue", "Weiterreichen zuerst, sofort beim Anlegen")
+    eq(calls[2], "keyboardtrue"); eq(#calls, 2, "danach nie wieder umgestellt")
+    f.scripts.OnKeyDown(f)
+    eq(hits, 0, "nichts wartet")
+    work = true
     f.scripts.OnEvent(f, "PLAYER_REGEN_DISABLED")
-    eq(f.IsListening(), false, "Kampfbeginn")
-    fight = true; Sync()
-    eq(f.IsListening(), false, "im Kampf")
+    eq(f.IsListening(), false, "Kampfbeginn: versteckt")
+    fight = true
     f.scripts.OnKeyDown(f)
     eq(hits, 0, "im Kampf nichts senden")
     fight = false
     f.scripts.OnEvent(f, "PLAYER_REGEN_ENABLED")
     eq(f.IsListening(), true, "nach dem Kampf")
-    work = false
     f.scripts.OnKeyDown(f)
-    eq(hits, 1); eq(f.IsListening(), false, "erledigt: wieder aus")
+    eq(hits, 1); eq(#calls, 2, "Tastatur-Einstellungen unverändert")
     InCombatLockdown = oldCombat
 end)
 

@@ -106,27 +106,27 @@ end
 ns.SEP = "\031"
 
 -- Tastendruck als Spieleraktion (Forever lässt Gildenchat nur aus einer Aktion zu):
--- Ein unsichtbares Fenster hört nur dann auf die Tastatur, wenn etwas wartet
--- (hasWork()) und kein Kampf ist – im Kampf blockiert das Spiel Tastatur-Fenster
--- von Addons („Aktion blockiert“). Die Taste selbst geht normal weiter.
--- Rückgabe: Sync() – nach dem Einreihen aufrufen, damit es sofort bereit ist.
+-- Ein unsichtbares Fenster bekommt jeden Tastendruck mit und reicht ihn weiter.
+-- WICHTIG: Weiterreichen und Tastatur werden nur einmal beim Laden eingestellt –
+-- später gesetzt greift das Weiterreichen im Spiel nicht, dann schluckt das
+-- Fenster ALLE Tasten. Im Kampf wird das Fenster nur versteckt (Kampfbeginn
+-- kommt vor der Kampfsperre) und danach wieder gezeigt.
+-- Rückgabe: Sync (nichts mehr zu tun, für ältere Aufrufer), das Fenster.
 function ns.KeyAction(hasWork, onKey)
     local f = CreateFrame("Frame", nil, UIParent)
-    local on, propagate = false, false
-    local function Sync(fight)
-        local want = (not fight and not InCombatLockdown() and hasWork()) and true or false
-        if want and not propagate then f:SetPropagateKeyboardInput(true); propagate = true end
-        if want ~= on then f:EnableKeyboard(want); on = want end
-    end
+    f:SetPropagateKeyboardInput(true)
+    f:EnableKeyboard(true)
     f:SetScript("OnKeyDown", function()
-        if not InCombatLockdown() then onKey() end
-        Sync()
+        if not InCombatLockdown() and hasWork() then onKey() end
     end)
     f:RegisterEvent("PLAYER_REGEN_DISABLED")
     f:RegisterEvent("PLAYER_REGEN_ENABLED")
-    f:SetScript("OnEvent", function(_, event) Sync(event == "PLAYER_REGEN_DISABLED") end)
-    if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(1, function() Sync() end) end
-    f.Sync, f.IsListening = Sync, function() return on end   -- für Tests
+    f:SetScript("OnEvent", function(_, event)
+        if event == "PLAYER_REGEN_DISABLED" then f:Hide() else f:Show() end
+    end)
+    f:Show()
+    local function Sync() end
+    f.IsListening = function() return f:IsShown() end   -- für Tests
     return Sync, f
 end
 -- WoW Forever: Vor- plus Nachname ist regionsweit eindeutig, ein Realm gehört
