@@ -915,6 +915,13 @@ local enUS = {
     ["Komplett-Scan starten"] = "Start full scan",
     ["Scanner"] = "Scanner",
     ["Eingestellt."] = "Posted.",
+    ["Auktionshaus: Reiter „GuildPride“ konnte nicht aufgebaut werden: %s"] = "Auction House: could not build the \"GuildPride\" tab: %s",
+    ["Fehler: %s"] = "Error: %s",
+    ["noch nicht aufgebaut (Auktionshaus öffnen)"] = "not built yet (open the auction house)",
+    ["offen"] = "open",
+    ["bereit"] = "ready",
+    ["unvollständig"] = "incomplete",
+    ["Reiter „GuildPride“: "] = "\"GuildPride\" tab: ",
 }
 
 -- Fehlende Übersetzung -> deutscher Text als Rückfall

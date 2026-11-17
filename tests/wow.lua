@@ -48,6 +48,14 @@ local function NewFrame()
         self.events[e] = true
     end
     function f:UnregisterEvent(e) self.events[e] = nil end
+    function f:HookScript(k, fn)
+        local old = self.scripts[k]
+        self.scripts[k] = old and function(...) old(...); fn(...) end or fn
+    end
+    function f:Show() self.shown = true end
+    function f:Hide() self.shown = false end
+    function f:SetShown(v) self.shown = v and true or false end
+    function f:IsShown() return self.shown and true or false end
     setmetatable(f, { __index = function() return magic end })
     W.frames[#W.frames + 1] = f
     return f

@@ -8,7 +8,7 @@ local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
 local ROWS, ROW_H = 16, 22
 local DURATIONS = { { 1, "12" }, { 2, "24" }, { 3, "48" } }   -- Blizzard-Dauer-Index → Stunden
 
-local tab, panel
+local tab, panel, setupError
 local mode = "search"            -- "search" | "sell" | "scan"
 local rows, offset = {}, 0
 local sell = { duration = 2 }    -- info, manual, setting, pending
@@ -387,14 +387,17 @@ local function MakeTab()
         ShowPanel()
     end)
     PanelTemplates_DeselectTab(tab)
-    -- Andere Reiter oder Blizzards Ansichtswechsel blenden unseren Reiter aus
-    for _, t in ipairs(tabs) do t:HookScript("OnClick", HidePanel) end
+    -- Andere Reiter oder Blizzards Ansichtswechsel blenden unseren Reiter aus.
+    -- Die Vorlage trägt unseren Reiter selbst in AuctionHouseFrame.Tabs ein: ihn auslassen,
+    -- sonst schließt der Klick auf „GuildPride“ das Fenster sofort wieder.
+    for _, t in ipairs(tabs) do
+        if t ~= tab then t:HookScript("OnClick", HidePanel) end
+    end
     if AuctionHouseFrame.SetDisplayMode then hooksecurefunc(AuctionHouseFrame, "SetDisplayMode", HidePanel) end
     return true
 end
 
-local function Setup()
-    if tab or not AuctionHouseFrame or not AH.IsModern() or not AH.Opt("ahTab") then return end
+local function Build()
     if not MakeTab() then return end
 
     panel = CreateFrame("Frame", nil, AuctionHouseFrame, "BackdropTemplate")
@@ -402,7 +405,9 @@ local function Setup()
     panel:SetPoint("BOTTOMRIGHT", -4, 4)
     panel:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
     panel:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
-    panel:SetFrameLevel(AuctionHouseFrame:GetFrameLevel() + 30)
+    -- Sicher über Blizzards Listen liegen (die haben teils hohe Ebenen)
+    panel:SetFrameStrata("HIGH")
+    panel:SetFrameLevel(AuctionHouseFrame:GetFrameLevel() + 100)
     panel:EnableMouse(true)
     panel:Hide()
     panel.modeSearch = Button(panel, L["Suchen"], 110); panel.modeSearch:SetPoint("TOPLEFT", 14, -10)
@@ -418,6 +423,25 @@ local function Setup()
     ClearSell()
     ShowMode(mode)
 end
+
+local function Setup()
+    if tab or setupError or not AuctionHouseFrame or not AH.IsModern() or not AH.Opt("ahTab") then return end
+    local ok, err = pcall(Build)
+    if not ok then
+        setupError = tostring(err)
+        AH.Print((L["Auktionshaus: Reiter „GuildPride“ konnte nicht aufgebaut werden: %s"]):format(setupError))
+    end
+end
+
+-- Zustand für /gp ah status
+function AH.ModernTabState()
+    if not AH.IsModern() then return nil end
+    if setupError then return (L["Fehler: %s"]):format(setupError) end
+    if not tab then return AH.Opt("ahTab") and L["noch nicht aufgebaut (Auktionshaus öffnen)"] or L["aus"] end
+    return panel and (panel:IsShown() and L["offen"] or L["bereit"]) or L["unvollständig"]
+end
+
+function AH._ModernTab() return tab, panel end   -- für Tests und /gp ah status
 
 -- Nach den anderen Addons (z. B. Auctionator) aufbauen, damit der Reiter ganz rechts sitzt
 AH.Listen("AUCTION_HOUSE_SHOW", function() C_Timer.After(0.2, Setup) end)

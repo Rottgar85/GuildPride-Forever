@@ -429,6 +429,8 @@ SlashCmdList.GUILDPRIDE = function(arg)
         AH.Print((L["Gesendet: %d · Empfangen: %d · Verworfen: %d"]):format(st.sent, st.received, st.dropped)
             .. "  ·  Auctionator: " .. (atr and L["ja"] or L["nein"])
             .. (atr and (" (" .. L["mitlesen: "] .. (AH.Opt("ahReadAuctionator") and L["an"] or L["aus"]) .. ")") or ""))
+        local tabState = AH.ModernTabState and AH.ModernTabState()
+        if tabState then AH.Print(L["Reiter „GuildPride“: "] .. tabState) end
     elseif cmd == "ah scan" then
         if AH.AuctionatorLoaded() and not AH.IsModern() then
             AH.Print(L["Auktionshaus: Mit Auctionator bitte dessen Scan nutzen – GuildPride liest mit."])

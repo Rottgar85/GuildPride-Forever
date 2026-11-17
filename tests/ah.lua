@@ -465,9 +465,22 @@ return function(test, eq, W, ns)
         AuctionHouseFrame = CreateFrame()
         AuctionHouseFrame.GetFrameLevel = function() return 5 end
         AuctionHouseFrame.Tabs = { CreateFrame(), CreateFrame() }
+        -- wie im Spiel: die Reiter-Vorlage trägt sich selbst in AuctionHouseFrame.Tabs ein
+        local realCreate = CreateFrame
+        CreateFrame = function(kind, name, parent, tpl)
+            local f = realCreate(kind, name, parent, tpl)
+            if parent == AuctionHouseFrame and kind == "Button" and tpl then table.insert(AuctionHouseFrame.Tabs, f) end
+            return f
+        end
         local before = #W.frames
         W.Fire("AUCTION_HOUSE_SHOW")
         eq(#W.frames > before + 20, true)
+        CreateFrame = realCreate
+        local tab, panel = AH._ModernTab()
+        tab.scripts.OnClick(tab)
+        eq(panel:IsShown(), true, "Klick auf GuildPride zeigt das Fenster")
+        AuctionHouseFrame.Tabs[1].scripts.OnClick(AuctionHouseFrame.Tabs[1])
+        eq(panel:IsShown(), false, "anderer Reiter blendet es aus")
         W.Fire("AUCTION_HOUSE_BROWSE_RESULTS_UPDATED")
         W.Fire("AUCTION_HOUSE_CLOSED")
         Modern(false)
