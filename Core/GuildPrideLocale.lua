@@ -930,7 +930,6 @@ local enUS = {
     ["Einkaufsliste"] = "Shopping list",
     ["Temporäre Liste"] = "Temporary list",
     ["Abgelaufene"] = "Expired",
-    ["Twinks"] = "Alts",
     ["An Twinks schicken"] = "Send to alts",
     ["Deine anderen Charaktere als Empfänger wählen."] = "Pick one of your other characters as recipient.",
     ["Noch keine Twinks bekannt – logge dich einmal mit jedem Charakter ein."] = "No alts known yet – log in once with each character.",
