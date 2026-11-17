@@ -147,8 +147,15 @@ setmetatable(_G, { __index = function(_, k) if NILS[k] then return nil end retur
 -- Addon laden: wie WoW mit (Name, Namensraum)
 W.ns = { L = setmetatable({}, { __index = function(_, k) return k end }) }
 W.sent = {}
+-- Dateien liegen in Unterordnern: Pfad aus der .toc nehmen
+local PATHS = {}
+for line in io.lines("GuildPrideForever.toc") do
+    local path = line:gsub("\r", "")
+    local name = path:match("([^\\/]+%.lua)$")
+    if name and not path:find("^#") then PATHS[name] = path:gsub("\\", "/") end
+end
 function W.Load(file)
-    local chunk = assert(loadfile(file))
+    local chunk = assert(loadfile(PATHS[file] or file))
     chunk("GuildPrideForever", W.ns)
 end
 function W.Start()

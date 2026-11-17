@@ -1,5 +1,5 @@
 # Baut bei jedem Versions-Tag (z. B. v1.3.0) die ZIP und laedt sie zu CurseForge, Wago und GitHub hoch.
-# Anleitung: VEROEFFENTLICHEN.md
+# Anleitung: docs/VEROEFFENTLICHEN.md
 name: Release
 
 on:
@@ -24,7 +24,7 @@ jobs:
       - name: Lua-Code pruefen
         run: luacheck . --no-color
       - name: Lua kompilieren (u. a. Grenze 200 lokale Variablen)
-        run: for f in *.lua; do luac5.1 -p "$f" || exit 1; done
+        run: for f in $(git ls-files "*.lua"); do luac5.1 -p "$f" || exit 1; done
       - name: Tests
         run: lua5.1 tests/run.lua
       - name: Version passt zu Tag, Changelog und Spiel-Changelog
@@ -32,7 +32,7 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           toc=$(sed -n 's/^## Version: *//p' GuildPrideForever.toc | tr -d '\r')
           log=$(grep -m1 '^## ' CHANGELOG.md | sed 's/^## *//' | tr -d '\r')
-          news=$(grep -m1 -o 'version = "[^"]*"' GuildPrideNewsData.lua | cut -d'"' -f2)
+          news=$(grep -m1 -o 'version = "[^"]*"' Core/GuildPrideNewsData.lua | cut -d'"' -f2)
           echo "Tag $tag · toc $toc · CHANGELOG $log · News $news"
           [ "$tag" = "$toc" ] && [ "$tag" = "$log" ] && [ "$tag" = "$news" ]
 

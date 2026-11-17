@@ -18,4 +18,4 @@ for sec in secs[:6]:
     L.append('      de = { ' + ', '.join(q(x) for x in part('Deutsch')) + ' },')
     L.append('      en = { ' + ', '.join(q(x) for x in part('English')) + ' } },')
 L.append('}')
-open('GuildPrideNewsData.lua', 'w', encoding='utf-8').write('\n'.join(L) + '\n')
+open('Core/GuildPrideNewsData.lua', 'w', encoding='utf-8').write('\n'.join(L) + '\n')

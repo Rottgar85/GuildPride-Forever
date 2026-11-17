@@ -16,6 +16,6 @@ jobs:
       - name: Lua-Code pruefen
         run: luacheck . --no-color
       - name: Lua kompilieren (u. a. Grenze 200 lokale Variablen)
-        run: for f in *.lua; do luac5.1 -p "$f" || exit 1; done
+        run: for f in $(git ls-files "*.lua"); do luac5.1 -p "$f" || exit 1; done
       - name: Tests (Sicherheitsregeln, Ausweis, DKP, Sicherung)
         run: lua5.1 tests/run.lua

@@ -5,7 +5,6 @@ ignore:
   - .github
   - .claude
   - CLAUDE.md
-  - VEROEFFENTLICHEN.md
   - README.md
   - .luacheckrc
   - .githooks
