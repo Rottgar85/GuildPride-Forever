@@ -422,7 +422,10 @@ SlashCmdList.GUILDPRIDE = function(arg)
     local cmd = strtrim(arg or ""):lower()
     if cmd == "ah" then
         AH.Print(L["/gp ah status – Kanal und Zähler · /gp ah scan – ganzes Auktionshaus lesen (offenes AH, ohne Auctionator)"])
-        if AH.IsModern() then AH.Print(L["/gp ah fenster – GuildPride-Fenster öffnen oder schließen (Auktionshaus offen)"]) end
+        if AH.IsModern() then
+            AH.Print(L["/gp ah fenster – GuildPride-Fenster öffnen oder schließen (Auktionshaus offen)"])
+            AH.Print(L["/gp ah aus – nur Blizzards Auktionshaus nutzen · /gp ah an – GuildPride-Fenster wieder nutzen"])
+        end
     elseif cmd == "ah status" then
         local st, id, atr = AH.stats, AH.ChannelId(), AH.AuctionatorLoaded()
         AH.Print(L["Preise teilen: "] .. (AH.Opt("ahShare") and L["an"] or L["aus"])
@@ -432,6 +435,11 @@ SlashCmdList.GUILDPRIDE = function(arg)
             .. (atr and (" (" .. L["mitlesen: "] .. (AH.Opt("ahReadAuctionator") and L["an"] or L["aus"]) .. ")") or ""))
         local tabState = AH.ModernTabState and AH.ModernTabState()
         if tabState then AH.Print(L["GuildPride-Fenster: "] .. tabState) end
+    elseif (cmd == "ah aus" or cmd == "ah off" or cmd == "ah an" or cmd == "ah on") and AH.SetModernUI then
+        local on = cmd == "ah an" or cmd == "ah on"
+        AH.SetModernUI(on)
+        AH.Print(on and L["Auktionshaus: GuildPride-Fenster ist wieder an."]
+            or L["Auktionshaus: GuildPride-Fenster ist aus, du nutzt Blizzards Auktionshaus. Wieder an: /gp ah an"])
     elseif cmd == "ah fenster" or cmd == "ah window" then
         if not (AH.ToggleWindow and AH.ToggleWindow()) then AH.Print(L["Auktionshaus: Erst das Auktionshaus öffnen."]) end
     elseif cmd == "ah scan" then

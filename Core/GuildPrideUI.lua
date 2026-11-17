@@ -125,6 +125,52 @@ close:SetHighlightTexture(MEDIA .. "close_hover")
 close:SetPushedTexture(MEDIA .. "close_hover")
 close:SetScript("OnClick", function() ns.ToggleUI() end)
 
+-- Discord-Support: gut sichtbarer Knopf oben rechts (Platz je Layout in GuildPrideLayout.lua).
+-- WoW kann keine Webseiten öffnen: Klick zeigt den Einladungslink markiert zum Kopieren.
+local DISCORD_URL = "https://discord.gg/nskf5tDTby"
+ns.DISCORD_URL = DISCORD_URL
+StaticPopupDialogs["GUILDPRIDE_DISCORD"] = {
+    text = L["GuildPride Discord Support\n\nStrg+C kopiert den Link, dann im Browser einfügen."],
+    button1 = CLOSE or OKAY,
+    hasEditBox = true, editBoxWidth = 260,
+    OnShow = function(self)
+        local eb = self.editBox or self.EditBox
+        eb:SetText(DISCORD_URL); eb:SetFocus(); eb:HighlightText()
+    end,
+    -- nur lesen: Eingaben sofort zurücksetzen
+    EditBoxOnTextChanged = function(eb)
+        if eb:GetText() ~= DISCORD_URL then eb:SetText(DISCORD_URL); eb:HighlightText() end
+    end,
+    EditBoxOnEnterPressed = function(eb) eb:GetParent():Hide() end,
+    EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
+    timeout = 0, whileDead = true, hideOnEscape = true,
+}
+local discord = CreateFrame("Button", "GuildPrideDiscordButton", frame, "BackdropTemplate")
+discord:SetHeight(22)
+discord:SetPoint("TOPRIGHT", -16, -64)
+discord:SetFrameLevel(frame:GetFrameLevel() + 20)
+discord:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+discord:SetBackdropColor(0.345, 0.396, 0.949, 0.95)   -- Discord-Blau
+discord:SetBackdropBorderColor(1, 1, 1, 0.4)
+local discordText = discord:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
+discordText:SetPoint("CENTER")
+discordText:SetText(L["GuildPride Discord Support"])
+discordText:SetTextColor(1, 1, 1)
+discord:SetWidth(math.max(170, (discordText:GetStringWidth() or 0) + 24))
+local discordHl = discord:CreateTexture(nil, "HIGHLIGHT")
+discordHl:SetAllPoints(); discordHl:SetColorTexture(1, 1, 1, 0.15)
+discord:SetScript("OnClick", function()
+    if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON) end
+    StaticPopup_Show("GUILDPRIDE_DISCORD")
+end)
+discord:SetScript("OnEnter", function(b)
+    GameTooltip:SetOwner(b, "ANCHOR_BOTTOMLEFT")
+    GameTooltip:SetText(L["GuildPride Discord Support"])
+    GameTooltip:AddLine(L["Fragen, Hilfe, Fehler melden und Ideen: Klick zeigt den Einladungslink zum Kopieren."], 1, 1, 1, true)
+    GameTooltip:Show()
+end)
+discord:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
 local function UpdateHeader()
     local guildName = GetGuildInfo("player")
     title:SetText(guildName or L["Keine Gilde"])
@@ -1762,7 +1808,8 @@ local options = {
     { key = "layerHelp",     label = L["Anderen mit GuildPride beim Layer-Wechsel helfen (lädt automatisch ein)"],
       public = true, forever = true },
     { header = L["Auktionshaus"] },
-    { key = "ahTab",         label = L["Eigenes Fenster „GuildPride“ im Auktionshaus (Knopf neben dem X, nach /reload)"] },
+    { key = "ahTab",         label = L["GuildPride-Auktionshaus nutzen (aus = nur Blizzards Auktionshaus)"],
+      changed = function() if ns.AH and ns.AH.SetModernUI then ns.AH.SetModernUI(GuildPrideDB.ahTab) end end },
     { key = "ahTooltip",     label = L["Auktionshauspreis im Item-Tooltip zeigen"] },
     { key = "ahTooltipWithAuctionator", label = L["Tooltip-Preis auch zeigen, wenn Auctionator geladen ist"] },
     { header = L["Gilde"] },
@@ -2293,7 +2340,7 @@ end
 -- Teile des Fensters für die wählbaren Layouts (GuildPrideLayout.lua)
 ns.UIParts = { frame = frame, bg = bg, side = side, header = header, crestGlow = crestGlow,
     factionLogo = factionLogo, versionText = versionText, title = title, subtitle = subtitle,
-    pageTitle = pageTitle, close = close, content = content, tabs = tabs, settings = settings,
+    pageTitle = pageTitle, close = close, discord = discord, content = content, tabs = tabs, settings = settings,
     LayoutTabs = LayoutTabs, MarkTabs = MarkTabs }
 ns.AddTab = AddTab
 ns.SelectTab = SelectTab

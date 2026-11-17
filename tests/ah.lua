@@ -662,6 +662,43 @@ return function(test, eq, W, ns)
         HideUIPanel = nil
         Modern(false)
     end)
+    test("AH-Forever: GuildPride-Auktionshaus lässt sich sofort ausschalten", function()
+        Modern(true)
+        GuildPrideDB.ahBlizzard = nil
+        local scale, alpha = 1, 1
+        AuctionHouseFrame.SetScale = function(_, v) scale = v end
+        AuctionHouseFrame.GetScale = function() return scale end
+        AuctionHouseFrame.SetAlpha = function(_, v) alpha = v end
+        AuctionHouseFrame.GetAlpha = function() return alpha end
+        local closed = 0
+        HideUIPanel = function(f) if f == AuctionHouseFrame then closed = closed + 1 end end
+        W.Fire("AUCTION_HOUSE_SHOW")
+        local button, win = AH._ModernTab()
+        eq(win:IsShown(), true)
+        -- ausschalten, während das Auktionshaus offen ist: sofort Blizzard, AH bleibt offen
+        AH.SetModernUI(false)
+        eq(GuildPrideDB.ahTab, false); eq(win:IsShown(), false); eq(button:IsShown(), false, "kein Knopf")
+        eq(scale, 1); eq(alpha, 1); eq(closed, 0)
+        eq(GuildPrideDB.ahBlizzard ~= true, true, "Ausschalten ist nicht dieselbe Wahl wie der Blizzard-Knopf")
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        W.Fire("AUCTION_HOUSE_SHOW")
+        eq(win:IsShown(), false, "bleibt aus"); eq(scale, 1); eq(button:IsShown(), false)
+        eq(AH.ToggleWindow(), false, "auch /gp ah fenster öffnet nichts")
+        -- wieder einschalten: Knopf ist sofort da, beim nächsten Öffnen kommt GuildPride
+        AH.SetModernUI(true)
+        eq(GuildPrideDB.ahTab, true); eq(button:IsShown(), true); eq(win:IsShown(), false)
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        W.Fire("AUCTION_HOUSE_SHOW")
+        eq(win:IsShown(), true)
+        W.Fire("AUCTION_HOUSE_CLOSED")
+        -- Chatbefehle (stehen in GuildPrideAHUI.lua)
+        SlashCmdList.GUILDPRIDE = SlashCmdList.GUILDPRIDE or function() end
+        W.Load("GuildPrideAHUI.lua")
+        SlashCmdList.GUILDPRIDE("ah aus"); eq(GuildPrideDB.ahTab, false)
+        SlashCmdList.GUILDPRIDE("ah an"); eq(GuildPrideDB.ahTab, true)
+        HideUIPanel = nil
+        Modern(false)
+    end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
         local old = GetCoinTextureString
         GetCoinTextureString = nil

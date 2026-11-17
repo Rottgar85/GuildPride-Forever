@@ -482,6 +482,14 @@ function ns.ApplyLayout(key)
         P.pageTitle:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -48, rail and -22 or -26)
     end
 
+    -- Discord-Knopf oben rechts unter dem Seitentitel, über dem Inhalt
+    if P.discord then
+        P.discord:ClearAllPoints()
+        if isBook then P.discord:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -COVER - 24, -52)
+        elseif rail then P.discord:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -44)
+        else P.discord:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -64) end
+    end
+
     -- Rahmen: Ecken nicht in der Icon-Leiste, Kupferlinien nicht im Buch
     for _, t in ipairs(frame.gpCorners or {}) do t:SetShown(not rail) end
     for _, t in ipairs(frame.gpBorder or {}) do t:SetShown(not isBook) end

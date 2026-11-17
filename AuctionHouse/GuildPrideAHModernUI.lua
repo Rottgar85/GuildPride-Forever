@@ -995,6 +995,7 @@ local function MakeButton()
         GameTooltip:SetOwner(b, "ANCHOR_BOTTOM")
         GameTooltip:SetText(L["GuildPride – Auktionshaus"])
         GameTooltip:AddLine(L["Zum GuildPride-Auktionshaus wechseln."], 1, 1, 1, true)
+        GameTooltip:AddLine(L["Ganz ausschalten: Einstellungen › Auktionshaus oder /gp ah aus."], 0.7, 0.7, 0.7, true)
         GameTooltip:Show()
     end)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1036,6 +1037,7 @@ local function Build()
         GameTooltip:SetOwner(b, "ANCHOR_BOTTOM")
         GameTooltip:SetText(L["Blizzard-Auktionshaus"])
         GameTooltip:AddLine(L["Zurück zu Blizzards Auktionshaus. Der Knopf „GuildPride“ dort bringt dich wieder hierher."], 1, 1, 1, true)
+        GameTooltip:AddLine(L["Ganz ausschalten: Einstellungen › Auktionshaus oder /gp ah aus."], 0.7, 0.7, 0.7, true)
         GameTooltip:Show()
     end)
     panel.blizzard:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1086,17 +1088,32 @@ function AH._ModernTab() return button, panel end   -- für Tests und /gp ah sta
 
 -- /gp ah fenster: Fenster auch ohne Knopf öffnen
 function AH.ToggleWindow()
-    if not AH.IsModern() or not (AuctionHouseFrame and AuctionHouseFrame:IsShown()) then return false end
+    if not AH.IsModern() or not AH.Opt("ahTab") or not (AuctionHouseFrame and AuctionHouseFrame:IsShown()) then return false end
     Setup()
     if not panel then return false end
     if panel:IsShown() then ShowBlizzard() else ShowGuildPride() end
     return true
 end
 
--- Beim Öffnen sofort ersetzen (außer der Spieler hat zuletzt Blizzard gewählt)
+-- Eigenes Fenster an/aus (Einstellungen, /gp ah an|aus) – wirkt sofort, auch bei offenem Auktionshaus.
+-- Aus: Blizzards Auktionshaus ganz ohne GuildPride-Fenster und ohne Knopf. Preise im Tooltip,
+-- Mitlesen und Teilen laufen weiter.
+function AH.SetModernUI(on)
+    if type(GuildPrideDB) == "table" then GuildPrideDB.ahTab = on and true or false end
+    if on then
+        Setup()
+        if button then button:Show() end
+    else
+        if panel and (panel:IsShown() or hidden) then ShowBlizzard(false) end
+        if button then button:Hide() end
+    end
+end
+
+-- Beim Öffnen sofort ersetzen (außer der Spieler hat zuletzt Blizzard gewählt oder es ausgeschaltet)
 local function OnAuctionHouseShow()
     Setup()
-    if panel and not AH.Opt("ahBlizzard") then ShowGuildPride() end
+    if button then button:SetShown(AH.Opt("ahTab") and true or false) end
+    if panel and AH.Opt("ahTab") and not AH.Opt("ahBlizzard") then ShowGuildPride() end
 end
 AH.Listen("AUCTION_HOUSE_SHOW", function()
     if AuctionHouseFrame then OnAuctionHouseShow() else C_Timer.After(0, OnAuctionHouseShow) end

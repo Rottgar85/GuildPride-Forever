@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.22.0
+
+**Deutsch**
+- Neu: Knopf **GuildPride Discord Support** oben rechts im Gildenfenster (in allen Layouts). Ein Klick zeigt den Einladungslink zum Kopieren (Strg+C, dann im Browser einfügen)
+- Auktionshaus: Wer das GuildPride-Fenster nicht möchte, schaltet es unter Einstellungen › Auktionshaus › **GuildPride-Auktionshaus nutzen** oder mit `/gp ah aus` ab – sofort, ohne /reload, auch bei offenem Auktionshaus. Dann gibt es nur Blizzards Auktionshaus ohne GuildPride-Knopf; Preise im Tooltip, Mitlesen und Teilen laufen weiter. `/gp ah an` schaltet es wieder ein. Die Tooltips der Umschaltknöpfe nennen den Weg
+
+**English**
+- New: **GuildPride Discord support** button at the top right of the guild window (in every layout). A click shows the invite link to copy (Ctrl+C, then paste it into your browser)
+- Auction house: if you don't want the GuildPride window, turn it off under Settings › Auction House › **Use the GuildPride auction house** or with `/gp ah off` – right away, without /reload, even with the auction house open. You then get Blizzard's auction house only, without the GuildPride button; tooltip prices, reading along and sharing keep running. `/gp ah on` turns it back on. The switch buttons' tooltips show how
+
 ## 2.21.0
 
 **Deutsch**
