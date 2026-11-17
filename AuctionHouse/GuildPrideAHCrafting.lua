@@ -295,23 +295,61 @@ local function Tip(b, title, text)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
+-- Unterstes sichtbares Material-Feld des gewählten Rezepts (Pflicht- und Zusatz-Zutaten);
+-- darunter kommt die GuildPride-Leiste. Ohne Felder: der Materialien-Block selbst.
+local function LowestReagent(form)
+    if type(form) ~= "table" then return nil end
+    local best, bottom
+    local function Consider(f)
+        if type(f) ~= "table" or type(f.IsShown) ~= "function" or type(f.GetBottom) ~= "function" then return end
+        local ok, shown = pcall(f.IsShown, f)
+        if not ok or not shown then return end
+        local ok2, b = pcall(f.GetBottom, f)
+        if ok2 and type(b) == "number" and (not bottom or b < bottom) then best, bottom = f, b end
+    end
+    if type(form.reagentSlots) == "table" then
+        for _, slots in pairs(form.reagentSlots) do
+            if type(slots) == "table" then for _, s in pairs(slots) do Consider(s) end end
+        end
+    end
+    if not best then Consider(form.OptionalReagents); Consider(form.Reagents) end
+    return best
+end
+
+-- Leiste unter die Materialien hängen (neu, sobald sich das unterste Feld ändert);
+-- findet sich nichts, links neben „Alle herstellen“ wie bisher
+local function PlaceBar()
+    local page = Page()
+    if not bar or not page then return end
+    local target = LowestReagent(page.SchematicForm)
+    if not target and bar.anchor then return end
+    target = target or page.CreateAllButton or page
+    if target == bar.anchor then return end
+    bar.anchor = target
+    bar:ClearAllPoints()
+    if target == page.CreateAllButton then
+        bar:SetPoint("BOTTOMRIGHT", target, "BOTTOMLEFT", -10, 0)
+    elseif target == page then
+        bar:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -330, 10)
+    else
+        bar:SetPoint("TOPLEFT", target, "BOTTOMLEFT", 0, -10)
+    end
+end
+
 local function BuildBar()
     local page = Page()
     if bar or not page then return end
     bar = CreateFrame("Frame", "GuildPrideCraftBar", page)
-    bar:SetSize(250, 22)
-    if type(page.CreateAllButton) == "table" then
-        bar:SetPoint("RIGHT", page.CreateAllButton, "LEFT", -10, 0)
-    else
-        bar:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -330, 10)
-    end
+    bar:SetSize(260, 42)
     bar:SetFrameLevel((page.GetFrameLevel and page:GetFrameLevel() or 1) + 10)
-    bar.listBtn = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
-    bar.listBtn:SetSize(130, 22); bar.listBtn:SetPoint("RIGHT")
-    bar.listBtn:SetText(L["Zur Einkaufsliste"])
+    PlaceBar()
+    -- oben die Zeile mit Kosten und Gewinn, darunter die beiden Knöpfe
     bar.searchBtn = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
-    bar.searchBtn:SetSize(112, 22); bar.searchBtn:SetPoint("RIGHT", bar.listBtn, "LEFT", -6, 0)
+    bar.searchBtn:SetSize(112, 22); bar.searchBtn:SetPoint("BOTTOMLEFT")
     bar.searchBtn:SetText(L["AH: Zutaten"])
+    bar.listBtn = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
+    bar.listBtn:SetSize(130, 22); bar.listBtn:SetPoint("LEFT", bar.searchBtn, "RIGHT", 6, 0)
+    bar.listBtn:SetText(L["Zur Einkaufsliste"])
     if GP.SkinButton then GP.SkinButton(bar.listBtn); GP.SkinButton(bar.searchBtn) end
     bar.searchBtn:SetScript("OnClick", function()
         local ok, why = AH.CraftSearch(AH.CraftCount())
@@ -325,10 +363,11 @@ local function BuildBar()
     -- Kosten und Gewinn des gewählten Rezepts über den Knöpfen; neu gerechnet, wenn ein anderes
     -- Rezept gewählt wird, sonst alle 5 Sekunden (neue Preise)
     bar.info = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.info:SetPoint("BOTTOMRIGHT", bar, "TOPRIGHT", 0, 4)
-    bar.info:SetJustifyH("RIGHT")
+    bar.info:SetPoint("TOPLEFT", bar, "TOPLEFT", 2, 0)
+    bar.info:SetJustifyH("LEFT")
     local last, wait = nil, 0
     bar:SetScript("OnUpdate", function(_, elapsed)
+        PlaceBar()   -- andere Rezepte haben unterschiedlich viele Materialien
         wait = wait - (elapsed or 0)
         local r = AH.CurrentRecipe()
         local id = r and r.id

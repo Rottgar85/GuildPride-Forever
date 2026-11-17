@@ -1091,6 +1091,18 @@ return function(test, eq, W, ns)
         W.Fire("ADDON_LOADED", "Blizzard_Professions")
         local bar = AH._CraftBar()
         eq(bar ~= nil, true)
+        -- mit Material-Feldern: unter das unterste sichtbare
+        local function Slot(b, shown)
+            local s = CreateFrame(); s.shown = shown; s.GetBottom = function() return b end
+            return s
+        end
+        local s1, s2, s3 = Slot(300, true), Slot(240, true), Slot(100, false)
+        ProfessionsFrame.CraftingPage.SchematicForm.reagentSlots = { [1] = { s1, s2 }, [2] = { s3 } }
+        bar.scripts.OnUpdate(bar, 0.1)
+        eq(bar.anchor, s2, "unter dem untersten sichtbaren Material")
+        s3.shown = true
+        bar.scripts.OnUpdate(bar, 0.1)
+        eq(bar.anchor, s3, "anderes Rezept mit mehr Materialien")
         GuildPrideDB.ahLists = nil
         local l = AH.NewList("Schmied")
         bar.listBtn.scripts.OnClick(bar.listBtn)
