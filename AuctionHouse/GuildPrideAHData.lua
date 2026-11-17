@@ -194,6 +194,22 @@ function AH.Listen(event, fn)
     return true
 end
 
+-- Item-Daten: neuere Clients (WoW Forever) haben nur noch C_Item.*, ältere die globalen Funktionen
+function AH.ItemInfo(item)
+    local f = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    if f and item then return f(item) end
+end
+function AH.ItemInfoInstant(item)
+    local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    if f and item then return f(item) end
+end
+function AH.ItemIcon(item)
+    if not item then return nil end
+    if C_Item and C_Item.GetItemIconByID then return C_Item.GetItemIconByID(item) end
+    return GetItemIcon and GetItemIcon(item) or nil
+end
+function AH.ItemName(item) return (AH.ItemInfo(item)) end
+
 -- Neues Auktionshaus (C_AuctionHouse, wie Retail) – WoW Forever nutzt dieses
 function AH.IsModern()
     if IsUsingLegacyAuctionClient and IsUsingLegacyAuctionClient() then return false end

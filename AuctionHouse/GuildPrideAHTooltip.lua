@@ -14,7 +14,7 @@ end
 
 -- Kann das Item überhaupt ins Auktionshaus?
 function AH.Tradeable(link)
-    local _, _, quality, _, _, _, _, _, _, _, sellPrice, classID, _, bindType = GetItemInfo(link)
+    local _, _, quality, _, _, _, _, _, _, _, sellPrice, classID, _, bindType = AH.ItemInfo(link)
     if quality == nil then return false end
     if quality == 0 or bindType == 1 or classID == 12 then return false end
     if (sellPrice or 0) == 0 and not AH.PriceFor(AH.KeyFromLink(link)) then return false end

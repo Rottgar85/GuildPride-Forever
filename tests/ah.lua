@@ -485,4 +485,16 @@ return function(test, eq, W, ns)
         W.Fire("AUCTION_HOUSE_CLOSED")
         Modern(false)
     end)
+    test("AH-Forever: ohne globales GetItemInfo (nur C_Item) kein Fehler", function()
+        local oldInfo, oldIcon, oldInstant, oldItem = GetItemInfo, GetItemIcon, GetItemInfoInstant, C_Item
+        C_Item = { GetItemInfo = oldInfo, GetItemInfoInstant = oldInstant, GetItemIconByID = function() return 123 end }
+        GetItemInfo, GetItemIcon, GetItemInfoInstant = nil, nil, nil
+        local ok, err = pcall(function()
+            eq(AH.Tradeable(L(30020)), true)
+            eq(AH.ItemIcon(30020), 123)
+            eq(AH.ItemName(30020), "Item30020")
+        end)
+        GetItemInfo, GetItemIcon, GetItemInfoInstant, C_Item = oldInfo, oldIcon, oldInstant, oldItem
+        assert(ok, err)
+    end)
 end

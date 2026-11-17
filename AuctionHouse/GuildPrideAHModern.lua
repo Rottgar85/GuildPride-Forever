@@ -179,7 +179,7 @@ function AH.BrowseRows()
             rows[#rows + 1] = {
                 result = b, itemKey = k, key = AH.Key(k.itemID, k.itemSuffix),
                 min = b.minPrice, qty = b.totalQuantity or 0, mine = b.containsOwnerItem and true or false,
-                name = info and info.itemName or GetItemInfo(k.itemID),
+                name = info and info.itemName or AH.ItemName(k.itemID),
                 icon = info and info.iconFileID, quality = info and info.quality,
             }
         end

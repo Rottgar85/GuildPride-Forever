@@ -97,7 +97,7 @@ end
 local function KnownItem(k)
     local id = tonumber(k:match("^(%d+)"))
     if not id or id < 1 then return false end
-    if GetItemInfoInstant then return GetItemInfoInstant(id) ~= nil end
+    if (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant then return AH.ItemInfoInstant(id) ~= nil end
     return true
 end
 local function Int(v, lo, hi)

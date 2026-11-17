@@ -183,7 +183,7 @@ RefreshList = function()
         row.entry = e
         if not e then row:Hide() else
             row:Show()
-            row.icon:SetTexture(e.link and GetItemIcon and GetItemIcon(e.link) or nil)
+            row.icon:SetTexture(AH.ItemIcon(e.link))
             if e.offer then
                 local o = e.offer.o
                 row.name:SetText(("%s  x%d"):format(e.name, o.count))
@@ -247,7 +247,7 @@ local function LoadSellItem()
     end
     if sell.name == name then UpdateDeposit(); return end   -- dasselbe Item: Eingaben behalten
     -- Item kam über Blizzards Feld statt über unseres: Link passt nicht → nur Item-ID
-    if sell.link and GetItemInfo(sell.link) ~= name then sell.link = nil end
+    if sell.link and AH.ItemName(sell.link) ~= name then sell.link = nil end
     if not sell.link then sell.key = itemID and AH.Key(itemID) or nil end
     sell.name = name
     s.item.icon:SetTexture(tex)

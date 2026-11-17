@@ -53,7 +53,7 @@ local function RefreshList()
         row.entry = e
         if not e then row:Hide() else
             row:Show()
-            row.icon:SetTexture(e.icon or (GetItemIcon and GetItemIcon(e.itemKey.itemID)) or nil)
+            row.icon:SetTexture(e.icon or AH.ItemIcon(e.itemKey.itemID))
             local color = e.quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[e.quality]
             row.name:SetText(e.name or ("#" .. e.itemKey.itemID))
             if color then row.name:SetTextColor(color.r, color.g, color.b) else row.name:SetTextColor(1, 1, 1) end
@@ -197,7 +197,7 @@ local function DropItem()
     local s = panel.sell
     sell.info, sell.manual = info, nil
     AH.lastSeen[info.key] = nil          -- nur frische Angebote zählen
-    s.item.icon:SetTexture(GetItemIcon and GetItemIcon(info.itemID) or nil)
+    s.item.icon:SetTexture(AH.ItemIcon(info.itemID))
     s.itemName:SetText(info.link or ("#" .. info.itemID))
     if info.commodity then
         s.qtyRow:Show()
