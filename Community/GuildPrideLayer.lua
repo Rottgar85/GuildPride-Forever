@@ -37,15 +37,45 @@ local function Observe(unit)
     if UnitPlayerControlled and UnitPlayerControlled(unit) then return end
     local map, changed = MapId(), Layer.id ~= zoneUID
     Layer.id, Layer.map, Layer.at = zoneUID, map, GetTime()
+    -- Schiffs-Zähler: Entstehungszeit der Kreatur, daraus der Start dieses Layers
+    if map and ns.Transit and ns.Transit.SawCreature then ns.Transit.SawCreature(guid, map .. "." .. zoneUID) end
     if changed and Layer.OnChange then Layer.OnChange() end
     if changed and Layer.Share then Layer.Share() end
 end
 
+-- Weitere Quellen für den Layer, ohne dass man etwas anvisieren muss:
+-- weiches Ziel (Interaktion, Gegner, Freund), NPC im Gespräch (Händler, Flugmeister, Quest)
+local SOFT = { PLAYER_SOFT_INTERACT_CHANGED = "softinteract", PLAYER_SOFT_ENEMY_CHANGED = "softenemy",
+               PLAYER_SOFT_FRIEND_CHANGED = "softfriend" }
+local NPC_EVENTS = { GOSSIP_SHOW = true, MERCHANT_SHOW = true, QUEST_DETAIL = true, QUEST_GREETING = true,
+                     QUEST_PROGRESS = true, TAXIMAP_OPENED = true, BANKFRAME_OPENED = true, TRAINER_SHOW = true }
+
+-- Layer noch unbekannt: sichtbare Namensplaketten und Ziele der Gruppe durchsehen
+local function Scan()
+    if Layer.id or IsInInstance() then return end
+    for i = 1, 40 do
+        local u = "nameplate" .. i
+        if UnitExists(u) then Observe(u); if Layer.id then return end end
+    end
+    for i = 1, 4 do
+        local u = "party" .. i .. "target"
+        if UnitExists(u) then Observe(u); if Layer.id then return end end
+    end
+    for _, u in pairs(SOFT) do if UnitExists(u) then Observe(u) end end
+end
+Layer._Scan = Scan   -- für Tests
+if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(5, Scan) end
+
 local watch = CreateFrame("Frame")
 ns.RegisterEvents(watch, "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED",
-    "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE", "PARTY_INVITE_REQUEST")
+    "ZONE_CHANGED_NEW_AREA", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE", "PARTY_INVITE_REQUEST",
+    "PLAYER_SOFT_INTERACT_CHANGED", "PLAYER_SOFT_ENEMY_CHANGED", "PLAYER_SOFT_FRIEND_CHANGED",
+    "GOSSIP_SHOW", "MERCHANT_SHOW", "QUEST_DETAIL", "QUEST_GREETING", "QUEST_PROGRESS", "TAXIMAP_OPENED",
+    "BANKFRAME_OPENED", "TRAINER_SHOW")
 watch:SetScript("OnEvent", function(_, event, unit)
-    if event == "PARTY_INVITE_REQUEST" then
+    if SOFT[event] then Observe(SOFT[event])
+    elseif NPC_EVENTS[event] then Observe("npc")
+    elseif event == "PARTY_INVITE_REQUEST" then
         if Layer.OnInvite then Layer.OnInvite(unit) end
     elseif event == "PLAYER_TARGET_CHANGED" then Observe("target")
     elseif event == "UPDATE_MOUSEOVER_UNIT" then Observe("mouseover")
@@ -55,6 +85,7 @@ watch:SetScript("OnEvent", function(_, event, unit)
     else
         -- neue Zone: alte Layer-Zahl gilt dort nicht mehr
         Layer.id, Layer.map = nil, nil
+        if C_Timer and C_Timer.After then C_Timer.After(2, Scan) end
         -- der Gilde die neue Zone melden (Layer noch unbekannt)
         C_Timer.After(3, function() if Layer.Share then Layer.Share() end end)
     end
@@ -160,7 +191,9 @@ end
 -- Nachrichten (offener Kanal + Flüstern, auch von Nicht-Mitgliedern)
 ---------------------------------------------------------------------
 local function Available()
-    return ns.IS_FOREVER and ns.PublicChannelId and ns.PublicChannelId() and not ns.PUBLIC_VIA_CHAT
+    -- Layer-Wechsel gehört zur Gruppensuche: nur mit „Serverweite Gruppensuche“ an
+    return ns.IS_FOREVER and ns.PublicLFGOn and ns.PublicLFGOn() and ns.PublicChannelId and ns.PublicChannelId()
+        and not ns.PUBLIC_VIA_CHAT
 end
 
 local function Send(kind, to, ...)

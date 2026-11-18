@@ -5,6 +5,8 @@
 -- die mittlere Wartezeit (gemessen wird beim Mitfahren, siehe GuildPrideTransit.lua).
 -- Symbole: Media/transit_boat.tga und transit_zeppelin.tga aus Polestar (GPL-3.0-only).
 -- Aus: Einstellungen › „Schiffs-Zähler am Anleger zeigen“. X blendet es aus, bis du den Anleger verlässt.
+-- Die Uhr an einer Karte erinnert 1 Minute vor der Abfahrt (Raid-Warnung und Ton), auch wenn du
+-- inzwischen woanders bist.
 local ADDON, GP = ...
 local T = GP.Transit
 local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
@@ -20,7 +22,9 @@ local ICON = { boat = MEDIA .. "transit_boat", zeppelin = MEDIA .. "transit_zepp
 local TINT = { boat = { 0.45, 0.75, 1 }, zeppelin = { 1, 0.78, 0.35 }, airship = { 1, 0.78, 0.35 } }
 local GREEN, GOLD, GREY = { 0.35, 0.95, 0.45 }, { 1, 0.82, 0.2 }, { 0.6, 0.6, 0.6 }
 
+local REMIND_LEAD = 60   -- s vor der Abfahrt erinnern
 local frame, dismissed, lastKey
+T.reminders = {}        -- ["id|side"] = { id, side, kind, to, skipUntil }
 local function Enabled() return not (type(GuildPrideDB) == "table" and GuildPrideDB.transitUI == false) end
 
 -- Text unter dem Ziel (Zeile 2 der Karte)
@@ -76,9 +80,25 @@ local function MakeRow(i)
     r.icon = r:CreateTexture(nil, "ARTWORK", nil, 2)
     r.icon:SetSize(30, 30); r.icon:SetPoint("CENTER", r.iconBg, "CENTER")
     r.to = Text(r, "GameFontNormal", 1, 1, 1)
-    r.to:SetPoint("TOPLEFT", 50, -8); r.to:SetPoint("RIGHT", -84, 0)
+    r.to:SetPoint("TOPLEFT", 50, -8); r.to:SetPoint("RIGHT", -92, 0)
     r.status = Text(r, "GameFontHighlightSmall")
     r.status:SetPoint("TOPLEFT", 50, -25); r.status:SetPoint("RIGHT", -84, 0)
+    -- Erinnerung: 1 Min. vor der Abfahrt Bescheid geben
+    r.bell = CreateFrame("Button", nil, r)
+    r.bell:SetSize(16, 16); r.bell:SetPoint("TOPRIGHT", -68, -7)
+    r.bell.icon = r.bell:CreateTexture(nil, "ARTWORK")
+    r.bell.icon:SetAllPoints(); r.bell.icon:SetTexture("Interface\\Icons\\INV_Misc_PocketWatch_01")
+    r.bell:SetScript("OnClick", function()
+        if r.dock then T.ToggleReminder(r.dock); T.UpdateWindow() end
+    end)
+    r.bell:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L["Erinnern"], 1, 1, 1)
+        GameTooltip:AddLine(L["1 Minute vor der Abfahrt mit Raid-Warnung und Ton Bescheid geben – auch wenn du nicht mehr am Anleger bist."],
+            0.8, 0.8, 0.8, true)
+        GameTooltip:Show()
+    end)
+    r.bell:SetScript("OnLeave", function() GameTooltip:Hide() end)
     r.clock = Text(r, "GameFontNormalLarge"); r.clock:SetJustifyH("RIGHT")
     r.clock:SetPoint("TOPRIGHT", -10, -7)
     r.clockLabel = Text(r, "GameFontDisableSmall"); r.clockLabel:SetJustifyH("RIGHT")
@@ -144,6 +164,8 @@ end
 -- Stammt die Messung von deinem Layer?
 function T.LayerText(b)
     if not b or not b.timed then return "" end
+    if b.guess then return L["|cffaaaaaavermutet (wie letzte Woche)|r"] end
+    if b.estimated then return L["|cff66ccffgeschätzt für deinen Layer|r"] end
     if b.layer == true then return L["|cff40ff40dein Layer|r"] end
     if not b.layerKnown then return L["|cffaaaaaaLayer ?|r"] end
     return L["|cffffaa00evtl. anderer Layer|r"]
@@ -166,18 +188,60 @@ local function DrawRow(r, d, b)
         else
             text = (L["danach in %s"]):format(T.Countdown(b.nextIn))
         end
-        -- wie alt die Messung ist und ob sie von deinem Layer stammt
-        r.status:SetText(text .. " |cff888888· " .. T.AgeText(b) .. "|r · " .. T.LayerText(b))
+        -- wie alt die Messung ist, ob sie von deinem Layer stammt und wie viele sie bestätigt haben
+        local info = (b.guess or b.estimated) and "" or (" |cff888888· " .. T.AgeText(b) .. "|r")
+        r.status:SetText(text .. info .. " · " .. T.LayerText(b) .. T.ConfirmText(b))
     elseif b and b.otherLayer then
         r.status:SetText(L["|cffaaaaaaauf deinem Layer noch nicht gemessen|r"])
     else
         r.status:SetText(L["|cffaaaaaanoch nicht gemessen|r"])
     end
+    local on = T.reminders[d.id .. "|" .. d.side] ~= nil
+    r.bell:SetShown(b and b.timed and true or false)
+    r.bell.icon:SetDesaturated(not on); r.bell:SetAlpha(on and 1 or 0.45)
     r.fill = fill
     r.bar:SetColorTexture(color[1], color[2], color[3], 0.85)
     r.bar:SetWidth(math.max(1, (WIDTH - 23) * fill))
     r.bar:SetShown(fill > 0)
     r:Show()
+end
+
+-- „· 3× bestätigt“: so viele haben die Zeit selbst gemessen
+function T.ConfirmText(b)
+    if not b or not b.timed or b.guess or b.estimated or (b.confirmed or 1) < 2 then return "" end
+    return (L[" |cff888888· %d× bestätigt|r"]):format(b.confirmed)
+end
+
+-- Erinnerung an/aus für eine Karte (d aus T.DocksNear)
+function T.ToggleReminder(d, now)
+    local key = d.id .. "|" .. d.side
+    if T.reminders[key] then T.reminders[key] = nil; return false end
+    now = now or T.Now()
+    local b = T.Board(d.id, d.side, now)
+    if not (b and b.timed) then return false end
+    -- legt es gleich ab? Dann an die nächste Abfahrt erinnern
+    local skip = b.departIn <= REMIND_LEAD and (now + b.departIn + 1) or nil
+    T.reminders[key] = { id = d.id, side = d.side, kind = d.kind, to = d.to, skipUntil = skip }
+    if GP.Print then GP.Print((L["Schiffs-Zähler: Erinnerung 1 Min. vor der Abfahrt nach %s."]):format(tostring(d.to))) end
+    return true
+end
+
+-- Jede halbe Sekunde: fällige Erinnerungen auslösen
+function T.CheckReminders(now)
+    now = now or T.Now()
+    for key, rm in pairs(T.reminders) do
+        local b = (not rm.skipUntil or now >= rm.skipUntil) and T.Board(rm.id, rm.side, now)
+        if b and b.timed and b.departIn <= REMIND_LEAD then
+            T.reminders[key] = nil
+            local text = (L["%s nach %s legt in %d Sek. ab!"]):format(KIND[rm.kind] or KIND.boat, tostring(rm.to),
+                math.max(0, math.floor(b.departIn)))
+            if RaidNotice_AddMessage and RaidWarningFrame then
+                RaidNotice_AddMessage(RaidWarningFrame, text, ChatTypeInfo and ChatTypeInfo["RAID_WARNING"] or { r = 1, g = 0.3, b = 0.1 })
+            end
+            if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING) end
+            if GP.Print then GP.Print(text) end
+        end
+    end
 end
 
 -- Neu zeichnen; docks = T.DocksNear(...)
@@ -250,5 +314,7 @@ T.onChanged = function() if frame and frame:IsShown() then T.UpdateWindow() end 
 if C_Timer and C_Timer.NewTicker then
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("PLAYER_LOGIN")
-    ev:SetScript("OnEvent", function() C_Timer.NewTicker(0.5, function() T.UpdateWindow() end) end)
+    ev:SetScript("OnEvent", function()
+        C_Timer.NewTicker(0.5, function() T.UpdateWindow(); T.CheckReminders() end)
+    end)
 end

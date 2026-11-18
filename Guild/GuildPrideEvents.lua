@@ -240,8 +240,10 @@ local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
 -- Für /gp server status: gesendet, letztes Sende-Ergebnis, empfangen
 ns.publicStats = { sent = 0, received = 0, echo = 0 }
 
+-- Offener Kanal: für die Gruppensuche (Schalter) und in WoW Forever immer für die
+-- Schiffs-Zähler. Gruppensuche und Layer-Wechsel prüfen den Schalter selbst (PublicLFGOn).
 function ns.PublicChannelId()
-    if not ns.PublicLFGOn() then return end
+    if not ns.PublicChannelWanted() then return end
     local id = GetChannelName(PublicChannel())
     return id and id > 0 and id or nil
 end
@@ -260,22 +262,31 @@ function ns.UpdatePublicChannel(farewell)
     if not joinReady then return end
     local name = PublicChannel()
     local joined = GetChannelName(name) > 0
-    if ns.PublicLFGOn() and not joined then
+    local function SendFarewell()
+        if not farewell or not joined then return end
+        if ns.PUBLIC_VIA_CHAT then SendChat((farewell:gsub(SEP, "~")), "CHANNEL", nil, (GetChannelName(name)))
+        else ns.SendAddonMsg(PREFIX, farewell, "CHANNEL", (GetChannelName(name))) end
+    end
+    if ns.PublicChannelWanted() and not joined then
         if JoinTemporaryChannel then JoinTemporaryChannel(name) end
         -- Kein Platz mehr (höchstens 10 eigene Kanäle)? Einmal Bescheid geben
         C_Timer.After(5, function()
-            if ns.PublicLFGOn() and GetChannelName(name) == 0 and not publicWarned then
+            if ns.PublicChannelWanted() and GetChannelName(name) == 0 and not publicWarned then
                 publicWarned = true
                 ns.Print(L["Serverweite Gruppensuche: Kanal konnte nicht betreten werden (zu viele Chatkanäle?)."])
             end
         end)
-    elseif not ns.PublicLFGOn() and joined then
+    elseif not ns.PublicChannelWanted() and joined then
         wipe(publicQueue)
-        if farewell then
-            if ns.PUBLIC_VIA_CHAT then SendChat((farewell:gsub(SEP, "~")), "CHANNEL", nil, (GetChannelName(name)))
-            else ns.SendAddonMsg(PREFIX, farewell, "CHANNEL", (GetChannelName(name))) end
-        end
+        SendFarewell()
         if LeaveChannelByName then LeaveChannelByName(name) end
+    elseif joined and not ns.PublicLFGOn() then
+        -- Gruppensuche aus, Kanal bleibt für die Schiffs-Zähler: nur Gruppensuche-Einträge
+        -- aus der Warteschlange nehmen und den eigenen Eintrag zurückziehen
+        for i = #publicQueue, 1, -1 do
+            if publicQueue[i].kind:sub(1, 2) ~= "TP" then table.remove(publicQueue, i) end
+        end
+        SendFarewell()
     end
 end
 
@@ -587,7 +598,9 @@ end
 
 local function SendEvent(e, target)
     -- rep: Wiederholung in Tagen (7 = jede Woche); ältere Versionen ignorieren das Feld
-    Queue("EVT", target, e.id, e.t, e.title, e.desc, e.creator, e.ver, e.note or "", e.rep or 0)
+    -- kind/inst: Dungeon oder Raid (GuildPrideInstances.lua), ebenso nur bei neueren Versionen
+    Queue("EVT", target, e.id, e.t, e.title, e.desc, e.creator, e.ver, e.note or "", e.rep or 0,
+        e.kind or "", e.inst or "")
 end
 local function SendDelete(e, target) Queue("DEL", target, e.id, e.ver) end
 local function SendSign(id, name, s, target) Queue("SGN", target, id, name, s.s, s.v, s.r or "") end
@@ -679,7 +692,8 @@ local function GetOrStub(id)
     return e
 end
 
-local function ApplyEvent(id, t, title, desc, creator, ver, note, fromOther, rep)
+-- kind/inst: nil = unverändert lassen (Nachricht einer älteren Version), "" = keine Instanz
+local function ApplyEvent(id, t, title, desc, creator, ver, note, fromOther, rep, kind, inst)
     local e = GetOrStub(id)
     if not e or ver <= e.ver then return end
     local isNew = not e.title
@@ -690,6 +704,10 @@ local function ApplyEvent(id, t, title, desc, creator, ver, note, fromOther, rep
     e.title, e.desc, e.creator, e.ver, e.deleted = title, desc, creator, ver, nil
     e.note = note or ""
     e.rep = (rep and rep > 0) and rep or nil
+    if kind ~= nil then
+        local x = ns.Instances and ns.Instances.Find(kind, inst)
+        e.kind, e.inst = x and x.kind or nil, x and x.key or nil
+    end
     if isNew and fromOther then
         ns.Print((L["Neues Gildenevent: |cffffd100%s|r am %s"]):format(title, ns.FormatDate(t, "short")))
         -- Noch nicht gesehen: Hinweisfenster und Markierung am Reiter
@@ -765,7 +783,7 @@ local function OnEventMessage(kind, payload, sender)
     if kind == "EVT" then
         local rep = tonumber(a[8]) or 0
         ApplyEvent(id, ns.Num(a[2], 0, 2 ^ 31) or 0, Clean(a[3], 40), Clean(a[4], 120), Clean(a[5], 60),
-            ns.Stamp(a[6]), Clean(a[7], 100), true, (rep == 7) and 7 or 0)
+            ns.Stamp(a[6]), Clean(a[7], 100), true, (rep == 7) and 7 or 0, a[9] and Clean(a[9], 10), a[10] and Clean(a[10], 20))
     elseif kind == "DEL" then
         ApplyDelete(id, ns.Stamp(a[2]))
     elseif kind == "SGN" then
@@ -792,10 +810,10 @@ end
 ---------------------------------------------------------------------
 -- Aktionen
 ---------------------------------------------------------------------
-local function CreateEvent(title, t, desc, rep)
+local function CreateEvent(title, t, desc, rep, kind, inst)
     local e = GetOrStub(Me() .. "-" .. Now() .. "-" .. math.random(1000, 9999))
     if not e then return end
-    ApplyEvent(e.id, t, Clean(title, 40), Clean(desc, 120), Me(), Now(), nil, nil, rep)
+    ApplyEvent(e.id, t, Clean(title, 40), Clean(desc, 120), Me(), Now(), nil, nil, rep, kind or "", inst or "")
     SendEvent(e)
     if ns.Discord then ns.Discord.EventCreated(e) end
     ns.RefreshUI()
@@ -825,8 +843,9 @@ function ns.RollEvents()
 end
 
 -- Titel, Zeit, Beschreibung oder Wiederholung ändern (Ersteller oder Offizier)
-local function EditEvent(e, title, t, desc, rep)
-    ApplyEvent(e.id, t, Clean(title, 40), Clean(desc, 120), e.creator, math.max(Now(), e.ver + 1), e.note, nil, rep)
+local function EditEvent(e, title, t, desc, rep, kind, inst)
+    ApplyEvent(e.id, t, Clean(title, 40), Clean(desc, 120), e.creator, math.max(Now(), e.ver + 1), e.note, nil, rep,
+        kind or "", inst or "")
     e.t = t
     e.reminded = nil
     SendEvent(e)
@@ -1026,6 +1045,9 @@ for i = 1, ROWS do
     b.title:SetPoint("LEFT", 110, 0)
     b.info = b:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
     b.info:SetPoint("RIGHT", -6, 0)
+    -- Spalte Dungeon/Raid mit Gruppengröße
+    b.kind = b:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+    b.kind:SetPoint("RIGHT", -100, 0); b.kind:SetWidth(110); b.kind:SetJustifyH("LEFT")
     b:SetScript("OnClick", function(self) selected = self.event and self.event.id; page:Refresh() end)
     rows[i] = b
 end
@@ -1223,9 +1245,19 @@ bRecord:SetScript("OnClick", function() if Sel() then RecordAttendance(Sel()) en
 
 -- Aufstellung: bis 5 Spieler 1/1/3, sonst Schlachtzug mit 2 Tanks und
 -- einem Heiler je 5 Spieler
-local function Lineup(roleCount, total)
+-- Dungeon/Raid eines Events (nil bei normalen Events)
+local function InstOf(e) return e and ns.Instances and ns.Instances.Find(e.kind, e.inst) end
+local KIND_COLOR = { dungeon = "|cff66ccff", raid = "|cffff8040" }
+local function KindCell(e)
+    local x = InstOf(e)
+    if not x then return "|cff888888" .. L["Event"] .. "|r" end
+    return ("%s%s|r |cff999999· %d|r"):format(KIND_COLOR[x.kind], ns.Instances.KindLabel(x.kind), x.size)
+end
+
+local function Lineup(roleCount, total, size)
     local need
-    if total <= 5 then need = { TANK = 1, HEALER = 1, DAMAGER = 3 }
+    if size then need = ns.Instances.Need(size); total = size
+    elseif total <= 5 then need = { TANK = 1, HEALER = 1, DAMAGER = 3 }
     else
         local heal = math.ceil(total / 5)
         need = { TANK = 2, HEALER = heal, DAMAGER = math.max(total - 2 - heal, 0) }
@@ -1279,6 +1311,7 @@ function page:Refresh()
             local mine = e.signups[Me()]
             b.when:SetText(ns.FormatDate(e.t, "short"))
             b.title:SetText(e.title .. (e.rep and ("  |cff999999(" .. L["jede Woche"] .. ")|r") or ""))
+            b.kind:SetText(KindCell(e))
             b.info:SetText(("%s%d|r / %s%d|r%s"):format(STATUS.yes.color, c.yes, STATUS.maybe.color, c.maybe,
                 mine and ("  " .. STATUS[mine.s].color .. "●|r") or ""))
             b.bg:SetColorTexture(1, 0.82, 0, e.id == selected and 0.18 or (i % 2 == 0 and 0.04 or 0))
@@ -1317,6 +1350,11 @@ function page:Refresh()
     if e.note and e.note ~= "" then
         descText = descText .. L["\n|cffff7d0aOffiziers-Notiz:|r "] .. e.note
     end
+    local inst = InstOf(e)
+    if inst then
+        descText = ("%s%s: %s|r · %s · %s\n"):format(KIND_COLOR[inst.kind], ns.Instances.KindLabel(inst.kind), inst.name,
+            (L["%d Spieler"]):format(inst.size), (L["Stufe %s"]):format(inst.level)) .. descText
+    end
     dDesc:SetText(descText)
     bNote:SetShown(CanManage())
     bInvite:SetShown(CanManage())
@@ -1343,7 +1381,7 @@ function page:Refresh()
             ROLES.TANK.color, roleCount.TANK, ROLES.HEALER.color, roleCount.HEALER,
             ROLES.DAMAGER.color, roleCount.DAMAGER),
     }
-    if #groups.yes > 0 then lines[#lines + 1] = Lineup(roleCount, #groups.yes) end
+    if #groups.yes > 0 or inst then lines[#lines + 1] = Lineup(roleCount, #groups.yes, inst and inst.size) end
     for _, key in ipairs({ "yes", "maybe", "no" }) do
         table.sort(groups[key])
         lines[#lines + 1] = ("%s%s (%d):|r %s"):format(STATUS[key].color, STATUS[key].label, #groups[key],
@@ -1356,7 +1394,7 @@ end
 -- Dialog: Event erstellen
 ---------------------------------------------------------------------
 local dlg = CreateFrame("Frame", "GuildPrideCreateEvent", UIParent, "BackdropTemplate")
-dlg:SetSize(360, 290)
+dlg:SetSize(360, 330)
 dlg:SetPoint("CENTER")
 dlg:SetFrameStrata("DIALOG")
 dlg:EnableMouse(true)
@@ -1392,11 +1430,71 @@ for i, eb in ipairs(order) do
     eb:SetScript("OnTabPressed", function() order[i % #order + 1]:SetFocus() end)
 end
 local fRepeat = CreateFrame("CheckButton", nil, dlg, "UICheckButtonTemplate")
-fRepeat:SetSize(24, 24); fRepeat:SetPoint("TOPLEFT", 24, -170)
+fRepeat:SetSize(24, 24); fRepeat:SetPoint("TOPLEFT", 24, -210)
 local fRepeatText = dlg:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
 fRepeatText:SetPoint("LEFT", fRepeat, "RIGHT", 2, 0); fRepeatText:SetText(L["Jede Woche wiederholen"])
 local fErr   = dlg:CreateFontString(nil, "OVERLAY", "GPFont_Red")
 fErr:SetPoint("BOTTOM", 0, 48)
+
+-- Art: normales Event, Dungeon oder Raid (Liste aus GuildPrideInstances.lua).
+-- Die Wahl geht mit an Discord, dort legt der Bot die passende Gruppe an.
+local fKind, fInst = "", ""          -- "" / "dungeon" / "raid", Instanz-Schlüssel
+local autoTitle                      -- zuletzt automatisch gesetzter Titel
+local kindLabel = dlg:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+kindLabel:SetPoint("TOPLEFT", 24, -170); kindLabel:SetText(L["Art"])
+-- Je ein Knopf für Dungeon und Raid; der gewählte zeigt den Namen der Instanz
+local bDungeon = CreateFrame("Button", nil, dlg, "UIPanelButtonTemplate")
+bDungeon:SetSize(150, 22); bDungeon:SetPoint("TOPLEFT", 26, -184)
+local bRaid = CreateFrame("Button", nil, dlg, "UIPanelButtonTemplate")
+bRaid:SetSize(150, 22); bRaid:SetPoint("LEFT", bDungeon, "RIGHT", 6, 0)
+local KIND_BTN = { dungeon = bDungeon, raid = bRaid }
+local CHOOSE = { dungeon = L["Dungeon wählen …"], raid = L["Raid wählen …"] }
+
+local function UpdateKind()
+    local x = ns.Instances.Find(fKind, fInst)
+    for kind, b in pairs(KIND_BTN) do
+        if x and x.kind == kind then
+            b:SetText(("%s (%d)"):format(x.name, x.size)); b:LockHighlight()
+        else
+            b:SetText(CHOOSE[kind]); b:UnlockHighlight()
+        end
+    end
+end
+-- Instanz wählen (x = nil: wieder normales Event). Der Name wird der Titel.
+local function SetInst(x)
+    fKind, fInst = x and x.kind or "", x and x.key or ""
+    if x then
+        autoTitle = x.name:sub(1, 40)
+        fTitle:SetText(autoTitle)
+    elseif strtrim(fTitle:GetText()) == autoTitle then
+        fTitle:SetText(""); autoTitle = nil
+    end
+    fErr:SetText("")
+    UpdateKind()
+end
+
+local function OpenList(self, kind)
+    local list = ns.Instances.list[kind]
+    if MenuUtil and MenuUtil.CreateContextMenu then
+        MenuUtil.CreateContextMenu(self, function(_, root)
+            root:CreateTitle(CHOOSE[kind])
+            if fKind == kind then
+                root:CreateButton("|cff999999" .. L["Keine Auswahl"] .. "|r", function() SetInst(nil) end)
+            end
+            for _, x in ipairs(list) do
+                root:CreateButton(("%s  |cff999999%s · %d|r"):format(x.name, (L["Stufe %s"]):format(x.level), x.size),
+                    function() SetInst(x) end)
+            end
+        end)
+    else
+        -- Ältere Clients ohne Menü: jeder Klick nimmt die nächste Instanz
+        local n = 1
+        for i, x in ipairs(list) do if fKind == kind and x.key == fInst then n = i % #list + 1 end end
+        SetInst(list[n])
+    end
+end
+bDungeon:SetScript("OnClick", function(self) OpenList(self, "dungeon") end)
+bRaid:SetScript("OnClick", function(self) OpenList(self, "raid") end)
 
 local ok = CreateFrame("Button", nil, dlg, "UIPanelButtonTemplate")
 ok:SetSize(120, 24); ok:SetPoint("BOTTOMLEFT", 40, 18); ok:SetText(L["Erstellen"])
@@ -1413,11 +1511,15 @@ ok:SetScript("OnClick", function()
     if bad == "time" then fErr:SetText(L["Uhrzeit bitte als HH:MM eingeben (z. B. 20:00)."]); return end
     if t < time() then fErr:SetText(L["Der Termin liegt in der Vergangenheit."]); return end
     local rep = fRepeat:GetChecked() and 7 or 0
+    if fKind ~= "" and not ns.Instances.Find(fKind, fInst) then
+        fErr:SetText(fKind == "raid" and L["Bitte einen Raid auswählen."] or L["Bitte einen Dungeon auswählen."]); return
+    end
+    local kind, inst = fKind, fKind ~= "" and fInst or ""
     if editing then
         local e = editing
-        if not e.deleted and e.title then EditEvent(e, title, t, strtrim(fDesc:GetText()), rep) end
+        if not e.deleted and e.title then EditEvent(e, title, t, strtrim(fDesc:GetText()), rep, kind, inst) end
     else
-        CreateEvent(title, t, strtrim(fDesc:GetText()), rep)
+        CreateEvent(title, t, strtrim(fDesc:GetText()), rep, kind, inst)
     end
     dlg:Hide()
 end)
@@ -1434,6 +1536,9 @@ local WDAYS = { L["Sonntag"], L["Montag"], L["Dienstag"], L["Mittwoch"], L["Donn
 local function ApplyTemplate(tpl)
     fTitle:SetText(tpl.title or ""); fDesc:SetText(tpl.desc or "")
     fTime:SetText(tpl.time or "20:00"); fRepeat:SetChecked((tpl.rep or 0) > 0)
+    local x = ns.Instances.Find(tpl.kind, tpl.inst)
+    fKind, fInst, autoTitle = x and x.kind or "", x and x.key or "", nil
+    UpdateKind()
     fErr:SetText("")
     if tpl.wday then
         -- nächster passender Wochentag (heute nur, wenn die Uhrzeit noch kommt)
@@ -1460,7 +1565,7 @@ local function TemplateLabel(tpl)
 end
 
 local bTpl = CreateFrame("Button", nil, dlg, "UIPanelButtonTemplate")
-bTpl:SetSize(140, 22); bTpl:SetPoint("TOPLEFT", 26, -204); bTpl:SetText(L["Vorlage …"])
+bTpl:SetSize(140, 22); bTpl:SetPoint("TOPLEFT", 26, -244); bTpl:SetText(L["Vorlage …"])
 local bTplSave = CreateFrame("Button", nil, dlg, "UIPanelButtonTemplate")
 bTplSave:SetSize(160, 22); bTplSave:SetPoint("LEFT", bTpl, "RIGHT", 8, 0); bTplSave:SetText(L["Als Vorlage speichern"])
 local tplCycle = 0
@@ -1472,7 +1577,8 @@ bTplSave:SetScript("OnClick", function()
     local clock = strtrim(fTime:GetText())
     Templates()[title] = { title = Clean(title, 40), desc = Clean(strtrim(fDesc:GetText()), 120),
         time = clock:match("^%d%d?:%d%d$") and clock or "20:00",
-        rep = fRepeat:GetChecked() and 7 or 0, wday = t and date("*t", t).wday or nil }
+        rep = fRepeat:GetChecked() and 7 or 0, wday = t and date("*t", t).wday or nil,
+        kind = fKind ~= "" and fKind or nil, inst = fKind ~= "" and fInst ~= "" and fInst or nil }
     fErr:SetText("")
     ns.Print((L["Vorlage |cffffd100%s|r gespeichert."]):format(title))
 end)
@@ -1508,6 +1614,8 @@ function ns.ShowCreateDialog()
     if tonumber(date("%H")) >= 20 then start = start + 86400 end
     fTitle:SetText(""); fDate:SetText(date("%d.%m.%Y", start)); fTime:SetText("20:00")
     fDesc:SetText(""); fErr:SetText(""); fRepeat:SetChecked(false)
+    fKind, fInst, autoTitle = "", "", nil
+    UpdateKind()
     tplCycle = 0
     editing = nil
     dh:SetText(L["Neues Gildenevent"]); ok:SetText(L["Erstellen"])
@@ -1522,6 +1630,9 @@ function ns.ShowEditDialog(e)
     fTitle:SetText(e.title or ""); fDesc:SetText(e.desc or "")
     fDate:SetText(date("%d.%m.%Y", e.t)); fTime:SetText(date("%H:%M", e.t))
     fRepeat:SetChecked((e.rep or 0) > 0); fErr:SetText("")
+    local x = InstOf(e)
+    fKind, fInst, autoTitle = x and x.kind or "", x and x.key or "", nil
+    UpdateKind()
     dh:SetText(L["Event bearbeiten"]); ok:SetText(L["Speichern"])
     bTpl:Hide(); bTplSave:Hide()
     dlg:Show(); fTitle:SetFocus()

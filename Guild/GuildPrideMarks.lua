@@ -102,7 +102,7 @@ local function Announce()
     lastAnnounce = GetTime()
     local codes = MyCodes()
     if IsInGuild() then ns.Queue("GPS", nil, unpack(codes)) end
-    if ns.PublicChannelId and ns.PublicChannelId() and not ns.PUBLIC_VIA_CHAT then
+    if ns.PublicLFGOn and ns.PublicLFGOn() and ns.PublicChannelId and ns.PublicChannelId() and not ns.PUBLIC_VIA_CHAT then
         ns.Queue("GPS", "@PUBLIC", unpack(codes))
     end
 end

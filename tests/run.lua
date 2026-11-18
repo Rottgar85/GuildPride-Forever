@@ -787,6 +787,29 @@ test("Discord: alte Einstellungen werden zu Schaltern", function()
     GuildPrideDB.discordViaGuild, GuildPrideDB.discordShowRaw = nil, nil
 end)
 
+test("Dungeon/Raid: Liste, Rollen und Discord-Zeile für den Bot", function()
+    W.Load("GuildPrideInstances.lua")
+    local I = ns.Instances
+    eq(I.Find("raid", "ony").size, 40)
+    eq(I.Find("dungeon", "dm").size, 5)
+    eq(I.Find("raid", "dm"), nil, "Schlüssel nur in der passenden Art")
+    eq(I.Find("raid", "naxx"), nil)
+    eq(#I.list.dungeon, 33); eq(#I.list.raid, 3)
+    local n = I.Need(40)
+    eq(n.TANK, 4); eq(n.HEALER, 10); eq(n.DAMAGER, 26)
+    local D = ns.Discord
+    local lines, old = {}, D.Post
+    D.Post = function(text) lines[#lines + 1] = text end
+    D.EventCreated({ id = "Ich-1-1", title = "Raid: Onyxia", t = 1795000000, rep = 7, kind = "raid", inst = "ony", desc = "" })
+    D.EventCreated({ id = "Ich-1-2", title = "Kara", t = 1795000000 })
+    D.EventCreated({ id = "Ich-1-3", title = "X", t = 1795000000, kind = "raid", inst = "naxx" })
+    D.Post = old
+    assert(lines[1]:find(") – [raid=ony]", 1, true), lines[1])
+    assert(lines[1]:sub(-10) == "[raid=ony]", "ohne Beschreibung endet die Zeile mit dem Zusatz")
+    assert(not lines[2]:find("raid=", 1, true) and not lines[2]:find("dungeon=", 1, true), "normales Event ohne Zusatz")
+    assert(not lines[3]:find("naxx", 1, true), "unbekannte Instanz wird nicht gemeldet")
+end)
+
 require("ah")(test, eq, W, ns)
 require("transit")(test, eq, W, ns)
 require("invite")(test, eq, W, ns)

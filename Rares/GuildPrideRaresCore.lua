@@ -27,7 +27,12 @@ local function Fill(db, def)
 end
 
 function ns.DB() return GuildPrideDB and GuildPrideDB.rares end
-function ns.Opt(k) local db = ns.DB(); return db and db.opts[k] end
+-- Teilen ist Pflicht für alle (wie beim Auktionshaus, kein Schalter mehr)
+local FORCED = { share = true }
+function ns.Opt(k)
+    if FORCED[k] then return true end
+    local db = ns.DB(); return db and db.opts[k]
+end
 
 -- Geschützte Werte ("secret values") nie vergleichen oder auswerten
 function ns.Secret(v) return issecretvalue and issecretvalue(v) or false end

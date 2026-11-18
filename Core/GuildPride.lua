@@ -61,6 +61,14 @@ ns.PUBLIC_VIA_CHAT = ns.IS_CLASSIC
 function ns.PublicLFGOn()
     return ns.HAS_PUBLIC_LFG and GuildPrideDB and GuildPrideDB.publicLFG and true or false
 end
+-- Offener Kanal für Daten (Schiffs-Zähler): in WoW Forever immer, unabhängig von der
+-- Gruppensuche – der Schalter betrifft nur Gruppensuche und Layer-Wechsel. (Rares und
+-- Auktionshaus haben eigene Kanäle und teilen ebenfalls immer.)
+function ns.PublicDataOn()
+    return ns.HAS_PUBLIC_LFG and ns.IS_FOREVER and not ns.PUBLIC_VIA_CHAT and true or false
+end
+local function PublicChannelWanted() return ns.PublicLFGOn() or ns.PublicDataOn() end
+ns.PublicChannelWanted = PublicChannelWanted
 -- Classic-Clients haben außerdem nicht alle Events:
 -- unbekannte Events werfen beim Registrieren einen Fehler, daher abgesichert.
 function ns.RegisterEvents(frame, ...)

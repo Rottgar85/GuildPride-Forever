@@ -544,6 +544,12 @@ local enUS = {
     ["Begrüßungstext ({name} = neues Mitglied)"] = "Welcome text ({name} = new member)",
     -- Events: wöchentlich, Anwesenheit
     ["Jede Woche wiederholen"] = "Repeat every week",
+    ["Event"] = "Event",
+    ["Keine Auswahl"] = "None",
+    ["Raid wählen …"] = "Choose raid …",
+    ["Dungeon wählen …"] = "Choose dungeon …",
+    ["Bitte einen Raid auswählen."] = "Please choose a raid.",
+    ["Bitte einen Dungeon auswählen."] = "Please choose a dungeon.",
     ["jede Woche"] = "every week",
     ["Anwesenheit erfassen"] = "Record attendance",
     ["Anwesenheit für |cffffd100%s|r erfasst (%d da)."] = "Attendance for |cffffd100%s|r recorded (%d present).",
@@ -593,8 +599,8 @@ local enUS = {
     ["Alle"] = "All",
     ["Eintrag auch allen mit GuildPride auf dem Server zeigen (gleiche Spielversion, ohne Gildenname)."] =
         "Also show your listing to everyone with GuildPride on the server (same game version, no guild name).",
-    ["Serverweite Gruppensuche (alle mit GuildPride, gleiche Spielversion)"] =
-        "Server-wide Group Finder (everyone with GuildPride, same game version)",
+    ["Serverweite Gruppensuche und Layer-Wechsel (Schiffe, Rares und Auktionshaus teilen immer)"] =
+        "Server-wide Group Finder and layer switching (ships, rares and auction house always share)",
     ["Hinweis auch bei Einträgen vom Server"] = "Also notify for server-wide listings",
     ["Serverweite Gruppensuche: "] = "Server-wide Group Finder: ",
     ["Serverweite Gruppensuche: Kanal konnte nicht betreten werden (zu viele Chatkanäle?)."] =
@@ -961,6 +967,13 @@ local enUS = {
     ["Schiffs-Zähler: Fahrplan durch deine Fahrt gemessen – die Gilde bekommt ihn auch."] = "Ship timer: timetable measured on your ride – your guild gets it too.",
     ["Schiffs-Zähler: Fahrplan durch deine Fahrt gemessen – die Gilde und andere GuildPride-Spieler bekommen ihn auch."] = "Ship timer: timetable measured on your ride – your guild and other GuildPride players get it too.",
     ["|cffaaaaaaauf deinem Layer noch nicht gemessen|r"] = "|cffaaaaaanot measured on your layer yet|r",
+    ["Erinnern"] = "Remind me",
+    ["1 Minute vor der Abfahrt mit Raid-Warnung und Ton Bescheid geben – auch wenn du nicht mehr am Anleger bist."] = "Warn 1 minute before departure with a raid warning and sound – even if you have left the dock.",
+    ["|cffaaaaaavermutet (wie letzte Woche)|r"] = "|cffaaaaaaguessed (like last week)|r",
+    ["|cff66ccffgeschätzt für deinen Layer|r"] = "|cff66ccffestimated for your layer|r",
+    [" |cff888888· %d× bestätigt|r"] = " |cff888888· confirmed %d×|r",
+    ["Schiffs-Zähler: Erinnerung 1 Min. vor der Abfahrt nach %s."] = "Ship timer: reminder 1 min before departure to %s.",
+    ["%s nach %s legt in %d Sek. ab!"] = "%s to %s departs in %d sec!",
     ["|cff40ff40dein Layer|r"] = "|cff40ff40your layer|r",
     ["|cffaaaaaaLayer ?|r"] = "|cffaaaaaalayer ?|r",
     ["|cffffaa00evtl. anderer Layer|r"] = "|cffffaa00maybe other layer|r",
@@ -983,7 +996,6 @@ local enUS = {
     ["danach in %s"] = "then in %s",
     ["Reisen"] = "Travel",
     ["Schiffs-Zähler am Anleger zeigen (wann das nächste Schiff kommt)"] = "Show the ship timer at docks (when the next ship arrives)",
-    ["Gemessene Schiffs-Fahrpläne mit der Gilde teilen"] = "Share measured ship timetables with the guild",
     ["An Twinks schicken"] = "Send to alts",
     ["Deine anderen Charaktere als Empfänger wählen."] = "Pick one of your other characters as recipient.",
     ["Noch keine Twinks bekannt – logge dich einmal mit jedem Charakter ein."] = "No alts known yet – log in once with each character.",

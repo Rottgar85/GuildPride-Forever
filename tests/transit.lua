@@ -54,7 +54,13 @@ return function(test, eq, W, ns)
         C_DateAndTime = { GetSecondsUntilWeeklyReset = function() return 3600 end }   -- Reset vor 6 Tagen 23 Std.
         eq(T.Board(ID, "a", now).timed, true, "nach dem Reset gemessen")
         C_DateAndTime = { GetSecondsUntilWeeklyReset = function() return 7 * 86400 - 60 end }   -- Reset vor 1 Min.
-        eq(T.Board(ID, "a", now + 120).timed, false, "vor dem Reset gemessen")
+        local guess = T.Board(ID, "a", now + 120)
+        eq(guess.guess, true, "vor dem Reset gemessen: nur noch Vermutung")
+        -- eine Woche weitergerückt (gleicher Abstand zum Reset)
+        local b0 = T.Board(ID, "a", now + 120 - 7 * 86400)
+        eq(near(guess.arriveIn, b0.arriveIn) and near(guess.departIn, b0.departIn), true, "gleicher Abstand zum Reset")
+        C_DateAndTime = { GetSecondsUntilWeeklyReset = function() return 60 end }   -- vorletzter Reset: zu alt
+        eq(T.Board(ID, "a", now + 15 * 86400).timed, false, "vor dem vorletzten Reset: weg")
         C_DateAndTime = nil
         T.Forget()
     end)
@@ -134,11 +140,11 @@ return function(test, eq, W, ns)
         local reply
         for _, m in ipairs(W.sent) do if m.kind == "TRS" then reply = m end end
         eq(reply ~= nil, true); eq(reply.target, "Anna")
-        -- teilen aus
+        -- Teilen ist Pflicht: auch mit dem alten Schalter aus wird übernommen
         GuildPrideDB.transitShare = false
         T.Forget()
         W.Receive("Bert", msg("TRS", "Realm", ROUTE .. ":" .. W.server .. ":1000"))
-        eq(T.Board(ID, "a").timed, false, "Teilen aus: nichts übernommen")
+        eq(T.Board(ID, "a").timed, true, "alter Schalter wirkt nicht mehr")
         GuildPrideDB.transitShare = nil
         T.Forget()
     end)
@@ -254,13 +260,13 @@ return function(test, eq, W, ns)
         eq(#pubSent, 1, "anderer Layer: keine Antwort")
         chan("Anna2", msg("TPQ", "F", "Realm", "1437.111", ROUTE))
         eq(#pubSent, 1, "derselbe Fragende nicht gleich noch einmal")
-        -- Teilen aus: nichts senden, nichts annehmen
-        GuildPrideDB.transitShare = false
+        -- Gruppensuche aus: Schiffszeiten gehen trotzdem (Teilen ist Pflicht)
+        GuildPrideDB.publicLFG = nil
         T.Forget()
+        setLayer(1437, "111")
         chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
-        eq(T.Board(ID, "a").timed, false, "Teilen aus")
-        eq(T.RequestPublic({ ROUTE }), false)
-        GuildPrideDB.transitShare = nil
+        eq(T.Board(ID, "a").timed, true, "auch ohne Gruppensuche")
+        T.Forget()
         publicOff()
         chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
         eq(T.Board(ID, "a").timed, false, "serverweite Gruppensuche aus")
@@ -354,4 +360,121 @@ return function(test, eq, W, ns)
         T.UpdateWindow()
         eq(f:IsShown(), false)
     end)
+
+    test("Schiffe: Bestätigungen – mehrfach gemessene Zeit schlägt einzelne abweichende", function()
+        T.Forget()
+        local now = T.Now()
+        local e1 = now * 1000 - 54297 - 10000          -- liegt seit 10 s am Steg
+        local e2 = now * 1000 - 54297 + 60000          -- abweichend: kommt in 60 s
+        for i, who in ipairs({ "Anna", "Bert", "Carl" }) do
+            T.Sighted(ROUTE, { epoch = e1 + i * 100, seen = math.floor(now) - 300, source = "player",
+                tags = { "1437.111" }, from = who, own = true })
+        end
+        T.Sighted(ROUTE, { epoch = e2, seen = math.floor(now), source = "player", tags = { "1437.111" }, from = "Fremd", own = true })
+        eq(#GuildPrideDB.transit.Realm[ROUTE], 2, "abweichende Phase = eigene Gruppe")
+        setLayer(1437, "111")
+        local b = T.Board(ID, "a", now)
+        eq(b.arriveIn, 0, "die dreifach bestätigte Zeit gilt"); eq(b.confirmed, 3)
+        eq(T.ConfirmText(b):find("3", 1, true) ~= nil, true)
+        -- dieselbe Person zählt nur einmal; weitergereichte (ohne ":o") zählen nicht
+        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", tags = { "1437.111" }, from = "Anna", own = true })
+        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", tags = { "1437.111" }, from = "Dora" })
+        eq(T.Board(ID, "a", now).confirmed, 3)
+        -- Kennzeichen ":o" nur für selbst gemessene, ältere Einträge ohne werden gelesen
+        local own = T._Encode(ROUTE, { epoch = e1, seen = math.floor(now), source = "you", tags = { "1437.111" } })
+        local other = T._Encode(ROUTE, { epoch = e1, seen = math.floor(now), source = "public", tags = {} })
+        eq(own:sub(-2), ":o"); eq(other:find(":o", 1, true), nil)
+        local dec = T._Decode(own .. ";" .. other .. ";" .. ROUTE .. ":" .. math.floor(now) .. ":5000", now)
+        eq(#dec, 3); eq(dec[1].anchor.own, true); eq(dec[2].anchor.own, false); eq(dec[3].anchor.own, false)
+        eq(dec[1].anchor.tags[1], "1437.111")
+        -- über die Gilde: der Absender zählt als Bestätiger
+        T.Forget()
+        W.Receive("Anna", msg("TRS", "Realm", T._Encode(ROUTE, { epoch = e1, seen = W.server, source = "you", tags = { "1437.111" } })))
+        W.Receive("Bert", msg("TRS", "Realm", T._Encode(ROUTE, { epoch = e1 + 500, seen = W.server, source = "you", tags = { "1437.111" } })))
+        eq(T.Board(ID, "a").confirmed, 2, "zwei Gildenmitglieder")
+        setLayer(nil, nil)
+        T.Forget()
+    end)
+
+    test("Schiffe: Layer-Start aus Kreaturen-GUIDs, geschätzt erst nach zwei passenden Eichungen", function()
+        T.Forget()
+        GuildPrideDB.transitStarts, GuildPrideDB.transitCalib = nil, nil
+        local now = math.floor(T.Now())
+        local function guid(zone, ago)
+            local low = (now - ago) % 2 ^ 23
+            return ("Creature-0-1-2-%s-1234-0000%06X"):format(zone, low)
+        end
+        eq(T.SpawnTime(guid("111", 100), now), now - 100, "Entstehungszeit aus der GUID")
+        eq(T.SpawnTime("Player-1-0000ABCD", now), nil)
+        -- früheste Kreatur je Layer = Start
+        T.SawCreature(guid("111", 5000), "1437.111", now)
+        T.SawCreature(guid("111", 9000), "1437.111", now)
+        T.SawCreature(guid("111", 200), "1437.111", now)
+        T.SawCreature(guid("222", 3000), "1437.222", now)
+        T.SawCreature(guid("333", 7000), "1437.333", now)
+        eq(GuildPrideDB.transitStarts.Realm["1437.111"].t, now - 9000)
+        local route = T.Routes()[ROUTE]
+        local OFF = 123456
+        local function epochFor(start) return start * 1000 + OFF end
+        T.Calibrate(ROUTE, epochFor(now - 9000), { "1437.111" }, now)
+        eq(T._Offset(ROUTE), nil, "eine Eichung reicht nicht")
+        setLayer(1437, "333")
+        eq(T.Board(ID, "a", now).timed, false, "noch nicht geschätzt")
+        T.Calibrate(ROUTE, epochFor(now - 3000) + 1500, { "1437.222" }, now)
+        eq(math.abs(T._Offset(ROUTE) - (OFF + 750)) < 1, true, "zwei Layer mit gleichem Abstand")
+        local b = T.Board(ID, "a", now)
+        eq(b.timed, true); eq(b.estimated, true); eq(b.layer, true)
+        eq(T.LayerText(b):find("geschätzt", 1, true) ~= nil, true)
+        -- echte Messung auf meinem Layer hat Vorrang vor der Schätzung
+        T.Sighted(ROUTE, { epoch = now * 1000 - 1000, seen = now, source = "player", tags = { "1437.333" } })
+        eq(T.Board(ID, "a", now).estimated, nil)
+        -- widersprüchliche Eichungen: keine Schätzung
+        GuildPrideDB.transitCalib = { [ROUTE] = { { off = 1000, start = now - 9000 }, { off = 200000, start = now - 3000 } } }
+        eq(T._Offset(ROUTE), nil)
+        GuildPrideDB.transitStarts, GuildPrideDB.transitCalib = nil, nil
+        setLayer(nil, nil)
+        T.Forget()
+        local _ = route
+    end)
+
+    test("Schiffe: Erinnerung 1 Minute vor der Abfahrt", function()
+        T.Forget()
+        local now = T.Now()
+        -- liegt seit 10 s am Steg, legt in ~50 s ab
+        T.Sighted(ROUTE, { epoch = now * 1000 - 54297 - 10000, seen = math.floor(now), source = "player" })
+        local warned = {}
+        local oldRN, oldRW = RaidNotice_AddMessage, RaidWarningFrame
+        RaidNotice_AddMessage = function(_, text) warned[#warned + 1] = text end
+        RaidWarningFrame = {}
+        local d = { id = ID, side = "a", kind = "boat", to = "Theramore" }
+        eq(T.ToggleReminder(d, now), true)
+        T.CheckReminders(now)
+        eq(#warned, 0, "legt gleich ab: an die nächste Abfahrt erinnern")
+        T.CheckReminders(now + 200)
+        eq(#warned, 0, "noch zu früh")
+        T.CheckReminders(now + 329.313 + 1)
+        eq(#warned, 1, "1 Min. vor der nächsten Abfahrt"); eq(warned[1]:find("Theramore", 1, true) ~= nil, true)
+        T.CheckReminders(now + 329.313 + 2)
+        eq(#warned, 1, "nur einmal")
+        eq(T.ToggleReminder(d, now), true); eq(T.ToggleReminder(d, now), false, "zweiter Klick: aus")
+        eq(next(T.reminders), nil)
+        RaidNotice_AddMessage, RaidWarningFrame = oldRN, oldRW
+        T.Forget()
+    end)
+
+    test("Teilen ohne Ausnahme: Kanal für Schiffe auch ohne Gruppensuche, Rares teilen immer", function()
+        local oldF, oldH, oldC = ns.IS_FOREVER, ns.HAS_PUBLIC_LFG, ns.PUBLIC_VIA_CHAT
+        ns.IS_FOREVER, ns.HAS_PUBLIC_LFG, ns.PUBLIC_VIA_CHAT = true, true, false
+        GuildPrideDB.publicLFG = false
+        eq(ns.PublicLFGOn(), false); eq(ns.PublicDataOn(), true); eq(ns.PublicChannelWanted(), true)
+        ns.IS_FOREVER = false
+        eq(ns.PublicChannelWanted(), false, "andere Spielversion: nur mit Gruppensuche")
+        ns.IS_FOREVER, ns.HAS_PUBLIC_LFG, ns.PUBLIC_VIA_CHAT = oldF, oldH, oldC
+        GuildPrideDB.publicLFG = nil
+        if ns.Rares and ns.Rares.Opt and ns.Rares.DB and ns.Rares.DB() then
+            ns.Rares.DB().opts.share = false
+            eq(ns.Rares.Opt("share"), true, "Rares: Teilen ist Pflicht")
+        end
+    end)
+
 end

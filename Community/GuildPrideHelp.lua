@@ -304,7 +304,7 @@ end
 -- Abfrage an alle im offenen Kanal (beim Öffnen, Klick auf Server/Alle)
 local lastPublicAsk = 0
 local function AskPublic()
-    if not (ns.PublicChannelId and ns.PublicChannelId()) or GetTime() - lastPublicAsk < 30 then return end
+    if not ns.PublicLFGOn() or not (ns.PublicChannelId and ns.PublicChannelId()) or GetTime() - lastPublicAsk < 30 then return end
     if ns.PUBLIC_VIA_CHAT and not userClick then return end
     lastPublicAsk = GetTime()
     if ns.PUBLIC_VIA_CHAT then ns.SendPublicChat("PLFGQ", ns.CLIENT_TAG, PROTO)
@@ -488,7 +488,8 @@ function ns.PublicLFGChanged()
         -- nach dem Beitritt den eigenen Eintrag nachliefern
         if mine and mine.public then C_Timer.After(8, SendPublic) end
     else
-        -- Eintrag bei den anderen zurückziehen, dann den Kanal verlassen
+        -- Eintrag bei den anderen zurückziehen; den Kanal verlassen, außer die
+        -- Schiffs-Zähler brauchen ihn noch (WoW Forever)
         local farewell
         if publicLive and (userClick or not ns.PUBLIC_VIA_CHAT) then
             local parts = { PublicNone() }

@@ -96,11 +96,10 @@ local function Check(label, key, x)
 end
 local on = Check("An", "enabled", 12)
 on:HookScript("OnClick", function() if ns.UpdateMapToggle then ns.UpdateMapToggle() end end)
-Check("Teilen", "share", 62)
-Check("Ton", "sound", 130)
-Check("Alarm alle Rares", "alertAll", 180)
-Check("Weltbosse", "alertBoss", 310)
-Check("Karte", "pins", 400)
+Check("Ton", "sound", 62)
+Check("Alarm alle Rares", "alertAll", 112)
+Check("Weltbosse", "alertBoss", 242)
+Check("Karte", "pins", 332)
 
 local function BossWindow(npc)
     local b, k = ns.WORLD_BOSSES[npc], ns.DB().killed[npc]

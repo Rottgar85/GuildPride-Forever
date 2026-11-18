@@ -404,11 +404,25 @@ local function Name(full) return Ambiguate(full or "", "guild") end
 
 local function When(t) return date("%d.%m. %H:%M", t) end
 
+-- Dungeon/Raid für den Bot: "[raid=ony]" vorn in der Beschreibung – er wählt danach
+-- Vorlage und Gruppengröße. Ältere Bot-Versionen zeigen es nur als Text an.
+function Discord.InstTag(e)
+    local x = ns.Instances and ns.Instances.Find(e.kind, e.inst)
+    return x and ("[%s=%s]"):format(x.kind, x.key) or ""
+end
+
+local function Tail(e)
+    local parts = {}
+    local tag = Discord.InstTag(e)
+    if tag ~= "" then parts[#parts + 1] = tag end
+    if e.desc and e.desc ~= "" then parts[#parts + 1] = Clean(e.desc, 80) end
+    return #parts > 0 and (" – " .. table.concat(parts, " ")) or ""
+end
+
 function Discord.EventCreated(e)
     if not e or not e.title then return end
     local line = ((DE and "Neues Event" or "New event") .. " #%s: %s – %s (t=%d%s)"):format(Discord.ShortId(e.id), Clean(e.title, 40),
-        When(e.t), e.t, (e.rep and e.rep > 0) and (DE and ", wöchentlich" or ", weekly") or "")
-    if e.desc and e.desc ~= "" then line = line .. " – " .. Clean(e.desc, 80) end
+        When(e.t), e.t, (e.rep and e.rep > 0) and (DE and ", wöchentlich" or ", weekly") or "") .. Tail(e)
     Discord.Post(line, true)
 end
 
@@ -464,8 +478,7 @@ Discord._SignSeen = signSeen   -- für Tests
 function Discord.EventChanged(e)
     if not e or not e.title then return end
     local line = ((DE and "Event geändert" or "Event changed") .. " #%s: %s – %s (t=%d%s)"):format(Discord.ShortId(e.id), Clean(e.title, 40),
-        When(e.t), e.t, (e.rep and e.rep > 0) and (DE and ", wöchentlich" or ", weekly") or "")
-    if e.desc and e.desc ~= "" then line = line .. " – " .. Clean(e.desc, 80) end
+        When(e.t), e.t, (e.rep and e.rep > 0) and (DE and ", wöchentlich" or ", weekly") or "") .. Tail(e)
     Discord.Post(line, true)
 end
 

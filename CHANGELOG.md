@@ -1,5 +1,25 @@
 # GuildPride Changelog
 
+## 2.26.0
+
+**Deutsch**
+- **Dungeons und Raids bei Gildenevents**: Im Fenster **Neues Event** (Reiter Planen) gibt es bei **Art** je einen Knopf für Dungeon und Raid. Die Liste enthält alle Dungeons und Raids von WoW Forever mit Stufe und Spielerzahl; der Name wird als Titel übernommen. Die Event-Liste zeigt eine eigene Spalte (z. B. **Raid · 40**), die Aufstellung richtet sich nach der Gruppengröße, und an Discord geht die Auswahl mit, damit der Bot die passende Gruppe anlegt
+- **Teilen ohne Ausnahme**: Schiffs- und Zeppelinzeiten, Rares und Auktionshauspreise werden immer mit allen GuildPride-Spielern geteilt – auch wenn die **Serverweite Gruppensuche** aus ist. Der Schalter gilt nur noch für Gruppensuche und Layer-Wechsel. Die Schalter „Schiffs-Fahrpläne teilen“ und „Rares teilen“ sind entfernt
+- **Schiffs-Zähler – Bestätigungen**: Haben mehrere Spieler dieselbe Zeit gemessen, steht **3× bestätigt** dabei; eine einzelne abweichende Meldung verdrängt so eine Zeit nicht mehr
+- **Schiffs-Zähler – Erinnerung**: Uhr-Symbol an einer Verbindung anklicken – 1 Minute vor der Abfahrt kommen Raid-Warnung und Ton, auch wenn du nicht mehr am Anleger bist
+- **Schiffs-Zähler – Layer automatisch**: Der Layer wird jetzt auch über Händler, Flugmeister, Quest-NPCs, das weiche Ziel, Namensplaketten und die Ziele der Gruppe erkannt
+- **Schiffs-Zähler – nach dem Reset**: Gibt es diese Woche noch keine Messung, steht die Zeit der letzten Woche als **vermutet** da, bis jemand neu misst
+- **Versuch**: Aus den Kreaturen erkennt GuildPride, wann ein Layer gestartet ist. Passt das bei zwei gemessenen Layern zusammen, gibt es auch für Layer ohne Messung eine Zeit (**geschätzt für deinen Layer**)
+
+**English**
+- **Dungeons and raids for guild events**: the **New event** window (Plan tab) has a button each for dungeon and raid under **Type**. The list holds every WoW Forever dungeon and raid with level and player count; the name becomes the title. The event list shows its own column (e.g. **Raid · 40**), the lineup follows the group size, and the choice is sent to Discord so the bot creates the matching group
+- **Sharing without exception**: ship and zeppelin times, rares and auction house prices are always shared with all GuildPride players – even with the **Server-wide group finder** off. That switch now only covers the group finder and layer switching. The "share ship timetables" and "share rares" switches are removed
+- **Ship timer – confirmations**: when several players measured the same time it shows **confirmed 3×**; a single differing report no longer replaces such a time
+- **Ship timer – reminder**: click the clock icon on a connection – 1 minute before departure you get a raid warning and a sound, even if you left the dock
+- **Ship timer – automatic layer**: your layer is now also detected from vendors, flight masters, quest NPCs, the soft target, nameplates and your group's targets
+- **Ship timer – after the reset**: if nobody has measured this week yet, last week's time shows as **guessed** until someone measures again
+- **Experiment**: GuildPride reads from creatures when a layer started. If that matches on two measured layers, layers without a measurement get a time too (**estimated for your layer**)
+
 ## 2.25.0
 
 **Deutsch**
