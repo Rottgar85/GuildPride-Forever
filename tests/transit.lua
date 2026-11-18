@@ -43,8 +43,19 @@ return function(test, eq, W, ns)
         eq(clock, "0:30"); eq(label, "kommt an")
         eq(select(1, T.Clock({ timed = false, wait = 174.7 })), "–")
         eq(T.Countdown(65.2), "1:06")
-        -- verfällt nach 6 Stunden
-        eq(T.Board(ID, "a", now + 6 * 3600 + 10).timed, false)
+        -- gilt länger als 6 Stunden, mit Alter der Messung …
+        local late = T.Board(ID, "a", now + 6 * 3600 + 10)
+        eq(late.timed, true, "nach 6 Std. noch gültig")
+        eq(T.AgeText(late), "vor 6 Std.")
+        eq(T.AgeText(T.Board(ID, "a", now + 2 * 86400 + 5)), "vor 2 Tag(en)")
+        -- … verfällt aber nach 7 Tagen
+        eq(T.Board(ID, "a", now + 7 * 86400 + 10).timed, false, "nach 7 Tagen verfallen")
+        -- … und mit dem wöchentlichen Reset (Wartung startet die Server neu)
+        C_DateAndTime = { GetSecondsUntilWeeklyReset = function() return 3600 end }   -- Reset vor 6 Tagen 23 Std.
+        eq(T.Board(ID, "a", now).timed, true, "nach dem Reset gemessen")
+        C_DateAndTime = { GetSecondsUntilWeeklyReset = function() return 7 * 86400 - 60 end }   -- Reset vor 1 Min.
+        eq(T.Board(ID, "a", now + 120).timed, false, "vor dem Reset gemessen")
+        C_DateAndTime = nil
         T.Forget()
     end)
 
@@ -82,7 +93,7 @@ return function(test, eq, W, ns)
             W.Advance(1)
         end
         UnitPosition, UnitOnTaxi = nil, nil
-        local a = GuildPrideDB.transit.Realm[ROUTE]
+        local a = GuildPrideDB.transit.Realm[ROUTE][1]
         eq(a ~= nil, true, "gemessen"); eq(a.source, "you")
         local d = (a.epoch - epoch + route.period / 2) % route.period - route.period / 2
         eq(math.abs(d) < 4000, true, "Epoche stimmt")
@@ -109,7 +120,7 @@ return function(test, eq, W, ns)
         eq(T.Board(ID, "a").timed, false, "Phase außerhalb der Runde")
         W.Receive("Anna", msg("TRS", "Realm", ROUTE .. ":" .. W.server .. ":1000;unbekannt:1:1"))
         eq(T.Board(ID, "a").timed, true, "gültig")
-        eq(GuildPrideDB.transit.Realm[ROUTE].source, "player")
+        eq(GuildPrideDB.transit.Realm[ROUTE][1].source, "player")
         -- Anfrage: eigene Messungen werden per Flüstern beantwortet, fremde nicht
         W.sent = {}
         W.Receive("Bert", msg("TRQ", "1"))
@@ -129,6 +140,185 @@ return function(test, eq, W, ns)
         W.Receive("Bert", msg("TRS", "Realm", ROUTE .. ":" .. W.server .. ":1000"))
         eq(T.Board(ID, "a").timed, false, "Teilen aus: nichts übernommen")
         GuildPrideDB.transitShare = nil
+        T.Forget()
+    end)
+
+    -- Layer und serverweiten Kanal nachbilden
+    ns.Layer = ns.Layer or {}
+    local function setLayer(map, id)
+        ns.Layer.map, ns.Layer.id = map, id
+        C_Map = map and { GetBestMapForUnit = function() return map end } or nil
+    end
+    local pubSent = {}
+    local oldPub, oldTo, oldF, oldChat = ns.PublicChannelId, ns.QueuePublicTo, ns.IS_FOREVER, ns.PUBLIC_VIA_CHAT
+    local oldIsPub = ns.IsPublicChannel
+    local function publicOn()
+        ns.IS_FOREVER, ns.PUBLIC_VIA_CHAT = true, false
+        -- GuildPrideEvents.lua wird im Test nicht geladen: offener Kanal = Nummer 7
+        ns.IsPublicChannel = function(localID) return ns.PublicChannelId and ns.PublicChannelId() == localID end
+        GuildPrideDB.publicLFG = true
+        ns.PublicChannelId = function() return 7 end
+        ns.QueuePublicTo = function(to, kind, ...) pubSent[#pubSent + 1] = { to = to, kind = kind, msg = kind .. ":" .. table.concat({ ... }, "\031") } end
+    end
+    local function publicOff()
+        ns.PublicChannelId, ns.QueuePublicTo = oldPub, oldTo
+        ns.IS_FOREVER, ns.PUBLIC_VIA_CHAT = oldF, oldChat
+        ns.IsPublicChannel = oldIsPub
+        GuildPrideDB.publicLFG = nil
+    end
+    local function chan(sender, m)
+        W.Advance(31)
+        W.Fire("CHAT_MSG_ADDON", "GuildPride", m, "CHANNEL", sender, "", 0, 7, "GuildPrideF")
+    end
+
+    test("Schiffe: je Layer eine eigene Zeit – Layer-Wechsel wechselt die Anzeige", function()
+        T.Forget()
+        local route = T.Routes()[ROUTE]
+        local now = T.Now()
+        local e1 = now * 1000 - 54297 - 10000          -- Layer 111: liegt seit 10 s am Steg
+        local e2 = now * 1000 - 54297 + 30000          -- Layer 222: kommt in 30 s
+        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", tags = { "1437.111" } })
+        T.Sighted(ROUTE, { epoch = e2, seen = math.floor(now) - 60, source = "player", tags = { "1437.222" } })
+        eq(#GuildPrideDB.transit.Realm[ROUTE], 2, "zwei Layer = zwei Gruppen")
+        setLayer(1437, "111")
+        local b = T.Board(ID, "a", now)
+        eq(b.timed, true); eq(b.layer, true, "dein Layer"); eq(b.arriveIn, 0, "Layer 111: liegt am Steg")
+        eq(T.LayerText(b):find("dein Layer", 1, true) ~= nil, true)
+        setLayer(1437, "222")
+        b = T.Board(ID, "a", now)
+        eq(b.layer, true); eq(near(b.arriveIn, 30), true, "Layer 222: kommt in 30 s")
+        setLayer(1437, "333")
+        b = T.Board(ID, "a", now)
+        eq(b.timed, false, "anderer Layer: keine falsche Zeit"); eq(b.otherLayer, true)
+        setLayer(nil, nil)
+        b = T.Board(ID, "a", now)
+        eq(b.timed, true, "Layer unbekannt: neueste Messung"); eq(b.layer, nil); eq(b.arriveIn, 0)
+        eq(T.LayerText(b):find("Layer ?", 1, true) ~= nil, true)
+        -- gleiche Phase, Layer vom anderen Anleger: gehört zur Gruppe von Layer 111
+        T.Sighted(ROUTE, { epoch = e1 + 2000, seen = math.floor(now), source = "player", tags = { "1445.999" } })
+        eq(#GuildPrideDB.transit.Realm[ROUTE], 2, "zusammengeführt")
+        setLayer(1445, "999")
+        eq(T.Board(ID, "b", now).layer, true, "auch am anderen Anleger erkannt")
+        -- gleiche Phase, aber widersprüchlicher Layer: eigene Gruppe
+        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", tags = { "1437.444" } })
+        eq(#GuildPrideDB.transit.Realm[ROUTE], 3, "Widerspruch = neue Gruppe")
+        -- alte Speicherform (eine Messung) wird übernommen
+        GuildPrideDB.transit.Realm[ROUTE] = { epoch = e1, seen = math.floor(now), source = "you" }
+        setLayer(nil, nil)
+        eq(T.Board(ID, "a", now).timed, true, "alte Speicherform")
+        eq(#GuildPrideDB.transit.Realm[ROUTE], 1)
+        -- Kodieren mit Layern; ältere Nachrichten ohne Layer werden weiter gelesen
+        local enc = T._Encode(ROUTE, { epoch = e1, seen = math.floor(now), tags = { "1437.111", "1445.999" } })
+        eq(enc:find(":1437.111,1445.999$") ~= nil, true, "Layer im Eintrag")
+        local dec = T._Decode(enc .. ";" .. ROUTE .. ":" .. math.floor(now) .. ":5000", now)
+        eq(#dec, 2); eq(dec[1].anchor.tags[2], "1445.999"); eq(#dec[2].anchor.tags, 0, "alte Form ohne Layer")
+        T.Forget()
+    end)
+
+    test("Schiffe: serverweit – empfangen, am Anleger fragen, per Flüstern antworten", function()
+        T.Forget()
+        publicOn()
+        local now = T.Now()
+        setLayer(1437, "111")
+        -- Messung eines Fremden im offenen Kanal
+        chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
+        local b = T.Board(ID, "a")
+        eq(b.timed, true, "von allen mit GuildPride"); eq(b.layer, true)
+        eq(GuildPrideDB.transit.Realm[ROUTE][1].source, "public")
+        T.Forget()
+        chan("Fremd", msg("TPS", "R", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
+        eq(T.Board(ID, "a").timed, false, "andere Spielversion")
+        chan("Fremd", msg("TPS", "F", "Anderer", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
+        eq(T.Board(ID, "a").timed, false, "anderer Realm")
+        -- Antwort per Flüstern (auch von Fremden)
+        W.Receive("Fremd2", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":2000:1437.111"), "WHISPER")
+        eq(T.Board(ID, "a").timed, true, "geflüsterte Antwort")
+        T.Forget()
+        -- am Anleger fragen: höchstens alle 5 Minuten je Layer
+        W.sent = {}
+        eq(T.RequestPublic({ ROUTE }), true)
+        local q
+        for _, m in ipairs(W.sent) do if m.kind == "TPQ" then q = m end end
+        eq(q ~= nil, true, "Anfrage gesendet"); eq(q.target, "@PUBLIC")
+        eq(q.msg, msg("TPQ", "F", "Realm", "1437.111", ROUTE))
+        eq(T.RequestPublic({ ROUTE }), false, "nicht gleich noch einmal")
+        setLayer(1437, "222")
+        eq(T.RequestPublic({ ROUTE }), true, "nach Layer-Wechsel neu fragen")
+        -- Anfrage beantworten: eigene Messung mit passendem Layer
+        T.Sighted(ROUTE, { epoch = now * 1000 - 5000, seen = math.floor(now), source = "you", tags = { "1437.111" } })
+        chan("Anna2", msg("TPQ", "F", "Realm", "1437.111", ROUTE))
+        eq(#pubSent, 1, "geantwortet"); eq(pubSent[1].kind, "TPS")
+        eq(pubSent[1].msg:find(":1437.111", 1, true) ~= nil, true, "mit Layer")
+        eq(pubSent[1].to, "Anna2", "per Flüstern an den Fragenden")
+        chan("Anna3", msg("TPQ", "F", "Realm", "1437.555", ROUTE))
+        eq(#pubSent, 1, "anderer Layer: keine Antwort")
+        chan("Anna2", msg("TPQ", "F", "Realm", "1437.111", ROUTE))
+        eq(#pubSent, 1, "derselbe Fragende nicht gleich noch einmal")
+        -- Teilen aus: nichts senden, nichts annehmen
+        GuildPrideDB.transitShare = false
+        T.Forget()
+        chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
+        eq(T.Board(ID, "a").timed, false, "Teilen aus")
+        eq(T.RequestPublic({ ROUTE }), false)
+        GuildPrideDB.transitShare = nil
+        publicOff()
+        chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
+        eq(T.Board(ID, "a").timed, false, "serverweite Gruppensuche aus")
+        setLayer(nil, nil)
+        T.Forget()
+    end)
+
+    test("Schiffe: Fahrt merkt sich Abfahrts- und Ankunfts-Layer und geht an alle", function()
+        -- offene Fahrt aus dem vorigen Test abschließen (und deren Nachtrag-Fenster ablaufen lassen)
+        W.Advance(40); T.Sample()
+        W.Advance(400); T.Sample()
+        T.Forget()
+        W.Advance(700)   -- keine „Routine“-Wiederholung
+        publicOn()
+        local route = T.Routes()[ROUTE]
+        local start = T.Now() * 1000
+        local epoch = start - 128093
+        local function at(phase)
+            local f = route.frames
+            for i = 1, #f - 1 do
+                local a, b = f[i], f[i + 1]
+                if phase >= a[2] and phase <= b[1] and a[3] == b[3] then
+                    local t = (phase - a[2]) / math.max(1, b[1] - a[2])
+                    return a[4] + t * (b[4] - a[4]), a[5] + t * (b[5] - a[5]), a[3]
+                end
+            end
+        end
+        -- am Steg: Layer erkannt
+        setLayer(1437, "111")
+        T.Sample()
+        setLayer(nil, nil)
+        local x, y, map
+        UnitPosition = function() return x, y, 0, map end
+        UnitOnTaxi = function() return false end
+        W.sent = {}
+        for _ = 1, 80 do
+            x, y, map = at(T.Now() * 1000 - epoch)
+            T.Sample()
+            W.Advance(1)
+        end
+        -- angekommen: stehen bleiben, bis die Fahrt endet
+        for _ = 1, 35 do T.Sample(); W.Advance(1) end
+        local g = GuildPrideDB.transit.Realm[ROUTE][1]
+        eq(g.source, "you"); eq(g.tags[1], "1437.111", "Abfahrts-Layer")
+        local tps
+        for _, m in ipairs(W.sent) do if m.kind == "TPS" and m.target == "@PUBLIC" then tps = m end end        eq(tps ~= nil, true, "an alle im offenen Kanal")
+        eq(tps.msg:find(":1437.111", 1, true) ~= nil, true)
+        -- Ziel-Anleger: Layer erkannt -> wird nachgetragen und noch einmal geteilt
+        W.sent = {}
+        setLayer(1445, "777")
+        T.Sample()
+        eq(g.tags[2], "1445.777", "Ankunfts-Layer")
+        local again
+        for _, m in ipairs(W.sent) do if m.kind == "TPS" and m.msg:find("1445.777", 1, true) then again = m end end
+        eq(again ~= nil, true, "mit neuem Layer erneut geteilt")
+        UnitPosition, UnitOnTaxi = nil, nil
+        setLayer(nil, nil)
+        publicOff()
         T.Forget()
     end)
 

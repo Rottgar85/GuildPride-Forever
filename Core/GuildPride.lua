@@ -792,11 +792,13 @@ f:SetScript("OnEvent", function(_, event, ...)
         -- Nur die Gruppensuche bekommt diese Nachrichten (prüft Art und Kennung
         -- selbst), nie Dispatch – Weiterleitungen und Gildendaten sind so tabu.
         if channel == "CHANNEL" and ns.IsPublicChannel then
-            local _, _, _, _, _, _, localID, chanName = ...
-            if not IsSecret(localID) and not IsSecret(chanName) and ns.IsPublicChannel(localID, chanName) then
+            local _, _, _, _, _, _, localID, chanName = ...            if not IsSecret(localID) and not IsSecret(chanName) and ns.IsPublicChannel(localID, chanName) then
                 -- Layer-Wechsel (GuildPrideLayer.lua) hat eigene Arten: LYQ/LYA/LYR
                 if message:sub(1, 2) == "LY" then
                     if ns.OnLayerMessage then ns.OnLayerMessage(message, sender, false) end
+                -- Schiffs-Zähler (GuildPrideTransit.lua): TPS/TPQ
+                elseif message:sub(1, 2) == "TP" then
+                    if ns.OnTransitPublic then ns.OnTransitPublic(message, sender, false) end
                 elseif ns.OnPublicMessage then ns.OnPublicMessage(message, sender) end
                 return
             end
@@ -805,6 +807,11 @@ f:SetScript("OnEvent", function(_, event, ...)
         -- Fremden – ebenfalls nur an die Gruppensuche, und nur Einträge (PLFG)
         if channel == "WHISPER" and message:sub(1, 5) == "PLFG:" then
             if ns.OnPublicMessage then ns.OnPublicMessage(message, sender, true) end
+            return
+        end
+        -- Schiffs-Zähler: Antwort auf eine serverweite Anfrage, per Flüstern, auch von Fremden
+        if channel == "WHISPER" and message:sub(1, 4) == "TPS:" then
+            if ns.OnTransitPublic then ns.OnTransitPublic(message, sender, true) end
             return
         end
         -- Layer-Wechsel: Angebot (LYA), Bitte (LYR) und Dank (LYT) kommen per Flüstern, auch von Fremden

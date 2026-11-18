@@ -10,7 +10,7 @@ local T = GP.Transit
 local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
 if not T then return end
 
-local ROWS, ROW_H, GAP, WIDTH = 6, 46, 4, 340
+local ROWS, ROW_H, GAP, WIDTH = 6, 46, 4, 390
 local TOP = 40      -- Kopf mit Symbol, Titel und Anlegername
 local REACH = 120   -- yd um den Halt
 local MEDIA = GP.MEDIA or "Interface\\AddOns\\GuildPrideForever\\Media\\"
@@ -132,6 +132,23 @@ local function Build()
     frame:Hide()
 end
 
+-- Alter der Messung, kurz: „vor 25 Min.“, „vor 3 Std.“, „vor 2 Tag(en)“
+function T.AgeText(b)
+    if not b or not b.timed or not b.age then return "" end
+    local a = b.age
+    if a < 3600 then return (L["vor %d Min."]):format(math.max(1, math.floor(a / 60))) end
+    if a < 86400 then return (L["vor %d Std."]):format(math.floor(a / 3600)) end
+    return (L["vor %d Tag(en)"]):format(math.floor(a / 86400))
+end
+
+-- Stammt die Messung von deinem Layer?
+function T.LayerText(b)
+    if not b or not b.timed then return "" end
+    if b.layer == true then return L["|cff40ff40dein Layer|r"] end
+    if not b.layerKnown then return L["|cffaaaaaaLayer ?|r"] end
+    return L["|cffffaa00evtl. anderer Layer|r"]
+end
+
 local function DrawRow(r, d, b)
     local tint = TINT[d.kind] or TINT.boat
     r.dock, r.board = d, b
@@ -143,11 +160,16 @@ local function DrawRow(r, d, b)
     r.clock:SetText(clock); r.clock:SetTextColor(color[1], color[2], color[3])
     r.clockLabel:SetText(label)
     if b and b.timed then
+        local text
         if b.arriveIn <= 0 then
-            r.status:SetText((L["|cff40ff40liegt am Steg|r · nächstes in %s"]):format(T.Countdown(b.nextIn)))
+            text = (L["|cff40ff40liegt am Steg|r · nächstes in %s"]):format(T.Countdown(b.nextIn))
         else
-            r.status:SetText((L["danach in %s"]):format(T.Countdown(b.nextIn)))
+            text = (L["danach in %s"]):format(T.Countdown(b.nextIn))
         end
+        -- wie alt die Messung ist und ob sie von deinem Layer stammt
+        r.status:SetText(text .. " |cff888888· " .. T.AgeText(b) .. "|r · " .. T.LayerText(b))
+    elseif b and b.otherLayer then
+        r.status:SetText(L["|cffaaaaaaauf deinem Layer noch nicht gemessen|r"])
     else
         r.status:SetText(L["|cffaaaaaanoch nicht gemessen|r"])
     end
@@ -160,23 +182,37 @@ end
 
 -- Neu zeichnen; docks = T.DocksNear(...)
 local function Draw(docks, now)
-    local shown, untimed = 0, false
+    local shown, untimed, unknown = 0, false, false
+    local ask = {}
     for i, r in ipairs(frame.rows) do
         local d = docks[i]
         if not d then r.dock, r.board = nil, nil; r:Hide() else
             local b = T.Board(d.id, d.side, now)
             DrawRow(r, d, b)
             if b and not b.timed then untimed = true end
+            if b and not b.layerKnown then unknown = true end
+            -- nicht für deinen Layer gemessen: andere GuildPride-Spieler fragen
+            if b and not (b.timed and b.layer == true) and T.RoutesOf then
+                for _, id in ipairs(T.RoutesOf(d.id)) do ask[#ask + 1] = id end
+            end
             shown = i
         end
     end
+    if #ask > 0 and T.RequestPublic then T.RequestPublic(ask) end
     frame.dock:SetText(docks[1] and T.EndName(docks[1].id, docks[1].side) or "")
     frame.logo:SetTexture(ICON[docks[1] and docks[1].kind] or ICON.boat)
     local h = TOP + shown * (ROW_H + GAP) + 6
     frame.hint:ClearAllPoints()
     frame.hint:SetPoint("TOPLEFT", 12, -(TOP + shown * (ROW_H + GAP)))
-    frame.hint:SetShown(untimed); frame.untimed = untimed
-    if untimed then h = h + 26 end
+    -- Hinweis: einmal mitfahren bzw. Layer erkennen lassen
+    if untimed then
+        frame.hint:SetText(L["Fahr einmal mit – dann misst GuildPride die Zeiten für dich und deine Gilde."])
+    elseif unknown then
+        frame.hint:SetText(L["Tipp: eine Kreatur anvisieren – dann erkennt GuildPride deinen Layer und zeigt dessen Zeiten."])
+    end
+    local hint = untimed or unknown
+    frame.hint:SetShown(hint); frame.untimed = untimed
+    if hint then h = h + 26 end
     frame:SetHeight(h)
 end
 

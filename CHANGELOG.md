@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.25.0
+
+**Deutsch**
+- **Schiffs-Zähler je Layer**: Jeder Layer fährt seine Schiffe und Zeppeline versetzt. Messungen merken sich jetzt den Layer (am Abfahrts- und Ziel-Steg), und das Fenster am Anleger zeigt die Zeiten **deines** Layers – wechselst du den Layer, wechselt die Anzeige mit
+- **Mit allen GuildPride-Spielern geteilt**: Eigene Messungen gehen außer an die Gilde auch an alle im serverweiten GuildPride-Kanal. Fehlt am Anleger eine Messung für deinen Layer, fragt GuildPride die anderen selbst (nur mit **Serverweite Gruppensuche** an)
+- Messungen gelten jetzt bis zur wöchentlichen Wartung statt 6 Stunden; das Fenster zeigt, wie alt sie sind und ob sie von deinem Layer stammen (**dein Layer**, **Layer ?**, **evtl. anderer Layer**)
+- Tipp im Fenster: eine Kreatur anvisieren, damit GuildPride deinen Layer erkennt
+
+**English**
+- **Ship timer per layer**: every layer runs its ships and zeppelins offset. Measurements now remember the layer (at the departure and arrival dock), and the dock window shows the times of **your** layer – switch layers and the display follows
+- **Shared with all GuildPride players**: your measurements go to your guild and to everyone in the server-wide GuildPride channel. If the dock has no measurement for your layer, GuildPride asks the others by itself (only with **Server-wide group finder** on)
+- Measurements now last until the weekly maintenance instead of 6 hours; the window shows how old they are and whether they are from your layer (**your layer**, **layer ?**, **maybe other layer**)
+- Tip in the window: target a creature so GuildPride detects your layer
+
 ## 2.24.1
 
 **Deutsch**
