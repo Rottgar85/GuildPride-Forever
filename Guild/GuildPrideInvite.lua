@@ -249,9 +249,9 @@ function ns.ArrangeInvite(box, button, guild)
 end
 
 ---------------------------------------------------------------------
--- Einladungen aus Menüs (Rechtsklick auf Spieler, /gp einladen): Menüeinträge sind
--- kein sicherer Klick, darum fragt ein kleines Fenster nach, dessen Knopf Blizzards
--- Einladedialog öffnet. Der Name steht dort zum Abtippen.
+-- /gp einladen Name: ein Slash-Befehl ist kein sicherer Klick, darum fragt ein kleines
+-- Fenster nach, dessen Knopf Blizzards Einladedialog öffnet. Der Name steht dort zum
+-- Abtippen. (Rechtsklick-Menüs laden nicht mehr in die Gilde ein: Forever blockiert das.)
 ---------------------------------------------------------------------
 local dialog
 

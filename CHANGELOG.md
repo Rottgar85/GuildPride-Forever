@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.24.1
+
+**Deutsch**
+- Rechtsklick auf einen Spieler: Der Eintrag **In Gilde einladen** ist entfernt – WoW Forever blockiert Einladungen aus diesem Menü. Zum Einladen den Knopf **Einladen** im Gildenfenster nehmen (öffnet Blizzards Einladedialog) oder `/ginvite Vor Nachname` im Chat
+
+**English**
+- Right-clicking a player: the **Invite to guild** entry is removed – WoW Forever blocks invites from this menu. To invite, use the **Invite** button in the guild window (opens Blizzard's invite dialog) or type `/ginvite First Last` in chat
+
 ## 2.24.0
 
 **Deutsch**

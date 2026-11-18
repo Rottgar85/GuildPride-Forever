@@ -844,8 +844,8 @@ end
 
 -- Einladen: in die Gilde bzw. in eine Charakter-Community.
 -- Forever sperrt die Gildeneinladung für jeden Addon-Aufruf; dort lädt ein sicherer
--- Klick auf Blizzards eigenen Einladeknopf ein (Guild/GuildPrideInvite.lua). Aus Menüs
--- heraus fragt erst ein kleines Fenster nach, dessen Knopf diesen Klick auslöst.
+-- Klick auf Blizzards eigenen Einladeknopf ein (Guild/GuildPrideInvite.lua). Für
+-- /gp einladen fragt erst ein kleines Fenster nach, dessen Knopf diesen Klick auslöst.
 function ns.InviteToGuild(name)
     if not IsInGuild() then ns.Print(L["Du bist in keiner Gilde."]); return end
     if CanGuildInvite and not CanGuildInvite() then
