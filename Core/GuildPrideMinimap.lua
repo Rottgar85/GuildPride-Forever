@@ -159,7 +159,10 @@ local function BuildTab(host)
     ic:SetAllPoints(); ic:SetTexture(ns.MEDIA .. "logo")
     gtab:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
     gtab:SetScript("OnClick", function(_, button)
-        if not InCombatLockdown() and gHost and gHost:IsShown() and HideUIPanel then pcall(HideUIPanel, gHost) end
+        if ns.ParkBlizzardGuild and gHost == rawget(_G, "CommunitiesFrame") then
+            -- Forever: Blizzards Fenster nicht per Addon schließen (siehe GuildPrideInvite.lua)
+            if gHost:IsShown() then ns.ParkBlizzardGuild() end
+        elseif not InCombatLockdown() and gHost and gHost:IsShown() and HideUIPanel then pcall(HideUIPanel, gHost) end
         if not ns.GuildFrame:IsShown() or button == "RightButton" then Click(button) end
     end)
     gtab:SetScript("OnDragStart", function(self) if IsShiftKeyDown() then self:SetScript("OnUpdate", TabDrag) end end)

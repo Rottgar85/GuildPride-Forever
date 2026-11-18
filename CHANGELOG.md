@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.24.0
+
+**Deutsch**
+- **Gildeneinladung auf WoW Forever repariert**: Ein Klick auf **Einladen** (unten rechts neben dem Chat) bzw. **In Gilde einladen** (Mitgliederliste) öffnet Blizzards normalen Einladedialog – dort den Namen eintippen und annehmen. Vorher meldete das Spiel „nur für Blizzard-Oberfläche“
+- Ursache war, dass GuildPride Blizzards Gildenfenster beim Drücken von **J** selbst geschlossen hat. Jetzt wird es nur unsichtbar gemacht – öffnen und schließen tut es weiter nur das Spiel
+- Rechtsklick auf einen Spieler › **In Gilde einladen** und `/gp einladen Name` zeigen ein kleines Fenster mit dem Namen; dessen Knopf öffnet Blizzards Einladedialog
+- Neu: Einstellungen › Allgemein › **Oben das Gildenwappen statt des Fraktionslogos zeigen**
+
+**English**
+- **Guild invites on WoW Forever fixed**: clicking **Invite** (bottom right next to the chat) or **Invite to guild** (member list) opens Blizzard's normal invite dialog – type the name there and accept. Before, the game said "only available to the Blizzard UI"
+- The cause was that GuildPride closed Blizzard's guild window itself when pressing **J**. Now it is only made invisible – only the game opens and closes it
+- Right-click a player › **Invite to guild** and `/gp einladen Name` show a small window with the name; its button opens Blizzard's invite dialog
+- New: Settings › General › **Show the guild emblem instead of the faction logo at the top**
+
 ## 2.23.2
 
 **Deutsch**

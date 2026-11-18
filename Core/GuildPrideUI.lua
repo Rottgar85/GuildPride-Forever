@@ -842,27 +842,19 @@ local function CanInviteToClub(clubId)
     return priv and priv.canSendInvitation
 end
 
--- Forever sperrt die Gildeneinladung für alles, was ein Addon auslöst: direkter Aufruf,
--- /ginvite aus einem Makroskript, Blizzards Einladefenster per Knopf und vom Addon
--- eingetragener Chat-Text (taint.log: ChatFrame1EditBox:GetText() -> Invite()).
--- Nur selbst getippt geht es, darum zeigt das Addon hier nur den Befehl an.
-local ShowInviteHint
-if ns.IS_FOREVER then
-    ShowInviteHint = function(rawName)
-        -- Keine Zeilenumbrüche, Farb- oder Linkcodes aus dem Namen in die Ausgabe
-        local name = rawName:gsub("[%c|]", ""):gsub("^%s+", ""):gsub("%s+$", "")
-        if name == "" then return end
-        ns.Print((L["Zum Einladen bitte im Chat eingeben: |cffffd100/ginvite %s|r"]):format(name))
-    end
-end
-
--- Einladen: in die Gilde bzw. in eine Charakter-Community
+-- Einladen: in die Gilde bzw. in eine Charakter-Community.
+-- Forever sperrt die Gildeneinladung für jeden Addon-Aufruf; dort lädt ein sicherer
+-- Klick auf Blizzards eigenen Einladeknopf ein (Guild/GuildPrideInvite.lua). Aus Menüs
+-- heraus fragt erst ein kleines Fenster nach, dessen Knopf diesen Klick auslöst.
 function ns.InviteToGuild(name)
     if not IsInGuild() then ns.Print(L["Du bist in keiner Gilde."]); return end
     if CanGuildInvite and not CanGuildInvite() then
         ns.Print(L["|cffff4040Du darfst keine Spieler in die Gilde einladen.|r"]); return
     end
-    if ShowInviteHint then ShowInviteHint(name); return end
+    if ns.IS_FOREVER then
+        if ns.GuildInviteDialog then ns.GuildInviteDialog(name) elseif ns.ShowInviteHint then ns.ShowInviteHint(name) end
+        return
+    end
     if C_GuildInfo and C_GuildInfo.Invite then C_GuildInfo.Invite(name) else GuildInvite(name) end
     ns.Print((L["Gildeneinladung an |cffffd100%s|r gesendet."]):format(name))
 end
@@ -1052,6 +1044,9 @@ end
 
 local function DoInvite(box)
     local name = strtrim(box:GetText() or "")
+    -- Gilde auf Forever: der Klick öffnet per sicherem Klick Blizzards Dialog
+    -- (GuildPrideInvite.lua); hierher kommt man nur, wenn das nicht ging (z. B. im Kampf)
+    if not source and ns.IS_FOREVER and ns.ShowInviteHint then ns.ShowInviteHint(name); return end
     if name == "" then ns.Print(L["Bitte einen Charakternamen eingeben."]); return end
     if source then ns.InviteToClub(source, name) else ns.InviteToGuild(name) end
     box:SetText(""); box:ClearFocus()
@@ -1073,6 +1068,13 @@ local rosterInviteBtn = CreateFrame("Button", nil, roster, "UIPanelButtonTemplat
 rosterInviteBtn:SetSize(72, 24); rosterInviteBtn:SetPoint("LEFT", rosterInviteBox, "RIGHT", 4, 0)
 rosterInviteBtn:SetText(L["Einladen"])
 rosterInviteBtn:SetScript("OnClick", function() DoInvite(rosterInviteBox) end)
+-- Forever: Klick auf die Einladen-Knöpfe öffnet per sicherem Klick Blizzards normalen
+-- Einladedialog, der Name wird dort getippt (Guild/GuildPrideInvite.lua).
+-- (ohne neue Locals: der Hauptteil dieser Datei ist am 200-Locals-Limit)
+if ns.AttachGuildInvite then
+    ns.AttachGuildInvite(inviteBtn, function() return source == nil end)
+    ns.AttachGuildInvite(rosterInviteBtn, function() return source == nil end)
+end
 
 local function UpdateRosterInvite()
     local can
@@ -1080,6 +1082,8 @@ local function UpdateRosterInvite()
     else can = IsInGuild() and (not CanGuildInvite or CanGuildInvite()) end
     rosterInviteBox:SetShown(can and true or false)
     rosterInviteBtn:SetShown(can and true or false)
+    -- Forever-Gilde: nur der Knopf, der Name wird in Blizzards Dialog getippt
+    if ns.ArrangeInvite then ns.ArrangeInvite(rosterInviteBox, rosterInviteBtn, source == nil) end
     rosterHolder:SetPoint("BOTTOMRIGHT", -2, can and 32 or 4)
 end
 
@@ -1548,6 +1552,7 @@ function members:Refresh()
     end
     mark(bOnline, not showOffline); mark(bAll, showOffline)
     inviteBtn:SetText(source and L["In Community einladen"] or L["In Gilde einladen"])
+    if ns.ArrangeInvite then ns.ArrangeInvite(inviteBox, inviteBtn, source == nil) end
     -- Inaktive / Beförderungen: nur Gilde, nur wer entfernen oder befördern darf
     local canInactive = not source and ((CanGuildRemove and CanGuildRemove())
         or (CanGuildPromote and CanGuildPromote()) or ns.IsOfficer())
@@ -1786,6 +1791,8 @@ local OPT_Y = -4   -- Style- und Layout-Auswahl gibt es seit 2.14 nicht mehr
 local options = {
     { header = L["Allgemein"] },
     { key = "replaceGuildFrame", label = L["Dieses Fenster statt Blizzard-Gildenfenster (J)"] },
+    { key = "crestGuild",    label = L["Oben das Gildenwappen statt des Fraktionslogos zeigen"],
+      changed = function() if ns.UpdateCrestChoice then ns.UpdateCrestChoice() end end },
     { key = "compactMenu",   label = L["Kompaktes Menü (Übersicht + Meilensteine, Events + Gruppensuche + Umfragen zusammen)"],
       changed = function() if ns.MenuChanged then ns.MenuChanged() end end },
     { key = "minimap",       label = L["Minimap-Knopf anzeigen"],
@@ -2306,6 +2313,12 @@ end
 function ns.OpenBlizzardGuild()
     frame:Hide()
     blockUntil = 0
+    -- Forever: Blizzards Fenster ist meist schon offen (geparkt): nur zurückholen,
+    -- nicht per Addon öffnen (das würde es „verseuchen“, siehe GuildPrideInvite.lua)
+    if ns.UnparkBlizzardGuild then
+        ns.UnparkBlizzardGuild()
+        if CommunitiesFrame and CommunitiesFrame:IsShown() then return end
+    end
     bypass = true
     if ToggleGuildFrame then ToggleGuildFrame() end
     bypass = false
@@ -2336,10 +2349,18 @@ if ToggleGuildFrame then
     hooksecurefunc("ToggleGuildFrame", function()
         if bypass or not GuildPrideDB or not GuildPrideDB.replaceGuildFrame then return end
         if not IsInGuild() then return end
-        blockUntil = GetTime() + 0.5
-        HookBlizzardShow()
-        HideBlizzardGuild()
-        C_Timer.After(0, HideBlizzardGuild)
+        if ns.ParkBlizzardGuild then
+            -- Forever: Blizzards Fenster nie per Addon schließen, nur unsichtbar parken
+            -- (sonst blockiert Forever die Gildeneinladung, siehe GuildPrideInvite.lua)
+            ns.ParkBlizzardGuild()
+        else
+            blockUntil = GetTime() + 0.5
+            HookBlizzardShow()
+            HideBlizzardGuild()
+            C_Timer.After(0, HideBlizzardGuild)
+        end
+        -- Vorbereitungsklick der Gildeneinladung (GuildPrideInvite.lua): Fenster bleibt, wie es ist
+        if ns.InvitePriming and ns.InvitePriming() then return end
         ns.ToggleUI()
     end)
 end

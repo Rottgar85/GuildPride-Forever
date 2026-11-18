@@ -789,6 +789,7 @@ end)
 
 require("ah")(test, eq, W, ns)
 require("transit")(test, eq, W, ns)
+require("invite")(test, eq, W, ns)
 
 print(("\n%d bestanden, %d fehlgeschlagen"):format(passed, failed))
 if failed > 0 then os.exit(1) end
