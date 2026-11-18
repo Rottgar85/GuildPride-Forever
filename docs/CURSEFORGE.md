@@ -1,168 +1,177 @@
 # GuildPride Forever
 
-**Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub: overview, guild & chat, events, group finder, polls, milestones and guild info in one place. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
+**Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship and zeppelin timers per layer, a rare scanner, a full auction house, layer switching with one click, a crafting directory, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Deutsche Beschreibung weiter unten.*
+*Version 2.26.0 · Deutsche Beschreibung weiter unten.*
 
 ---
 
 ## 🇬🇧 English
 
-### NEW in 2.16 / 2.17: switch layers with one click
+### NEW in 2.26
 
-- **Switch layer** – button in the guild window above "Settings", in the group finder or `/gp layer`. Asks everyone with GuildPride in your zone (server-wide, not just the guild); a player on another layer invites you automatically, the invite is accepted automatically and you leave the group on your own after the switch.
-- **See your layer** – your current layer is shown right below the minimap (movable, toggle with `/gp layer display`), on the button and in the minimap tooltip.
-- **Layer help** – one click enables everything: the server-wide GuildPride channel and helping others. Click again to turn helping off.
-- **Guild layers** – click the layer display or `/gp layer list`: who from the guild is in which zone on which layer. **Go here** switches you to a specific member's layer.
-- **Rares per layer** – the rare alert shows the layer of the sighting; **To layer** takes you straight there.
-- **Thanks & stats** – after a switch the addon thanks the helper; how often you helped, got thanked and switched yourself is shown in the tooltips.
-- **Also new:** guild window opens in combat, **Activity** tab for officers, Discord filter in the guild chat, event templates, adjustable reminder time, new **"Guild hall"** design (2.14) and a reworked weapon comparison in Scales (2.15).
+- **Dungeons and raids for guild events** – the **New event** window has a button each for **dungeon** and **raid**: every WoW Forever dungeon and raid with level and player count, the name becomes the title. The event list gets its own column (e.g. *Raid · 40*), the lineup follows the group size, and Discord gets the choice so the bot builds the matching group.
+- **Sharing without exception** – ship and zeppelin times, rares and auction house prices are always shared with everyone using GuildPride, even with the server-wide group finder off.
+- **Ship timer** – times confirmed by several players (*confirmed 3×*), a reminder 1 minute before departure, automatic layer detection and last week's time as a guess after the reset.
 
-### NEW in 2.6: join dates, raid roster, applications, management tab
+### Guild window
 
-- **Join date & history** – every member shows "member since …" plus joins, leaves and rank changes; you are told when someone was in the guild before.
-- **Raid roster** – for every event: 8 groups, drag or click, auto-assign (tanks first, healers spread), invite everyone assigned, arrange raid groups with one click, send the roster to the guild.
-- **Applications – even without the addon** – applicants whisper **!apply** to any member with GuildPride and answer four short questions; **!info** sends your guild profile. Officers get a notice and decide in one window.
-- **Management tab** – only visible to officers: applications, recruiting text, DKP, note templates and guild channel in one place. Settings now only hold personal options.
-- **Resizable window** – drag the bottom-right corner (60–200 %).
+- **New guild window** – opens with **J** or the guild button. Guild name and faction logo or guild crest at the top. Pick a look on first start (Guild book, Classic, Icon bar); everything uses the dark **"Guild hall"** design with a gold accent. Window size (60–200 %), opacity and chat font are adjustable, and the sidebar can be hidden, renamed and reordered. Prefer Blizzard's window? `/gp blizzard` switches back.
+- **Overview** – members online, the next event, the message of the day, the latest milestones and a **This week** recap (level-ups, raid kills, achievements, mounts, joins, departures, busiest member).
+- **Milestones with badges** – animated pop-up when a guildmate reaches level 10, 20, 30 …, plus achievements, first raid boss kills and new mounts. Missed milestones are fetched at login. Joins and departures show a clear notice.
+- **Guild goals** – shared goals with a progress bar (member count, players at a level or your own goals officers count up by hand). Reached goals are celebrated and can be posted to Discord.
+- **Notice board** – officers pin a message; every member sees it once as a window, then on the overview (`/gp board`).
+- **Guild & Chat** – guild chat, officer chat and your communities with server history, the members right next to the chat. Unread counts, highlighted mentions and a Discord filter.
+- **Member list** – search by name, rank, note or zone, sortable columns, "member since …" with joins, leaves and rank changes. Click a member to set a rank, remove them or transfer leadership. **Invite** opens Blizzard's invite dialog.
+- **Alts detected automatically** – everyone with GuildPride reports one player ID for all their characters; alts collapse under the main. **Your BattleTag stays private**: the guild only sees a code derived from it.
+- **For officers** – *Management* tab (applications, recruiting text, DKP, note templates, guild channel), *Activity* tab (who has been offline how long, event sign-ups, attendance), **Inactive** filter with removal in a few clicks, **promotion by time** ("Recruit → Member after 14 days"), automatic welcome.
+- **Applications, even without the addon** – applicants whisper **!apply** to any member with GuildPride and answer four questions; **!info** sends your guild profile.
+- **Guild on the world map** – guild members with GuildPride as a dot in their class colour (only your guild sees it, can be turned off).
 
-### NEW in 2.5: automatic alts, leaner menu, backup
+### Plan
 
-- **Alts detected automatically** – everyone with GuildPride reports the same player ID for all their characters, no matter which character joins the guild. The member list shows each player once, alts collapse under **+3**, and "playing *Alt* (level)" shows on the main. **Your BattleTag stays private:** it never leaves your PC, the guild only sees a code derived from it (different in every guild). Officers can link alts of players without the addon by hand.
-- **Inactivity per player** – the "inactive" filter only lists players whose *every* character has been away.
-- **Leaner menu** – 5 tabs instead of 8 (*Overview* + Milestones, *Plan* = Events, Group finder, Polls), settings in sections with a search box. The old layout is one checkbox away.
-- **One-click backup** – saves all GuildPride data, keeps the last 5, automatic once a week, one-click restore.
-- **DKP log** – every entry with who, when, how much and why; officers can undo any single entry.
-- **Hardened sync** – only officers can book DKP, only creators or officers can change events and polls, forged relays are rejected. Covered by automated tests.
-- **Error report** – `/gp errors` shows a report to copy and send.
+- **Event planner** – date, time, description, officer note, **dungeon or raid** from the list, weekly repeat, templates and editing. Members sign up as *Attending / Maybe / Declined* with their role. New events show a notice with sound, a reminder comes before the start (0–60 min), plus lineup check, **raid roster** (8 groups, auto-assign, invite everyone assigned, arrange the raid) and **attendance** per player.
+- **Group finder & quest help** – sign up as *Looking for group*, *Looking for members* or *Needs quest help* with a quest or dungeon and the roles you need. **Join** sends role, class and level, the leader invites with one click. Blizzard's Dungeon Finder groups can be pulled into the list.
+- **Server-wide group finder** – optionally show your listing to everyone on the server with GuildPride (own faction, no guild name). `/gp server` turns it off.
+- **Polls** – up to 6 answers and an optional duration.
+- **Wishlist** – mark items as normal, high or BiS; the item tooltip shows who in the guild wants it (with DKP), and an epic drop shows who in the group wants it.
 
-### NEW in 2.3: Discord & DKP
+### Crafting & auction house
 
-- **Discord sync** – uses Blizzard's own guild chat Discord link. Events, sign-ups (with role and class) and declines from GuildPride show up in your Discord as raid events with a live roster – no extra program, no import strings. Players without a linked Discord are relayed by a linked guildmate.
-- **DKP** – `/gp dkp`: officers award points to the whole raid, a group or a target with one click (attendance, boss kills), deduct loot at a fixed price and can undo their last booking. **Every player sees DKP in the tooltip** when hovering over a player. Bookings are also posted to Discord, with `/dkp` standings and a leaderboard.
-- **Setup for Discord:** your guild leader links the guild to a Discord channel (Guild & Communities → Guild Settings → Discord Settings, ideally with *Separate Discord chat*) and invites **GameBot** (dashboard: https://gamerbot.duckdns.org – log in with Discord, add the bot, open *WoW Bridge*, pick an event channel). Everyone with a linked Discord types `/gp discord linked` once in game and `/wow link Name` in Discord.
+- **Crafting directory** (*Professions* tab) – who has which profession at which skill and which recipes, searchable by name, profession or recipe.
+- **Guild orders** – post an item and a quantity; crafters accept or give back, the requester gets a notice. New and accepted orders also go to Discord.
+- **Auction house** – optional GuildPride window with search by category, buy view with all offers, **price history** of 7 days and who in the guild can craft the item, selling with a price suggestion (cheapest current offer), **My auctions**, favourites, **shopping lists** (quantity, stock, price alert, export/import incl. Auctionator lists, temporary list for one shopping trip, *Buy list*) and *Orders*. Prices show in the item tooltip.
+- **Prices for everyone** – prices are shared server-wide (own faction, goblin auction houses separate) and only count as confirmed when at least two players report them. Works alongside Auctionator.
+- **Profession window** – *AH: Reagents* searches only the reagents of a recipe, *To shopping list*, and shows reagent cost, sale value and profit.
 
-### Features
+### Travel, rares & layers
 
-- **New guild window** – opens with **J** or the guild button. Your guild name at the top, your faction logo in the sidebar. Tabs: Overview, Guild & Chat, Events, Group Finder, Polls, Milestones, Guild Info and Settings. Prefer Blizzard's window? `/gp blizzard` switches back.
-- **Overview** – members online, the next event, the message of the day, the latest milestones and a **This week** recap (level-ups, raid kills, achievements, mounts, joins, departures and the busiest member).
-- **Guild & Chat** – chat on the left, members on the right, like Blizzard's community window. Guild chat, officer chat and your communities with server history. Unread counts on every channel, messages that mention you are highlighted.
-- **Member list** – crowns mark the guild master (filled) and officers (outlined). Search by name, rank, note or zone, sortable columns, online only or everyone with rank, notes and "last online". Officers get an **Inactive** filter (14 to 180 days or your own number, ranks can be excluded) and can **remove the inactive** members in a few clicks. **Promotion by time**: set rules like "Recruit → Member after 14 days in the rank", and the list shows who is due – one click promotes them.
-- **Guild management** – click a member to set a rank (up or down), remove them or transfer leadership (depending on your rights). Right-click for whisper, group invite, friend or community invite. **Guild invites:** WoW Forever only accepts `/ginvite` when you type it yourself, so the invite button and **Invite to guild** – also on any player in the game, like target, group, chat name or friends list – show you the ready-made command in chat (needs invite rights). Note templates and a recruiting text are built in.
-- **Milestones with badges** – animated pop-up with a badge when a guildmate reaches level 10, 20, 30 …, plus achievements, first raid boss kills and new mounts. Joins and departures show a clear on-screen notice. Missed milestones are fetched when you log in.
-- **Event planner** – officers create events with date, time, description and officer note, optionally **repeating every week**. Members sign up as *Attending / Maybe / Declined* with their role. Reminder 15 minutes before the start, lineup check, "Invite all attendees" and **attendance tracking** per player.
-- **Group finder & quest help** – **Sign up** lists you as *Looking for group*, *Looking for members* or (with a quest picked) *Needs quest help*, with the roles you still need; **Sign off** removes you, and a full group signs you off by itself. Link a quest from your quest log or pick a **dungeon**: searchable list with level ranges; the **Heroic** button only appears when your character can actually run heroics, and then only heroic dungeons are listed. **Join** sends a join request, **Invite** invites a solo player.
-- **Server-wide group finder** – tick *Server-wide* and your listing is also shown to everyone on your server who uses GuildPride; switch the list between *Guild · Server · All*. Only your own faction is shown (Blizzard keeps chat channels separate per faction), no guild name is sent, only group finder listings are exchanged, and you can hide players. `/gp server` turns it off.
-- **Dungeon Finder** – the **Dungeon Finder** button opens Blizzard's own Dungeon Finder, and **Search Dungeon Finder** brings its groups into your list, marked **[Dungeon Finder]**. The dots show which roles are already in the group (blue tank, green healer, red damage), the line below says if a tank or healer is still missing, and **Whisper** opens a whisper to the group leader.
-- **Copy messages** – click `[GuildPride]` in front of a GuildPride chat message to open just that line, ready to copy with Ctrl+C.
-- **Guild on the world map** – guild members with GuildPride show up on the world map as a dot in their class color, even when they are not in your group. Positions are only shared with your guild, and both showing and sharing can be turned off in the settings.
-- **Customize the menu** – hide, rename and reorder the sidebar tabs and pick a start tab that opens every time. "Settings" always stays.
-- **Polls** – officers create polls with up to 6 answers and an optional duration, everyone votes.
-- **Guild info** – Blizzard's guild info text for everyone, with a notice when it changes and a copy button.
-- **"Guild hall" design** – dark slate with a gold accent, the same look in every window; window size, opacity and chat font size are adjustable. Minimap button, optional automatic welcome for new members, version check.
-- **English & German** – switches automatically to your game client's language.
+- **Ship timer** – stand at a dock (ship, zeppelin, airship) and a small window shows a countdown per connection: whether it is **at the dock and when it leaves**, when the next one arrives and the one after. Times are measured when someone rides along and are **shared with everyone using GuildPride**.
+- **Per layer** – every layer runs its ships offset; the window shows the times of **your** layer and switches with you. Times confirmed by several players show *confirmed 3×*; a single differing report does not replace them.
+- **Reminder** – click the clock icon on a connection: raid warning and sound 1 minute before departure, even when you have left the dock.
+- **After the weekly reset** – until someone measures again, last week's time shows as *guessed*. Experimental: when the layer start time matches on two measured layers, unmeasured layers get an *estimated* time.
+- **Rare scanner & world bosses** (`/gp rares`) – rares are detected via target, mouse and nameplates and shared with everyone on the server using GuildPride, with alert, sound and the sighting's layer. The world map shows known spawn points of over 300 rares.
+- **Switch layers with one click** – button in the guild window, in the group finder or `/gp layer`: a player on another layer in your zone invites you, the invite is accepted and you leave the group by yourself. Your layer shows below the minimap. The layer list shows everyone with GuildPride on the server with zone and layer; **Go here** switches to a specific player's layer, **To layer** in the rare alert takes you to the sighting.
 
-### Security & sync
+### Scales
 
-- Data is only exchanged with members of **your** guild. Everything that arrives is checked and limited – no injected colour or link codes, no flooding.
-- Guild data runs over a **secured background channel**: its name and password come from a random secret key created by the guild leadership and shared only with guild members. A new key is created when someone leaves the guild.
-- Milestones, events, polls, attendance and chat are **stored per guild** – characters in different guilds never mix their data.
-- Blizzard blocks addon messages during *chat lockdown* in instances. GuildPride waits and sends afterwards.
-- Syncing works between guild members who **have GuildPride installed**.
+- **Scales built in** (`/scales`) – simulates your character (DPS, HPS, mitigation) and shows on every item whether it is an upgrade, with arrows in your bags and a line in the tooltip, plus a weapon comparison.
+
+### Discord & DKP
+
+- **Discord sync** – uses Blizzard's own guild chat Discord link. Events (with dungeon/raid and group size), sign-ups with role and class, declines, DKP, polls, milestones, guild orders and prices show up in your Discord – no extra program. Sign-ups of players without a linked Discord are relayed by the event creator.
+- **DKP** – `/gp dkp`: officers award points to the raid, a group or a target with one click, deduct loot and undo any entry in the log. Everyone sees DKP in the player tooltip.
+- **Setup:** the guild leader links the guild to a Discord channel (Guild & Communities → Guild Settings → Discord Settings, ideally with *Separate Discord chat*) and invites **GameBot** (dashboard: https://gamerbot.duckdns.org – log in with Discord, add the bot, open *WoW Bridge*, pick an event channel). Everyone with a linked Discord types `/gp discord linked` once in game and `/wow link Name` in Discord.
+
+### Security & sharing
+
+- **Guild data** (milestones, events, polls, DKP, chat, alts) is only exchanged with members of **your** guild, over a hidden channel protected by a random key of the guild leadership. A new key is created when someone leaves.
+- **Shared with everyone on the server using GuildPride, always:** ship timetables (with layer), rare sightings and auction house prices – no guild names, own faction only.
+- **Only with the server-wide group finder switched on:** group finder listings and layer switching.
+- Everything that arrives is checked and limited – no injected colour or link codes, no flooding. Guild data is stored per guild.
+- **One-click backup** (`/gp backup`): keeps the last 5 states, automatically once a week.
 
 ### Commands
 
 | Command | What it does |
 |---|---|
 | `/gp` | open the window (`/gp help` lists all commands) |
-| `/gp sound` · `/gp popup` | turn sounds or pop-ups on/off |
+| `/gp sound` · `/gp popup` | sounds or pop-ups on/off |
 | `/gp blizzard` | switch between GuildPride and Blizzard's guild window |
-| `/gp invite First Last` | show the `/ginvite` command for a player in chat |
-| `/gp recruit` | put your saved recruiting text into the chat input |
-| `/gp options` | open the GuildPride page in the WoW options |
+| `/gp invite First Last` | invite a player to the guild |
+| `/gp layer` | switch layer (`list`, `display`, `on`/`off`, `leave`) |
+| `/gp rares` · `/gpr` | rare scanner |
+| `/scales` | Scales |
+| `/gp ah` | auction house (`on`/`off`, `status`, `scan`, `window`) |
+| `/gp dkp` | DKP window with log |
+| `/gp wish` | wishlist |
+| `/gp board` | show the notice board |
+| `/gp discord` | Discord link (`info`, `test`, `linked`) |
+| `/gp server` | server-wide group finder on/off (`status`, `unblock`) |
+| `/gp applications` | applications (officers) |
+| `/gp backup` | backup window |
+| `/gp recruit` | put the recruiting text into the chat input |
 | `/gp version` | who in the guild uses which version |
-| `/gp channel` | status of the secured channel (officers: `/gp channel new` creates a new key) |
-| `/gp server` | turn the server-wide group finder on/off (`/gp server unblock` shows hidden players again, `/gp server status` shows channel and messages) |
-| `/gp id` | show your player ID code (never your BattleTag) |
-| `/gp backup` | open the backup window |
-| `/gp errors` | error report to copy |
-| `/gp dkp` | DKP window (with *Log …*) |
-| `/gp news` | show what's new |
-| `/gp layer` | switch layer (`/gp layer list`, `display`, `on`/`off`, `leave`) |
-| `/gp applications` | applications window (officers) |
-| `/gp badge 30` | preview a milestone pop-up |
+| `/gp channel` | guild channel status (officers: `/gp channel new`) |
+| `/gp id` | your player ID code (never your BattleTag) |
+| `/gp news` · `/gp changelog` | what's new |
+| `/gp report` · `/gp errors` | bug report to copy |
+| `/gp options` | GuildPride page in the WoW options |
 
 ### Feedback
 
-Bug reports and ideas are very welcome in the comments here. Please include the Lua error.
+Bug reports and ideas are very welcome in the comments or on the GuildPride Discord (logo button in the guild window). `/gp report` creates a report to copy.
 
 ---
 
 ## 🇩🇪 Deutsch
 
-**Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt: Übersicht, Gilde & Chat, Events, Gruppensuche, Umfragen, Meilensteine und Gildeninfo an einem Ort. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
+**Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs- und Zeppelinzeiten je Layer, einen Rare-Scanner, ein vollständiges Auktionshaus, Layer-Wechsel mit einem Klick, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-### NEU in 2.16 / 2.17: Layer wechseln mit einem Klick
+*Version 2.26.0*
 
-- **Layer wechseln** – Knopf im Gildenfenster über „Einstellungen“, in der Gruppensuche oder `/gp layer`. Fragt alle mit GuildPride in deiner Zone (serverweit, nicht nur die Gilde); ein Spieler auf einem anderen Layer lädt dich automatisch ein, die Einladung wird automatisch angenommen und nach dem Wechsel verlässt du die Gruppe von selbst.
-- **Eigenen Layer sehen** – dein aktueller Layer steht direkt unter der Minimap (verschiebbar, abschaltbar mit `/gp layer anzeige`), auf dem Knopf und im Minimap-Tooltip.
-- **Layer helfen** – ein Klick schaltet alles frei: den serverweiten GuildPride-Kanal und die Hilfe für andere. Noch ein Klick schaltet die Hilfe wieder ab.
-- **Layer der Gilde** – Klick auf die Layer-Anzeige oder `/gp layer liste`: wer aus der Gilde in welcher Zone auf welchem Layer ist. Mit **Hierhin** wechselst du gezielt auf den Layer eines Mitglieds.
-- **Rares pro Layer** – der Rare-Alarm zeigt den Layer der Sichtung; **Zum Layer** bringt dich direkt dorthin.
-- **Danke & Statistik** – nach einem Wechsel bedankt sich das Addon beim Helfer; wie oft du geholfen hast, Dank bekommen hast und selbst gewechselt bist, steht in den Tooltips.
-- **Außerdem neu:** Gildenfenster im Kampf öffnen, Reiter **Aktivität** für Offiziere, Discord-Filter im Gildenchat, Event-Vorlagen, einstellbare Erinnerungszeit, neues Design **„Gildenhalle“** (2.14) und überarbeiteter Waffenvergleich in Scales (2.15).
+### NEU in 2.26
 
-### NEU in 2.6: Beitrittsdatum, Raid-Aufstellung, Bewerbungen, Verwaltung
+- **Dungeons und Raids bei Gildenevents** – im Fenster **Neues Event** je ein Knopf für **Dungeon** und **Raid**: alle Dungeons und Raids von WoW Forever mit Stufe und Spielerzahl, der Name wird als Titel übernommen. Die Event-Liste bekommt eine eigene Spalte (z. B. *Raid · 40*), die Aufstellung richtet sich nach der Gruppengröße, und Discord bekommt die Auswahl mit, damit der Bot die passende Gruppe anlegt.
+- **Teilen ohne Ausnahme** – Schiffs- und Zeppelinzeiten, Rares und Auktionshauspreise werden immer mit allen GuildPride-Spielern geteilt, auch wenn die serverweite Gruppensuche aus ist.
+- **Schiffs-Zähler** – von mehreren Spielern bestätigte Zeiten (*3× bestätigt*), Erinnerung 1 Minute vor der Abfahrt, Layer automatisch erkannt und nach dem Reset die Zeit der letzten Woche als Vermutung.
 
-- **Beitrittsdatum & Verlauf** – bei jedem Mitglied „Mitglied seit …“ und dazu Beitritte, Austritte und Rangwechsel; Hinweis, wenn jemand schon einmal in der Gilde war.
-- **Raid-Aufstellung** – zu jedem Event: 8 Gruppen, Ziehen oder Anklicken, automatisch einteilen (Tanks zuerst, Heiler verteilt), alle Eingeteilten einladen, Gruppen im Raid mit einem Klick ordnen, Aufstellung an die Gilde senden.
-- **Bewerbungen – auch ohne Addon** – Bewerber flüstern einem Mitglied mit GuildPride **!bewerben** und beantworten vier kurze Fragen; **!info** schickt euren Steckbrief. Offiziere bekommen einen Hinweis und entscheiden in einem Fenster.
-- **Reiter „Verwaltung“** – nur für Offiziere sichtbar: Bewerbungen, Werbetext, DKP, Notiz-Vorlagen und Gildenkanal an einem Ort. Die Einstellungen enthalten nur noch persönliche Optionen.
-- **Fenster vergrößern** – unten rechts an der Ecke ziehen (60–200 %).
+### Gildenfenster
 
-### NEU in 2.5: Twinks automatisch, schlankeres Menü, Datensicherung
+- **Neues Gildenfenster** – öffnet sich mit **J** oder über den Gildenknopf. Oben Gildenname und Fraktionslogo oder Gildenwappen. Beim ersten Start wählst du das Aussehen (Gildenbuch, Klassisch, Icon-Leiste); alles im dunklen Design **„Gildenhalle“** mit Gold-Akzent. Fenstergröße (60–200 %), Deckkraft und Chat-Schrift sind einstellbar, die Reiter der Seitenleiste lassen sich ausblenden, umbenennen und umsortieren. Lieber das Blizzard-Fenster? `/gp blizzard` schaltet zurück.
+- **Übersicht** – wer online ist, das nächste Event, die Nachricht des Tages, die letzten Meilensteine und ein **Wochenrückblick** (Stufenaufstiege, Raid-Siege, Erfolge, Reittiere, Beitritte, Abgänge, fleißigstes Mitglied).
+- **Meilensteine mit Abzeichen** – animiertes Popup, wenn jemand Level 10, 20, 30 … erreicht, dazu Erfolge, erste Raidboss-Siege und neue Reittiere. Verpasste Meilensteine werden beim Einloggen nachgeladen. Beitritte und Austritte erscheinen als deutlicher Hinweis.
+- **Gildenziele** – gemeinsame Ziele mit Fortschrittsbalken (Mitgliederzahl, Spieler auf einer Stufe oder eigene Ziele, die Offiziere von Hand weiterzählen). Erreichte Ziele werden gefeiert und auf Wunsch an Discord gemeldet.
+- **Schwarzes Brett** – Offiziere hängen eine Mitteilung aus; jedes Mitglied sieht sie einmal als Fenster, danach in der Übersicht (`/gp brett`).
+- **Gilde & Chat** – Gildenchat, Offizierschat und eure Communities mit Verlauf vom Server, die Mitglieder direkt daneben. Ungelesen-Zähler, hervorgehobene Erwähnungen und ein Discord-Filter.
+- **Mitgliederliste** – Suche nach Name, Rang, Notiz oder Zone, sortierbare Spalten, „Mitglied seit …“ mit Beitritten, Austritten und Rangwechseln. Klick auf ein Mitglied: Rang setzen, entfernen oder Gildenleitung übergeben. **Einladen** öffnet Blizzards Einladedialog.
+- **Twinks automatisch erkannt** – jeder mit GuildPride meldet für alle seine Charaktere denselben Ausweis; Twinks klappen unter dem Main zusammen. **Dein BattleTag bleibt privat**: Die Gilde sieht nur einen daraus berechneten Code.
+- **Für Offiziere** – Reiter *Verwaltung* (Bewerbungen, Werbetext, DKP, Notiz-Vorlagen, Gildenkanal), Reiter *Aktivität* (wer wie lange offline ist, Event-Anmeldungen, Anwesenheit), Filter **Inaktive** mit Entfernen in wenigen Klicks, **Beförderung nach Zeit** („Rekrut → Mitglied nach 14 Tagen“), automatische Begrüßung.
+- **Bewerbungen, auch ohne Addon** – Bewerber flüstern einem Mitglied mit GuildPride **!bewerben** und beantworten vier Fragen; **!info** schickt euren Steckbrief.
+- **Gilde auf der Weltkarte** – Gildenmitglieder mit GuildPride als Punkt in ihrer Klassenfarbe (sieht nur eure Gilde, abschaltbar).
 
-- **Twinks automatisch erkannt** – jeder mit GuildPride meldet für alle seine Charaktere denselben Ausweis, egal mit welchem Charakter er der Gilde beitritt. Die Mitgliederliste zeigt jeden Spieler einmal, Twinks klappen mit **+3** auf, beim Main steht „spielt *Twink* (Level)“. **Dein BattleTag bleibt privat:** Er verlässt nie deinen PC, die Gilde sieht nur einen daraus berechneten Code (in jeder Gilde ein anderer). Twinks von Spielern ohne Addon ordnen Offiziere von Hand zu.
-- **Inaktiv je Spieler** – der Filter „Inaktive“ zeigt nur Spieler, deren *alle* Charaktere weg waren.
-- **Schlankeres Menü** – 5 statt 8 Reiter (*Übersicht* + Meilensteine, *Planen* = Events, Gruppensuche, Umfragen), Einstellungen in Abschnitten mit Suchfeld. Das alte Menü ist einen Haken entfernt.
-- **Datensicherung per Knopfdruck** – sichert alle GuildPride-Daten, die letzten 5 Stände, einmal pro Woche automatisch, Wiederherstellen mit einem Klick.
-- **DKP-Protokoll** – jede Buchung mit Wer, Wann, Wie viel und Warum; Offiziere nehmen jede einzelne Buchung zurück.
-- **Abgleich abgesichert** – DKP buchen nur Offiziere, Events und Umfragen ändern nur Ersteller oder Offiziere, gefälschte Weiterleitungen werden verworfen. Mit automatischen Tests geprüft.
-- **Fehlerbericht** – `/gp fehler` zeigt einen Bericht zum Kopieren und Melden.
+### Planen
 
-### NEU in 2.3: Discord & DKP
+- **Event-Planer** – Datum, Uhrzeit, Beschreibung, Offiziers-Notiz, **Dungeon oder Raid** aus der Liste, wöchentliche Wiederholung, Vorlagen und Bearbeiten. Mitglieder melden sich mit *Zusagen / Vielleicht / Absagen* und ihrer Rolle an. Neue Events kommen mit Hinweisfenster und Ton, vor Beginn eine Erinnerung (0–60 Min.), dazu Rollen-Check, **Raid-Aufstellung** (8 Gruppen, automatisch einteilen, alle Eingeteilten einladen, Raid ordnen) und **Anwesenheit** je Spieler.
+- **Gruppensuche & Quest-Hilfe** – als *Sucht Gruppe*, *Sucht Mitspieler* oder *Braucht Quest-Hilfe* eintragen, mit Quest oder Dungeon und den fehlenden Rollen. **Beitreten** schickt Rolle, Klasse und Stufe, der Gruppenleiter lädt mit einem Klick ein. Gruppen aus Blizzards Dungeonbrowser lassen sich in die Liste holen.
+- **Serverweite Gruppensuche** – auf Wunsch sehen alle auf dem Server mit GuildPride deinen Eintrag (eigene Fraktion, ohne Gildennamen). `/gp server` schaltet es ab.
+- **Umfragen** – bis zu 6 Antworten und wahlweise Laufzeit.
+- **Wunschliste** – Items als normal, hoch oder BiS markieren; im Item-Tooltip steht, wer in der Gilde es sucht (mit DKP), bei einem epischen Drop, wer in der Gruppe es sich wünscht.
 
-- **Discord-Anbindung** – nutzt Blizzards eigene Gildenchat-Discord-Verknüpfung. Events, Anmeldungen (mit Rolle und Klasse) und Absagen aus GuildPride erscheinen in eurem Discord als Raid-Events mit Live-Aufstellung – ohne Zusatzprogramm, ohne Import-Strings. Spieler ohne verknüpftes Discord leitet ein verknüpftes Gildenmitglied weiter.
-- **DKP** – `/gp dkp`: Offiziere buchen Punkte mit einem Klick an den ganzen Raid, die Gruppe oder ein Ziel (Anwesenheit, Boss-Kills), ziehen Loot zum festen Preis ab und können die letzte Buchung zurücknehmen. **Alle sehen die DKP im Tooltip**, wenn sie mit der Maus über einen Spieler fahren. Buchungen landen zusätzlich in Discord, mit `/dkp`-Stand und Rangliste.
-- **Einrichtung für Discord:** Die Gildenleitung verknüpft die Gilde mit einem Discord-Kanal (Gilde & Communitys → Gildeneinstellungen → Discord-Einstellungen, am besten mit *Discord-Chat getrennt*) und lädt **GameBot** ein (Dashboard: https://gamerbot.duckdns.org – mit Discord anmelden, Bot hinzufügen, *WoW-Brücke* öffnen, Event-Kanal wählen). Wer Discord verknüpft hat, gibt im Spiel einmal `/gp discord verknuepft` und in Discord `/wow link Name` ein.
+### Berufe & Auktionshaus
 
-### Funktionen
+- **Handwerker-Verzeichnis** (Reiter *Berufe*) – wer welchen Beruf auf welcher Stufe hat und welche Rezepte er kann, durchsuchbar nach Name, Beruf oder Rezept.
+- **Gildenaufträge** – Item und Menge einstellen; Hersteller nehmen an oder geben ab, der Auftraggeber bekommt einen Hinweis. Neue und angenommene Aufträge gehen auch an Discord.
+- **Auktionshaus** – wahlweise GuildPride-Fenster mit Suche nach Kategorien, Kaufansicht mit allen Angeboten, **Preisverlauf** über 7 Tage und wer in der Gilde das Item herstellen kann, Verkaufen mit Preisvorschlag (günstigstes aktuelles Angebot), **Meine Auktionen**, Favoriten, **Einkaufslisten** (Menge, Bestand, Preisalarm, Export/Import auch von Auctionator-Listen, temporäre Liste für einen Einkauf, *Liste kaufen*) und *Aufträge*. Preise stehen im Item-Tooltip.
+- **Preise für alle** – Preise werden serverweit geteilt (eigene Fraktion, Goblin-Auktionshäuser getrennt) und gelten erst als bestätigt, wenn mindestens zwei Spieler sie melden. Läuft auch zusammen mit Auctionator.
+- **Berufsfenster** – *AH: Zutaten* sucht nur die Zutaten eines Rezepts, *Zur Einkaufsliste*, dazu Kosten der Zutaten, Verkaufswert und Gewinn.
 
-- **Neues Gildenfenster** – öffnet sich mit **J** oder über den Gildenknopf. Oben euer Gildenname, in der Seitenleiste euer Fraktionslogo. Reiter: Übersicht, Gilde & Chat, Events, Gruppensuche, Umfragen, Meilensteine, Gildeninfo und Einstellungen. Lieber das Blizzard-Fenster? `/gp blizzard` schaltet zurück.
-- **Übersicht** – wer online ist, das nächste Event, die Nachricht des Tages, die letzten Meilensteine und ein **Wochenrückblick** (Stufenaufstiege, Raid-Siege, Erfolge, Reittiere, Beitritte, Austritte und das aktivste Mitglied).
-- **Gilde & Chat** – links der Chat, rechts die Mitglieder, wie im Blizzard-Community-Fenster. Gildenchat, Offizierschat und eure Communities mit Verlauf vom Server. Ungelesen-Zähler an jedem Kanal, Nachrichten mit deinem Namen werden hervorgehoben.
-- **Mitgliederliste** – Kronen zeigen Gildenmeister (gefüllt) und Offiziere (leer). Suche nach Name, Rang, Notiz oder Zone, sortierbare Spalten, nur online oder alle mit Rang, Notizen und „zuletzt online“. Offiziere bekommen einen **Inaktiv**-Filter (14 bis 180 Tage oder eigene Zahl, Ränge ausnehmbar) und können die **Inaktiven in wenigen Klicks entfernen**. **Beförderung nach Zeit**: Regeln wie „Rekrut → Mitglied nach 14 Tagen im Rang“ anlegen, die Liste zeigt, wer fällig ist – ein Klick befördert.
-- **Gildenverwaltung** – Klick auf ein Mitglied zum Rang setzen (hoch oder runter), Entfernen oder Gildenleitung übergeben (je nach deinen Rechten). Rechtsklick zum Anflüstern, in Gruppe einladen, als Freund hinzufügen oder in eine Community einladen. **Gildeneinladung:** WoW Forever nimmt `/ginvite` nur an, wenn du es selbst eintippst. Der Einladen-Knopf und **In Gilde einladen** – auch bei jedem Spieler im Spiel, etwa Ziel, Gruppe, Chatname oder Freundesliste – zeigen dir deshalb den fertigen Befehl im Chat an (mit Einladerecht). Notiz-Vorlagen und Werbetext sind eingebaut.
-- **Meilensteine mit Abzeichen** – animiertes Popup mit Abzeichen, wenn jemand Level 10, 20, 30 … erreicht, dazu Erfolge, erste Raidboss-Siege und neue Reittiere. Beitritte und Austritte erscheinen als deutlicher Hinweis. Verpasste Meilensteine werden beim Einloggen nachgeladen.
-- **Event-Planer** – Offiziere legen Events mit Datum, Uhrzeit, Beschreibung und Offiziers-Notiz an, auf Wunsch **jede Woche wiederholt**. Mitglieder melden sich mit *Zusagen / Vielleicht / Absagen* und ihrer Rolle an. Erinnerung 15 Minuten vorher, Rollen-Check, „Alle Zugesagten einladen“ und **Anwesenheit** pro Spieler.
-- **Gruppensuche & Quest-Hilfe** – **Anmelden** trägt dich als *Sucht Gruppe*, *Sucht Mitspieler* oder (mit gewählter Quest) *Braucht Quest-Hilfe* ein, mit den Rollen, die noch fehlen; **Abmelden** trägt dich aus, und bei voller Gruppe wirst du automatisch abgemeldet. Quest aus dem Questlog verlinken oder einen **Dungeon** wählen: durchsuchbare Liste mit Levelbereich; der Knopf **Heroisch** erscheint erst, wenn dein Charakter heroisch laufen kann, und zeigt dann nur heroische Dungeons. **Beitreten** schickt eine Beitrittsanfrage, **Einladen** lädt Einzelspieler ein.
-- **Serverweite Gruppensuche** – *Serverweit* ankreuzen, dann sehen auch alle anderen auf dem Server mit GuildPride deinen Eintrag; die Liste lässt sich zwischen *Gilde · Server · Alle* umschalten. Nur die eigene Fraktion wird angezeigt (Blizzard trennt Chatkanäle nach Fraktion), kein Gildenname wird mitgeschickt, ausgetauscht werden nur Gruppensuche-Einträge, Spieler lassen sich ausblenden. `/gp server` schaltet es ab.
-- **Dungeonbrowser** – Der Knopf **Dungeonbrowser** öffnet Blizzards eigenen Dungeonbrowser, **Browser durchsuchen** holt dessen Gruppen in deine Liste, markiert mit **[Dungeonbrowser]**. Die Punkte zeigen, welche Rollen schon dabei sind (blau Tank, grün Heiler, rot DD), darunter steht, ob noch Tank oder Heiler fehlt, und **Anflüstern** öffnet ein Flüstern an den Gruppenleiter.
-- **Meldungen kopieren** – Klick auf `[GuildPride]` vor einer GuildPride-Meldung im Chat öffnet genau diese Zeile, fertig zum Kopieren mit Strg+C.
-- **Gilde auf der Weltkarte** – Gildenmitglieder mit GuildPride erscheinen als Punkt in ihrer Klassenfarbe auf der Weltkarte, auch wenn sie nicht in deiner Gruppe sind. Die Position sieht nur deine Gilde, Anzeigen und Teilen lassen sich in den Einstellungen abschalten.
-- **Menü anpassen** – Reiter der Seitenleiste ausblenden, umbenennen, umsortieren und einen Startreiter wählen, der bei jedem Öffnen kommt. „Einstellungen“ bleibt immer da.
-- **Umfragen** – Offiziere legen Umfragen mit bis zu 6 Antworten und wahlweiser Laufzeit an, alle stimmen ab.
-- **Gildeninfo** – der Info-Text aus dem Blizzard-Gildenfenster für alle, mit Hinweis bei Änderungen und Kopier-Knopf.
-- **Design „Gildenhalle“** – dunkler Schiefer mit Gold-Akzent, in allen Fenstern gleich; Fenstergröße, Deckkraft und Chat-Schriftgröße einstellbar. Minimap-Knopf, wahlweise automatische Begrüßung neuer Mitglieder, Versionscheck.
-- **Deutsch & Englisch** – stellt sich automatisch auf die Sprache deines Clients ein.
+### Reisen, Rares & Layer
 
-### Sicherheit & Abgleich
+- **Schiffs-Zähler** – stehst du an einem Anleger (Schiff, Zeppelin, Luftschiff), zeigt ein kleines Fenster je Verbindung einen Countdown: ob es **am Steg liegt und wann es ablegt**, wann das nächste kommt und das danach. Gemessen wird, wenn jemand mitfährt – und **mit allen GuildPride-Spielern geteilt**.
+- **Je Layer** – jeder Layer fährt seine Schiffe versetzt; das Fenster zeigt die Zeiten **deines** Layers und wechselt mit. Von mehreren Spielern gemessene Zeiten stehen mit *3× bestätigt* da; eine einzelne abweichende Meldung verdrängt sie nicht.
+- **Erinnerung** – Uhr-Symbol an einer Verbindung anklicken: Raid-Warnung und Ton 1 Minute vor der Abfahrt, auch wenn du nicht mehr am Anleger bist.
+- **Nach dem wöchentlichen Reset** – bis wieder jemand misst, steht die Zeit der letzten Woche als *vermutet* da. Versuch: Passt der Layer-Start bei zwei gemessenen Layern zusammen, bekommen auch ungemessene Layer eine *geschätzte* Zeit.
+- **Rare-Scanner & Weltbosse** (`/gp rares`) – Rares werden über Ziel, Maus und Namensplaketten erkannt und mit allen GuildPride-Spielern auf dem Server geteilt, mit Alarm, Ton und dem Layer der Sichtung. Die Weltkarte zeigt bekannte Fundorte von über 300 Rares.
+- **Layer wechseln mit einem Klick** – Knopf im Gildenfenster, in der Gruppensuche oder `/gp layer`: Ein Spieler auf einem anderen Layer in deiner Zone lädt dich ein, die Einladung wird angenommen und du verlässt die Gruppe von selbst. Dein Layer steht unter der Minimap. Die Layer-Liste zeigt alle mit GuildPride auf dem Server mit Zone und Layer; **Hierhin** wechselt gezielt auf den Layer eines Spielers, **Zum Layer** im Rare-Alarm bringt dich zur Sichtung.
 
-- Daten werden nur mit Mitgliedern **eurer** Gilde ausgetauscht. Alles, was ankommt, wird geprüft und begrenzt – keine eingeschleusten Farb- oder Link-Codes, kein Fluten.
-- Gildendaten laufen über einen **abgesicherten Hintergrund-Kanal**: Name und Passwort entstehen aus einem zufälligen geheimen Schlüssel der Gildenleitung, der nur an Gildenmitglieder geht. Verlässt jemand die Gilde, wird ein neuer Schlüssel erzeugt.
-- Meilensteine, Events, Umfragen, Anwesenheit und Chat werden **je Gilde getrennt** gespeichert – Charaktere in verschiedenen Gilden vermischen nichts.
-- Während der *Chat-Sperre* in Instanzen blockiert Blizzard Addon-Nachrichten. GuildPride wartet und sendet danach.
-- Abgeglichen wird zwischen Gildenmitgliedern, die **GuildPride installiert haben**.
+### Scales
+
+- **Scales eingebaut** (`/scales`) – simuliert deinen Charakter (DPS, HPS, Mitigation) und zeigt an jedem Item, ob es ein Upgrade ist, mit Pfeilen in den Taschen und einer Zeile im Tooltip, dazu ein Waffenvergleich.
+
+### Discord & DKP
+
+- **Discord-Anbindung** – nutzt Blizzards eigene Gildenchat-Discord-Verknüpfung. Events (mit Dungeon/Raid und Gruppengröße), Anmeldungen mit Rolle und Klasse, Absagen, DKP, Umfragen, Meilensteine, Gildenaufträge und Preise erscheinen in eurem Discord – ohne Zusatzprogramm. Anmeldungen von Spielern ohne verknüpftes Discord gibt der Event-Ersteller weiter.
+- **DKP** – `/gp dkp`: Offiziere buchen Punkte mit einem Klick an den Raid, die Gruppe oder ein Ziel, ziehen Loot ab und nehmen jede Buchung im Protokoll zurück. Alle sehen die DKP im Spieler-Tooltip.
+- **Einrichtung:** Die Gildenleitung verknüpft die Gilde mit einem Discord-Kanal (Gilde & Communitys → Gildeneinstellungen → Discord-Einstellungen, am besten mit *Discord-Chat getrennt*) und lädt **GameBot** ein (Dashboard: https://gamerbot.duckdns.org – mit Discord anmelden, Bot hinzufügen, *WoW-Brücke* öffnen, Event-Kanal wählen). Wer Discord verknüpft hat, gibt im Spiel einmal `/gp discord verknuepft` und in Discord `/wow link Name` ein.
+
+### Sicherheit & Teilen
+
+- **Gildendaten** (Meilensteine, Events, Umfragen, DKP, Chat, Twinks) gehen nur an Mitglieder **eurer** Gilde, über einen versteckten Kanal, geschützt durch einen zufälligen Schlüssel der Gildenleitung. Verlässt jemand die Gilde, wird ein neuer Schlüssel erzeugt.
+- **Immer mit allen GuildPride-Spielern auf dem Server geteilt:** Schiffs-Fahrpläne (mit Layer), Rare-Sichtungen und Auktionshauspreise – ohne Gildennamen, nur eigene Fraktion.
+- **Nur mit eingeschalteter serverweiter Gruppensuche:** Gruppensuche-Einträge und Layer-Wechsel.
+- Alles, was ankommt, wird geprüft und begrenzt – keine eingeschleusten Farb- oder Link-Codes, kein Fluten. Gildendaten werden je Gilde getrennt gespeichert.
+- **Datensicherung per Knopfdruck** (`/gp sicherung`): die letzten 5 Stände, einmal pro Woche automatisch.
 
 ### Befehle
 
@@ -171,25 +180,30 @@ Bug reports and ideas are very welcome in the comments here. Please include the 
 | `/gp` | Fenster öffnen (`/gp hilfe` zeigt alle Befehle) |
 | `/gp sound` · `/gp popup` | Sounds oder Popups an/aus |
 | `/gp blizzard` | zwischen GuildPride und dem Blizzard-Gildenfenster wechseln |
-| `/gp einladen Vorname Nachname` | `/ginvite`-Befehl für einen Spieler im Chat anzeigen |
-| `/gp werben` | gespeicherten Werbetext in die Chat-Eingabe legen |
-| `/gp optionen` | GuildPride-Seite in den WoW-Optionen öffnen |
+| `/gp einladen Vorname Nachname` | Spieler in die Gilde einladen |
+| `/gp layer` | Layer wechseln (`liste`, `anzeige`, `an`/`aus`, `raus`) |
+| `/gp rares` · `/gpr` | Rare-Scanner |
+| `/scales` | Scales |
+| `/gp ah` | Auktionshaus (`an`/`aus`, `status`, `scan`, `fenster`) |
+| `/gp dkp` | DKP-Fenster mit Protokoll |
+| `/gp wunsch` | Wunschliste |
+| `/gp brett` | Schwarzes Brett zeigen |
+| `/gp discord` | Discord-Anbindung (`info`, `test`, `verknuepft`) |
+| `/gp server` | serverweite Gruppensuche an/aus (`status`, `entsperren`) |
+| `/gp bewerbungen` | Bewerbungen (Offiziere) |
+| `/gp sicherung` | Fenster Datensicherung |
+| `/gp werben` | Werbetext in die Chat-Eingabe legen |
 | `/gp version` | wer in der Gilde welche Version nutzt |
-| `/gp kanal` | Stand des abgesicherten Kanals (Offiziere: `/gp kanal neu` erzeugt einen neuen Schlüssel) |
-| `/gp server` | serverweite Gruppensuche an/aus (`/gp server entsperren` zeigt ausgeblendete Spieler wieder, `/gp server status` zeigt Kanal und Nachrichten) |
+| `/gp kanal` | Stand des Gildenkanals (Offiziere: `/gp kanal neu`) |
 | `/gp ausweis` | deinen Ausweis-Code zeigen (nie den BattleTag) |
-| `/gp sicherung` | Fenster Datensicherung öffnen |
-| `/gp fehler` | Fehlerbericht zum Kopieren |
-| `/gp dkp` | DKP-Fenster (mit *Protokoll …*) |
-| `/gp neu` | Neuerungen anzeigen |
-| `/gp layer` | Layer wechseln (`/gp layer liste`, `anzeige`, `an`/`aus`, `raus`) |
-| `/gp bewerbungen` | Bewerbungsfenster (Offiziere) |
-| `/gp badge 30` | Meilenstein-Popup testen |
+| `/gp neu` · `/gp changelog` | Neuerungen anzeigen |
+| `/gp melden` · `/gp fehler` | Fehlerbericht zum Kopieren |
+| `/gp optionen` | GuildPride-Seite in den WoW-Optionen |
 
 ### Feedback
 
-Fehlermeldungen und Ideen sind hier in den Kommentaren sehr willkommen. Am besten mit Lua-Fehlermeldung.
+Fehlermeldungen und Ideen sind hier in den Kommentaren oder im GuildPride-Discord (Logo-Knopf im Gildenfenster) sehr willkommen. `/gp melden` erstellt einen Bericht zum Kopieren.
 
 ---
 
-*Fonts: DejaVu (free license, included). Artwork created for GuildPride.*
+*Ship timetables based on Polestar and Shortest Path Forever (GPL-3.0). Rare spawn points from ForeverMapNotes / QuestieDB Forever and CMaNGOS classic-db (GPL-3.0). Fonts: DejaVu, Inter (SIL OFL 1.1). Artwork created for GuildPride.*
