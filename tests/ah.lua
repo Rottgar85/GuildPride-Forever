@@ -1127,6 +1127,33 @@ return function(test, eq, W, ns)
         s3.shown = true
         bar.scripts.OnUpdate(bar, 0.1)
         eq(bar.anchor, s3, "anderes Rezept mit mehr Materialien")
+        -- Häkchen unten im Rezept: Leiste sitzt darüber
+        local form = ProfessionsFrame.CraftingPage.SchematicForm
+        local function Check(b, shown)
+            local c = Slot(b, shown)
+            c.GetTop = function() return b + 20 end
+            c.GetObjectType = function() return "CheckButton" end
+            return c
+        end
+        local other, track = Check(200, true), Check(40, true)
+        form.GetChildren = function() return s1, other, track end
+        bar.scripts.OnUpdate(bar, 0.1)
+        eq(bar.anchor, track, "über dem untersten Häkchen")
+        -- waagerecht mittig im rechten Bereich (Häkchen steht weiter links)
+        s3.GetCenter = function() return 400, 100 end
+        track.GetCenter = function() return 250, 50 end
+        bar.scripts.OnUpdate(bar, 0.1)
+        eq(bar.anchor, track); eq(bar.dx, 150, "ohne Bereichsmitte: Mitte der Materialien")
+        form.GetCenter = function() return 520, 200 end
+        bar.scripts.OnUpdate(bar, 0.1)
+        eq(bar.dx, 270, "Mitte des rechten Bereichs")
+        s3.GetCenter, track.GetCenter, form.GetCenter = nil, nil, nil
+        track.shown = false
+        bar.scripts.OnUpdate(bar, 0.1)
+        eq(bar.anchor, other, "anderes Häkchen, wenn es versteckt ist")
+        form.GetChildren = nil; other.shown = false
+        bar.scripts.OnUpdate(bar, 0.1)
+        eq(bar.anchor, s3, "ohne Häkchen wieder unter den Materialien")
         GuildPrideDB.ahLists = nil
         local l = AH.NewList("Schmied")
         bar.listBtn.scripts.OnClick(bar.listBtn)

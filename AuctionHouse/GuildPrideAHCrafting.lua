@@ -316,23 +316,73 @@ local function LowestReagent(form)
     return best
 end
 
--- Leiste unter die Materialien hängen (neu, sobald sich das unterste Feld ändert);
--- findet sich nichts, links neben „Alle herstellen“ wie bisher
+-- Häkchen unten im Rezept („Rezept verfolgen“/„Rezept listen“): bekannte Namen, sonst das
+-- unterste sichtbare Häkchen im Rezeptbereich. Die Leiste sitzt direkt darüber.
+local function Usable(f)
+    if type(f) ~= "table" or type(f.IsShown) ~= "function" or type(f.GetTop) ~= "function" then return false end
+    local ok, shown = pcall(f.IsShown, f)
+    return ok and shown and true or false
+end
+local function RecipeCheck(form)
+    if type(form) ~= "table" then return nil end
+    for _, name in ipairs({ "TrackRecipeCheckbox", "TrackRecipeCheckBox", "TrackRecipeButton" }) do
+        local f = rawget(form, name)
+        if Usable(f) then return f end
+    end
+    if type(form.GetChildren) ~= "function" then return nil end
+    local best, bottom
+    for _, f in ipairs({ pcall(form.GetChildren, form) }) do
+        if Usable(f) and type(f.GetObjectType) == "function" and type(f.GetBottom) == "function" then
+            local ok, kind = pcall(f.GetObjectType, f)
+            local ok2, b = pcall(f.GetBottom, f)
+            if ok and kind == "CheckButton" and ok2 and type(b) == "number" and (not bottom or b < bottom) then
+                best, bottom = f, b
+            end
+        end
+    end
+    return best
+end
+
+-- Waagerechte Mitte eines Frames (nil, wenn unbekannt)
+local function CenterX(f)
+    if type(f) ~= "table" or type(f.GetCenter) ~= "function" then return nil end
+    local ok, x = pcall(f.GetCenter, f)
+    return ok and type(x) == "number" and x or nil
+end
+
+-- Leiste mittig im rechten Bereich (Rezept), ganz unten: direkt über dem Häkchen unten im
+-- Rezept. Ohne Häkchen unter das unterste Material; findet sich gar nichts, links
+-- neben „Alle herstellen“. Läuft jedes Bild, setzt die Position aber nur bei Änderungen.
 local function PlaceBar()
     local page = Page()
     if not bar or not page then return end
-    local target = LowestReagent(page.SchematicForm)
-    if not target and bar.anchor then return end
-    target = target or page.CreateAllButton or page
-    if target == bar.anchor then return end
-    bar.anchor = target
-    bar:ClearAllPoints()
-    if target == page.CreateAllButton then
-        bar:SetPoint("BOTTOMRIGHT", target, "BOTTOMLEFT", -10, 0)
-    elseif target == page then
-        bar:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -330, 10)
+    local form = page.SchematicForm
+    local check = bar.check
+    if not Usable(check) then
+        check = RecipeCheck(form) or RecipeCheck(page)
+        bar.check = check
+    end
+    local reagent = LowestReagent(form)
+    local target, dx = check or reagent, 0
+    if target then
+        -- Mitte des rechten Bereichs (Rezept); notfalls die Mitte der Materialien
+        local mid, own = CenterX(form) or CenterX(reagent), CenterX(target)
+        if mid and own then dx = math.floor(mid - own + 0.5) end
     else
-        bar:SetPoint("TOPLEFT", target, "BOTTOMLEFT", 0, -10)
+        if bar.anchor then return end
+        target = page.CreateAllButton or page
+    end
+    if target == bar.anchor and dx == bar.dx then return end
+    bar.anchor, bar.dx = target, dx
+    bar:ClearAllPoints()
+    if target == check then
+        bar:SetPoint("BOTTOM", target, "TOP", dx, 4)
+    elseif target == reagent then
+        bar:SetPoint("TOP", target, "BOTTOM", dx, -10)
+    elseif target == page.CreateAllButton then
+        bar:SetPoint("BOTTOMRIGHT", target, "BOTTOMLEFT", -10, 0)
+    else
+        bar:SetPoint("BOTTOMRIGHT", page, "BOTTOMRIGHT", -330, 10)
     end
 end
 
@@ -345,7 +395,7 @@ local function BuildBar()
     PlaceBar()
     -- oben die beiden Knöpfe, darunter die Zeile mit Kosten und Gewinn
     bar.searchBtn = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
-    bar.searchBtn:SetSize(112, 22); bar.searchBtn:SetPoint("TOPLEFT")
+    bar.searchBtn:SetSize(112, 22); bar.searchBtn:SetPoint("TOPLEFT", 6, 0)   -- beide Knöpfe mittig (6 + 112 + 6 + 130 + 6)
     bar.searchBtn:SetText(L["AH: Zutaten"])
     bar.listBtn = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
     bar.listBtn:SetSize(130, 22); bar.listBtn:SetPoint("LEFT", bar.searchBtn, "RIGHT", 6, 0)
@@ -363,8 +413,22 @@ local function BuildBar()
     -- Kosten und Gewinn des gewählten Rezepts unter den Knöpfen; neu gerechnet, wenn ein anderes
     -- Rezept gewählt wird, sonst alle 5 Sekunden (neue Preise)
     bar.info = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.info:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 2, 0)
-    bar.info:SetJustifyH("LEFT")
+    -- eine Zeile, mittig unter den Knöpfen; ohne feste Breite, damit nichts umbricht
+    bar.info:SetPoint("BOTTOM", bar, "BOTTOM", 0, 0)
+    bar.info:SetJustifyH("CENTER")
+    bar.info:SetWordWrap(false)
+    -- breiter als der rechte Bereich: Schrift verkleinern, bis sie hineinpasst
+    local function Fit()
+        if not bar.info.SetTextScale then return end
+        bar.info:SetTextScale(1)
+        local page = Page()
+        local form = page and page.SchematicForm
+        local room = form and form.GetWidth and form:GetWidth()
+        local w = bar.info:GetStringWidth()
+        if type(room) == "number" and type(w) == "number" and room > 40 and w > room - 20 then
+            bar.info:SetTextScale(math.max(0.7, (room - 20) / w))
+        end
+    end
     local last, wait = nil, 0
     bar:SetScript("OnUpdate", function(_, elapsed)
         PlaceBar()   -- andere Rezepte haben unterschiedlich viele Materialien
@@ -374,6 +438,7 @@ local function BuildBar()
         if id == last and wait > 0 then return end
         last, wait = id, 5
         bar.info:SetText(id and AH.RecipeValueText(AH.RecipeValue(id)) or "")
+        Fit()
     end)
     bar:SetScript("OnShow", UpdateBar)
     UpdateBar()

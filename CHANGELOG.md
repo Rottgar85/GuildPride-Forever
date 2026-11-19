@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.27.1
+
+**Deutsch**
+- **Berufsfenster**: Die GuildPride-Leiste (AH: Zutaten, Zur Einkaufsliste, Kosten und Gewinn) steht jetzt mittig im rechten Bereich, unten direkt über dem Häkchen unter dem Rezept. Kosten und Gewinn bleiben in einer Zeile und werden bei Bedarf kleiner, damit sie hineinpassen
+
+**English**
+- **Profession window**: the GuildPride bar (AH: reagents, To shopping list, cost and profit) now sits centred in the right-hand section, at the bottom just above the checkbox below the recipe. Cost and profit stay on one line and shrink when needed so they fit
+
 ## 2.27.0
 
 **Deutsch**
