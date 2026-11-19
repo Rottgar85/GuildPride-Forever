@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.29.0
+
+**Deutsch**
+- **Abwesenheiten**: Mitglieder melden sich in der Übersicht mit **Abwesenheit melden …** (oder `/gp abwesend`) von Tag x bis Tag y ab, auf Wunsch mit Grund. Eigene Abmeldungen lassen sich wieder entfernen
+- **Liste für die Gildenleitung**: Gildenleitung und Offiziere sehen unter Verwaltung › **Abwesenheitsliste …** (oder `/gp abwesenheiten`), wer von wann bis wann nicht da ist – mit „abwesend“, „in x Tagen“ und dem Grund. Neue Abmeldungen kommen als Hinweis im Chat, wer heute fehlt, steht in der Übersicht
+- **Farben der Namensplaketten**: Die Namensplaketten über den Köpfen anderer Spieler lassen sich nach Wunsch einfärben – eine Farbe für alle Gildenmitglieder, eine eigene Farbe je Spieler (Ziel oder Suche) und auf Wunsch auch der Lebensbalken. Die Farben siehst nur du. Einstellungen › Namensplaketten › **Farben …** oder `/gp farben`
+
+**English**
+- **Absences**: members report an absence from day x to day y in the overview with **Report absence …** (or `/gp away`), optionally with a reason. Your own entries can be removed again
+- **List for officers**: the guild master and officers see under Management › **Absence list …** (or `/gp absences`) who is away from when to when – with "away", "in x days" and the reason. New absences show as a chat notice, and who is away today appears in the overview
+- **Nameplate colours**: colour the nameplates above other players' heads however you like – one colour for all guild members, an own colour per player (target or search) and optionally the health bar too. Only you see your colours. Settings › Nameplates › **Colours …** or `/gp nameplates`
+
 ## 2.28.1
 
 **Deutsch**

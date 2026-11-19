@@ -99,7 +99,8 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    remindMin = 15, layerHelp = true, layerShow = true,
                    ahTab = true, ahTooltip = true, ahShare = true, ahReadAuctionator = true,
                    ahTooltipWithAuctionator = false, transitUI = true, transitShare = true,
-                   flightTimes = true, flightUI = true, showItemID = false }
+                   flightTimes = true, flightUI = true, showItemID = false,
+                   plateColors = true, plateColorBar = false }
 
 -- Weitere Meilensteine neben LEVEL (Wert ist Text bzw. ID)
 local EXTRA_KINDS = { ACH = true, BOSS = true, MPLUS = true, MOUNT = true }
