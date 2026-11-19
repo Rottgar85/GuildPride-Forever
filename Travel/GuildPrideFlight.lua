@@ -18,7 +18,7 @@ local format, lower = string.format, string.lower
 F.SPEED = 30          -- yd/s entlang der Flugstrecke (Greif, Windreiter; wie Polestar)
 F.STOP = 2            -- s je Teilflug für Start und Landung (wie Polestar)
 local MIN_SECS, MAX_SECS = 5, 3600   -- gemessene Flüge außerhalb gelten nicht
-local LAND_NEAR = 250                -- yd: so nah am Ziel gelandet = Flug wurde zu Ende geflogen
+local LAND_NEAR = 500                -- yd: so nah am Ziel gelandet = Flug wurde zu Ende geflogen
 local TAKEOFF_WAIT = 15              -- s: so lange nach dem Klick muss der Flug begonnen haben
 local TICK = 0.25
 
@@ -76,9 +76,14 @@ function F.Time(chain)
     if not key then return nil end
     local log = Log() or {}
     if type(log[key]) == "number" then return log[key], true end
+    -- Rückflug gemessen: gleiche Strecke, gleiche Dauer
+    local back = {}
+    for i = #chain, 1, -1 do back[#back + 1] = chain[i] end
+    if type(log[F.Key(back)]) == "number" then return log[F.Key(back)], true end
     local s = 0
     for i = 1, #chain - 1 do
         local h = log[chain[i] .. "-" .. chain[i + 1]]
+        if type(h) ~= "number" then h = log[chain[i + 1] .. "-" .. chain[i]] end
         if type(h) ~= "number" then h = F.HopEstimate(chain[i], chain[i + 1]) end
         if not h then return nil end
         s = s + h
@@ -187,6 +192,7 @@ F.onTick = nil  -- GuildPrideFlightUI.lua: nach jedem Tick neu zeichnen
 
 local function OnTaxi() return Readable(UnitOnTaxi and UnitOnTaxi("player")) and true or false end
 
+-- Am Ziel gelandet? Beide Achsen-Reihenfolgen zählen: UnitPosition liefert je nach Client y, x oder x, y.
 local function Landed(chain)
     local node = F.Node(chain[#chain])
     if not (node and UnitPosition) then return true end
@@ -194,8 +200,8 @@ local function Landed(chain)
     x, y, instance = Readable(x), Readable(y), Readable(instance)
     if not ok or type(x) ~= "number" or type(y) ~= "number" then return true end
     if instance ~= nil and instance ~= node[1] then return false end
-    local dx, dy = x - node[2], y - node[3]
-    return sqrt(dx * dx + dy * dy) <= LAND_NEAR
+    local function Dist(a, b) local dx, dy = a - node[2], b - node[3]; return sqrt(dx * dx + dy * dy) end
+    return math.min(Dist(x, y), Dist(y, x)) <= LAND_NEAR
 end
 
 -- Laufender Flug in GuildPrideDB.flightNow, damit er ein /reload übersteht (Serverzeit des Abflugs)

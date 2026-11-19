@@ -105,6 +105,27 @@ return function(test, eq, W, ns)
         F.AddTooltip(3, t)
         eq(t.lines[1].text, "Flugzeit: 2:50")
         eq(t.lines[1].g < 1 and t.lines[1].r == 1, true, "gold = gemessen")
+        -- Rückflug: dieselbe gemessene Zeit
+        local secs, measured = F.Time({ 5, 12, 2 })
+        eq(secs, 170); eq(measured, true, "Rückflug gilt als gemessen")
+    end)
+
+    test("Flug: Landung mit vertauschten Achsen zählt", function()
+        GuildPrideDB.flightLog = nil
+        F.Begin({ 2, 12, 5 }, W.now, "Lakeshire")
+        onTaxi = true; F.Tick(W.now)
+        W.Advance(120)
+        onTaxi, pos = false, { -2230, -9420, 0 }   -- x und y vertauscht
+        eq(F.Tick(W.now), 120)
+        eq(GuildPrideDB.flightLog["2-12-5"], 120)
+        -- woanders gelandet: nicht gespeichert
+        F.Begin({ 2, 12, 5 }, W.now, "Lakeshire")
+        onTaxi = true; F.Tick(W.now)
+        W.Advance(60)
+        onTaxi, pos = false, { -8840, 489, 0 }
+        eq(F.Tick(W.now), nil)
+        eq(GuildPrideDB.flightLog["2-12-5"], 120, "alte Messung bleibt")
+        pos = nil
     end)
 
     test("Flug: abgebrochene Flüge zählen nicht", function()

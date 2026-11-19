@@ -86,6 +86,57 @@ ns.On("RCPQ", function(_, sender)
     end)
 end)
 
+---------------------------------------------------------------------
+-- Mehrere Werbetexte: GuildPrideDB.recruitTexts = { Text, … }, recruitIndex = gewählter.
+-- GuildPrideDB.recruitText ist immer der gewählte (Knopf „In den Chat legen“, /gp werbung).
+---------------------------------------------------------------------
+local RECRUIT_MAX = 10
+
+function ns.RecruitList()
+    local db = GuildPrideDB
+    if type(db.recruitTexts) ~= "table" or #db.recruitTexts == 0 then
+        db.recruitTexts = { db.recruitText or "" }   -- bisheriger einzelner Text wird Nr. 1
+    end
+    local n = #db.recruitTexts
+    local i = tonumber(db.recruitIndex) or 1
+    if i < 1 or i > n then i = 1 end
+    db.recruitIndex = i
+    db.recruitText = db.recruitTexts[i]
+    return db.recruitTexts, i
+end
+
+function ns.RecruitSelect(i)
+    local list = ns.RecruitList()
+    local n = #list
+    i = ((math.floor(tonumber(i) or 1) - 1) % n) + 1   -- vor dem ersten kommt der letzte
+    GuildPrideDB.recruitIndex = i
+    GuildPrideDB.recruitText = list[i]
+    return i
+end
+
+function ns.RecruitSetText(text)
+    local list, i = ns.RecruitList()
+    list[i] = tostring(text or ""):sub(1, 250)
+    GuildPrideDB.recruitText = list[i]
+end
+
+-- Neuer leerer Text, gleich ausgewählt; false, wenn schon RECRUIT_MAX da sind
+function ns.RecruitAdd()
+    local list = ns.RecruitList()
+    if #list >= RECRUIT_MAX then return false end
+    list[#list + 1] = ""
+    ns.RecruitSelect(#list)
+    return true
+end
+
+-- Gewählten Text löschen; der letzte bleibt stehen und wird nur geleert
+function ns.RecruitRemove()
+    local list, i = ns.RecruitList()
+    if #list <= 1 then list[1] = ""; GuildPrideDB.recruitText = ""; return end
+    table.remove(list, i)
+    ns.RecruitSelect(math.min(i, #list))
+end
+
 -- Hinweis für den Werbetext
 function ns.RecruitSuffix()
     if not ns.RecruitOpen() then return "" end

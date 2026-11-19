@@ -51,7 +51,7 @@ local recruitBox = CreateFrame("EditBox", nil, c, "InputBoxTemplate")
 recruitBox:SetSize(440, 22); recruitBox:SetPoint("TOPLEFT", 10, y - 46)
 recruitBox:SetAutoFocus(false); recruitBox:SetMaxLetters(250)
 recruitBox:SetScript("OnTextChanged", function(self, user)
-    if user then GuildPrideDB.recruitText = self:GetText() end
+    if user then ns.RecruitSetText(self:GetText()) end
 end)
 recruitBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 recruitBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -68,11 +68,33 @@ function ns.PostRecruitText()
     ns.Print(L["Werbetext steht in der Chat-Eingabe – mit Enter abschicken."])
 end
 Btn(L["In den Chat legen"], 150, recruitBox, 8, 0, function() ns.PostRecruitText() end)
+-- Mehrere Werbetexte: blättern, neu, löschen (Daten in GuildPrideRecruit.lua)
+local recruitPos
+do
+    local function Show()
+        local list, i = ns.RecruitList()
+        recruitBox:SetText(list[i] or "")
+        recruitBox:ClearFocus()
+        recruitPos:SetText((L["Text %d/%d"]):format(i, #list))
+    end
+    local prev = Btn("<", 28, nil, 10, y - 74, function() ns.RecruitSelect(GuildPrideDB.recruitIndex - 1); Show() end)
+    recruitPos = c:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+    recruitPos:SetPoint("LEFT", prev, "RIGHT", 8, 0); recruitPos:SetWidth(70)
+    local nextB = CreateFrame("Button", nil, c, "UIPanelButtonTemplate")
+    nextB:SetSize(28, 24); nextB:SetPoint("LEFT", recruitPos, "RIGHT", 8, 0); nextB:SetText(">")
+    nextB:SetScript("OnClick", function() ns.RecruitSelect(GuildPrideDB.recruitIndex + 1); Show() end)
+    local add = Btn(L["Neuer Text"], 110, nextB, 12, 0, function()
+        if not ns.RecruitAdd() then ns.Print(L["Höchstens 10 Werbetexte."]) end
+        Show(); recruitBox:SetFocus()
+    end)
+    Btn(L["Text löschen"], 110, add, 8, 0, function() ns.RecruitRemove(); Show() end)
+    ns.RecruitShow = Show
+end
 
 ---------------------------------------------------------------------
 -- DKP und Raids
 ---------------------------------------------------------------------
-y = y - 92
+y = y - 120
 ns.Section(c, L["DKP und Raids"], nil, y)
 local bDkp = Btn(L["DKP-Fenster"], 150, nil, 4, y - 30, function() if ns.DKP then ns.DKP.Toggle() end end)
 Btn(L["Protokoll …"], 150, bDkp, 8, 0, function() if ns.DKP and ns.DKP.ToggleLog then ns.DKP.ToggleLog() end end)
@@ -202,7 +224,7 @@ c:SetHeight(-(y - 242))
 -- Aktualisieren
 ---------------------------------------------------------------------
 function page:Refresh()
-    if not recruitBox:HasFocus() then recruitBox:SetText(GuildPrideDB.recruitText or "") end
+    if not recruitBox:HasFocus() then ns.RecruitShow() end
     if not tplBox:HasFocus() then tplBox:SetText(table.concat(GuildPrideDB.noteTemplates or {}, "\n")) end
     local cur = ns.Board and ns.Board.Current(true)
     local only = ""

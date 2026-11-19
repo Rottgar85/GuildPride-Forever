@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.28.0
+
+**Deutsch**
+- **Mehrere Werbetexte**: Unter Verwaltung › Werbung lassen sich bis zu 10 Werbetexte speichern und mit **<** und **>** wechseln, dazu **Neuer Text** und **Text löschen**. **In den Chat legen** nimmt den gewählten Text; der bisherige Text bleibt als Text 1 erhalten
+- **Flugzeiten werden gespeichert**: Die Landung am Ziel wurde auf WoW Forever nicht erkannt, darum blieb überall „ca.“ stehen. Jetzt wird jede geflogene Strecke gemessen und gemerkt, und die gemessene Zeit gilt auch für den Rückflug
+
+**English**
+- **Several recruiting texts**: under Management › Recruiting you can store up to 10 recruiting texts and switch with **<** and **>**, plus **New text** and **Delete text**. **Put in chat** uses the chosen text; your previous text stays as text 1
+- **Flight times are saved**: landing at the destination was not detected on WoW Forever, so "~" stayed everywhere. Every route you fly is now measured and remembered, and the measured time also counts for the return flight
+
 ## 2.27.1
 
 **Deutsch**

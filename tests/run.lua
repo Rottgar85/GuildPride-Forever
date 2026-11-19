@@ -207,6 +207,27 @@ test("Bewerbung: Steckbrief nur von Offizieren", function()
     eq(ns.RecruitOpen(), true)
 end)
 
+test("Werbung: mehrere Werbetexte speichern und wechseln", function()
+    local old = { GuildPrideDB.recruitText, GuildPrideDB.recruitTexts, GuildPrideDB.recruitIndex }
+    GuildPrideDB.recruitText, GuildPrideDB.recruitTexts, GuildPrideDB.recruitIndex = "Alter Text", nil, nil
+    local list, i = ns.RecruitList()
+    eq(#list, 1); eq(i, 1); eq(list[1], "Alter Text", "bisheriger Text wird Nr. 1")
+    eq(ns.RecruitAdd(), true)
+    ns.RecruitSetText("Zweiter Text")
+    eq(GuildPrideDB.recruitIndex, 2); eq(GuildPrideDB.recruitText, "Zweiter Text")
+    ns.RecruitSelect(1); eq(GuildPrideDB.recruitText, "Alter Text")
+    ns.RecruitSelect(0); eq(GuildPrideDB.recruitIndex, 2, "vor dem ersten kommt der letzte")
+    ns.RecruitSelect(3); eq(GuildPrideDB.recruitIndex, 1, "nach dem letzten kommt der erste")
+    ns.RecruitRemove()
+    list = ns.RecruitList()
+    eq(#list, 1); eq(GuildPrideDB.recruitText, "Zweiter Text")
+    ns.RecruitRemove()
+    eq(#ns.RecruitList(), 1); eq(GuildPrideDB.recruitText, "", "letzter Text wird nur geleert")
+    for _ = 1, 12 do ns.RecruitAdd() end
+    eq(#ns.RecruitList(), 10, "höchstens 10")
+    GuildPrideDB.recruitText, GuildPrideDB.recruitTexts, GuildPrideDB.recruitIndex = old[1], old[2], old[3]
+end)
+
 test("Bewerbung: Gespräch per Flüstern ohne Addon", function()
     W.whispers, W.sent = {}, {}
     W.Whisper("Fremd", "!bewerben")
