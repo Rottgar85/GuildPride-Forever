@@ -2216,25 +2216,34 @@ if (Settings and Settings.RegisterCanvasLayoutCategory) or InterfaceOptions_AddC
     local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOPLEFT", 16, -16)
     title:SetText("GuildPride")
+    -- Die Schalter passen nicht in Blizzards Fenster: Inhalt scrollt unter dem Titel
+    -- (panel.body; als Feld statt lokaler Variable wegen der 200-Lokale-Grenze dieser Datei)
+    panel.scroll = ns.NewScroll(panel)
+    panel.scroll:SetPoint("TOPLEFT", 0, -40)
+    panel.scroll:SetPoint("BOTTOMRIGHT", -28, 8)
+    panel.body = CreateFrame("Frame", nil, panel.scroll)
+    panel.body:SetSize(600, #options * 32 + 60)
+    panel.scroll:SetScrollChild(panel.body)
+    panel.scroll:SetScript("OnSizeChanged", function(self, w) if w and w > 0 then panel.body:SetWidth(w) end end)
     local panelChecks = {}
     for i, opt in ipairs(options) do
       if opt.header then
-        local h = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        h:SetPoint("TOPLEFT", 20, -44 - (i - 1) * 32 - 8)
+        local h = panel.body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        h:SetPoint("TOPLEFT", 20, -4 - (i - 1) * 32 - 8)
         h:SetText(opt.header)
       else
-        local cb = CreateFrame("CheckButton", nil, panel, "UICheckButtonTemplate")
-        cb:SetPoint("TOPLEFT", 16, -44 - (i - 1) * 32)
-        local label = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        local cb = CreateFrame("CheckButton", nil, panel.body, "UICheckButtonTemplate")
+        cb:SetPoint("TOPLEFT", 16, -4 - (i - 1) * 32)
+        local label = panel.body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         label:SetPoint("LEFT", cb, "RIGHT", 4, 0)
         label:SetText(opt.label)
         cb:SetScript("OnClick", function(self) SetOption(opt, self:GetChecked()) end)
         panelChecks[opt.key] = cb
       end
     end
-    local open = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    local open = CreateFrame("Button", nil, panel.body, "UIPanelButtonTemplate")
     open:SetSize(220, 26)
-    open:SetPoint("TOPLEFT", 20, -44 - #options * 32 - 12)
+    open:SetPoint("TOPLEFT", 20, -4 - #options * 32 - 12)
     open:SetText(L["Gildenfenster öffnen"])
     open:SetScript("OnClick", function()
         if SettingsPanel then HideUIPanel(SettingsPanel) end

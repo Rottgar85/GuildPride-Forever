@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.28.1
+
+**Deutsch**
+- **Blizzard-Optionen**: Die Seite GuildPride unter Optionen › AddOns ragte über das Fenster hinaus. Die Schalter stehen jetzt in einem Bereich mit Bildlaufleiste
+
+**English**
+- **Blizzard options**: the GuildPride page under Options › AddOns ran past the window. The switches now sit in a scrollable area
+
 ## 2.28.0
 
 **Deutsch**
