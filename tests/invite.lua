@@ -106,6 +106,8 @@ return function(test, eq, W, ns)
         function f:ClearAllPoints() self.points = {} end
         function f:SetPoint(...) self.points[#self.points + 1] = { ... } end
         function f:Hide() self.hides = self.hides + 1 end
+        f.scripts = {}
+        function f:HookScript(k, fn) self.scripts[k] = fn end
         CommunitiesFrame = f
         ns.ParkBlizzardGuild()
         eq(ns.BlizzardGuildParked(), true)
@@ -118,6 +120,37 @@ return function(test, eq, W, ns)
         eq(f.alpha, 1)
         eq(f.clamped, true)
         eq(f.points[1][1], "TOPLEFT"); eq(f.points[1][4], 16); eq(f.points[1][5], -116)
+
+        -- Einstellung „Blizzards Gildenfenster behalten“: geparktes Fenster kommt sofort zurück
+        local oldDB = GuildPrideDB
+        GuildPrideDB = { replaceGuildFrame = true }
+        ns.ParkBlizzardGuild()
+        ns.GuildWindowChoiceChanged()
+        eq(ns.BlizzardGuildParked(), true, "GuildPride-Fenster an: bleibt geparkt")
+        GuildPrideDB.replaceGuildFrame = false
+        ns.GuildWindowChoiceChanged()
+        eq(ns.BlizzardGuildParked(), false, "Blizzard-Fenster gewählt: wieder sichtbar")
+        eq(f.alpha, 1)
+
+        -- Erstes J nach dem Einloggen: Blizzard zeigt sein Fenster erst nach unserem Haken
+        GuildPrideDB.replaceGuildFrame = true
+        f.scripts.OnShow(f)
+        eq(ns.BlizzardGuildParked(), true, "erscheint von selbst: sofort geparkt")
+        eq(f.alpha, 0)
+        -- „Blizzard-Gildenfenster öffnen“: bleibt sichtbar, bis es zugeht
+        ns.UnparkBlizzardGuild()
+        f.scripts.OnShow(f)
+        eq(ns.BlizzardGuildParked(), false, "selbst gewählt: sichtbar")
+        f.scripts.OnHide(f)
+        f.scripts.OnShow(f)
+        eq(ns.BlizzardGuildParked(), true, "nach dem Schließen wieder geparkt")
+        ns.UnparkBlizzardGuild()
+        -- Blizzard-Fenster als Einstellung: nie parken
+        GuildPrideDB.replaceGuildFrame = false
+        f.scripts.OnHide(f)
+        f.scripts.OnShow(f)
+        eq(ns.BlizzardGuildParked(), false)
+        GuildPrideDB = oldDB
     end)
 
     test("Einladen: Community gewählt -> kein sicherer Knopf", function()

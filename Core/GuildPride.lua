@@ -885,6 +885,7 @@ SlashCmdList.GUILDPRIDE = function(arg)
         if ns.ToggleUI then ns.ToggleUI() end
     elseif arg == "blizzard" then
         GuildPrideDB.replaceGuildFrame = not GuildPrideDB.replaceGuildFrame
+        if ns.GuildWindowChoiceChanged then ns.GuildWindowChoiceChanged() end
         Print(L["Eigenes Gildenfenster: "] .. (GuildPrideDB.replaceGuildFrame and L["an"] or L["aus"]))
     elseif arg:match("^einladen%f[%A]") or arg:match("^invite%f[%A]") then
         local name = raw:match("^%S+%s+(%S+)")

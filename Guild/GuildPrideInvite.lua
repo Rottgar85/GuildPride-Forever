@@ -57,6 +57,7 @@ function ns.InvitePriming() return priming end
 -- es weiter nur Blizzard (J, Gildenknopf, Esc).
 ---------------------------------------------------------------------
 local parked, placing, saved = false, false, nil
+local showBlizzard = false      -- Spieler will Blizzards Fenster sehen (bis es wieder zugeht)
 
 local function Host() return rawget(_G, "CommunitiesFrame") end
 
@@ -103,6 +104,14 @@ local function HookHost()
     hooksecurefunc(f, "SetPoint", function()
         if parked and not placing then C_Timer.After(0, function() if parked then Park() end end) end
     end)
+    -- Erscheint Blizzards Fenster, während GuildPride das Gildenfenster ersetzt, sofort parken.
+    -- Nötig beim ersten J nach dem Einloggen: Da lädt Blizzard sein Fenster erst und zeigt es
+    -- nach unserem ToggleGuildFrame-Haken, sonst stünden beide Fenster offen.
+    f:HookScript("OnShow", function()
+        if showBlizzard or not (GuildPrideDB and GuildPrideDB.replaceGuildFrame) or not IsInGuild() then return end
+        Park()
+    end)
+    f:HookScript("OnHide", function() showBlizzard = false end)
 end
 local hostWatch = CreateFrame("Frame")
 hostWatch:RegisterEvent("ADDON_LOADED")
@@ -110,9 +119,13 @@ hostWatch:RegisterEvent("PLAYER_LOGIN")
 hostWatch:SetScript("OnEvent", HookHost)
 
 -- Für GuildPrideUI.lua (ToggleGuildFrame-Hook, „Blizzard-Gildenfenster öffnen“) und den Reiter
-function ns.ParkBlizzardGuild() HookHost(); Park() end
-function ns.UnparkBlizzardGuild() Unpark() end
+function ns.ParkBlizzardGuild() HookHost(); showBlizzard = false; Park() end
+function ns.UnparkBlizzardGuild() HookHost(); showBlizzard = true; Unpark() end
 function ns.BlizzardGuildParked() return parked end
+-- Einstellung „Blizzards Gildenfenster behalten“: ein gerade geparktes Fenster gleich zurückholen
+function ns.GuildWindowChoiceChanged()
+    if GuildPrideDB and not GuildPrideDB.replaceGuildFrame then Unpark() end
+end
 
 -- Hinweis, wenn kein sicherer Klick möglich ist (im Kampf o. Ä.)
 function ns.ShowInviteHint(rawName)

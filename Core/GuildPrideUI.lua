@@ -1790,7 +1790,8 @@ colorBtn:Hide()
 local OPT_Y = -4   -- Style- und Layout-Auswahl gibt es seit 2.14 nicht mehr
 local options = {
     { header = L["Allgemein"] },
-    { key = "replaceGuildFrame", label = L["Dieses Fenster statt Blizzard-Gildenfenster (J)"] },
+    { key = "replaceGuildFrame", label = L["Dieses Fenster statt Blizzard-Gildenfenster (J)"],
+      changed = function() if ns.GuildWindowChoiceChanged then ns.GuildWindowChoiceChanged() end end },
     { key = "crestGuild",    label = L["Oben das Gildenwappen statt des Fraktionslogos zeigen"],
       changed = function() if ns.UpdateCrestChoice then ns.UpdateCrestChoice() end end },
     { key = "compactMenu",   label = L["Kompaktes Menü (Übersicht + Meilensteine, Events + Gruppensuche + Umfragen zusammen)"],
@@ -2346,8 +2347,15 @@ loader:SetScript("OnEvent", HookBlizzardShow)
 -- Gilt auch im Kampf: unser Fenster ist dann weiter bedienbar (Chat lesen und schreiben).
 if ToggleGuildFrame then
     hooksecurefunc("ToggleGuildFrame", function()
-        if bypass or not GuildPrideDB or not GuildPrideDB.replaceGuildFrame then return end
-        if not IsInGuild() then return end
+        if bypass or not GuildPrideDB or not GuildPrideDB.replaceGuildFrame or not IsInGuild() then
+            -- Blizzards Fenster soll sichtbar sein: war es in dieser Sitzung schon einmal
+            -- geparkt, bliebe es sonst unsichtbar (Einstellung „Blizzards Gildenfenster“)
+            if ns.UnparkBlizzardGuild then ns.UnparkBlizzardGuild() end
+            -- Immer nur ein Gildenfenster: ist unseres noch offen (z. B. Haken gerade in den
+            -- Einstellungen entfernt), geht es zu, sobald J Blizzards Fenster zeigt
+            if not bypass and frame:IsShown() then frame:Hide() end
+            return
+        end
         if ns.ParkBlizzardGuild then
             -- Forever: Blizzards Fenster nie per Addon schließen, nur unsichtbar parken
             -- (sonst blockiert Forever die Gildeneinladung, siehe GuildPrideInvite.lua)

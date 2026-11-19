@@ -104,6 +104,7 @@ local function Build()
     win.setup:SetPoint("BOTTOMLEFT", 20, 42); win.setup:SetSize(400, 104)
     local function SetWindow(own)
         GuildPrideDB.replaceGuildFrame = own and true or false
+        if ns.GuildWindowChoiceChanged then ns.GuildWindowChoiceChanged() end
         win.SetupRefresh()
     end
     win.ownCb = Check(win.setup, 0, L["GuildPride-Fenster öffnen (empfohlen)"], function() SetWindow(true) end)
