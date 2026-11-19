@@ -1464,9 +1464,13 @@ end
 ---------------------------------------------------------------------
 -- Scanner
 ---------------------------------------------------------------------
+-- Zählen geht über den ganzen Preis-Speicher (Tausende Einträge): nur alle 10 s neu
+local priceCount, priceCountAt = 0, nil
 local function CountPrices()
+    if priceCountAt and GetTime() - priceCountAt < 10 then return priceCount end
     local n = 0
     for _ in pairs(AH.Store()) do n = n + 1 end
+    priceCount, priceCountAt = n, GetTime()
     return n
 end
 
@@ -1498,7 +1502,11 @@ local function MakeScanPane()
     p.go = Button(p, L["Komplett-Scan starten"], 200)
     p.go:SetPoint("TOPLEFT", 20, -80)
     p.go:SetScript("OnClick", function()
-        if AH.FullScan() then Status(L["Auktionshaus: Komplett-Scan läuft …"]) end
+        if AH.FullScan() then
+            Status(L["Auktionshaus: Komplett-Scan läuft …"])
+        elseif AH.ScanWait() > 0 then
+            Status((L["Nächster Komplett-Scan möglich in %d Min."]):format(math.ceil(AH.ScanWait() / 60)))
+        end
         RefreshScan()
     end)
     p.state = Label(p, ""); p.state:SetPoint("LEFT", p.go, "RIGHT", 16, 0)

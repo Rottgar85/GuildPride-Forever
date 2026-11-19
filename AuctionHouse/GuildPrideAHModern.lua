@@ -7,8 +7,9 @@ local AH = GP.AH
 
 local SHARE_MAX = 200           -- größere Listen gelten als Komplett-Scan: nicht rundsenden
 local SCAN_GAP = 15 * 60        -- Blizzard erlaubt den Komplett-Scan nur alle 15 Minuten
-local CHUNK = 2000              -- Komplett-Scan stückweise lesen, damit das Spiel nicht ruckelt
+local CHUNK = 400               -- Komplett-Scan stückweise lesen (je Bild), damit das Spiel nicht ruckelt
 local BIG_READ_GAP = 30         -- Auctionators Komplett-Scan höchstens alle 30 s lesen
+local FOREIGN_READS = 2         -- einen fremden Komplett-Scan höchstens so oft lesen
 
 -- Zuletzt gesehener fremder Mindestpreis je Item (für den Verkaufsvorschlag)
 AH.lastSeen = {}
@@ -116,7 +117,42 @@ end)
 -- Komplett-Scan (ReplicateItems): nur speichern, nicht rundsenden –
 -- andere bekommen die Preise auf Nachfrage
 ---------------------------------------------------------------------
-local scanning, reading, lastScan, lastBigRead, scanRead = false, false, nil, -BIG_READ_GAP, 0
+local scanning, reading, lastBigRead, scanRead = false, false, -BIG_READ_GAP, 0
+local foreignReads = 0          -- wie oft ein fremder Scan (Auctionator) noch gelesen werden darf
+
+-- Sperre: Zeit des letzten Komplett-Scans als Serverzeit in GuildPrideDB. Sie übersteht
+-- /reload und Neustart und gilt für alle Charaktere des Accounts. Auch Scans anderer
+-- Addons (Auctionator) zählen, weil Blizzard ohnehin nur alle 15 Minuten scannen lässt.
+local function MarkScan()
+    if type(GuildPrideDB) == "table" then GuildPrideDB.ahLastScan = GetServerTime() end
+end
+
+-- Sekunden bis zum nächsten erlaubten Komplett-Scan (0 = jetzt erlaubt)
+function AH.ScanWait()
+    local last = type(GuildPrideDB) == "table" and tonumber(GuildPrideDB.ahLastScan)
+    if not last then return 0 end
+    local wait = SCAN_GAP - (GetServerTime() - last)
+    return math.max(0, math.min(SCAN_GAP, math.ceil(wait)))   -- Zeit aus der Zukunft: höchstens 15 Min.
+end
+
+-- Fertige Liste stückweise speichern: Tausende Items auf einmal ließen das Spiel stocken
+local function RecordChunked(res, onDone)
+    local keys = {}
+    for key in pairs(res) do keys[#keys + 1] = key end
+    local now, i = GetServerTime(), 1
+    local function Step()
+        local last = math.min(#keys, i + CHUNK - 1)
+        for j = i, last do
+            local key, r = keys[j], res[keys[j]]
+            AH.RecordOwn(key, r.min, r.qty, now)
+            AH.lastSeen[key] = r.min
+        end
+        i = last + 1
+        if i <= #keys then C_Timer.After(0, Step); return end
+        if onDone then onDone() end
+    end
+    Step()
+end
 
 local function ReadReplicate(report)
     local n = C_AuctionHouse.GetNumReplicateItems() or 0
@@ -135,22 +171,35 @@ local function ReadReplicate(report)
         end
         i = last + 1
         if i <= n then C_Timer.After(0, Step); return end
-        RecordAll(res, false)
-        if report then reading, scanRead = false, n end
-        if report then
+        RecordChunked(res, function()
+            if not report then return end
+            reading, scanRead = false, n
             AH.Print((GP.L and GP.L["Auktionshaus: Komplett-Scan fertig, %d Angebote gelesen."] or "%d"):format(n))
-        end
+        end)
     end
     Step()
 end
 
 local legacyFullScan = AH.FullScan
 function AH.FullScan()
-    if not AH.IsModern() then return legacyFullScan() end
-    if lastScan and GetTime() - lastScan < SCAN_GAP then return false end
-    lastScan, scanning = GetTime(), true
+    if AH.ScanWait() > 0 then return false end
+    if not AH.IsModern() then
+        if not legacyFullScan() then return false end
+        MarkScan()
+        return true
+    end
+    MarkScan()
+    scanning = true
     C_AuctionHouse.ReplicateItems()
     return true
+end
+
+-- Komplett-Scans anderer Addons (Auctionator) erkennen: sperren und höchstens zweimal mitlesen
+if C_AuctionHouse and type(C_AuctionHouse.ReplicateItems) == "function" and hooksecurefunc then
+    hooksecurefunc(C_AuctionHouse, "ReplicateItems", function()
+        MarkScan()
+        if not scanning then foreignReads = FOREIGN_READS end
+    end)
 end
 
 AH.Listen("REPLICATE_ITEM_LIST_UPDATE", function()
@@ -160,8 +209,11 @@ AH.Listen("REPLICATE_ITEM_LIST_UPDATE", function()
         ReadReplicate(true)
         return
     end
-    -- Auctionators Komplett-Scan still mitlesen (gedrosselt)
-    if AH.AuctionatorLoaded() and AH.Opt("ahReadAuctionator") and GetTime() - lastBigRead >= BIG_READ_GAP then
+    -- Auctionators Komplett-Scan still mitlesen: nur nach einem neuen Scan, gedrosselt.
+    -- Blizzard meldet die Liste noch lange immer wieder – sie ständig neu zu lesen ruckelte.
+    if foreignReads > 0 and AH.AuctionatorLoaded() and AH.Opt("ahReadAuctionator")
+        and GetTime() - lastBigRead >= BIG_READ_GAP then
+        foreignReads = foreignReads - 1
         lastBigRead = GetTime()
         ReadReplicate(false)
     end
@@ -171,8 +223,7 @@ AH.Listen("AUCTION_HOUSE_CLOSED", function() scanning = false end)
 
 -- Stand des Komplett-Scans für die Anzeige im Scanner
 function AH.ScanStatus()
-    local wait = lastScan and math.max(0, math.ceil(SCAN_GAP - (GetTime() - lastScan))) or 0
-    return { running = scanning or reading, wait = wait, read = scanRead }
+    return { running = scanning or reading, wait = AH.ScanWait(), read = scanRead }
 end
 
 ---------------------------------------------------------------------

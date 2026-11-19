@@ -468,6 +468,23 @@ return function(test, eq, W, ns)
         W.Advance(300); eq(AH.ScanStatus().wait, 600)
         Modern(false)
     end)
+
+    test("AH-Forever: Scan-Sperre übersteht /reload (Serverzeit in GuildPrideDB)", function()
+        Modern(true); W.Advance(3600)
+        M.replicated = 0
+        -- wie nach /reload: nur der gespeicherte Zeitpunkt ist noch da
+        GuildPrideDB.ahLastScan = W.server - 60
+        eq(AH.ScanWait(), 840)
+        eq(AH.FullScan(), false); eq(M.replicated, 0)
+        eq(AH.ScanStatus().wait, 840)
+        -- Zeit aus der Zukunft (Uhr verstellt): höchstens 15 Minuten warten
+        GuildPrideDB.ahLastScan = W.server + 99999
+        eq(AH.ScanWait(), 900)
+        GuildPrideDB.ahLastScan = W.server - 900
+        eq(AH.FullScan(), true); eq(M.replicated, 1)
+        eq(GuildPrideDB.ahLastScan, W.server)
+        Modern(false)
+    end)
     test("AH-Forever: aktuelle Angebote als Liste, billigste zuerst", function()
         Modern(true)
         M.commodity[30040] = {
