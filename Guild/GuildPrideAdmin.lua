@@ -218,7 +218,16 @@ Btn(L["Abnehmen"], 130, bPost, 8, 0, function()
     if ns.Board then ns.Board.Remove() end
 end)
 local boardNow = Hint(y - 198, "")
-c:SetHeight(-(y - 242))
+
+---------------------------------------------------------------------
+-- Abwesenheiten: wer sich von wann bis wann abgemeldet hat
+---------------------------------------------------------------------
+y = y - 236
+ns.Section(c, L["Abwesenheiten"], nil, y)
+local absNow = Hint(y - 28, "")
+local bAbs = Btn(L["Abwesenheitsliste …"], 200, nil, 4, y - 50, function() if ns.Absence then ns.Absence.ToggleList() end end)
+Btn(L["Mich abmelden …"], 160, bAbs, 8, 0, function() if ns.Absence then ns.Absence.ToggleMine() end end)
+c:SetHeight(-(y - 90))
 
 ---------------------------------------------------------------------
 -- Aktualisieren
@@ -239,6 +248,11 @@ function page:Refresh()
     for r, cb in pairs(rankChecks) do
         cb:SetShown(r < num); cb.label:SetShown(r < num)
         cb.label:SetText(RankName(r))
+    end
+    if ns.Absence then
+        local away, total = ns.Absence.AwayToday(), #ns.Absence.List()
+        absNow:SetText((L["Heute abwesend: %s  ·  gemeldet insgesamt: %d"]):format(
+            #away > 0 and table.concat(away, ", ") or "–", total))
     end
     local open = ns.RecruitOpen and ns.RecruitOpen()
     local n = 0

@@ -586,6 +586,11 @@ Tile(2, L["NÄCHSTES EVENT"])
 Tile(3, L["MEILENSTEINE DIESE WOCHE"])
 
 local motdLabel = Section(overview, L["Nachricht des Tages"], nil, -92)
+-- Abmelden (für alle Mitglieder): rechts neben der Überschrift
+local bAway = CreateFrame("Button", nil, overview, "UIPanelButtonTemplate")
+bAway:SetSize(170, 22); bAway:SetPoint("TOPRIGHT", -4, -88); bAway:SetText(L["Abwesenheit melden …"])
+bAway:SetFrameLevel(overview:GetFrameLevel() + 5)
+bAway:SetScript("OnClick", function() if ns.Absence then ns.Absence.ToggleMine() end end)
 local motd = overview:CreateFontString(nil, "OVERLAY", "GPFont_Text")
 motd:SetPoint("TOPLEFT", motdLabel, "BOTTOMLEFT", 0, -10)
 motd:SetWidth(620); motd:SetJustifyH("LEFT")
@@ -656,7 +661,15 @@ function overview:Refresh()
     local text = ns.GuildMOTD()
     text = text ~= "" and text or L["|cff888888Keine Nachricht gesetzt.|r"]
     local board = ns.BoardText and ns.BoardText()
-    motd:SetText(board and (text .. "\n\n" .. board) or text)
+    if board then text = text .. "\n\n" .. board end
+    -- Offiziere sehen, wer heute abgemeldet ist
+    if ns.Absence and ns.IsOfficer() then
+        local away = ns.Absence.AwayToday()
+        if #away > 0 then
+            text = text .. "\n\n" .. (L["|cffffd100Heute abwesend:|r %s"]):format(table.concat(away, ", "))
+        end
+    end
+    motd:SetText(text)
     weekText:SetText(WeekSummary())
     local lines = {}
     local log = ns.GuildLog()
@@ -1832,6 +1845,9 @@ local options = {
     { key = "flightTimes",   label = L["Flugzeit am Flugmeister im Tooltip zeigen (lernt echte Zeiten beim Fliegen)"] },
     { key = "flightUI",      label = L["Flug-Zähler im Flug zeigen (Restzeit bis zur Landung)"],
       changed = function() if ns.Flight and ns.Flight.SetWindow then ns.Flight.SetWindow(GuildPrideDB.flightUI) end end },
+    { header = L["Namensplaketten"] },
+    { key = "plateColors",   label = L["Eigene Farben auf den Namensplaketten (nur für dich)"],
+      changed = function() if ns.Plates then ns.Plates.RefreshAll() end end },
     { header = L["Gilde"] },
     { key = "welcome",       label = L["Neue Mitglieder automatisch im Gildenchat begrüßen"] },
     { key = "discordBridge", label = L["Discord-Anbindung nutzen (Events, Anmeldungen, DKP an Discord)"] },
@@ -1869,6 +1885,13 @@ for i, opt in ipairs(options) do
     checks[opt.key] = cb
     opt.fs, opt.cb, opt.y = label, cb, OPT_Y - (i - 1) * 30
     -- Knopf zum Testen der Discord-Anbindung direkt neben dem Schalter
+    if opt.key == "plateColors" then
+        local pb = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+        pb:SetSize(110, 20)
+        pb:SetPoint("LEFT", label, "RIGHT", 10, 0)
+        pb:SetText(L["Farben …"])
+        pb:SetScript("OnClick", function() if ns.Plates then ns.Plates.Toggle() end end)
+    end
     if opt.key == "discordBridge" then
         local test = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
         test:SetSize(130, 20)
