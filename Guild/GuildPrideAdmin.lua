@@ -146,12 +146,46 @@ boardScroll:SetScrollChild(boardBox)
 boardScroll:EnableMouse(true)
 boardScroll:SetScript("OnMouseDown", function() boardBox:SetFocus() end)
 boardBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+-- Für welche Ränge? Je Rang ein Häkchen (anfangs alle). Alle angekreuzt =
+-- für alle; sonst sehen nur diese Ränge den Aushang (nicht nach Discord).
+local rankChecks = {}
+do
+    local rl = c:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+    rl:SetPoint("TOPLEFT", 4, y - 118); rl:SetText(L["Für Ränge:"])
+    for r = 0, 9 do
+        local cb = CreateFrame("CheckButton", nil, c, "UICheckButtonTemplate")
+        cb:SetSize(24, 24); cb:SetChecked(true)
+        cb:SetPoint("TOPLEFT", 80 + (r % 5) * 110, y - 112 - math.floor(r / 5) * 24)
+        cb.label = c:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+        cb.label:SetPoint("LEFT", cb, "RIGHT", 1, 0); cb.label:SetWidth(82); cb.label:SetJustifyH("LEFT")
+        cb.label:SetWordWrap(false)
+        rankChecks[r] = cb
+    end
+end
+local function RankName(r)
+    local name = GuildControlGetRankName and GuildControlGetRankName(r + 1)
+    return (type(name) == "string" and name ~= "") and name or (L["Rang %d"]):format(r)
+end
+-- Gewählte Ränge: nil = keiner, "" = alle, sonst { [rang] = true }
+local function ChosenRanks()
+    local set, all, any = {}, true, false
+    for r, cb in pairs(rankChecks) do
+        if cb:IsShown() then
+            if cb:GetChecked() then set[r] = true; any = true else all = false end
+        end
+    end
+    if not any then return nil end
+    return all and "" or set
+end
+
 local boardDiscord = CreateFrame("CheckButton", nil, c, "UICheckButtonTemplate")
-boardDiscord:SetPoint("TOPLEFT", 4, y - 112)
+boardDiscord:SetPoint("TOPLEFT", 4, y - 164)
 local bdl = c:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
 bdl:SetPoint("LEFT", boardDiscord, "RIGHT", 2, 0); bdl:SetText(L["auch nach Discord"])
-local bPost = Btn(L["Aushängen"], 130, nil, 200, y - 114, function()
-    if ns.Board and ns.Board.Post(boardBox:GetText(), boardDiscord:GetChecked()) then
+local bPost = Btn(L["Aushängen"], 130, nil, 200, y - 166, function()
+    local ranks = ChosenRanks()
+    if not ranks then ns.Print(L["Bitte mindestens einen Rang ankreuzen."]) return end
+    if ns.Board and ns.Board.Post(boardBox:GetText(), boardDiscord:GetChecked(), ranks) then
         boardBox:SetText(""); boardBox:ClearFocus()
         ns.Print(L["Mitteilung hängt am Schwarzen Brett."])
     else
@@ -161,8 +195,8 @@ end)
 Btn(L["Abnehmen"], 130, bPost, 8, 0, function()
     if ns.Board then ns.Board.Remove() end
 end)
-local boardNow = Hint(y - 146, "")
-c:SetHeight(-(y - 190))
+local boardNow = Hint(y - 198, "")
+c:SetHeight(-(y - 242))
 
 ---------------------------------------------------------------------
 -- Aktualisieren
@@ -170,8 +204,20 @@ c:SetHeight(-(y - 190))
 function page:Refresh()
     if not recruitBox:HasFocus() then recruitBox:SetText(GuildPrideDB.recruitText or "") end
     if not tplBox:HasFocus() then tplBox:SetText(table.concat(GuildPrideDB.noteTemplates or {}, "\n")) end
-    local cur = ns.Board and ns.Board.Current()
-    boardNow:SetText(cur and (L["Hängt gerade: %s"]):format(cur.text) or L["Am Schwarzen Brett hängt gerade nichts."])
+    local cur = ns.Board and ns.Board.Current(true)
+    local only = ""
+    if cur and cur.ranks and cur.ranks ~= "" then
+        local names = {}
+        for d in cur.ranks:gmatch("%d") do names[#names + 1] = RankName(tonumber(d)) end
+        only = " " .. (L["(nur: %s)"]):format(table.concat(names, ", "))
+    end
+    boardNow:SetText(cur and ((L["Hängt gerade: %s"]):format(cur.text) .. only) or L["Am Schwarzen Brett hängt gerade nichts."])
+    local num = math.min(10, GuildControlGetNumRanks and GuildControlGetNumRanks() or 0)
+    if num == 0 then num = 10 end
+    for r, cb in pairs(rankChecks) do
+        cb:SetShown(r < num); cb.label:SetShown(r < num)
+        cb.label:SetText(RankName(r))
+    end
     local open = ns.RecruitOpen and ns.RecruitOpen()
     local n = 0
     for _, app in pairs(ns.GuildTable("apps")) do if app.status == "new" then n = n + 1 end end

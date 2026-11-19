@@ -343,9 +343,9 @@ local function BuildBar()
     bar:SetSize(260, 42)
     bar:SetFrameLevel((page.GetFrameLevel and page:GetFrameLevel() or 1) + 10)
     PlaceBar()
-    -- oben die Zeile mit Kosten und Gewinn, darunter die beiden Knöpfe
+    -- oben die beiden Knöpfe, darunter die Zeile mit Kosten und Gewinn
     bar.searchBtn = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
-    bar.searchBtn:SetSize(112, 22); bar.searchBtn:SetPoint("BOTTOMLEFT")
+    bar.searchBtn:SetSize(112, 22); bar.searchBtn:SetPoint("TOPLEFT")
     bar.searchBtn:SetText(L["AH: Zutaten"])
     bar.listBtn = CreateFrame("Button", nil, bar, "UIPanelButtonTemplate")
     bar.listBtn:SetSize(130, 22); bar.listBtn:SetPoint("LEFT", bar.searchBtn, "RIGHT", 6, 0)
@@ -360,10 +360,10 @@ local function BuildBar()
         L["Sucht im GuildPride-Auktionshaus nur die Zutaten dieses Rezepts, mit der Menge für die eingestellte Anzahl. Das Auktionshaus muss offen sein."])
     Tip(bar.listBtn, L["GuildPride: Zur Einkaufsliste"],
         L["Trägt die Zutaten mit Menge in eine Einkaufsliste ein. Mehrere Rezepte in einer Liste werden zusammengezählt."])
-    -- Kosten und Gewinn des gewählten Rezepts über den Knöpfen; neu gerechnet, wenn ein anderes
+    -- Kosten und Gewinn des gewählten Rezepts unter den Knöpfen; neu gerechnet, wenn ein anderes
     -- Rezept gewählt wird, sonst alle 5 Sekunden (neue Preise)
     bar.info = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    bar.info:SetPoint("TOPLEFT", bar, "TOPLEFT", 2, 0)
+    bar.info:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 2, 0)
     bar.info:SetJustifyH("LEFT")
     local last, wait = nil, 0
     bar:SetScript("OnUpdate", function(_, elapsed)

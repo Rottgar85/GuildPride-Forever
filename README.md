@@ -2,7 +2,7 @@
 
 [English](#english) · [Deutsch](#deutsch) · [Screenshots](#screenshots)
 
-World of Warcraft addon for WoW Forever only · Version 2.26.1 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
+World of Warcraft addon for WoW Forever only · Version 2.27.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
 
 ---
 
@@ -110,7 +110,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs- und Zeppelinzeiten je Layer, einen Rare-Scanner, ein vollständiges Auktionshaus, Layer-Wechsel mit einem Klick, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.26.1*
+*Version 2.27.0*
 
 ### NEU in 2.26
 
@@ -232,6 +232,7 @@ Den Ordner `GuildPrideForever` nach `World of Warcraft/_forever_/Interface/AddOn
 GuildPride steht unter der **GNU General Public License v3.0** (siehe `LICENSE.txt`).
 GuildPride is licensed under the **GNU General Public License v3.0** (see `LICENSE.txt`).
 
+- Flugzeiten und Flugsymbol / flight times and flight icon: aus / from Polestar (GPL-3.0-only), Flugdaten dort nach / flight data there after Shortest Path Forever von / by Cillian Berragan (GPL-3.0-or-later, mit Erlaubnis / with permission)
 - Schiffs-Fahrpläne / ship timetables: aus / from Polestar (GPL-3.0-only), dort aus / based on Shortest Path Forever von / by Cillian Berragan (GPL-3.0-or-later, mit Erlaubnis / with permission)
 - Rare-Fundorte / rare spawn points: aus / from [ForeverMapNotes](https://www.curseforge.com/wow/addons/forevermapnotes-bysiberiano12) (GPL-3.0), dort aus / based on QuestieDB Forever data ([github.com/Questie/QuestieDB](https://github.com/Questie/QuestieDB)) – danke an das Questie-Team / thanks to the Questie team – und / and CMaNGOS classic-db ([github.com/cmangos/classic-db](https://github.com/cmangos/classic-db), GPL-3.0)
 - Schriften / fonts: DejaVu (`Media/Fonts/LICENSE-DejaVu.txt`), Inter (SIL OFL 1.1, `Media/Fonts/LICENSE-Inter.txt`)

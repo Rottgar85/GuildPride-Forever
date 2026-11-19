@@ -402,6 +402,13 @@ return function(test, eq, W, ns)
         local rows = AH.BrowseRows()
         eq(#rows, 2); eq(rows[1].key, "30012"); eq(rows[1].mine, true); eq(rows[1].qty, 7)
         eq(rows[2].name, "Item30011"); eq(rows[2].min, 90)
+        eq(sent.minLevel, nil); eq(sent.maxLevel, nil)
+        -- Stufenbereich: von/bis, leer = offen, vertauscht wird getauscht
+        eq(AH.ModernBrowse("Schwert", nil, 20, 30), true)
+        eq(sent.minLevel, 20); eq(sent.maxLevel, 30)
+        local lo, hi = AH.LevelRange("40", "25"); eq(lo, 25); eq(hi, 40)
+        lo, hi = AH.LevelRange("", "60"); eq(lo, nil); eq(hi, 60)
+        lo, hi = AH.LevelRange("0", "abc"); eq(lo, nil); eq(hi, nil)
         Modern(false); eq(AH.ModernBrowse("x"), false)
     end)
 

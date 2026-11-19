@@ -229,12 +229,28 @@ end
 ---------------------------------------------------------------------
 -- Für den eigenen Reiter: Suchen, Liste, Verkaufen
 ---------------------------------------------------------------------
--- filters: itemClassFilters einer Kategorie ({ { classID, subClassID, inventoryType }, … })
-function AH.ModernBrowse(text, filters)
+-- Stufenbereich aus zwei Eingaben: Zahlen 1–999, leer = offen; vertauscht = getauscht
+function AH.LevelRange(minText, maxText)
+    local function Num(v)
+        v = tonumber(v)
+        if not v or v < 1 then return nil end
+        return math.min(999, math.floor(v))
+    end
+    local lo, hi = Num(minText), Num(maxText)
+    if lo and hi and lo > hi then lo, hi = hi, lo end
+    return lo, hi
+end
+
+-- filters: itemClassFilters einer Kategorie ({ { classID, subClassID, inventoryType }, … });
+-- minLevel/maxLevel: benötigte Stufe der Items (nil = ohne Grenze)
+function AH.ModernBrowse(text, filters, minLevel, maxLevel)
     if not AH.IsModern() then return false end
     AH.StopItemSearch()
-    C_AuctionHouse.SendBrowseQuery({ searchString = text or "", sorts = Sorts(), filters = {},
-        itemClassFilters = filters or {} })
+    local query = { searchString = text or "", sorts = Sorts(), filters = {},
+        itemClassFilters = filters or {} }
+    if minLevel then query.minLevel = minLevel end
+    if maxLevel then query.maxLevel = maxLevel end
+    C_AuctionHouse.SendBrowseQuery(query)
     return true
 end
 

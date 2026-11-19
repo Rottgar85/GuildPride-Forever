@@ -192,11 +192,13 @@ local function RefreshList()
     end
 end
 
+local levelBoxes = {}   -- Stufe von/bis neben dem Suchfeld (MakeSearchPane)
 local function StartSearch(text)
     offset = 0
     searchNeed = nil
     if CloseDetail then CloseDetail() end
-    if AH.ModernBrowse(text, catSel and catSel.filters) then Status(L["Suche läuft …"]) end
+    local lo, hi = AH.LevelRange(levelBoxes.min and levelBoxes.min:GetText(), levelBoxes.max and levelBoxes.max:GetText())
+    if AH.ModernBrowse(text, catSel and catSel.filters, lo, hi) then Status(L["Suche läuft …"]) end
 end
 
 -- Kategorien links wie bei Blizzard: Klick wählt und sucht, „+“ klappt Unterkategorien auf
@@ -540,8 +542,21 @@ local function MakeSearchPane()
     go:SetPoint("LEFT", box, "RIGHT", 8, 0)
     go:SetScript("OnClick", function() box:ClearFocus(); StartSearch(box:GetText()) end)
     box:SetScript("OnEnterPressed", function() box:ClearFocus(); StartSearch(box:GetText()) end)
+    -- Stufenbereich wie bei Blizzard: von – bis, leer = ohne Grenze
+    local lvl = Label(p, L["Stufe"], "GameFontNormalSmall")
+    lvl:SetPoint("LEFT", go, "RIGHT", 14, 0)
+    levelBoxes.min = Edit(p, 34, true); levelBoxes.min:SetMaxLetters(3)
+    levelBoxes.min:SetPoint("LEFT", lvl, "RIGHT", 8, 0)
+    local dash = Label(p, "–", "GameFontHighlightSmall"); dash:SetPoint("LEFT", levelBoxes.min, "RIGHT", 4, 0)
+    levelBoxes.max = Edit(p, 34, true); levelBoxes.max:SetMaxLetters(3)
+    levelBoxes.max:SetPoint("LEFT", dash, "RIGHT", 6, 0)
+    for _, e in ipairs({ levelBoxes.min, levelBoxes.max }) do
+        e:SetScript("OnEnterPressed", function() e:ClearFocus(); StartSearch(box:GetText()) end)
+        e:SetScript("OnTabPressed", function() if e == levelBoxes.min then levelBoxes.max:SetFocus() else box:SetFocus() end end)
+    end
     local hint = Label(p, L["Klick auf eine Zeile zeigt die Angebote zum Kaufen. Der Stern merkt ein Item als Favorit."], "GameFontDisableSmall")
-    hint:SetPoint("LEFT", go, "RIGHT", 12, 0)
+    hint:SetPoint("LEFT", levelBoxes.max, "RIGHT", 12, 0)
+    hint:SetPoint("RIGHT", p, "RIGHT", -16, 0); hint:SetWordWrap(true)
 
     MakeCategoryList(p, box)
     p.listFrame = CreateFrame("Frame", nil, p)

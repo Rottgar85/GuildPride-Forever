@@ -1,5 +1,25 @@
 # GuildPride Changelog
 
+## 2.27.0
+
+**Deutsch**
+- **Flugzeiten**: Am Flugmeister steht im Tooltip jedes Ziels, wie lange der Flug dauert – geschätzt wie bei Polestar (**ca.**), selbst geflogene Strecken mit der gemessenen Zeit in Gold. Jeder eigene Flug wird gestoppt und gemerkt
+- **Flug-Zähler**: Während des Flugs zeigt ein verschiebbares Fenster Ziel, Restzeit bis zur Landung und einen Balken. Beides lässt sich in den Einstellungen (Reisen) abschalten
+- **Schwarzes Brett für bestimmte Ränge**: Beim Aushang (Reiter Verwaltung) wählst du per Häkchen, welche Ränge ihn sehen. Alle angekreuzt = für alle
+- **Item-ID im Tooltip**: neuer Schalter in den Einstellungen (Allgemein), standardmäßig aus
+- **Auktionshaus – Stufenbereich**: In der Suche lässt sich die Stufe von – bis eintragen; leer = ohne Grenze
+- **Berufsfenster**: Kosten und Gewinn stehen jetzt unter den Knöpfen „AH: Zutaten“ und „Zur Einkaufsliste“
+- **Wunschliste**: Umschalt+Klick auf ein Item fügt es ins Feld ein, ohne vorher hineinzuklicken
+
+**English**
+- **Flight times**: at the flight master each destination's tooltip shows how long the flight takes – estimated like Polestar (**~**), routes you have flown with the measured time in gold. Every flight of yours is timed and remembered
+- **Flight timer**: while flying, a movable window shows destination, time left until landing and a bar. Both can be switched off in the settings (Travel)
+- **Bulletin board for chosen ranks**: when posting (Manage tab) tick which ranks see it. All ticked = everyone
+- **Item ID in the tooltip**: new switch in the settings (General), off by default
+- **Auction house – level range**: the search takes a level from – to; empty = no limit
+- **Profession window**: cost and profit now sit below the "AH: reagents" and "To shopping list" buttons
+- **Wish list**: shift-click on an item puts it into the field without clicking into it first
+
 ## 2.26.1
 
 **Deutsch**

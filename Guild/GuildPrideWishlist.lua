@@ -411,10 +411,22 @@ local holder = CreateFrame("Frame", nil, page)
 holder:SetPoint("TOPLEFT", 0, -52); holder:SetPoint("BOTTOMRIGHT")
 local list = ns.CreateList(holder, 24)
 
--- Umschalt+Klick auf ein Item fügt den Link ins Feld ein
-hooksecurefunc("ChatEdit_InsertLink", function(link)
-    if link and input:HasFocus() then input:SetText(link) end
-end)
+-- Umschalt+Klick auf ein Item fügt den Link ins Feld ein: wenn das Feld aktiv ist, oder
+-- wenn der Reiter offen ist und kein anderes Eingabefeld (z. B. der Chat) den Link bekommt
+local function TakeLink(link)
+    if type(link) ~= "string" or not link:find("item:%d+") then return end
+    local focus = GetCurrentKeyBoardFocus and GetCurrentKeyBoardFocus()
+    if input:HasFocus() or (page:IsVisible() and (focus == nil or focus == input)) then
+        input:SetText(link)
+        input:SetFocus()
+    end
+end
+ns.WishTakeLink = TakeLink   -- für Tests
+if ChatEdit_InsertLink then hooksecurefunc("ChatEdit_InsertLink", TakeLink) end
+-- neuere Clients: Blizzard fügt Links über ChatFrameUtil.InsertLink ein
+if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+    hooksecurefunc(ChatFrameUtil, "InsertLink", TakeLink)
+end
 
 local function ItemLabel(id)
     local name, link, _, icon = ItemInfo(id)

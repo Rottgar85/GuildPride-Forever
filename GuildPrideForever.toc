@@ -3,7 +3,7 @@
 ## Notes: Guild window, milestones, events, guild info and guild chat for your guild
 ## Notes-deDE: Gildenfenster, Meilensteine, Events, Gildeninfo und Gildenchat für deine Gilde
 ## Author: Rottgar85
-## Version: 2.26.1
+## Version: 2.27.0
 ## SavedVariables: GuildPrideDB, GuildPrideBackupDB, GuildPrideRaresDB, ScalesDB, GuildPrideAHDB
 ## SavedVariablesPerCharacter: ScalesCharDB
 ## OptionalDeps: EllesmereUIBags, BagBrother, Bagnon, Bagnonium, Combuctor, ElvUI, Baganator, AdiBags, BetterBags
@@ -19,6 +19,7 @@ Guild\GuildPrideMarks.lua
 Community\GuildPrideMapPins.lua
 Community\GuildPrideMapPins.xml
 Core\GuildPrideInk.lua
+Core\GuildPrideItemID.lua
 Guild\GuildPrideInvite.lua
 Core\GuildPrideUI.lua
 Core\GuildPrideCopy.lua
@@ -78,6 +79,9 @@ AuctionHouse\GuildPrideAHModernUI.lua
 Travel\GuildPrideTransitData.lua
 Travel\GuildPrideTransit.lua
 Travel\GuildPrideTransitUI.lua
+Travel\GuildPrideFlightData.lua
+Travel\GuildPrideFlight.lua
+Travel\GuildPrideFlightUI.lua
 Scales\GuildPrideScalesLocaleEN.lua
 Scales\GuildPrideScalesLocaleDE.lua
 Scales\GuildPrideScalesCompat.lua

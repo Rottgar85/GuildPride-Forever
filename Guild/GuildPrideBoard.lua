@@ -2,9 +2,12 @@
 -- Offiziere schreiben eine Mitteilung; jedes Mitglied mit GuildPride bekommt sie
 -- einmal als Fenster angezeigt (beim Einloggen oder sofort), danach steht sie in
 -- der Übersicht unter der Nachricht des Tages. Auf Wunsch auch nach Discord.
---   BRD: id, ver, autor, zeit, gelöscht (0/1), text
+--   BRD: id, ver, autor, zeit, gelöscht (0/1), text, ränge
 --   BRQ: Anfrage (Login) -> Antwort per Flüstern
 -- Von Offizieren sofort, über andere Mitglieder erst bei zwei gleichen Meldungen.
+-- Ränge: Ziffernfolge ("013"), leer = alle. Wer nicht dazugehört, sieht den
+-- Aushang nicht, gibt ihn aber beim Abgleich weiter (Filter beim Empfänger,
+-- kein Geheimnisschutz). Ältere Versionen kennen das Feld nicht und zeigen allen.
 local ADDON, ns = ...
 local L = ns.L
 local SEP = ns.SEP
@@ -13,16 +16,39 @@ local Board = {}
 ns.Board = Board
 local MAX_LEN, KEEP_DAYS = 250, 30
 
-local function DB() return ns.GuildTable("board") end   -- { id, ver, author, t, deleted, text }
+local function DB() return ns.GuildTable("board") end   -- { id, ver, author, t, deleted, text, ranks }
 local function Me() return ns.Me() end
 local function Now() return GetServerTime() end
 local function CanManage() return CanEditMOTD and CanEditMOTD() and true or false end
 local function Clean(s, max) return (tostring(s or ""):gsub("|", ""):gsub("[%c]", " ")):sub(1, max) end
 
-local function Current()
+-- Ränge aus Ziffern oder { [rang] = true }: nur 0-9, jede einmal, sortiert
+local function CleanRanks(v)
+    local set, out = {}, {}
+    if type(v) == "table" then
+        for r in pairs(v) do if type(r) == "number" then set[r] = true end end
+    else
+        for d in tostring(v or ""):gmatch("%d") do set[tonumber(d)] = true end
+    end
+    for r = 0, 9 do if set[r] then out[#out + 1] = tostring(r) end end
+    return table.concat(out)
+end
+Board.CleanRanks = CleanRanks
+
+-- Ist der Aushang für mich bestimmt? (alle, mein Rang, oder ich habe ihn geschrieben)
+local function ForMe(b)
+    local ranks = b.ranks or ""
+    if ranks == "" or b.author == Me() then return true end
+    local r = ns.RankIndexOf(Me())
+    return r ~= nil and r <= 9 and ranks:find(tostring(r), 1, true) ~= nil
+end
+
+-- all = true: auch Aushänge für andere Ränge (Verwaltung)
+local function Current(all)
     local b = DB()
     if not b.id or b.deleted or not b.text or b.text == "" then return nil end
     if Now() - (b.t or 0) > KEEP_DAYS * 86400 then return nil end
+    if not all and not ForMe(b) then return nil end
     return b
 end
 Board.Current = Current
@@ -94,13 +120,14 @@ end
 ---------------------------------------------------------------------
 local function Send(target)
     local b = DB()
-    if b.id then ns.Queue("BRD", target, b.id, b.ver, b.author, b.t, b.deleted and 1 or 0, b.text or "") end
+    if b.id then ns.Queue("BRD", target, b.id, b.ver, b.author, b.t, b.deleted and 1 or 0, b.text or "", b.ranks or "") end
 end
 
-local function Apply(id, ver, author, t, deleted, text)
+local function Apply(id, ver, author, t, deleted, text, ranks)
     local b = DB()
     if b.id and ver <= (b.ver or 0) then return false end
     b.id, b.ver, b.author, b.t, b.deleted, b.text = id, ver, author, t, deleted, text
+    b.ranks = (ranks and ranks ~= "") and ranks or nil
     return true
 end
 
@@ -114,7 +141,7 @@ ns.On("BRD", function(payload, sender)
     if not ns.IsOfficerName(sender) and not ns.Confirmed("BRD\030" .. payload, sender) then return end
     local text = Clean(a[6], MAX_LEN)
     if a[5] ~= "1" and strtrim(text) == "" then return end
-    if Apply(id, ver, author, ns.Stamp(a[4]), a[5] == "1", text) then
+    if Apply(id, ver, author, ns.Stamp(a[4]), a[5] == "1", text, CleanRanks(a[7])) then
         if ns.RefreshUI then ns.RefreshUI() end
         ShowIfNew()
     end
@@ -128,15 +155,19 @@ end)
 ---------------------------------------------------------------------
 -- Aktionen (nur Offiziere, aus einem Klick)
 ---------------------------------------------------------------------
-function Board.Post(text, toDiscord)
-    if not CanManage() then return false end
+-- ranks: nil/"" = alle, sonst Ziffernfolge oder { [rang] = true }.
+-- Rückgabe: true oder false, Grund ("rang", "text")
+function Board.Post(text, toDiscord, ranks)
+    if not CanManage() then return false, "rang" end
     text = strtrim(Clean(text, MAX_LEN))
-    if text == "" then return false end
+    if text == "" then return false, "text" end
+    ranks = CleanRanks(ranks)
     local id = Me() .. "-" .. Now() .. "-" .. math.random(1000, 9999)
-    Apply(id, math.max(Now(), (DB().ver or 0) + 1), Me(), Now(), false, text)
+    Apply(id, math.max(Now(), (DB().ver or 0) + 1), Me(), Now(), false, text, ranks)
     MarkSeen(DB())
     Send()
-    if toDiscord and ns.Discord then
+    -- Discord sehen alle: Aushänge nur für bestimmte Ränge nicht dorthin
+    if toDiscord and ns.Discord and ranks == "" then
         ns.Discord.Post((ns.IS_GERMAN and "Ankündigung: %s" or "Announcement: %s"):format(text), true)
     end
     if ns.RefreshUI then ns.RefreshUI() end
@@ -146,7 +177,7 @@ end
 function Board.Remove()
     if not CanManage() or not DB().id then return end
     local b = DB()
-    Apply(b.id, math.max(Now(), (b.ver or 0) + 1), b.author, b.t, true, b.text)
+    Apply(b.id, math.max(Now(), (b.ver or 0) + 1), b.author, b.t, true, b.text, b.ranks)
     Send()
     if ns.RefreshUI then ns.RefreshUI() end
 end
