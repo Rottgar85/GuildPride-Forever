@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.26.1
+
+**Deutsch**
+- **Gildenfenster (J)**: J öffnet immer genau ein Fenster – je nach Einstellung **Dieses Fenster statt Blizzard-Gildenfenster** GuildPride oder Blizzard. Vorher blieb Blizzards Fenster nach dem Abschalten unsichtbar, beim ersten J nach dem Einloggen gingen beide auf, und ein offenes GuildPride-Fenster blieb neben Blizzards stehen
+- **Auktionshaus – Komplett-Scan**: nur alle 15 Minuten, auch nach /reload und für alle Charaktere; Scans von Auctionator zählen mit. Der Knopf bleibt bis dahin aus und zeigt die Wartezeit
+- **Auktionshaus – weniger Ruckeln**: große Scan-Listen werden in kleineren Stücken gelesen und gespeichert und nicht mehr alle 30 Sekunden neu gelesen
+
+**English**
+- **Guild window (J)**: J always opens exactly one window – GuildPride or Blizzard, depending on **Use this window instead of Blizzard's guild window**. Before, Blizzard's window stayed invisible after switching off, both opened on the first J after login, and an open GuildPride window stayed next to Blizzard's
+- **Auction house – full scan**: only every 15 minutes, even after /reload and across all characters; Auctionator scans count too. The button stays disabled until then and shows the wait
+- **Auction house – less stutter**: large scan lists are read and saved in smaller chunks and no longer re-read every 30 seconds
+
 ## 2.26.0
 
 **Deutsch**
