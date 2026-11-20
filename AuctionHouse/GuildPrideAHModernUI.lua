@@ -1743,12 +1743,7 @@ local function Build()
     panel = CreateFrame("Frame", "GuildPrideAHWindow", UIParent, "BackdropTemplate")
     panel:SetSize(WIN_W, WIN_H)
     panel:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
-    panel:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 24,
-        insets = { left = 6, right = 6, top = 6, bottom = 6 },
-    })
-    panel:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
+    if GP.SkinDialog then GP.SkinDialog(panel) end   -- Goldrahmen wie das Gildenfenster
     panel:SetFrameStrata("HIGH")
     panel:SetClampedToScreen(true)
     panel:SetMovable(true)
@@ -1764,6 +1759,7 @@ local function Build()
     title:SetPoint("TOPLEFT", 20, -16)
     local close = CreateFrame("Button", nil, panel, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -4, -4)
+    if GP.SkinClose then GP.SkinClose(close) end
     panel.blizzard = Button(panel, L["Blizzard-AH"], 110)
     panel.blizzard:SetPoint("RIGHT", close, "LEFT", -4, 0)
     panel.blizzard:SetScript("OnClick", function()

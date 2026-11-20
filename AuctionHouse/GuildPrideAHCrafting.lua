@@ -196,15 +196,12 @@ local function BuildPicker()
     f:SetFrameStrata("DIALOG")
     f:SetClampedToScreen(true)
     f:EnableMouse(true)
-    f:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14, insets = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.06, 0.06, 0.08, 0.96)
+    if GP.SkinDialog then GP.SkinDialog(f) end   -- Goldrahmen wie das Gildenfenster
     f:Hide()
     tinsert(UISpecialFrames, "GuildPrideCraftListPicker")   -- ESC schließt
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", 0, 0)
+    close:SetPoint("TOPRIGHT", -4, -4)
+    if GP.SkinClose then GP.SkinClose(close) end
     f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     f.title:SetPoint("TOPLEFT", 12, -12); f.title:SetPoint("RIGHT", -28, 0)
     f.title:SetJustifyH("LEFT"); f.title:SetWordWrap(false)

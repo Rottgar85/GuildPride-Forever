@@ -1398,12 +1398,7 @@ dlg:SetSize(360, 330)
 dlg:SetPoint("CENTER")
 dlg:SetFrameStrata("DIALOG")
 dlg:EnableMouse(true)
-dlg:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile = true, tileSize = 32, edgeSize = 32,
-    insets = { left = 8, right = 8, top = 8, bottom = 8 },
-})
+ns.GoldFrame(dlg)   -- Goldrahmen wie das Gildenfenster
 dlg:Hide()
 tinsert(UISpecialFrames, "GuildPrideCreateEvent")
 

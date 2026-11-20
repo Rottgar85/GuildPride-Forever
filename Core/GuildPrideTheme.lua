@@ -67,6 +67,102 @@ function ns.PaintEnabled(tex, on)
     PaintNow(tex, "tex")
 end
 
+---------------------------------------------------------------------
+-- Goldrahmen für alle eigenen Fenster und Popups (Vorbild: das Gildenfenster)
+-- Gildenhallen-Hintergrund, 2 px Goldlinie rundum, goldene Eck-Ornamente.
+-- Nur für Fenster, die GuildPride selbst erzeugt (nie für Blizzard-Fenster).
+-- Liegt hier (früh geladen), damit auch Fenster aus früh geladenen Dateien
+-- ihn gleich beim Erzeugen nutzen können.
+---------------------------------------------------------------------
+do
+    local MEDIA = "Interface\\AddOns\\GuildPrideForever\\Media\\"
+    -- Teile von Blizzards BasicFrameTemplate(WithInset): grauer Rahmen und Titelleiste
+    local PARTS = { "Bg", "TitleBg", "NineSlice", "TopTileStreaks", "TopLeftCorner", "TopRightCorner",
+        "TopBorder", "BotLeftCorner", "BotRightCorner", "BottomBorder", "LeftBorder", "RightBorder" }
+    local CORNERS = {
+        { "TOPLEFT",     0, 1, 0, 1 },
+        { "TOPRIGHT",    1, 0, 0, 1 },
+        { "BOTTOMLEFT",  0, 1, 1, 0 },
+        { "BOTTOMRIGHT", 1, 0, 1, 0 },
+    }
+    local done = setmetatable({}, { __mode = "k" })
+
+    -- Graue Vorlage eines eigenen Fensters ausblenden (nur die eigenen Teile des Fensters)
+    local function HideTemplate(f)
+        for _, k in ipairs(PARTS) do
+            local r = rawget(f, k)
+            if r and r.Hide then r:Hide() end
+        end
+        local inset = rawget(f, "Inset")
+        if inset and inset.GetRegions then
+            if inset.NineSlice then inset.NineSlice:Hide() end
+            for _, r in ipairs({ inset:GetRegions() }) do
+                if r.GetObjectType and r:GetObjectType() == "Texture" then r:Hide() end
+            end
+        end
+        -- Der Titel saß in Blizzards Titelleiste (TOP, -5): jetzt in Gold-Schrift
+        for _, r in ipairs({ f:GetRegions() }) do
+            if r.GetObjectType and r:GetObjectType() == "FontString" then
+                local p, rel, rp, x, y = r:GetPoint(1)
+                if p == "TOP" and (rel == nil or rel == f) and rp == "TOP" and x == 0 and y == -5 then
+                    r:SetPoint("TOP", f, "TOP", 0, -9)
+                    if GPFont_Normal then r:SetFontObject(GPFont_Normal) end
+                end
+            end
+        end
+        local close = rawget(f, "CloseButton")
+        if close and close.ClearAllPoints then
+            close:ClearAllPoints()
+            close:SetPoint("TOPRIGHT", -4, -4)
+        end
+    end
+
+    function ns.GoldFrame(f)
+        if not f or done[f] then return f end
+        done[f] = true
+        -- fremden Rahmen ablegen (eigener Backdrop oder Blizzard-Vorlage)
+        if f.SetBackdrop then f:SetBackdrop(nil) end
+        if rawget(f, "CloseButton") then HideTemplate(f) end
+
+        local bg = f:CreateTexture(nil, "BACKGROUND", nil, -8)
+        bg:SetAllPoints()
+        bg:SetTexture(MEDIA .. "bg")
+        ns.Paint(bg, "tex")
+
+        local lines = {}
+        local function Line(p1, p2, vertical)
+            local t = f:CreateTexture(nil, "BORDER")
+            ns.Paint(t, "accent")
+            t:SetPoint(p1); t:SetPoint(p2)
+            if vertical then t:SetWidth(2) else t:SetHeight(2) end
+            lines[#lines + 1] = t
+        end
+        Line("TOPLEFT", "TOPRIGHT")
+        Line("BOTTOMLEFT", "BOTTOMRIGHT")
+        Line("TOPLEFT", "BOTTOMLEFT", true)
+        Line("TOPRIGHT", "BOTTOMRIGHT", true)
+
+        -- Ecken wie im Gildenfenster (40 px), bei kleinen Fenstern kleiner
+        local w, h = tonumber(f:GetWidth()) or 0, tonumber(f:GetHeight()) or 0
+        local size = math.floor(math.min(w, h) * 0.2)
+        if size > 40 then size = 40 elseif size < 18 then size = 18 end
+        local off = math.floor(size * 0.15 + 0.5)
+        local corners = {}
+        for _, c in ipairs(CORNERS) do
+            -- ARTWORK statt OVERLAY: Titel und Texte des Fensters bleiben darüber lesbar
+            local t = f:CreateTexture(nil, "ARTWORK", nil, 7)
+            t:SetSize(size, size)
+            t:SetPoint(c[1], c[1]:find("LEFT") and -off or off, c[1]:find("TOP") and off or -off)
+            t:SetTexture(MEDIA .. "corner")
+            t:SetTexCoord(c[2], c[3], c[4], c[5])
+            ns.Paint(t, "tex")
+            corners[#corners + 1] = t
+        end
+        f.gpGold = { bg = bg, lines = lines, corners = corners }
+        return f
+    end
+end
+
 local FONTS = {
     GPFont_Huge = "heading", GPFont_Large = "heading", GPFont_Normal = "heading", GPFont_ButtonActive = "heading",
     GPFont_TextBold = "heading", GPFont_Button = "button",

@@ -430,7 +430,7 @@ local function Build()
         if link and win.reason:HasFocus() then win.reason:Insert(link) end
     end)
 
-    if ns.SkinAll then pcall(ns.SkinAll, win) end
+    if ns.SkinWindow then pcall(ns.SkinWindow, win) end
 end
 
 function DKP.Refresh()

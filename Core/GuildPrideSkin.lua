@@ -74,22 +74,15 @@ local function SkinEditBox(eb)
 end
 ns.SkinEditBox = SkinEditBox
 
--- Dialogfenster (BackdropTemplate mit Blizzard-Rahmen)
+-- Dialogfenster: Goldrahmen wie das Gildenfenster (ns.GoldFrame, GuildPrideTheme.lua).
+-- Geht für BackdropTemplate, BasicFrameTemplate(WithInset) und schlichte Frames.
 local function SkinDialog(f)
-    if skinned[f] or not f.SetBackdrop then return end
+    if not f or skinned[f] then return f end
     skinned[f] = true
-    f:SetBackdrop({
-        bgFile = MEDIA .. "bg",
-        edgeFile = "Interface\\Buttons\\WHITE8x8",
-        edgeSize = 2,
-        insets = { left = 2, right = 2, top = 2, bottom = 2 },
-    })
-    Paint(f, "accent")
-    -- Glut-Leiste oben
-    local bar = f:CreateTexture(nil, "ARTWORK")
-    bar:SetPoint("TOPLEFT", 2, -2); bar:SetPoint("TOPRIGHT", -2, -2)
-    bar:SetHeight(4)
-    Paint(bar, "ember", 0.9)
+    ns.GoldFrame(f)
+    local close = rawget(f, "CloseButton")
+    if close then SkinClose(close) end
+    return f
 end
 ns.SkinDialog = SkinDialog
 
@@ -120,7 +113,7 @@ end
 
 local function SkinAll()
     Walk(GuildPrideFrame)
-    for _, name in ipairs({ "GuildPrideCreateEvent", "GuildPrideMemberToast", "GuildPridePollDialog" }) do
+    for _, name in ipairs({ "GuildPrideCreateEvent", "GuildPrideMemberToast", "GuildPridePollDialog", "GuildPrideCopyFrame" }) do
         local f = _G[name]
         if f then SkinDialog(f); Walk(f) end
     end

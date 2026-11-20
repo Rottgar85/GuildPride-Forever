@@ -370,9 +370,7 @@ local dlg = CreateFrame("Frame", "GuildPridePollDialog", UIParent, "BackdropTemp
 dlg:SetSize(420, 140 + MAX_OPTS * 30)
 dlg:SetPoint("CENTER")
 dlg:SetFrameStrata("DIALOG")
-dlg:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 2 })
-dlg:SetBackdropColor(0.17, 0.14, 0.11, 0.96)
-ns.Paint(dlg, "accent")
+ns.GoldFrame(dlg)   -- Goldrahmen wie das Gildenfenster
 dlg:EnableMouse(true)
 dlg:Hide()
 tinsert(UISpecialFrames, "GuildPridePollDialog")

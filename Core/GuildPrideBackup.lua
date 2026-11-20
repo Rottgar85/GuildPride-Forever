@@ -81,12 +81,6 @@ local function Build()
     win:RegisterForDrag("LeftButton")
     win:SetScript("OnDragStart", win.StartMoving)
     win:SetScript("OnDragStop", win.StopMovingOrSizing)
-    win:SetBackdrop({
-        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
-        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",
-        tile = true, tileSize = 32, edgeSize = 24,
-        insets = { left = 6, right = 6, top = 6, bottom = 6 },
-    })
     tinsert(UISpecialFrames, "GuildPrideBackupFrame")   -- ESC schließt
 
     local title = win:CreateFontString(nil, "OVERLAY", "GPFont_Large")

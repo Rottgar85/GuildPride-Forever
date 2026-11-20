@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.30.0
+
+**Deutsch**
+- **Einheitliches Design**: Alle Fenster, die GuildPride öffnet (Auktionshaus, Berufe-Einkaufsliste, Flug- und Reisefenster, Rare-Liste, Einladungen, Mitglieder, DKP, Raid, Termine, Umfragen, Sicherung, Kopieren und Einführung), haben jetzt dasselbe dunkle Design mit goldenem Rand
+
+**English**
+- **Unified design**: Every window GuildPride opens (auction house, profession shopping list, flight and travel windows, rare list, invites, members, DKP, raid, events, polls, backup, copy and intro) now shares the same dark look with a golden border
+
 ## 2.29.0
 
 **Deutsch**

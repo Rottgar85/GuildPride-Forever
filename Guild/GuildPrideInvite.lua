@@ -281,12 +281,6 @@ function ns.GuildInviteDialog(rawName)
         dialog:RegisterForDrag("LeftButton")
         dialog:SetScript("OnDragStart", dialog.StartMoving)
         dialog:SetScript("OnDragStop", dialog.StopMovingOrSizing)
-        if dialog.SetBackdrop then
-            dialog:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-                edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-                tile = true, tileSize = 32, edgeSize = 32,
-                insets = { left = 11, right = 12, top = 12, bottom = 11 } })
-        end
         dialog.text = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         dialog.text:SetPoint("TOPLEFT", 20, -22)
         dialog.text:SetPoint("TOPRIGHT", -20, -22)
@@ -303,6 +297,7 @@ function ns.GuildInviteDialog(rawName)
         dialog.cancel:SetText(L["Abbrechen"])
         dialog.cancel:SetScript("OnClick", function() dialog:Hide() end)
         tinsert(UISpecialFrames, "GuildPrideInviteDialog") -- ESC schließt
+        if ns.SkinWindow then pcall(ns.SkinWindow, dialog) end   -- Goldrahmen
     end
     dialog.name = name
     dialog.text:SetText((L["|cffffd100%s|r in die Gilde einladen?"]):format(name))

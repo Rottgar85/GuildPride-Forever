@@ -23,12 +23,7 @@ local toast = CreateFrame("Frame", "GuildPrideMemberToast", UIParent, "BackdropT
 toast:SetSize(420, 96)
 toast:SetPoint("TOP", 0, -140)
 toast:SetFrameStrata("DIALOG")
-toast:SetBackdrop({
-    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
-    edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",
-    tile = true, tileSize = 32, edgeSize = 24,
-    insets = { left = 6, right = 6, top = 6, bottom = 6 },
-})
+ns.GoldFrame(toast)   -- Goldrahmen wie das Gildenfenster
 toast:Hide()
 
 local icon = toast:CreateTexture(nil, "ARTWORK")

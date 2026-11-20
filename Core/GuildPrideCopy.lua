@@ -13,12 +13,7 @@ dlg:RegisterForDrag("LeftButton")
 dlg:SetScript("OnDragStart", dlg.StartMoving)
 dlg:SetScript("OnDragStop", dlg.StopMovingOrSizing)
 dlg:SetClampedToScreen(true)
-dlg:SetBackdrop({
-    bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    edgeSize = 16, insets = { left = 4, right = 4, top = 4, bottom = 4 },
-})
-dlg:SetBackdropColor(0.15, 0.12, 0.10, 0.95)
+ns.GoldFrame(dlg)   -- Goldrahmen wie das Gildenfenster
 dlg:Hide()
 tinsert(UISpecialFrames, "GuildPrideCopyFrame")   -- ESC schließt
 

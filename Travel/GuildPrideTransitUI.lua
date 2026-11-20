@@ -118,13 +118,7 @@ local function Build()
     local p = type(GuildPrideDB) == "table" and GuildPrideDB.transitPos
     if type(p) == "table" and p.point then frame:SetPoint(p.point, UIParent, p.point, p.x or 0, p.y or 0)
     else frame:SetPoint("TOP", UIParent, "TOP", 0, -140) end
-    if GP.SkinDialog then GP.SkinDialog(frame) else
-        frame:SetBackdrop({
-            bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            edgeSize = 12, insets = { left = 3, right = 3, top = 3, bottom = 3 },
-        })
-        frame:SetBackdropColor(0.05, 0.05, 0.07, 0.92)
-    end
+    if GP.SkinDialog then GP.SkinDialog(frame) end   -- Goldrahmen wie das Gildenfenster
     frame:SetFrameStrata("MEDIUM")
     frame:SetClampedToScreen(true)
     frame:SetMovable(true); frame:EnableMouse(true)

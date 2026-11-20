@@ -6,9 +6,9 @@ local ns = GP.Rares
 
 local ROWS, ROW_H = 14, 20
 local win = CreateFrame("Frame", "GPRaresWindow", UIParent, "BackdropTemplate")
-ns.SkinDialog(win)
 win:SetFrameStrata("HIGH")
 win:SetSize(560, 92 + ROWS * ROW_H + 44)
+ns.SkinDialog(win)   -- nach SetSize: Ecken passen sich der Größe an
 win:SetPoint("CENTER")
 win:SetMovable(true); win:EnableMouse(true); win:RegisterForDrag("LeftButton")
 win:SetClampedToScreen(true)
