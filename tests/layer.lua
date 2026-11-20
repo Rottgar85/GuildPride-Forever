@@ -109,6 +109,52 @@ return function(test, eq, W, ns)
         eq(Last():find("bevor der neue Layer bestätigt", 1, true) ~= nil, true)
     end)
 
+    test("Layer: gezielter Wechsel – anderer Layer erst nach 5 s, mit Hinweis", function()
+        Start("100", "20")
+        Layer._State().want = "20"
+        Layer.OnSeen("12", "g1", 1429); Layer.OnSeen("12", "g2", 1429)
+        eq(Layer._State() ~= nil, true, "Layer 12 statt 20: noch warten")
+        W.Advance(5)
+        Layer.OnSeen("12", "g1", 1429)
+        eq(Layer._State(), nil)
+        eq(Last():find("Gelandet auf Layer 12 statt 20", 1, true) ~= nil, true)
+        Layer._State(false, false)
+        -- kommt der Ziel-Layer doch noch, zählt er
+        Start("100", "20")
+        Layer._State().want = "20"
+        Layer.OnSeen("12", "g1", 1429); Layer.OnSeen("12", "g2", 1429)
+        Layer.OnSeen("20", "g3", 1429); Layer.OnSeen("20", "g4", 1429)
+        local _, c = Layer._State()
+        eq(c.to, "20")
+        eq(Last():find("bestätigt", 1, true) ~= nil, true)
+        Layer._State(false, false)
+    end)
+
+    test("Layer: Helfer sagt ab (nicht mehr auf dem Layer) – nächster Helfer", function()
+        wipe(printed); wipe(sent); wipe(timers)
+        local r = { map = 1429, from = "100", want = "20", offers = { Alt = "20", Neu = "20" },
+                    asked = true, picking = true, tried = true, helper = "Alt", target = "20" }
+        Layer._State(r, false)
+        ns.OnLayerMessage("LYN:F\03114290\031", "Fremd", true)
+        eq(r.helper, "Alt", "Absage nur vom gewählten Helfer")
+        ns.OnLayerMessage("LYN:F\0311429\03112", "Alt", true)
+        eq(r.helper, "Neu"); eq(r.offers.Alt, nil)
+        eq(sent[#sent].kind, "LYR"); eq(sent[#sent].to, "Neu")
+        ns.OnLayerMessage("LYN:F\0311429\03112", "Neu", true)
+        eq(Layer._State(), nil)
+        eq(Last():find("Kein Helfer ist mehr", 1, true) ~= nil, true)
+    end)
+
+    test("Layer: alte Erkennung gilt nicht mehr", function()
+        Layer.id, Layer.at = "20", W.now
+        eq(Layer.Fresh(60), true)
+        W.Advance(61)
+        eq(Layer.Fresh(60), false, "nach einer Minute ohne Kreatur darf man nicht helfen")
+        eq(Layer.Fresh(300), true)
+        Layer.id, Layer.at = nil, nil
+        eq(Layer.Fresh(300), false)
+    end)
+
     C_Timer, IsInGroup, IsInInstance, ns.Print, ns.SendPublicNow = oldTimer, oldGroup, oldIn, oldPrint, oldNow
     C_PartyInfo = nil
 end

@@ -824,8 +824,9 @@ f:SetScript("OnEvent", function(_, event, ...)
             if ns.OnTransitPublic then ns.OnTransitPublic(message, sender, true) end
             return
         end
-        -- Layer-Wechsel: Angebot (LYA), Bitte (LYR) und Dank (LYT) kommen per Flüstern, auch von Fremden
-        if channel == "WHISPER" and (message:sub(1, 4) == "LYA:" or message:sub(1, 4) == "LYR:" or message:sub(1, 4) == "LYT:") then
+        -- Layer-Wechsel: Angebot (LYA), Bitte (LYR), Absage (LYN) und Dank (LYT) kommen per Flüstern, auch von Fremden
+        if channel == "WHISPER" and (message:sub(1, 4) == "LYA:" or message:sub(1, 4) == "LYR:" or message:sub(1, 4) == "LYT:"
+            or message:sub(1, 4) == "LYN:") then
             if ns.OnLayerMessage then ns.OnLayerMessage(message, sender, true) end
             return
         end

@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.30.2
+
+**Deutsch**
+- **Gezielter Layer-Wechsel landet auf dem richtigen Layer**: Helfer prüfen ihren Layer vor Angebot und Einladung neu (nur wer ihn in der letzten Minute an einer Kreatur gesehen hat, hilft). Ist der Helfer nicht mehr auf dem angebotenen Layer, sagt er ab und der nächste Helfer kommt dran
+- Beim gezielten Wechsel zählt der Wunsch-Layer; landet man trotzdem woanders, sagt GuildPride das deutlich („Gelandet auf Layer 12 statt 20“)
+- Die Layer-Liste zeigt keine veralteten Zahlen mehr: Wer seit 5 Minuten keine Kreatur gesehen hat, meldet „?“
+
+**English**
+- **Targeted layer switch lands on the right layer**: helpers re-check their layer before offering and inviting (only those who saw it on a creature within the last minute help). If the helper is no longer on the offered layer, they decline and the next helper takes over
+- For a targeted switch the wanted layer counts; if you still land elsewhere, GuildPride says so clearly ("landed on layer 12 instead of 20")
+- The layer list no longer shows outdated numbers: anyone who has not seen a creature for 5 minutes reports "?"
+
 ## 2.30.1
 
 **Deutsch**

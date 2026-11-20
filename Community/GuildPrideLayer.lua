@@ -102,9 +102,17 @@ end
 Layer.guild = {}   -- ["Name"] = { map, id, t }
 local GUILD_MAX_AGE = 15 * 60   -- ältere Meldungen gelten als veraltet (offline, ausgeloggt)
 
+-- Wie lange eine Layer-Erkennung gilt: wer länger keine Kreatur gesehen hat,
+-- kann längst woanders sein (Wechsel, Server-Umverteilung)
+local SHARE_FRESH, HELP_FRESH = 300, 60
+local function Fresh(maxAge)
+    return Layer.id ~= nil and Layer.at ~= nil and GetTime() - Layer.at <= maxAge
+end
+Layer.Fresh = Fresh
+
 local function MyShare()
     local map = MapId() or 0
-    return map, (Layer.map == map and Layer.id) or ""
+    return map, (Layer.map == map and Fresh(SHARE_FRESH) and Layer.id) or ""
 end
 
 local lastShared, lastShareAt, sharePending = nil, 0, false
@@ -330,8 +338,10 @@ local function Reset(msg)
 end
 
 local function CanHelp()
-    if not (GuildPrideDB and GuildPrideDB.layerHelp) or not Layer.id or InCombatLockdown() or IsInInstance() then return false end
-    if Layer.map ~= MapId() then return false end
+    if not (GuildPrideDB and GuildPrideDB.layerHelp) or InCombatLockdown() or IsInInstance() then return false end
+    -- eigenen Layer frisch nachsehen: nur wer ihn gerade sicher kennt, darf helfen
+    if Layer._Poll then Layer._Poll() end
+    if not Fresh(HELP_FRESH) or Layer.map ~= MapId() then return false end
     if IsInGroup() then
         if not UnitIsGroupLeader("player") then return false end
         if GetNumGroupMembers() >= (IsInRaid() and 40 or 5) then return false end
@@ -405,8 +415,14 @@ function ns.OnLayerMessage(message, sender, whisper)
         end
     elseif kind == "LYR" and whisper then
         -- Bitte um Einladung: nur, wenn ich dem Fragenden vorher angeboten habe
-        if (answered[sender] or 0) < GetTime() - 90 or not CanHelp() then return end
+        if (answered[sender] or 0) < GetTime() - 90 then return end
         answered[sender] = nil
+        -- nur einladen, wenn ich noch (sicher) auf dem angebotenen Layer bin – sonst absagen
+        local wantLayer = f[3]
+        if not CanHelp() or (wantLayer and wantLayer ~= "" and wantLayer ~= Layer.id) then
+            SendNow("LYN", sender, ns.CLIENT_TAG, map or "", Fresh(HELP_FRESH) and Layer.id or "")
+            return
+        end
         local short = Ambiguate(sender, "none")
         if Try("invite", InviteFn, short) then
             invited[sender] = GetTime()
@@ -417,6 +433,13 @@ function ns.OnLayerMessage(message, sender, whisper)
             StaticPopup_Show("GUILDPRIDE_LAYER_INVITE", short, nil, sender)
             if GuildPrideDB.sound then PlaySound(SOUNDKIT.TELL_MESSAGE) end
         end
+    elseif kind == "LYN" and whisper then
+        -- Helfer ist nicht mehr auf dem angebotenen Layer: nächsten nehmen
+        if not req or req.helper ~= sender or req.joinedAt then return end
+        req.offers[sender] = nil
+        ns.Print((L["Layer wechseln: %s ist nicht mehr auf Layer %s – nächster Helfer …"]):format(Ambiguate(sender, "none"), req.target or "?"))
+        req.helper, req.target = nil, nil
+        Layer._PickHelper()
     elseif kind == "LYT" and whisper then
         -- Dank nach erfolgreichem Wechsel: nur von jemandem, den ich eingeladen habe
         if (invited[sender] or 0) < GetTime() - 600 then return end
@@ -436,6 +459,9 @@ local function PickHelper()
     local names = {}
     for name in pairs(req.offers) do names[#names + 1] = name end
     if #names == 0 then
+        if req.helper == nil and req.picking and req.tried then
+            return Reset(L["Layer wechseln: Kein Helfer ist mehr auf dem gewünschten Layer. Liste aktualisieren und noch einmal versuchen."])
+        end
         return Reset(req.want and (L["Layer wechseln: Auf Layer %s kann gerade niemand mit GuildPride helfen. Später noch einmal versuchen."]):format(req.want)
             or L["Layer wechseln: Niemand mit GuildPride in dieser Zone kann gerade helfen. Später noch einmal versuchen."])
     end
@@ -444,13 +470,14 @@ local function PickHelper()
     local count = 0
     for _ in pairs(layers) do count = count + 1 end
     local helper = names[math.random(#names)]
-    req.helper, req.target = helper, req.offers[helper]
-    SendNow("LYR", helper, ns.CLIENT_TAG, req.map)
+    req.helper, req.target, req.tried = helper, req.offers[helper], true
+    -- angebotenen Layer mitschicken: der Helfer prüft, ob er noch dort ist
+    SendNow("LYR", helper, ns.CLIENT_TAG, req.map, req.target)
     ns.Print((L["Layer wechseln: %d Helfer auf %d anderen Layer(n) gefunden. %s lädt dich ein, der Rest läuft automatisch."])
         :format(#names, count, Ambiguate(helper, "none")))
-    local mine = req
+    local mine, who = req, helper
     C_Timer.After(45, function()
-        if req == mine and not req.joinedAt then
+        if req == mine and req.helper == who and not req.joinedAt then
             Reset(L["Layer wechseln: Keine Einladung angenommen – abgebrochen. Einfach noch einmal versuchen."])
         end
     end)
@@ -539,6 +566,7 @@ local function Poll()
     end
     Observe("target")
 end
+Layer._Poll = Poll
 
 -- Prüfen, ob der Wechsel wirklich geklappt hat
 --  1. In der Gruppe: der neue Layer muss bestätigt sein – zwei verschiedene
@@ -549,18 +577,25 @@ end
 local CONFIRM_SECS, HOLD_SECS = 1.5, 10
 local check   -- { map, from, to, helper, seen, started }
 
-local function Count(seen, id, guid)
+local function Count(seen, id, guid, minSecs)
     local e = seen[id]
     if not e then e = { guids = {}, n = 0, first = GetTime() }; seen[id] = e end
     if not e.guids[guid] then e.guids[guid] = true; e.n = e.n + 1 end
-    return e.n >= 2 or GetTime() - e.first >= CONFIRM_SECS
+    local age = GetTime() - e.first
+    return (e.n >= 2 or age >= CONFIRM_SECS) and age >= (minSecs or 0)
 end
+-- Gezielter Wechsel, aber anderer Layer: erst nach 5 s glauben (vielleicht kommt der Ziel-Layer noch)
+local WRONG_SECS = 5
 
 local function Confirmed(id)
     local mine = req
     req = nil
     if mine.ticker then mine.ticker:Cancel() end
-    ns.Print((L["Layer-Wechsel bestätigt (jetzt %s). Gruppe wird verlassen, danach wird noch geprüft, ob der Layer hält …"]):format(id))
+    if mine.want and id ~= mine.want then
+        ns.Print((L["Layer wechseln: Gelandet auf Layer %s statt %s – der Helfer war wohl nicht mehr dort. Gruppe wird verlassen."]):format(id, mine.want))
+    else
+        ns.Print((L["Layer-Wechsel bestätigt (jetzt %s). Gruppe wird verlassen, danach wird noch geprüft, ob der Layer hält …"]):format(id))
+    end
     check = { map = mine.map, from = mine.from, to = id, helper = mine.helper, seen = {}, started = GetTime() }
     local c = check
     C_Timer.After(0.3, function() if IsInGroup() then LeaveGroup() end end)
@@ -597,9 +632,16 @@ function Layer.OnSeen(id, guid, map)
         req.seen = {}
         return
     end
-    -- unbekannter alter Layer: nur der Layer des Helfers zählt
-    if not req.from and id ~= req.target then return end
-    if Count(req.seen, id, guid) then Confirmed(id) end
+    -- Ziel-Layer (des Helfers bzw. gewünscht): gleich bestätigen
+    local goal = req.want or req.target
+    if id == goal then
+        if Count(req.seen, id, guid) then Confirmed(id) end
+        return
+    end
+    -- unbekannter alter Layer: nur der Ziel-Layer zählt
+    if not req.from then return end
+    -- ein anderer neuer Layer: beim gezielten Wechsel erst nach einer Weile
+    if Count(req.seen, id, guid, req.want and WRONG_SECS or 0) then Confirmed(id) end
 end
 
 -- Beitritt erkannt -> auf den neuen Layer warten, dann wieder austreten
