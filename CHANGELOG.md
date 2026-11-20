@@ -1,5 +1,15 @@
 # GuildPride Changelog
 
+## 2.30.1
+
+**Deutsch**
+- **Layer wechseln geht schneller**: Anfrage, Angebot und Einladung werden sofort verschickt statt im 2-Sekunden-Takt, der Helfer wird gleich nach dem ersten Angebot gewählt, und nach dem Wechsel geht es ohne Wartezeit aus der Gruppe
+- **Layer-Wechsel wird geprüft**: Die Gruppe wird erst verlassen, wenn der neue Layer sicher erkannt ist (zwei Kreaturen oder eine über 1,5 s). Danach wird 10 s nachgeprüft, ob der Layer hält – erst dann gibt es Dank und Zähler, sonst kommt der Hinweis „hat nicht gehalten“
+
+**English**
+- **Faster layer switching**: request, offer and invite are sent right away instead of every 2 seconds, the helper is picked right after the first offer, and you leave the group without delay after the switch
+- **Layer switch is verified**: the group is only left once the new layer is clearly detected (two creatures or one for 1.5 s). Afterwards it checks for 10 s that the layer holds – only then are thanks and counter updated, otherwise you get a "did not hold" notice
+
 ## 2.30.0
 
 **Deutsch**

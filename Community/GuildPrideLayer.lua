@@ -39,7 +39,7 @@ local function Observe(unit)
     Layer.id, Layer.map, Layer.at = zoneUID, map, GetTime()
     -- Schiffs-Zähler: Entstehungszeit der Kreatur, daraus der Start dieses Layers
     if map and ns.Transit and ns.Transit.SawCreature then ns.Transit.SawCreature(guid, map .. "." .. zoneUID) end
-    if changed and Layer.OnChange then Layer.OnChange() end
+    if Layer.OnSeen then Layer.OnSeen(zoneUID, guid, map) end
     if changed and Layer.Share then Layer.Share() end
 end
 
@@ -198,6 +198,10 @@ end
 
 local function Send(kind, to, ...)
     if to then ns.QueuePublicTo(to, kind, ...) else ns.Queue(kind, "@PUBLIC", ...) end
+end
+-- Layer-Wechsel eilt: sofort senden, nicht im 2-s-Takt hinter anderen Meldungen
+local function SendNow(kind, to, ...)
+    if ns.SendPublicNow then ns.SendPublicNow(to, kind, ...) else Send(kind, to, ...) end
 end
 
 ---------------------------------------------------------------------
@@ -380,8 +384,8 @@ function ns.OnLayerMessage(message, sender, whisper)
         if f[4] and f[4] ~= "" and f[4] ~= Layer.id then return end
         if (answered[sender] or 0) > GetTime() - 30 then return end
         answered[sender] = GetTime()
-        C_Timer.After(0.5 + math.random() * 2.5, function()
-            if CanHelp() then Send("LYA", sender, ns.CLIENT_TAG, Layer.map, Layer.id) end
+        C_Timer.After(0.1 + math.random() * 0.9, function()
+            if CanHelp() then SendNow("LYA", sender, ns.CLIENT_TAG, Layer.map, Layer.id) end
         end)
     elseif kind == "LYS" and not whisper then
         StorePublic(sender, f[2], f[3])
@@ -393,6 +397,12 @@ function ns.OnLayerMessage(message, sender, whisper)
         if layer == "" or layer == req.from then return end
         if req.want and layer ~= req.want then return end
         req.offers[sender] = layer
+        -- erstes Angebot: kurz auf weitere warten, dann sofort wählen
+        if not req.picking then
+            req.picking = true
+            local mine = req
+            C_Timer.After(1, function() if req == mine and not req.asked then Layer._PickHelper() end end)
+        end
     elseif kind == "LYR" and whisper then
         -- Bitte um Einladung: nur, wenn ich dem Fragenden vorher angeboten habe
         if (answered[sender] or 0) < GetTime() - 90 or not CanHelp() then return end
@@ -435,15 +445,18 @@ local function PickHelper()
     for _ in pairs(layers) do count = count + 1 end
     local helper = names[math.random(#names)]
     req.helper, req.target = helper, req.offers[helper]
-    Send("LYR", helper, ns.CLIENT_TAG, req.map)
+    SendNow("LYR", helper, ns.CLIENT_TAG, req.map)
     ns.Print((L["Layer wechseln: %d Helfer auf %d anderen Layer(n) gefunden. %s lädt dich ein, der Rest läuft automatisch."])
         :format(#names, count, Ambiguate(helper, "none")))
+    local mine = req
     C_Timer.After(45, function()
-        if req and not req.joinedAt then
+        if req == mine and not req.joinedAt then
             Reset(L["Layer wechseln: Keine Einladung angenommen – abgebrochen. Einfach noch einmal versuchen."])
         end
     end)
 end
+
+Layer._PickHelper = PickHelper
 
 -- Ein Klick schaltet alles frei: serverweiter GuildPride-Kanal + anderen helfen.
 -- Gibt true zurück, wenn der Kanal schon bereit ist (sonst dauert der Beitritt ein paar Sekunden).
@@ -488,11 +501,12 @@ function Layer.Request(retried, want)
     if want and want == from then ns.Print((L["Du bist schon auf Layer %s."]):format(want)); return end
     lastAsk = GetTime()
     req = { started = GetTime(), map = map, from = from, want = want, offers = {} }
-    Send("LYQ", nil, ns.CLIENT_TAG, map, from or "", want or "")
+    SendNow("LYQ", nil, ns.CLIENT_TAG, map, from or "", want or "")
     ns.Print(from and (L["Layer wechseln: Suche Helfer (dein Layer: %s) …"]):format(from)
         or L["Layer wechseln: Suche Helfer … (Tipp: vorher eine Kreatur anvisieren, dann wird dein Layer erkannt)"])
-    -- Antworten sammeln (Kanaltakt 2 s + Zufallsverzögerung der Helfer)
-    C_Timer.After(8, PickHelper)
+    -- Spätestens nach 6 s wählen (sonst gleich nach dem ersten Angebot)
+    local mine = req
+    C_Timer.After(6, function() if req == mine and not req.asked then PickHelper() end end)
 end
 
 -- Einladung vom gewählten Helfer: automatisch annehmen (sonst klickt man selbst)
@@ -526,43 +540,100 @@ local function Poll()
     Observe("target")
 end
 
+-- Prüfen, ob der Wechsel wirklich geklappt hat
+--  1. In der Gruppe: der neue Layer muss bestätigt sein – zwei verschiedene
+--     Kreaturen oder dieselbe über 1,5 s (eine einzelne Kreatur an der Zonengrenze
+--     kann eine fremde Zahl haben). Erst dann wird die Gruppe verlassen.
+--  2. Nach dem Austritt 10 s nachprüfen: taucht der alte (bzw. ein anderer) Layer
+--     wieder auf, hat der Wechsel nicht gehalten. Erst danach Dank und Zähler.
+local CONFIRM_SECS, HOLD_SECS = 1.5, 10
+local check   -- { map, from, to, helper, seen, started }
+
+local function Count(seen, id, guid)
+    local e = seen[id]
+    if not e then e = { guids = {}, n = 0, first = GetTime() }; seen[id] = e end
+    if not e.guids[guid] then e.guids[guid] = true; e.n = e.n + 1 end
+    return e.n >= 2 or GetTime() - e.first >= CONFIRM_SECS
+end
+
+local function Confirmed(id)
+    local mine = req
+    req = nil
+    if mine.ticker then mine.ticker:Cancel() end
+    ns.Print((L["Layer-Wechsel bestätigt (jetzt %s). Gruppe wird verlassen, danach wird noch geprüft, ob der Layer hält …"]):format(id))
+    check = { map = mine.map, from = mine.from, to = id, helper = mine.helper, seen = {}, started = GetTime() }
+    local c = check
+    C_Timer.After(0.3, function() if IsInGroup() then LeaveGroup() end end)
+    c.ticker = C_Timer.NewTicker(0.5, function()
+        if check ~= c then if c.ticker then c.ticker:Cancel() end; return end
+        Poll()
+    end, HOLD_SECS * 2 + 4)
+    C_Timer.After(HOLD_SECS, function()
+        if check ~= c then return end
+        check = nil
+        if c.ticker then c.ticker:Cancel() end
+        ns.Print((L["Layer gewechselt: Du bist jetzt auf Layer %s – danke an %s!"]):format(c.to, Ambiguate(c.helper, "none")))
+        SendNow("LYT", c.helper, ns.CLIENT_TAG, c.map)
+        local s = Layer.Stats(); s.switched = s.switched + 1
+    end)
+end
+
+function Layer.OnSeen(id, guid, map)
+    if check then
+        if map ~= check.map or id == check.to then return end
+        -- alter oder fremder Layer nach dem Austritt: Wechsel hat nicht gehalten
+        if Count(check.seen, id, guid) then
+            local c = check
+            check = nil
+            if c.ticker then c.ticker:Cancel() end
+            ns.Print((L["Layer-Wechsel hat nicht gehalten: Du bist wieder auf Layer %s. Einfach noch einmal versuchen."]):format(id))
+        end
+        return
+    end
+    if not req or not req.joinedAt or not IsInGroup() or map ~= req.map then return end
+    req.seen = req.seen or {}
+    if req.from and id == req.from then
+        -- noch auf dem alten Layer: bisherige Hinweise auf einen neuen zählen nicht
+        req.seen = {}
+        return
+    end
+    -- unbekannter alter Layer: nur der Layer des Helfers zählt
+    if not req.from and id ~= req.target then return end
+    if Count(req.seen, id, guid) then Confirmed(id) end
+end
+
 -- Beitritt erkannt -> auf den neuen Layer warten, dann wieder austreten
 function Layer.OnGroup()
     if not req or not req.helper then return end
     if IsInGroup() and not req.joinedAt then
         req.joinedAt = GetTime()
         local mine = req
-        ns.Print(L["Layer wechseln: In der Gruppe. Warte auf den Wechsel – die Gruppe wird danach automatisch verlassen."])
-        mine.ticker = C_Timer.NewTicker(2, function()
+        ns.Print(L["Layer wechseln: In der Gruppe. Warte, bis der neue Layer bestätigt ist – die Gruppe wird danach automatisch verlassen."])
+        Poll()
+        mine.ticker = C_Timer.NewTicker(0.5, function()
             if req ~= mine or not IsInGroup() then
                 if mine.ticker then mine.ticker:Cancel() end
                 return
             end
             Poll()
-        end, 45)
-        -- Kein Wechsel erkannt: trotzdem austreten (Layer meist längst gewechselt)
+        end, 180)
+        -- Kein Wechsel bestätigt: trotzdem austreten, aber nicht als gewechselt zählen
         C_Timer.After(90, function()
             if req == mine and IsInGroup() then
-                Reset(L["Layer wechseln: Wechsel nicht sicher erkannt – Gruppe wird trotzdem verlassen. Eine Kreatur anvisieren zeigt deinen Layer."])
+                Reset(L["Layer wechseln: Neuer Layer nicht bestätigt (keine Kreatur in der Nähe?) – Gruppe wird verlassen. Eine Kreatur anvisieren zeigt deinen Layer."])
                 LeaveGroup()
             end
         end)
     elseif not IsInGroup() and req.joinedAt then
-        Reset()
+        Reset(L["Layer wechseln: Gruppe verlassen, bevor der neue Layer bestätigt war."])
     end
 end
 
-function Layer.OnChange()
-    if not req or not req.joinedAt or not IsInGroup() then return end
-    -- Geschafft, wenn ich auf dem Layer des Helfers bin oder (alter Layer bekannt)
-    -- nicht mehr auf meinem alten
-    if Layer.map ~= req.map then return end
-    if Layer.id ~= req.target and not (req.from and Layer.id ~= req.from) then return end
-    ns.Print((L["Layer gewechselt (jetzt %s). Gruppe wird verlassen – danke an %s!"]):format(Layer.id, Ambiguate(req.helper, "none")))
-    Send("LYT", req.helper, ns.CLIENT_TAG, req.map)
-    local s = Layer.Stats(); s.switched = s.switched + 1
-    req = nil
-    C_Timer.After(1.5, function() if IsInGroup() then LeaveGroup() end end)
+-- für Tests
+function Layer._State(r, c)
+    if r ~= nil then req = r or nil end
+    if c ~= nil then check = c or nil end
+    return req, check
 end
 
 ---------------------------------------------------------------------

@@ -563,6 +563,31 @@ function ns.QueuePublicTo(to, kind, ...)
     PublicPush(kind, kind .. ":" .. table.concat(parts, SEP), to)
 end
 
+-- Eilig (Layer-Wechsel): sofort senden statt im 2-s-Takt hinter anderen
+-- Nachrichten zu warten. Gesperrt oder gedrosselt: vorne in die Warteschlange.
+function ns.SendPublicNow(to, kind, ...)
+    local parts = { ... }
+    for i = 1, select("#", ...) do parts[i] = tostring(parts[i] == nil and "" or parts[i]) end
+    local msg = kind .. ":" .. table.concat(parts, SEP)
+    if #msg > 255 then return end
+    local res, sent
+    if not (C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown()) then
+        if to then
+            res, sent = ns.SendAddonMsg(PREFIX, msg, "WHISPER", to), true
+        else
+            local chan = ns.PublicChannelId()
+            if chan and not ns.PUBLIC_VIA_CHAT then res, sent = ns.SendAddonMsg(PREFIX, msg, "CHANNEL", chan), true end
+        end
+    end
+    if sent and not Throttled(res) then
+        local st = ns.publicStats
+        st.sent, st.lastRes, st.lastAt = st.sent + 1, res, GetTime()
+        return true
+    end
+    table.insert(publicQueue, 1, { msg = msg, kind = kind, to = to })
+    return false
+end
+
 local function Queue(kind, target, ...)
     local parts = { ... }
     for i = 1, select("#", ...) do parts[i] = tostring(parts[i] == nil and "" or parts[i]) end

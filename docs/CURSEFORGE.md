@@ -2,7 +2,7 @@
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship and zeppelin timers per layer, a rare scanner, a full auction house, layer switching with one click, a crafting directory, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Version 2.30.0 · Deutsche Beschreibung weiter unten.*
+*Version 2.30.1 · Deutsche Beschreibung weiter unten.*
 
 ---
 
@@ -108,7 +108,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs- und Zeppelinzeiten je Layer, einen Rare-Scanner, ein vollständiges Auktionshaus, Layer-Wechsel mit einem Klick, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.30.0*
+*Version 2.30.1*
 
 ### NEU in 2.26
 
