@@ -40,12 +40,28 @@ function AH.KeyFromLink(link)
     return AH.Key(f[1], f[7])
 end
 
-local function Realm() return (GetNormalizedRealmName and GetNormalizedRealmName()) or GetRealmName() or "?" end
+-- Seit Blizzards Hotfix vom 20.11.2026 fehlt oft der Realm-Name: dann der zuletzt bekannte
+-- (GP.RealmName, GuildPride.lua); was solange unter „“ oder „?“ lag, kommt dazu
+local function Realm()
+    local r = GP.RealmName and GP.RealmName(true)
+    if type(r) ~= "string" or r == "" then r = GetNormalizedRealmName and GetNormalizedRealmName() end
+    if type(r) ~= "string" or r == "" then r = GetRealmName and GetRealmName() end
+    return type(r) == "string" and r ~= "" and r or "?"
+end
+AH.Realm = Realm
 
 function AH.Store()
     if type(GuildPrideAHDB) ~= "table" then GuildPrideAHDB = {} end
     local r = Realm()
     GuildPrideAHDB[r] = GuildPrideAHDB[r] or {}
+    if r ~= "?" and GP.MergeSaved then
+        for _, old in ipairs({ "", "?" }) do
+            if type(GuildPrideAHDB[old]) == "table" then
+                GP.MergeSaved(GuildPrideAHDB[r], GuildPrideAHDB[old])
+                GuildPrideAHDB[old] = nil
+            end
+        end
+    end
     local s = AH.Side()
     GuildPrideAHDB[r][s] = GuildPrideAHDB[r][s] or {}
     return GuildPrideAHDB[r][s]

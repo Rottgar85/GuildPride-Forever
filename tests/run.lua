@@ -839,5 +839,48 @@ require("board")(test, eq, W, ns)
 require("itemid")(test, eq, W, ns)
 require("players")(test, eq, W, ns)
 
+test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", function()
+    local match = ns.BrowserDungeonMatch
+    eq(match({ "Die Todesminen" }, nil), true, "nichts gewählt = alle")
+    eq(match({ "Die Todesminen" }, { ["Die Todesminen"] = true }), true)
+    eq(match({ "Das Verlies", "Die Todesminen" }, { ["Die Todesminen"] = true, ["Scholomance"] = true }), true,
+        "eine von mehreren Aktivitäten reicht")
+    eq(match({ "Das Verlies" }, { ["Die Todesminen"] = true }), false)
+    eq(match(nil, { ["Die Todesminen"] = true }), false, "ohne Dungeon nicht zeigen, wenn gefiltert")
+end)
+
+test("Hotfix 20.11.2026: ohne Realm-Namen bleiben die Gildendaten beim alten Realm", function()
+    local oldGI, oldRN, oldNRN = GetGuildInfo, GetRealmName, GetNormalizedRealmName
+    local oldName, oldNorm, oldGuilds = GuildPrideDB.realmName, GuildPrideDB.realmNorm, GuildPrideDB.guilds
+    GetGuildInfo = function() return "Testgilde", "Rang", 3, nil end
+    GetRealmName = function() return "" end
+    GetNormalizedRealmName = function() return "" end
+    GuildPrideDB.realmName, GuildPrideDB.realmNorm = nil, nil
+    -- alter Stand unter dem echten Realm, seit dem Hotfix ein zweiter unter „Testgilde@“
+    GuildPrideDB.guilds = {
+        ["Testgilde@CAMWOWEU4Realm7PvE"] = { log = {
+            { kind = "LEVEL", who = "Anna", value = 60, t = 100 },
+            { kind = "JOIN", who = "Bert", t = 50 },
+        }, events = { a = { title = "Alt" } } },
+        ["Testgilde@"] = { log = {
+            { kind = "LEVEL", who = "Cora", value = 40, t = 300 },
+            { kind = "LEVEL", who = "Anna", value = 60, t = 200 },   -- neu abgeglichen, später gesehen
+        }, events = { a = { title = "Neu" }, b = { title = "Zweites" } } },
+    }
+    eq(ns.GuildId(), "Testgilde@CAMWOWEU4Realm7PvE", "Realm aus den gespeicherten Daten")
+    eq(GuildPrideDB.guilds["Testgilde@"], nil, "Daten ohne Realm zusammengeführt")
+    local g = GuildPrideDB.guilds["Testgilde@CAMWOWEU4Realm7PvE"]
+    eq(#g.log, 3, "doppelter Meilenstein nur einmal")
+    eq(g.log[1].who, "Cora", "neueste zuerst")
+    for _, e in ipairs(g.log) do if e.who == "Anna" then eq(e.t, 100, "frühester Zeitpunkt bleibt") end end
+    eq(g.events.a.title, "Neu", "neuerer Stand gewinnt"); eq(g.events.b.title, "Zweites")
+    eq(GuildPrideDB.realmNorm, "CAMWOWEU4Realm7PvE", "Realm gemerkt")
+    -- liefert das Spiel den Realm wieder, wird er gemerkt
+    GetRealmName = function() return "CAMWOW EU4 Realm 7 PvE" end
+    eq(ns.RealmName(), "CAMWOW EU4 Realm 7 PvE"); eq(ns.RealmName(true), "CAMWOWEU4Realm7PvE")
+    GetGuildInfo, GetRealmName, GetNormalizedRealmName = oldGI, oldRN, oldNRN
+    GuildPrideDB.realmName, GuildPrideDB.realmNorm, GuildPrideDB.guilds = oldName, oldNorm, oldGuilds
+end)
+
 print(("\n%d bestanden, %d fehlgeschlagen"):format(passed, failed))
 if failed > 0 then os.exit(1) end

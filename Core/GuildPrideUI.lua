@@ -176,28 +176,21 @@ discord:SetScript("OnEnter", function(b)
 end)
 discord:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
--- Ingame-Community: Knopf links neben dem Discord-Logo. Klick fragt nach und tritt per
--- C_Club.RedeemTicket direkt bei – ohne Blizzards Communities-Fenster anzufassen (Taint, Gildeneinladung).
+-- Ingame-Community: Knopf links neben dem Discord-Logo. Klick zeigt den Einladungslink zum Einfügen in Blizzards Fenster –
+-- ohne Blizzards Communities-Fenster selbst anzufassen (Taint, Gildeneinladung).
 do
     local COMMUNITY_TICKET = "O4qG9NnUpLM"
     local COMMUNITY_URL = "https://www.worldofwarcraft.com/invite/" .. COMMUNITY_TICKET .. "?region=EU&faction=Alliance"
     ns.COMMUNITY_URL = COMMUNITY_URL
-    local canJoin = ns.HAS_COMMUNITIES and C_Club and C_Club.RedeemTicket and true or false
+    local canJoin = ns.HAS_COMMUNITIES and C_Club and true or false
     StaticPopupDialogs["GUILDPRIDE_COMMUNITY"] = {
-        text = canJoin and L["GuildPride Ingame-Community beitreten?\n\nDer Link zum Weitergeben (Strg+C):"]
+        text = canJoin and L["GuildPride Ingame-Community\n\n1. Strg+C kopiert den Link\n2. „Gilde & Communitys“ im Mikromenü öffnen\n3. Community beitreten › Link einfügen (Strg+V)"]
             or L["GuildPride Ingame-Community\n\nStrg+C kopiert den Link, dann im Browser einfügen."],
-        button1 = canJoin and L["Beitreten"] or (CLOSE or OKAY),
-        button2 = canJoin and CANCEL or nil,
+        button1 = CLOSE or OKAY,
         hasEditBox = true, editBoxWidth = 300,
         OnShow = function(self)
             local eb = self.editBox or self.EditBox
             eb:SetText(COMMUNITY_URL); eb:SetFocus(); eb:HighlightText()
-        end,
-        OnAccept = function()
-            if not canJoin then return end
-            local ok = pcall(C_Club.RedeemTicket, COMMUNITY_TICKET)
-            print("|cffd4af37GuildPride|r " .. (ok and L["Beitritt zur Community angefragt – sie erscheint gleich in deinen Communitys."]
-                or L["Beitritt hat nicht geklappt. Link kopieren und im Browser öffnen."]))
         end,
         EditBoxOnTextChanged = function(eb)
             if eb:GetText() ~= COMMUNITY_URL then eb:SetText(COMMUNITY_URL); eb:HighlightText() end
@@ -233,6 +226,9 @@ do
     end
     local hl = community:CreateTexture(nil, "HIGHLIGHT")
     hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.2)
+    -- C_Club.RedeemTicket ist Blizzards Oberfläche vorbehalten, und Einladungslinks im Chat öffnet
+    -- Forever nicht. Darum zeigt der Klick den Link zum Kopieren mit kurzer Anleitung: einfügen in
+    -- Blizzards Fenster „Gilde & Communitys“ › Community beitreten – das läuft ganz über Blizzard.
     community:SetScript("OnClick", function()
         if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON) end
         StaticPopup_Show("GUILDPRIDE_COMMUNITY")
@@ -240,7 +236,7 @@ do
     community:SetScript("OnEnter", function(b)
         GameTooltip:SetOwner(b, "ANCHOR_BOTTOMLEFT")
         GameTooltip:SetText(L["GuildPride Ingame-Community"])
-        GameTooltip:AddLine(L["Klick: der Community direkt im Spiel beitreten."], 1, 1, 1, true)
+        GameTooltip:AddLine(L["Klick: Einladungslink zum Kopieren – dann unter „Gilde & Communitys“ › Community beitreten einfügen."], 1, 1, 1, true)
         GameTooltip:Show()
     end)
     community:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -277,13 +273,13 @@ content:SetPoint("BOTTOMRIGHT", -14, 14)
 
 -- Kompaktes Menü: mehrere Reiter teilen sich einen Platz in der Seitenleiste,
 -- oben auf der Seite schaltet eine Leiste zwischen ihnen um. Schlüssel = feste
--- Standard-Ordnung der Reiter (10 Übersicht, 30 Events, 40 Gruppensuche,
--- 50 Umfragen, 60 Meilensteine, 65 Ziele). Berufe (55) und Gildeninfo (70)
+-- Standard-Ordnung der Reiter (10 Übersicht, 30 Events, 45 Wünsche, 50 Umfragen,
+-- 55 Berufe, 60 Meilensteine, 65 Ziele). Gruppensuche (40) und Gildeninfo (70)
 -- haben eigene Plätze.
 -- Der erste Schlüssel ist der Gastgeber.
 local GROUPS = {
     { host = "10", label = L["Übersicht"], keys = { "10", "60", "65" } },
-    { host = "30", label = L["Planen"],    keys = { "30", "40", "45", "50" } },
+    { host = "30", label = L["Planen"],    keys = { "30", "45", "50", "55" } },
 }
 local groupOf = {}
 for _, g in ipairs(GROUPS) do for _, k in ipairs(g.keys) do groupOf[k] = g end end
@@ -470,7 +466,7 @@ function LayoutTabs()
     -- sich die Knöpfe überlappen. Größer/kleiner ziehen skaliert alles gleichmäßig.
     if not ns.CurrentLayout or ns.CurrentLayout() == "forge" then
         local base = frame.gpBaseH or H
-        local need = 168 + top * 40 - 4 + 10 + 30 + bottom * 40 + (ns.SidebarBottomExtra or 0)
+        local need = 168 + top * 40 - 4 + 10 + 30 + bottom * 40
         local h = math.max(base, need)
         if math.abs(frame:GetHeight() - h) > 0.5 then
             -- Fenster mit sicherem Knopf: im Kampf nicht ändern, nach dem Kampf nachholen

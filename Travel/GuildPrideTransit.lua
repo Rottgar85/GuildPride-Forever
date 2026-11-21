@@ -87,8 +87,10 @@ end
 ---------------------------------------------------------------------
 -- Messungen
 ---------------------------------------------------------------------
+-- Seit Blizzards Hotfix vom 20.11.2026 fehlt oft der Realm-Name: dann der zuletzt bekannte
+-- (GP.RealmName, GuildPride.lua); was solange unter „?“ lag, kommt dazu
 local function Realm()
-    local r = GetRealmName and GetRealmName()
+    local r = GP.RealmName and GP.RealmName() or (GetRealmName and GetRealmName())
     return type(r) == "string" and r ~= "" and r or "?"
 end
 
@@ -97,6 +99,11 @@ local function Store()
     if type(GuildPrideDB.transit) ~= "table" then GuildPrideDB.transit = {} end
     local realm = Realm()
     if type(GuildPrideDB.transit[realm]) ~= "table" then GuildPrideDB.transit[realm] = {} end
+    local orphan = realm ~= "?" and GuildPrideDB.transit["?"]
+    if type(orphan) == "table" and GP.MergeSaved then
+        GP.MergeSaved(GuildPrideDB.transit[realm], orphan)
+        GuildPrideDB.transit["?"] = nil
+    end
     return GuildPrideDB.transit[realm]
 end
 

@@ -885,11 +885,11 @@ bOffer:SetShown(TYPES.key ~= nil)
 local keysView = false
 local keysHolder, keysList, keysEmpty
 local bKeys = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-bKeys:SetSize(140, 24); bKeys:SetPoint("TOPRIGHT", -2, -52)
+bKeys:SetSize(140, 24); bKeys:SetPoint("TOPRIGHT", -2, -88)   -- Leiste über der Liste (LIST_BAR_Y)
 bKeys:SetShown(ns.GuildKeys ~= nil)
 if ns.GuildKeys then
     keysHolder = CreateFrame("Frame", nil, page)
-    keysHolder:SetPoint("TOPLEFT", 0, -96)
+    keysHolder:SetPoint("TOPLEFT", 0, -116)   -- wie die Liste (LIST_TOP)
     keysHolder:SetPoint("BOTTOMRIGHT", 0, 0)
     keysHolder:Hide()
     keysList = ns.CreateList(keysHolder, 24)
@@ -903,38 +903,43 @@ if ns.GuildKeys then
     end)
 end
 
--- Blizzards Dungeonbrowser (nur Forever): klickt den Blizzard-Knopf der Menüleiste.
--- Unser Fenster liegt höher und würde den Browser verdecken, schließt sich also.
-if ns.IS_FOREVER and LFDMicroButton then
-    local bBrowser = ns.SecureClickButton(page, 140, L["Dungeonbrowser"], LFDMicroButton)
-    bBrowser:SetPoint("TOPRIGHT", -2, -52)
-    ns.GroupBrowserWidth = 140
-    bBrowser:HookScript("OnEnter", function(self)
+-- Aktualisieren (nur Forever, an der Stelle des früheren Dungeonbrowser-Knopfs):
+-- fragt die Einträge von Gilde und Server neu ab und baut die Liste neu auf
+if ns.IS_FOREVER then
+    local bRefresh = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    bRefresh:SetSize(110, 24)
+    bRefresh:SetPoint("TOPRIGHT", -2, -88)   -- Leiste über der Liste (LIST_BAR_Y)
+    bRefresh:SetText(L["Aktualisieren"])
+    bRefresh:SetScript("OnClick", function()
+        ns.Queue("LFGQ", nil, "1")
+        if ns.PublicLFGOn() then ByClick(AskPublic) end
+        page:Refresh()
+    end)
+    bRefresh:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:SetText(L["Dungeonbrowser"], 1, 1, 1)
-        GameTooltip:AddLine(L["Öffnet Blizzards Dungeonbrowser. Dein Eintrag in der Gruppensuche bleibt bestehen."], 0.8, 0.8, 0.8, true)
+        GameTooltip:SetText(L["Aktualisieren"], 1, 1, 1)
+        GameTooltip:AddLine(L["Fragt die Einträge von Gilde und Server neu ab."], 0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
-    bBrowser:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    bBrowser:HookScript("OnClick", function()
-        if not LFDMicroButton:IsEnabled() then
-            local reason = LFDMicroButton.GetGroupFinderDisabledTooltip and LFDMicroButton:GetGroupFinderDisabledTooltip()
-            ns.Print(type(reason) == "string" and reason ~= "" and reason or L["Der Dungeonbrowser ist gerade nicht verfügbar."])
-            return
-        end
-        -- Kurz warten: Blizzard lädt das Fenster beim ersten Öffnen erst nach
-        C_Timer.After(0.1, function()
-            if LFGParentFrame and LFGParentFrame:IsShown() and not InCombatLockdown() then GuildPrideFrame:Hide() end
-        end)
-    end)
+    bRefresh:SetScript("OnLeave", function() GameTooltip:Hide() end)
 end
 
--- Eigener Status in einer eigenen Zeile unter den Knöpfen
+-- Aufbau der Seite in zwei Bereichen:
+--   oben „Dein Eintrag“: Hinweis + Serverweit · Quest/Dungeon + fehlende Rollen · Anmelden/Abmelden + Status
+--   Trennlinie, darunter „Liste“: Gilde/Server/Alle links · Filter, Browser durchsuchen, Aktualisieren rechts
+local LIST_BAR_Y, LIST_TOP = -88, -116
+-- Eigener Status rechts neben Anmelden/Abmelden
 local status = page:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
-status:SetPoint("TOPLEFT", 6, -82)
+status:SetPoint("LEFT", bOffer:IsShown() and bOffer or bSignOff, "RIGHT", 12, 0)
 status:SetJustifyH("LEFT")
+local STATUS_W = bOffer:IsShown() and 260 or 396
 
--- Welche Einträge zeigen: Gilde · Server · Alle (rechts neben dem Status)
+local divider = page:CreateTexture(nil, "ARTWORK")
+divider:SetPoint("TOPLEFT", 2, LIST_BAR_Y + 8); divider:SetPoint("TOPRIGHT", -2, LIST_BAR_Y + 8)
+divider:SetHeight(1)
+ns.Paint(divider, "accent", 0.5)
+
+-- Welche Einträge zeigen: Gilde · Server · Alle (links über der Liste)
 local SCOPES = { { key = "guild", label = L["Gilde"] }, { key = "server", label = L["Server"] }, { key = "all", label = L["Alle"] } }
 local scopeBtns = {}
 local function Scope()
@@ -943,8 +948,8 @@ local function Scope()
 end
 for i, s in ipairs(SCOPES) do
     local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    b:SetSize(64, 20)
-    b:SetPoint("TOPRIGHT", -2 - (#SCOPES - i) * 66, -76)
+    b:SetSize(64, 24)
+    b:SetPoint("TOPLEFT", 4 + (i - 1) * 66, LIST_BAR_Y)
     b:SetText(s.label)
     b:SetScript("OnClick", function()
         GuildPrideDB.lfgScope = s.key
@@ -965,7 +970,7 @@ end
 -- Liste: Titel groß oben, darunter zwei Zeilen; scrollbar bei vielen Einträgen
 local ROW_H, ROW_W, rows = 60, 624, {}
 local listScroll = ns.NewScroll(page)
-listScroll:SetPoint("TOPLEFT", 0, -98)
+listScroll:SetPoint("TOPLEFT", 0, LIST_TOP)
 listScroll:SetPoint("BOTTOMRIGHT", -26, 0)
 local listChild = CreateFrame("Frame", nil, listScroll)
 listChild:SetSize(ROW_W, 1)
@@ -1038,7 +1043,7 @@ local function GetRow(i)
     return r
 end
 local empty = page:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
-empty:SetPoint("TOP", 0, -160)
+empty:SetPoint("TOP", 0, -176)
 empty:SetText(L["Gerade sucht niemand Hilfe."])
 
 ---------------------------------------------------------------------
@@ -1227,26 +1232,42 @@ local function BrowserEntry(id, now)
     local leader = G.GetSearchResultLeaderInfo(id) or {}
     local title = act and act.fullName or L["Dungeonbrowser"]
     if #acts > 1 then title = title .. (" |cff999999+%d|r"):format(#acts - 1) end
+    -- Namen aller Dungeons der Gruppe, für die Dungeon-Auswahl
+    local actNames = {}
+    for i, aid in ipairs(acts) do
+        local a = i == 1 and act or G.GetActivityInfoTable(aid)
+        if a and a.fullName then actNames[#actNames + 1] = a.fullName end
+    end
     local max = act and act.maxNumPlayers or 0
     -- Rollen in der Gruppe (so zeigt es auch Blizzards Fenster)
     local counts = G.GetSearchResultMemberCounts and G.GetSearchResultMemberCounts(id)
     local roles = counts and { T = tonumber(counts.TANK) or 0, H = tonumber(counts.HEALER) or 0,
                                D = tonumber(counts.DAMAGER) or 0 }
     return ns.Normalize(info.leaderName), {
-        kind = "group", browser = true, note = title, needs = "", roles = roles,
+        kind = "group", browser = true, note = title, needs = "", roles = roles, acts = actNames,
         class = leader.classFilename, level = leader.level or 0, zone = leader.areaName or "",
         t = now - (info.age or 0), size = info.numMembers or 1, max = max > 0 and max or 5,
     }
+end
+
+-- Dungeon-Auswahl: GuildPrideDB.lfgDungeons = { [Dungeonname] = true }; leer = alle Dungeons.
+-- Eine Gruppe passt, wenn einer ihrer Dungeons gewählt ist (ns.BrowserDungeonMatch, GuildPride.lua).
+local function DungeonFilter()
+    local f = type(GuildPrideDB) == "table" and GuildPrideDB.lfgDungeons   -- beim Laden noch nicht da
+    if type(f) ~= "table" or next(f) == nil then return nil end
+    return f
 end
 
 local function AddBrowserEntries(list, now)
     local G = C_LFGList
     local _, ids = (G.GetFilteredSearchResults or G.GetSearchResults)()
     local me, added = ns.Me(), 0
+    local filter = DungeonFilter()
     for _, id in ipairs(ids or {}) do
         if added >= BROWSER.max then break end
         local ok, name, e = pcall(BrowserEntry, id, now)
-        if ok and name and name ~= me and not entries[name] and not publicEntries[name] then
+        if ok and name and name ~= me and not entries[name] and not publicEntries[name]
+            and ns.BrowserDungeonMatch(e.acts, filter) then
             list[#list + 1] = { name = name, e = e }
             added = added + 1
         end
@@ -1272,7 +1293,7 @@ function page:Refresh()
 
     local publicOn = ns.PublicLFGOn()
     pubCheck:SetShown(publicOn); pubLabel:SetShown(publicOn)
-    status:SetWidth(publicOn and not keysView and 420 or 620); status:SetWordWrap(false)
+    status:SetWidth(STATUS_W); status:SetWordWrap(false)
     pubCheck:SetChecked(GuildPrideDB.lfgPublic)
     UpdateScopeButtons(publicOn and not keysView)
 
@@ -1444,7 +1465,7 @@ if BROWSER then
         if type(cat) == "number" and cat > 0 then return f.RefreshButton end
     end
     local bSearch = ns.SecureClickButton(page, 150, L["Browser durchsuchen"], nil)
-    bSearch:SetPoint("TOPRIGHT", -146, -52)
+    bSearch:SetPoint("TOPRIGHT", -116, LIST_BAR_Y)
     bSearch:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText(L["Browser durchsuchen"], 1, 1, 1)
@@ -1452,16 +1473,161 @@ if BROWSER then
         GameTooltip:Show()
     end)
     bSearch:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    -- Vor dem sicheren Klick das Ziel setzen (außerhalb des Kampfs erlaubt)
+
+    -- Dungeon-Auswahl: welche Dungeons aus dem Dungeonbrowser in der Liste stehen (einer oder mehrere)
+    local DUNGEON_CATEGORY = 2   -- „Dungeons“ in Forevers Dungeonbrowser
+    local bDungeons = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    bDungeons:SetSize(96, 24)
+    bDungeons:SetPoint("RIGHT", bSearch, "LEFT", -4, 0)
+    local pickWin
+    local PICK_ROWS = 14
+    local function DungeonList()
+        local G, seen, out = C_LFGList, {}, {}
+        local ok, ids = pcall(G.GetAvailableActivities, DUNGEON_CATEGORY)
+        for _, id in ipairs(ok and ids or {}) do
+            local a = G.GetActivityInfoTable(id)
+            local n = a and a.fullName
+            if n and not seen[n] then
+                seen[n] = true
+                out[#out + 1] = { name = n, lvl = tonumber(a.minLevel) or 0 }
+            end
+        end
+        table.sort(out, function(x, y) if x.lvl ~= y.lvl then return x.lvl < y.lvl end return x.name < y.name end)
+        return out
+    end
+    local function UpdateDungeonButton()
+        local n = 0
+        for _ in pairs(DungeonFilter() or {}) do n = n + 1 end
+        bDungeons:SetText(n > 0 and (L["Filter (%d)"]):format(n) or L["Filter"])
+    end
+    UpdateDungeonButton()
+    bDungeons:SetScript("OnShow", UpdateDungeonButton)   -- gespeicherte Auswahl erst nach dem Laden bekannt
+    local function RefreshPick()
+        if not pickWin then return end
+        local list, sel = pickWin.list, GuildPrideDB.lfgDungeons or {}
+        pickWin.offset = math.max(0, math.min(pickWin.offset or 0, #list - PICK_ROWS))
+        for i = 1, PICK_ROWS do
+            local r, d = pickWin.rows[i], list[i + pickWin.offset]
+            r:SetShown(d ~= nil)
+            if d then
+                r.dungeon = d.name
+                r.check:SetChecked(sel[d.name] == true)
+                r.label:SetText(d.name .. (d.lvl > 0 and (" |cff999999(%d+)|r"):format(d.lvl) or ""))
+            end
+        end
+        pickWin.none:SetShown(#list == 0)
+        UpdateDungeonButton()
+    end
+    local function Toggle(name, on)
+        GuildPrideDB.lfgDungeons = GuildPrideDB.lfgDungeons or {}
+        GuildPrideDB.lfgDungeons[name] = on or nil
+        RefreshPick()
+        page:Refresh()
+    end
+    local function OpenPick()
+        if not pickWin then
+            pickWin = CreateFrame("Frame", "GuildPrideLFGDungeons", UIParent, "BackdropTemplate")
+            pickWin:SetSize(300, 84 + PICK_ROWS * 22)
+            pickWin:SetPoint("CENTER", 0, 40)
+            pickWin:SetFrameStrata("DIALOG")
+            pickWin:SetMovable(true); pickWin:EnableMouse(true); pickWin:SetClampedToScreen(true)
+            pickWin:RegisterForDrag("LeftButton")
+            pickWin:SetScript("OnDragStart", pickWin.StartMoving)
+            pickWin:SetScript("OnDragStop", pickWin.StopMovingOrSizing)
+            if ns.SkinDialog then ns.SkinDialog(pickWin) end
+            tinsert(UISpecialFrames, "GuildPrideLFGDungeons")   -- Escape schließt
+            local close = CreateFrame("Button", nil, pickWin, "UIPanelCloseButton")
+            close:SetPoint("TOPRIGHT", -6, -6)
+            if ns.SkinClose then ns.SkinClose(close) end
+            close:SetScript("OnClick", function() pickWin:Hide() end)
+            local title = pickWin:CreateFontString(nil, "OVERLAY", "GPFont_Large")
+            title:SetPoint("TOPLEFT", 14, -12); title:SetText(L["Dungeons auswählen"])
+            if ns.Paint then ns.Paint(title, "heading") end
+            local sub = pickWin:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+            sub:SetPoint("TOPLEFT", 14, -34); sub:SetPoint("RIGHT", -14, 0); sub:SetJustifyH("LEFT")
+            sub:SetText(L["Nichts angehakt = alle Dungeons."])
+            pickWin.rows = {}
+            for i = 1, PICK_ROWS do
+                local r = CreateFrame("Button", nil, pickWin)
+                r:SetSize(272, 22)
+                r:SetPoint("TOPLEFT", 12, -50 - (i - 1) * 22)
+                if ns.Paint and i % 2 == 0 then ns.Paint(r:CreateTexture(nil, "BACKGROUND"), "glow", 0.05):SetAllPoints() end
+                local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints()
+                if ns.Paint then ns.Paint(hl, "glow", 0.15) else hl:SetColorTexture(1, 1, 1, 0.1) end
+                r.check = CreateFrame("CheckButton", nil, r, "UICheckButtonTemplate")
+                r.check:SetSize(20, 20); r.check:SetPoint("LEFT", 0, 0)
+                r.check:SetScript("OnClick", function(cb) Toggle(r.dungeon, cb:GetChecked()) end)
+                r.label = r:CreateFontString(nil, "OVERLAY", "GPFont_Text")
+                r.label:SetPoint("LEFT", 24, 0); r.label:SetPoint("RIGHT", -2, 0)
+                r.label:SetJustifyH("LEFT"); r.label:SetWordWrap(false)
+                r:SetScript("OnClick", function() Toggle(r.dungeon, not r.check:GetChecked()) end)
+                pickWin.rows[i] = r
+            end
+            pickWin.none = pickWin:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
+            pickWin.none:SetPoint("TOPLEFT", 14, -56); pickWin.none:SetPoint("RIGHT", -14, 0)
+            pickWin.none:SetJustifyH("LEFT"); pickWin.none:SetText(L["Keine Dungeons gefunden."])
+            pickWin:EnableMouseWheel(true)
+            pickWin:SetScript("OnMouseWheel", function(_, delta)
+                pickWin.offset = (pickWin.offset or 0) - delta * 3
+                RefreshPick()
+            end)
+            local all = CreateFrame("Button", nil, pickWin, "UIPanelButtonTemplate")
+            if ns.SkinButton then ns.SkinButton(all) end
+            all:SetSize(130, 22); all:SetPoint("BOTTOMLEFT", 14, 12)
+            all:SetText(L["Alle Dungeons"])
+            all:SetScript("OnClick", function()
+                GuildPrideDB.lfgDungeons = nil
+                RefreshPick(); page:Refresh()
+            end)
+            local done = CreateFrame("Button", nil, pickWin, "UIPanelButtonTemplate")
+            if ns.SkinButton then ns.SkinButton(done) end
+            done:SetSize(100, 22); done:SetPoint("BOTTOMRIGHT", -14, 12)
+            done:SetText(OKAY or "OK")
+            done:SetScript("OnClick", function() pickWin:Hide() end)
+        end
+        pickWin.list = DungeonList()
+        pickWin.offset = 0
+        pickWin:Show()
+        RefreshPick()
+    end
+    bDungeons:SetScript("OnClick", function()
+        if pickWin and pickWin:IsShown() then pickWin:Hide() else OpenPick() end
+    end)
+    bDungeons:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText(L["Dungeons auswählen"], 1, 1, 1)
+        GameTooltip:AddLine(L["Nur Gruppen aus dem Dungeonbrowser für diese Dungeons zeigen. Einen oder mehrere anhaken."], 0.8, 0.8, 0.8, true)
+        local f = DungeonFilter()
+        if f then
+            local names = {}
+            for n in pairs(f) do names[#names + 1] = n end
+            table.sort(names)
+            GameTooltip:AddLine(table.concat(names, ", "), 0.4, 0.8, 1, true)
+        end
+        GameTooltip:Show()
+    end)
+    bDungeons:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    -- Vor dem sicheren Klick das Ziel setzen (außerhalb des Kampfs erlaubt).
+    -- Ohne Kategorie (Forever wählt nie selbst eine, und ein Addon darf sie nicht setzen, sonst
+    -- sperrt Blizzard die Suche): Blizzards Dungeonbrowser per sicherem /click öffnen.
+    -- Dort einmal „Dungeons“ wählen, danach sucht der Knopf direkt.
     bSearch:SetScript("PreClick", function(self)
         if InCombatLockdown() then return end
         local target = BlizzardSearchButton()
-        self:SetAttribute("clickbutton", target)
         if target then
+            self:SetAttribute("type", "click")
+            self:SetAttribute("clickbutton", target)
             asked = true
-        else
-            ns.Print(L["Öffne einmal den Dungeonbrowser und wähle dort eine Kategorie (z. B. Dungeons). Danach sucht dieser Knopf dort neu, und die Gruppen erscheinen hier."])
+            return
         end
+        -- Nur den Dungeonbrowser öffnen: Ein /click auf LFGParentFrameTab2 bricht in Forever in
+        -- Blizzards Code ab (LFGParentFrame_SetActiveTab fehlt), darum keinen Reiter wechseln.
+        local open = LFGParentFrame and LFGParentFrame:IsShown()
+        local text = (not open and LFDMicroButton and LFDMicroButton:IsEnabled()) and "/click LFDMicroButton" or ""
+        self:SetAttribute("type", "macro")
+        self:SetAttribute("macrotext", text)
+        ns.Print(L["Wähle im Dungeonbrowser oben eine Kategorie (z. B. Dungeons). Bis zum Ausloggen sucht dieser Knopf danach direkt, und die Gruppen erscheinen hier."])
     end)
 
     local pending = false

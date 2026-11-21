@@ -1,5 +1,23 @@
 # GuildPride Changelog
 
+## 2.32.0
+
+**Deutsch**
+- **Daten nach Blizzards Hotfix zurück**: Seit dem 20.11.2026 liefert Forever keinen Realm-Namen mehr. Meilensteine, Events und andere Gildendaten, Auktionshauspreise und Schiffszeiten landeten dadurch unter einem leeren Realm und die alten Daten schienen weg. GuildPride merkt sich jetzt den Realm und führt alte und neue Daten zusammen
+- **Gruppensuche aufgeräumt**: oben dein Eintrag (Quest/Dungeon, fehlende Rollen, Anmelden/Abmelden mit Status), unter einer Trennlinie die Liste mit Gilde/Server/Alle, Filter, Browser durchsuchen und Aktualisieren. Die Gruppensuche hat wieder einen eigenen Menüpunkt, die Berufe sind dafür unter „Planen“
+- **Dungeon-Filter**: Unter „Filter“ einen oder mehrere Dungeons anhaken – dann stehen nur deren Gruppen aus dem Dungeonbrowser in der Liste
+- **Browser durchsuchen** öffnet Blizzards Dungeonbrowser selbst, wenn dort noch keine Kategorie gewählt ist; nach einmal „Dungeons“ sucht der Knopf bis zum Ausloggen direkt
+- **Aktualisieren** statt Dungeonbrowser-Knopf: fragt die Einträge von Gilde und Server neu ab
+- **Community-Knopf**: Blizzard erlaubt Addons keinen direkten Beitritt. Der Knopf zeigt jetzt den Einladungslink zum Kopieren mit kurzer Anleitung für „Gilde & Communitys“ › Community beitreten
+
+**English**
+- **Data back after Blizzard's hotfix**: Since 2026-11-20 Forever no longer reports the realm name. Milestones, events and other guild data, auction prices and ship times were saved under an empty realm and the old data seemed gone. GuildPride now remembers the realm and merges old and new data
+- **Group finder tidied up**: your entry at the top (quest/dungeon, missing roles, sign up/off with status), below a divider the list with Guild/Server/All, Filter, Search Dungeon Finder and Refresh. The group finder has its own menu entry again, professions moved under "Plan"
+- **Dungeon filter**: Tick one or more dungeons under "Filter" – only their Dungeon Finder groups show in the list
+- **Search Dungeon Finder** opens Blizzard's Dungeon Finder itself when no category is picked there; after picking "Dungeons" once the button searches directly until you log out
+- **Refresh** replaces the Dungeon Finder button: asks guild and server for their entries again
+- **Community button**: Blizzard does not let addons join directly. The button now shows the invite link to copy with short steps for "Guild & Communities" › Join Community
+
 ## 2.31.0
 
 **Deutsch**

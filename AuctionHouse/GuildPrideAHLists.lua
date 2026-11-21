@@ -299,9 +299,15 @@ local function Posted()
     if type(GuildPrideDB) ~= "table" then GuildPrideDB = {} end
     local all = GuildPrideDB.ahPosted
     if type(all) ~= "table" then all = {}; GuildPrideDB.ahPosted = all end
-    local realm = (GetNormalizedRealmName and GetNormalizedRealmName()) or (GetRealmName and GetRealmName()) or "?"
+    local realm = AH.Realm and AH.Realm() or "?"
     local me = (UnitName("player") or "?") .. "-" .. realm
     if type(all[me]) ~= "table" then all[me] = {} end
+    -- seit dem Hotfix ohne Realm gespeichert („Name-“): zurückholen
+    local orphanKey = (UnitName("player") or "?") .. "-"
+    if realm ~= "?" and orphanKey ~= me and type(all[orphanKey]) == "table" and GP.MergeSaved then
+        GP.MergeSaved(all[me], all[orphanKey])
+        all[orphanKey] = nil
+    end
     return all[me]
 end
 

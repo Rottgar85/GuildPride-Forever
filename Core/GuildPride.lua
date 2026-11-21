@@ -160,6 +160,14 @@ local function Normalize(name)
 end
 ns.Normalize = Normalize
 
+-- Gruppensuche (GuildPrideHelp.lua): Passt eine Gruppe aus dem Dungeonbrowser zur Dungeon-Auswahl?
+-- acts = Dungeonnamen der Gruppe, filter = { [Name] = true } oder nil (= alle Dungeons)
+function ns.BrowserDungeonMatch(acts, filter)
+    if not filter then return true end
+    for _, n in ipairs(acts or {}) do if filter[n] then return true end end
+    return false
+end
+
 function ns.Me()
     if ns.IS_FOREVER and UnitFullName then
         local name, surname = UnitFullName("player")
@@ -330,11 +338,86 @@ end
 ns.IconString = IconString
 ns.Print = Print
 
+-- Realm-Name für gespeicherte Daten. Seit Blizzards Hotfix vom 20.11.2026 liefert Forever
+-- oft keinen Realm-Namen mehr (""). Dann gilt der zuletzt gesehene (GuildPrideDB.realmName/
+-- realmNorm), sonst der eine Realm, unter dem schon Daten liegen – damit neue Daten nicht
+-- unter einem leeren Schlüssel landen und die alten (Meilensteine, Events, Preise …) fehlen.
+-- normalized = true: ohne Leerzeichen und Bindestriche („CAMWOWEU4Realm7PvE“)
+local function NormRealm(r) return (r:gsub("[%s%-]", "")) end
+function ns.RealmName(normalized)
+    local db = type(GuildPrideDB) == "table" and GuildPrideDB or nil
+    local name = GetRealmName and GetRealmName()
+    local norm = GetNormalizedRealmName and GetNormalizedRealmName()
+    if type(name) ~= "string" or name == "" then name = nil end
+    if type(norm) ~= "string" or norm == "" then norm = name and NormRealm(name) or nil end
+    if db then
+        if name then db.realmName = name end
+        if norm then db.realmNorm = norm end
+        name = name or db.realmName
+        norm = norm or db.realmNorm
+        if not norm then
+            -- noch nie gemerkt: den einzigen Realm aus den gespeicherten Gildendaten nehmen
+            local found
+            for id in pairs(type(db.guilds) == "table" and db.guilds or {}) do
+                local r = type(id) == "string" and id:match("@(.+)$")
+                if r then
+                    if found and found ~= r then found = false break end
+                    found = r
+                end
+            end
+            if found then norm = found; db.realmNorm = found end
+        end
+        if not name and type(db.transit) == "table" then
+            for r in pairs(db.transit) do
+                if r ~= "?" and r ~= "" and (not norm or NormRealm(r) == norm) then name = r; db.realmName = r break end
+            end
+        end
+    end
+    if normalized then return norm end
+    return name
+end
+
+-- Gespeicherte Daten zusammenführen (src in dst, src ist der neuere Stand): Tabellen werden
+-- rekursiv zusammengelegt, sonst gilt der Wert aus src; Listen bekommen nur Einträge dazu,
+-- die es noch nicht gibt.
+local function Same(a, b)
+    if type(a) ~= "table" or type(b) ~= "table" then return a == b end
+    for k, v in pairs(a) do if type(v) ~= "table" and b[k] ~= v then return false end end
+    for k, v in pairs(b) do if type(v) ~= "table" and a[k] ~= v then return false end end
+    return true
+end
+function ns.MergeSaved(dst, src)
+    if #src > 0 or #dst > 0 then
+        for _, v in ipairs(src) do
+            local dup = false
+            for _, w in ipairs(dst) do if Same(v, w) then dup = true break end end
+            if not dup then dst[#dst + 1] = v end
+        end
+        return dst
+    end
+    for k, v in pairs(src) do
+        if type(dst[k]) == "table" and type(v) == "table" then ns.MergeSaved(dst[k], v)
+        else dst[k] = v end
+    end
+    return dst
+end
+
 -- Kennung der aktuellen Gilde ("Gilde@Realm"), nil ohne Gilde
 function ns.GuildId()
     local guild, _, _, realm = GetGuildInfo("player")
     if not guild then return nil end
-    return guild .. "@" .. (realm or GetNormalizedRealmName() or "")
+    if type(realm) ~= "string" or realm == "" then realm = ns.RealmName(true) or "" end
+    local id = guild .. "@" .. realm
+    -- Was seit dem Hotfix unter „Gilde@“ (ohne Realm) gespeichert wurde, zurückholen
+    local all = type(GuildPrideDB) == "table" and GuildPrideDB.guilds
+    local orphan = realm ~= "" and type(all) == "table" and all[guild .. "@"]
+    if type(orphan) == "table" then
+        all[id] = ns.MergeSaved(type(all[id]) == "table" and all[id] or {}, orphan)
+        all[guild .. "@"] = nil
+        -- Verlauf: doppelte Meilensteine (auch neu abgeglichene) zusammenlegen und ordnen
+        if type(all[id].log) == "table" and ns.CleanLog then ns.CleanLog(all[id].log) end
+    end
+    return id
 end
 
 -- Gespeicherte Daten einer Gilde (Verlauf, Events, Umfragen, Chat …) liegen je
@@ -426,6 +509,20 @@ end
 
 local function Log() return ns.GuildTable("log") end
 ns.GuildLog = Log
+
+-- Verlauf aufräumen: je Meilenstein ein Eintrag (der früheste Zeitpunkt), neueste zuerst
+function ns.CleanLog(log)
+    local first = {}
+    for _, e in ipairs(log) do
+        local key = LogKey(e)
+        if not first[key] or (e.t or 0) < (first[key].t or 0) then first[key] = e end
+    end
+    local out = {}
+    for _, e in ipairs(log) do if first[LogKey(e)] == e then out[#out + 1] = e end end
+    table.sort(out, function(a, b) return (a.t or 0) > (b.t or 0) end)
+    for i = 1, math.max(#log, #out) do log[i] = i <= LOG_MAX and out[i] or nil end
+    return log
+end
 
 -- Neuen Eintrag aufnehmen; true, wenn er neu war
 function ns.AddLog(kind, who, value, t)

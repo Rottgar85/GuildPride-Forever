@@ -197,11 +197,20 @@ function P.Toggle()
         win:SetScript("OnDragStop", win.StopMovingOrSizing)
         if ns.SkinDialog then ns.SkinDialog(win) end
         tinsert(UISpecialFrames, "GuildPridePlayersList")   -- Escape schließt
+        -- Schließen-Kreuz, Titel, Spaltenköpfe und Zeilen wie im Rare-Fenster (GuildPride-Design)
         local close = CreateFrame("Button", nil, win, "UIPanelCloseButton")
-        close:SetPoint("TOPRIGHT", -2, -2)
+        close:SetPoint("TOPRIGHT", -6, -6)
+        if ns.SkinClose then ns.SkinClose(close) end
+        close:SetScript("OnClick", function() win:Hide() end)
         local title = win:CreateFontString(nil, "OVERLAY", "GPFont_Large")
-        title:SetPoint("TOPLEFT", 14, -14)
+        title:SetPoint("TOPLEFT", 14, -12)
         title:SetText(L["GuildPride-Spieler"])
+        if ns.Paint then ns.Paint(title, "heading") end
+        local headName = win:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+        headName:SetPoint("TOPLEFT", 16, -34); headName:SetText(L["Name"])
+        local headZone = win:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+        headZone:SetPoint("TOPLEFT", 172, -34); headZone:SetText(L["Zone"])
+        if ns.Paint then ns.Paint(headName, "title"); ns.Paint(headZone, "title") end
         win:EnableMouseWheel(true)
         win:SetScript("OnMouseWheel", function(_, delta)
             win.offset = math.max(0, (win.offset or 0) - delta * 3)
@@ -211,7 +220,10 @@ function P.Toggle()
         for i = 1, ROWS do
             local row = CreateFrame("Frame", nil, win)
             row:SetSize(312, 20)
-            row:SetPoint("TOPLEFT", 14, -44 - (i - 1) * 22)
+            row:SetPoint("TOPLEFT", 14, -48 - (i - 1) * 22)
+            if ns.Paint then
+                if i % 2 == 0 then ns.Paint(row:CreateTexture(nil, "BACKGROUND"), "glow", 0.05):SetAllPoints() end
+            end
             row.name = row:CreateFontString(nil, "OVERLAY", "GPFont_Text")
             row.name:SetPoint("LEFT", 0, 0); row.name:SetWidth(150); row.name:SetJustifyH("LEFT"); row.name:SetWordWrap(false)
             row.zone = row:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
@@ -237,15 +249,16 @@ function P.Toggle()
 end
 
 ---------------------------------------------------------------------
--- Unauffälliger Zugang: nur eine kleine, blasse Zahl rechts über „Einstellungen“,
--- die erst beim Drüberfahren hell wird (sonst /gp spieler)
+-- Unauffälliger Zugang: nur eine kleine, blasse Zahl unten rechts in der Seitenleiste,
+-- auf Höhe der Versionsnummer; wird erst beim Drüberfahren hell (sonst /gp spieler)
 ---------------------------------------------------------------------
 local parts = ns.UIParts
-local setTab = parts and ns.SettingsPage and parts.tabs and parts.tabs[ns.SettingsPage.tabId]
-if ns.IS_FOREVER and setTab then
+local versionText = parts and parts.versionText
+if ns.IS_FOREVER and versionText then
     local b = CreateFrame("Button", nil, parts.frame)
     b:SetSize(28, 12)
-    b:SetPoint("BOTTOMRIGHT", setTab, "TOPRIGHT", -2, 2)
+    b:SetPoint("BOTTOMRIGHT", parts.frame, "BOTTOMLEFT", 174, 14)   -- Seitenleiste 180 px, wie die Versionszeile
+    b:SetFrameLevel(parts.frame:GetFrameLevel() + 20)
     b:SetNormalFontObject("GPFont_MutedSmall")
     b:SetText("1")
     local fs = b:GetFontString()
@@ -264,9 +277,6 @@ if ns.IS_FOREVER and setTab then
     end)
     b:SetScript("OnLeave", function(self) self:SetAlpha(0.35); GameTooltip:Hide() end)
     P.button = b
-    -- Platz über „Einstellungen“ für die kleine Zahl (2 + 12 px), damit das Menü oben nicht hineinrutscht
-    ns.SidebarBottomExtra = 14
-    if parts.LayoutTabs then parts.LayoutTabs() end
 end
 
 ---------------------------------------------------------------------
