@@ -490,7 +490,7 @@ end
 -- in den Verlauf, egal ob er live, über die Gildenliste oder über den Abgleich
 -- mit anderen Spielern ankommt.
 ---------------------------------------------------------------------
-local LOG_MAX = 100
+local LOG_MAX = 500   -- bis 2.32.0: 100
 local DAY = 86400
 
 function ns.LogText(e)
@@ -662,12 +662,52 @@ ns.On("MHL", function(payload, sender)
     ns.AddLog(kind, who, value, t)
 end)
 
+-- Ältere Einträge (ab 2.33.0): MHO fragt nach bis zu 25 Einträgen vor dem eigenen ältesten.
+-- Die Antwort kommt als MHL mit „Name#o“ als Anfragendem: So zählt sie getrennt von der
+-- Antwort auf MHQ, und auch ältere Versionen übernehmen die Einträge.
+local function SendOlder(requester, before, whisper)
+    local list = {}
+    for _, e in ipairs(Log()) do
+        if e.kind and e.t and e.t < before then list[#list + 1] = e end
+        if #list >= 25 then break end
+    end
+    local target = whisper and requester or "@CHANNEL"
+    for _, e in ipairs(list) do
+        ns.Queue("MHL", target, requester .. "#o", e.t, e.who, e.kind, e.value or "")
+    end
+end
+ns.On("MHO", function(payload, sender)
+    if sender == ns.Me() then return end
+    local beforeStr, listen = strsplit(ns.SEP, payload)
+    local before = ns.Stamp(beforeStr)
+    local log = Log()
+    local oldest = log[#log]
+    if before == 0 or not oldest or (oldest.t or before) >= before then return end
+    if listen == "0" then
+        C_Timer.After(math.random() * 5, function() SendOlder(sender, before, true) end)
+        return
+    end
+    local key = sender .. "#o"
+    answered[key] = nil
+    C_Timer.After(1 + math.random() * 5, function()
+        if not answered[key] then
+            answered[key] = true
+            SendOlder(sender, before, false)
+        end
+    end)
+end)
+
 local function RequestHistory()
-    local newest = Log()[1]
+    local log = Log()
+    local newest = log[1]
     -- Wer im Kanal ist, hört die Antworten dort, auch ohne Leserecht im Gildenchat
     local inChannel = ns.DataChannelId and ns.DataChannelId()
     local listen = (inChannel or not ns.CanListenGuild or ns.CanListenGuild()) and 1 or 0
-    if ns.Queue then ns.Queue("MHQ", "@CHANNEL", newest and newest.t or 0, listen) end
+    if not ns.Queue then return end
+    ns.Queue("MHQ", "@CHANNEL", newest and newest.t or 0, listen)
+    -- noch Platz: auch nach älteren Einträgen fragen
+    local oldest = log[#log]
+    if oldest and oldest.t and #log < LOG_MAX then ns.Queue("MHO", "@CHANNEL", oldest.t, listen) end
 end
 ns.RequestHistory = RequestHistory
 
@@ -694,7 +734,7 @@ local MP_MAX = 100
 
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
-local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
+local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, MHO = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
                CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)

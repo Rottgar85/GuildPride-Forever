@@ -229,8 +229,26 @@ do
     -- C_Club.RedeemTicket ist Blizzards Oberfläche vorbehalten, und Einladungslinks im Chat öffnet
     -- Forever nicht. Darum zeigt der Klick den Link zum Kopieren mit kurzer Anleitung: einfügen in
     -- Blizzards Fenster „Gilde & Communitys“ › Community beitreten – das läuft ganz über Blizzard.
+    -- Schon Mitglied? Den Ticket-Code verrät Blizzard nicht zur Community. Darum merken wir
+    -- uns die Community, die nach dem Klick neu dazukommt (CLUB_ADDED, bis 15 Minuten danach),
+    -- in GuildPrideDB.communityClubId; außerdem zählt eine Community mit „GuildPride“ im Namen.
+    local askedAt = 0
+    local function IsMember()
+        local ok, clubs = pcall(C_Club.GetSubscribedClubs)
+        if not ok or type(clubs) ~= "table" then return false end
+        local id = GuildPrideDB and GuildPrideDB.communityClubId
+        local guildType = Enum and Enum.ClubType and Enum.ClubType.Guild
+        for _, c in ipairs(clubs) do
+            if id and c.clubId == id then return true end
+            if c.clubType ~= guildType and type(c.name) == "string" and c.name:lower():find("guildpride", 1, true) then
+                return true
+            end
+        end
+        return false
+    end
     community:SetScript("OnClick", function()
         if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON) end
+        askedAt = GetTime()
         StaticPopup_Show("GUILDPRIDE_COMMUNITY")
     end)
     community:SetScript("OnEnter", function(b)
@@ -247,11 +265,25 @@ do
         if UnitFactionGroup("player") ~= "Alliance" then return false end
         -- Seit Blizzards Hotfix vom 20.11.2026 kann der Realm-Name leer sein: dann nicht danach filtern
         local realm = (GetRealmName and GetRealmName() or ""):lower()
-        return realm == "" or realm:find("normal", 1, true) ~= nil
+        if realm ~= "" and not realm:find("normal", 1, true) then return false end
+        return not (canJoin and IsMember())
     end
     ns.CommunityHere = CommunityHere
     community:SetShown(CommunityHere())
     frame:HookScript("OnShow", function() community:SetShown(CommunityHere()) end)
+    if canJoin then
+        local watch = CreateFrame("Frame")
+        watch:RegisterEvent("CLUB_ADDED")
+        watch:SetScript("OnEvent", function(_, _, clubId)
+            if askedAt > 0 and GetTime() - askedAt < 900 and GuildPrideDB then
+                GuildPrideDB.communityClubId = clubId
+                askedAt = 0
+                StaticPopup_Hide("GUILDPRIDE_COMMUNITY")
+                print("|cffd4af37GuildPride|r " .. L["Willkommen in der GuildPride-Community!"])
+            end
+            community:SetShown(CommunityHere())
+        end)
+    end
 end
 
 local function UpdateHeader()

@@ -595,8 +595,8 @@ local enUS = {
     ["Nichts angehakt = alle Dungeons."] = "Nothing ticked = all dungeons.",
     ["Keine Dungeons gefunden."] = "No dungeons found.",
     ["Alle Dungeons"] = "All dungeons",
-    ["Nur Gruppen aus dem Dungeonbrowser für diese Dungeons zeigen. Einen oder mehrere anhaken."] =
-        "Only show Dungeon Finder groups for these dungeons. Tick one or more.",
+    ["Nur Gruppen für diese Dungeons zeigen (Dungeonbrowser und GuildPride). Einträge ohne Dungeon bleiben. Einen oder mehrere anhaken."] =
+        "Only show groups for these dungeons (Dungeon Finder and GuildPride). Entries without a dungeon stay. Tick one or more.",
     ["Holt Gruppen aus Blizzards Dungeonbrowser in diese Liste. Du erkennst sie an der Markierung [Dungeonbrowser]."] =
         "Adds groups from Blizzard's Dungeon Finder to this list. They are marked [Dungeon Finder].",
     ["Die Suche im Dungeonbrowser ist fehlgeschlagen."] = "The Dungeon Finder search failed.",
@@ -867,6 +867,8 @@ local enUS = {
     ["Fragt die Einträge von Gilde und Server neu ab."] = "Asks guild and server for their entries again.",
     ["Hierhin"] = "Go here",
     ["%d Spieler mit GuildPride (%d aus der Gilde, grün)"] = "%d players with GuildPride (%d from the guild, green)",
+    ["%d mit alter Version"] = "%d on an old version",
+    ["Version"] = "Version",
     ["(Mausrad)"] = "(mouse wheel)",
     ["alt"] = "old",
     ["%d Min."] = "%d min",
@@ -1167,6 +1169,8 @@ local enUS = {
     ["GuildPride Discord Support\n\nStrg+C kopiert den Link, dann im Browser einfügen."] = "GuildPride Discord support\n\nCtrl+C copies the link, then paste it into your browser.",
     ["Fragen, Hilfe, Fehler melden und Ideen: Klick zeigt den Einladungslink zum Kopieren."] = "Questions, help, bug reports and ideas: click shows the invite link to copy.",
     ["GuildPride Ingame-Community"] = "GuildPride in-game community",
+    ["Willkommen in der GuildPride-Community!"] = "Welcome to the GuildPride community!",
+    ["Diagnose – alles markieren, kopieren und uns schicken"] = "Diagnostics – select all, copy and send it to us",
     ["Klick: Einladungslink zum Kopieren – dann unter „Gilde & Communitys“ › Community beitreten einfügen."] = "Click: invite link to copy – then paste it under \"Guild & Communities\" › Join Community.",
     ["GuildPride Ingame-Community\n\n1. Strg+C kopiert den Link\n2. „Gilde & Communitys“ im Mikromenü öffnen\n3. Community beitreten › Link einfügen (Strg+V)"] = "GuildPride in-game community\n\n1. Ctrl+C copies the link\n2. Open \"Guild & Communities\" in the micro menu\n3. Join Community › paste the link (Ctrl+V)",
     ["GuildPride Ingame-Community\n\nStrg+C kopiert den Link, dann im Browser einfügen."] = "GuildPride in-game community\n\nCtrl+C copies the link, then paste it into your browser.",

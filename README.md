@@ -2,7 +2,7 @@
 
 [English](#english) · [Deutsch](#deutsch) · [Screenshots](#screenshots)
 
-World of Warcraft addon for WoW Forever only · Version 2.32.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
+World of Warcraft addon for WoW Forever only · Version 2.33.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
 
 ---
 
@@ -96,6 +96,7 @@ World of Warcraft addon for WoW Forever only · Version 2.32.0 · Author: Rottga
 | `/gp id` | your player ID code (never your BattleTag) |
 | `/gp news` · `/gp changelog` | what's new |
 | `/gp report` · `/gp errors` | bug report to copy |
+| `/gp diag` | diagnostics to copy (realm, guild, Dungeon Finder, community) |
 | `/gp options` | GuildPride page in the WoW options |
 
 ### Feedback
@@ -108,7 +109,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.32.0*
+*Version 2.33.0*
 
 ### NEU in 2.26
 
@@ -196,6 +197,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 | `/gp ausweis` | deinen Ausweis-Code zeigen (nie den BattleTag) |
 | `/gp neu` · `/gp changelog` | Neuerungen anzeigen |
 | `/gp melden` · `/gp fehler` | Fehlerbericht zum Kopieren |
+| `/gp diag` | Diagnose zum Kopieren (Realm, Gilde, Dungeonbrowser, Community) |
 | `/gp optionen` | GuildPride-Seite in den WoW-Optionen |
 
 ### Feedback

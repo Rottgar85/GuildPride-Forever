@@ -27,8 +27,8 @@ return function(test, eq, W, ns)
         publicOn()
         P.public = {}
         eq(P.Count(), 1, "nur du")
-        chan("Neu-Realm", msg("LYS", "F", "1453", ""))
-        chan("Alt-Realm", msg("LYS", "F", "1429", "12777279"))   -- ältere Version schickt noch einen Layer
+        chan("Neu-Realm", msg("LYS", "F", "1453", "", "2.33.0"))
+        chan("Alt-Realm", msg("LYS", "F", "1429", "12777279"))   -- ältere Version schickt noch einen Layer, keine Version
         chan("Retail-Realm", msg("LYS", "R", "1453", ""))       -- andere Spielversion
         chan("Quatsch|Realm", msg("LYS", "F", "1453", ""))      -- ungültiger Name
         eq(P.Count(), 3, "du + zwei andere")
@@ -36,6 +36,7 @@ return function(test, eq, W, ns)
         for _, e in ipairs(P.List()) do names[e.name] = e end
         eq(names["Neu"] ~= nil and names["Alt"] ~= nil, true)
         eq(names["Neu"].map, 1453)
+        eq(names["Neu"].ver, "2.33.0", "Version gemerkt"); eq(names["Alt"].ver, nil, "ohne Version")
         eq(names["Retail"], nil, "andere Spielversion zählt nicht")
         -- nach 25 Minuten ohne Meldung fällt man heraus
         W.Advance(26 * 60)
@@ -51,7 +52,9 @@ return function(test, eq, W, ns)
         local lys
         for _, m in ipairs(W.sent) do if m.kind == "LYS" then lys = m end end
         eq(lys ~= nil, true, "gemeldet"); eq(lys.target, "@PUBLIC")
-        eq(lys.msg:sub(-1), "\031", "drittes Feld (früher Layer) bleibt leer")
+        local fields = { strsplit("\031", lys.msg:match("^LYS:(.*)$")) }
+        eq(fields[3], "", "drittes Feld (früher Layer) bleibt leer")
+        eq(fields[4], tostring(ns.VERSION or ""), "Version dabei")
         -- ohne serverweite Gruppensuche: keine Meldung
         GuildPrideDB.publicLFG = nil
         W.sent = {}

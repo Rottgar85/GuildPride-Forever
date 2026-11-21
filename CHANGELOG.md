@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.33.0
+
+**Deutsch**
+- **Mehr Meilensteine**: GuildPride behält jetzt bis zu 500 statt 100 Einträge. Beim Öffnen der Meilensteine werden auch ältere Einträge bei anderen Mitgliedern nachgefragt, so füllt sich der Verlauf nach und nach wieder auf
+- **Community-Knopf** verschwindet, sobald du in der Community bist
+- **Dungeon-Filter** gilt jetzt auch für Einträge von GuildPride-Spielern mit Dungeon; Einträge ohne Dungeon (z. B. Quest-Hilfe) bleiben sichtbar
+- **/gp diag** zeigt einen Diagnose-Bericht zum Kopieren (Realm, Gilde, Dungeonbrowser, Community, gespeicherte Daten) – hilft bei Blizzard-Änderungen
+
+**English**
+- **More milestones**: GuildPride now keeps up to 500 instead of 100 entries. Opening Milestones also asks other members for older entries, so the history fills up again over time
+- **Community button** disappears once you are in the community
+- **Dungeon filter** now also applies to GuildPride entries with a dungeon; entries without a dungeon (e.g. quest help) stay visible
+- **/gp diag** shows a diagnostics report to copy (realm, guild, Dungeon Finder, community, saved data) – helps with Blizzard changes
+
 ## 2.32.0
 
 **Deutsch**

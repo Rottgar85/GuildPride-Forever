@@ -2,7 +2,7 @@
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting directory, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Version 2.32.0 · Deutsche Beschreibung weiter unten.*
+*Version 2.33.0 · Deutsche Beschreibung weiter unten.*
 
 ---
 
@@ -94,6 +94,7 @@
 | `/gp id` | your player ID code (never your BattleTag) |
 | `/gp news` · `/gp changelog` | what's new |
 | `/gp report` · `/gp errors` | bug report to copy |
+| `/gp diag` | diagnostics to copy (realm, guild, Dungeon Finder, community) |
 | `/gp options` | GuildPride page in the WoW options |
 
 ### Feedback
@@ -106,7 +107,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.32.0*
+*Version 2.33.0*
 
 ### NEU in 2.26
 
@@ -194,6 +195,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 | `/gp ausweis` | deinen Ausweis-Code zeigen (nie den BattleTag) |
 | `/gp neu` · `/gp changelog` | Neuerungen anzeigen |
 | `/gp melden` · `/gp fehler` | Fehlerbericht zum Kopieren |
+| `/gp diag` | Diagnose zum Kopieren (Realm, Gilde, Dungeonbrowser, Community) |
 | `/gp optionen` | GuildPride-Seite in den WoW-Optionen |
 
 ### Feedback

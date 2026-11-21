@@ -849,6 +849,32 @@ test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", fun
     eq(match(nil, { ["Die Todesminen"] = true }), false, "ohne Dungeon nicht zeigen, wenn gefiltert")
 end)
 
+test("/gp diag: Bericht entsteht ohne Fehler und nennt den Realm", function()
+    W.Load("GuildPrideDiag.lua")
+    local text = ns.DiagReport()
+    eq(type(text), "string")
+    eq(text:find("GetRealmName", 1, true) ~= nil, true)
+    eq(text:find("== Dungeonbrowser ==", 1, true) ~= nil, true)
+end)
+
+test("Meilensteine: Abgleich fragt auch nach älteren Einträgen (MHO)", function()
+    local log = ns.GuildLog()
+    local saved = {}
+    for i, e in ipairs(log) do saved[i] = e end
+    for i = #log, 1, -1 do log[i] = nil end
+    local now = math.floor(W.server)
+    log[1] = { kind = "LEVEL", who = "Anna", value = 60, t = now - 100 }
+    log[2] = { kind = "LEVEL", who = "Anna", value = 50, t = now - 5000 }
+    W.sent = {}
+    ns.RequestHistory()
+    local mho
+    for _, m in ipairs(W.sent) do if m.kind == "MHO" then mho = m end end
+    eq(mho ~= nil, true, "fragt nach Älterem")
+    eq(mho.msg:match("^MHO:(%d+)"), tostring(now - 5000), "vor dem eigenen ältesten")
+    for i = #log, 1, -1 do log[i] = nil end
+    for i, e in ipairs(saved) do log[i] = e end
+end)
+
 test("Hotfix 20.11.2026: ohne Realm-Namen bleiben die Gildendaten beim alten Realm", function()
     local oldGI, oldRN, oldNRN = GetGuildInfo, GetRealmName, GetNormalizedRealmName
     local oldName, oldNorm, oldGuilds = GuildPrideDB.realmName, GuildPrideDB.realmNorm, GuildPrideDB.guilds

@@ -2,7 +2,8 @@
 -- Gildenmitglieder grün. Früher Teil des Layer-Wechsels (GuildPrideLayer.lua), der seit Blizzards
 -- Hotfix vom 20.11.2026 nicht mehr geht; die Meldungen behalten ihre Namen, damit ältere
 -- Versionen weiter mitzählen:
---   LYS  F · Karte · ""    „ich bin da“ im offenen GuildPride-Kanal (das dritte Feld war der Layer)
+--   LYS  F · Karte · "" · Version   „ich bin da“ im offenen GuildPride-Kanal (das dritte Feld war der
+--                          Layer; die Version kommt ab 2.33.0 dazu, ältere Versionen schicken sie nicht)
 --   LYP  F                 alle fragen; geantwortet wird öffentlich, höchstens einmal pro Minute
 -- Gildenmitglieder mit GuildPride kommen zusätzlich aus der Versionsabfrage (ns.Versions).
 -- Öffnen: Knopf über „Einstellungen“ im Gildenfenster oder /gp spieler.
@@ -50,18 +51,19 @@ function P.Share(force)
         return
     end
     lastShareAt, lastMap = GetTime(), map
-    ns.Queue("LYS", "@PUBLIC", ns.CLIENT_TAG, map, "")
+    ns.Queue("LYS", "@PUBLIC", ns.CLIENT_TAG, map, "", ns.VERSION or "")
 end
 
-local function Store(sender, map)
+local function Store(sender, map, ver)
     if type(sender) ~= "string" or Secret(sender) or #sender > 60 or sender:find("|", 1, true) then return end
     map = tonumber(map)
     if map and (map <= 0 or map > 999999) then map = nil end
+    if type(ver) ~= "string" or #ver > 20 or not ver:match("^%d+%.%d+[%.%d]*$") then ver = nil end
     if not P.public[sender] then
         if publicCount >= PUBLIC_MAX then return end
         publicCount = publicCount + 1
     end
-    P.public[sender] = { map = map, t = GetTime() }
+    P.public[sender] = { map = map, t = GetTime(), ver = ver }
     if P.Refresh then P.Refresh() end
 end
 
@@ -80,7 +82,7 @@ function ns.OnPlayersMessage(message, sender)
     if not kind then return end
     local f = { strsplit(SEP, value) }
     if f[1] ~= ns.CLIENT_TAG then return end
-    if kind == "LYS" then Store(sender, f[2])
+    if kind == "LYS" then Store(sender, f[2], f[4])
     elseif kind == "LYP" and Available() then Answer() end
 end
 
@@ -109,7 +111,8 @@ function P.List()
             local full = rname and (ns.FullName and ns.FullName(rname) or rname)
             if online and full and ns.Versions[full] and full ~= ns.Me() then
                 seen[full] = true
-                list[#list + 1] = { name = full, guild = true, zoneText = type(zone) == "string" and zone or nil }
+                list[#list + 1] = { name = full, guild = true, zoneText = type(zone) == "string" and zone or nil,
+                                    ver = ns.Versions[full] }
             end
         end
     end
@@ -119,9 +122,10 @@ function P.List()
             publicCount = publicCount - 1
         elseif name ~= ns.Me() then
             if seen[name] then
-                for _, x in ipairs(list) do if x.name == name then x.map = e.map end end
+                for _, x in ipairs(list) do if x.name == name then x.map = e.map; x.ver = x.ver or e.ver end end
             else
-                list[#list + 1] = { name = name, map = e.map, guild = ns.IsGuildMember and ns.IsGuildMember(name) or false }
+                list[#list + 1] = { name = name, map = e.map, ver = e.ver,
+                                    guild = ns.IsGuildMember and ns.IsGuildMember(name) or false }
             end
         end
     end
@@ -168,18 +172,26 @@ local function Refresh()
                 .. Ambiguate(e.name, "none") .. "|r")
             local zoneTxt = e.zoneText or ZoneName(e.map)
             row.zone:SetText((e.here and "|cffe6e0da" or "|cff888888") .. zoneTxt .. "|r")
+            -- Version: rot = älter als deine, grün = neuer, grau = unbekannt (Version vor 2.33.0)
+            local cmp = e.ver and ns.CompareVersion and ns.VERSION and ns.CompareVersion(e.ver, ns.VERSION)
+            row.ver:SetText(not e.ver and "|cff666666?|r"
+                or ((cmp or 0) < 0 and "|cffff5050" or (cmp or 0) > 0 and "|cff40ff40" or "|cffaaaaaa") .. e.ver .. "|r")
             row:Show()
         else
             row:Hide()
         end
     end
-    local guildN = 0
-    for _, e in ipairs(entries) do if e.guild then guildN = guildN + 1 end end
+    local guildN, oldN = 0, 0
+    for _, e in ipairs(entries) do
+        if e.guild then guildN = guildN + 1 end
+        if e.ver and ns.CompareVersion and ns.VERSION and ns.CompareVersion(e.ver, ns.VERSION) < 0 then oldN = oldN + 1 end
+    end
     local more = #entries - ROWS - win.offset
     win.empty:SetShown(#entries == 0)
     win.empty:SetText(Available() and L["Noch keine Meldungen – die Liste füllt sich in den nächsten Sekunden."]
         or L["Für alle Spieler auf dem Server: Einstellungen › Serverweite Gruppensuche einschalten. Ohne sie siehst du nur deine Gilde."])
     win.count:SetText((L["%d Spieler mit GuildPride (%d aus der Gilde, grün)"]):format(#entries + 1, guildN)
+        .. (oldN > 0 and ("  ·  |cffff5050" .. (L["%d mit alter Version"]):format(oldN) .. "|r") or "")
         .. (more > 0 and ("  ·  " .. (L["… und %d weitere"]):format(more) .. " " .. L["(Mausrad)"]) or ""))
 end
 P.Refresh = Refresh
@@ -209,8 +221,10 @@ function P.Toggle()
         local headName = win:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
         headName:SetPoint("TOPLEFT", 16, -34); headName:SetText(L["Name"])
         local headZone = win:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
-        headZone:SetPoint("TOPLEFT", 172, -34); headZone:SetText(L["Zone"])
-        if ns.Paint then ns.Paint(headName, "title"); ns.Paint(headZone, "title") end
+        headZone:SetPoint("TOPLEFT", 158, -34); headZone:SetText(L["Zone"])
+        local headVer = win:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+        headVer:SetPoint("TOPRIGHT", -16, -34); headVer:SetText(L["Version"])
+        if ns.Paint then ns.Paint(headName, "title"); ns.Paint(headZone, "title"); ns.Paint(headVer, "title") end
         win:EnableMouseWheel(true)
         win:SetScript("OnMouseWheel", function(_, delta)
             win.offset = math.max(0, (win.offset or 0) - delta * 3)
@@ -225,9 +239,11 @@ function P.Toggle()
                 if i % 2 == 0 then ns.Paint(row:CreateTexture(nil, "BACKGROUND"), "glow", 0.05):SetAllPoints() end
             end
             row.name = row:CreateFontString(nil, "OVERLAY", "GPFont_Text")
-            row.name:SetPoint("LEFT", 0, 0); row.name:SetWidth(150); row.name:SetJustifyH("LEFT"); row.name:SetWordWrap(false)
+            row.name:SetPoint("LEFT", 0, 0); row.name:SetWidth(138); row.name:SetJustifyH("LEFT"); row.name:SetWordWrap(false)
             row.zone = row:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
-            row.zone:SetPoint("LEFT", 156, 0); row.zone:SetWidth(156); row.zone:SetJustifyH("LEFT"); row.zone:SetWordWrap(false)
+            row.zone:SetPoint("LEFT", 142, 0); row.zone:SetWidth(116); row.zone:SetJustifyH("LEFT"); row.zone:SetWordWrap(false)
+            row.ver = row:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+            row.ver:SetPoint("RIGHT", -2, 0); row.ver:SetWidth(50); row.ver:SetJustifyH("RIGHT"); row.ver:SetWordWrap(false)
             win.rows[i] = row
         end
         win.empty = win:CreateFontString(nil, "OVERLAY", "GPFont_Muted")

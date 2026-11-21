@@ -19,6 +19,7 @@ local function Compare(a, b)
     if a3 ~= b3 then return a3 > b3 and 1 or -1 end
     return 0
 end
+ns.CompareVersion = Compare   -- 1: a neuer, -1: a älter, 0: gleich (GuildPridePlayers.lua)
 
 local warned = false
 ns.On("VER", function(payload, sender)
