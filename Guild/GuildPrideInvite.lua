@@ -271,6 +271,7 @@ local dialog
 function ns.GuildInviteDialog(rawName)
     local name = Clean(rawName)
     name = ns.Normalize(name) or name
+    if name ~= "" and ns.Block and ns.Block.Refuse(name) then return end   -- Blockliste
     if not dialog then
         dialog = CreateFrame("Frame", "GuildPrideInviteDialog", UIParent, "BackdropTemplate")
         dialog:SetFrameStrata("DIALOG")

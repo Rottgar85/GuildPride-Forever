@@ -95,11 +95,25 @@ return function(test, eq, W, ns)
         eq(dock(-20, 1250), nil, "mitten im Tunnel kein Bahnsteig")
         eq(T.Board(TRAM, "a").timed, false, "ungemessen")
         eq(T.LeadOf("tram"), 15, "Bahn: kurze Erinnerung"); eq(T.LeadOf("boat"), 60, "Schiff: 1 Minute")
+        local halt = { timed = true, arriveIn = 0, departIn = 10, nextIn = 80, stay = 15, period = 143 }
+        eq(T.StatusText(halt, "tram"):find("Bahnsteig", 1, true) ~= nil, true, "Bahn: Bahnsteig statt Steg")
+        eq(T.StatusText(halt, "tram"):find("Steg", 1, true), nil)
+        eq(select(2, T.Clock(halt, "tram")), "fährt ab"); eq(select(2, T.Clock(halt)), "legt ab")
         local now = T.Now()
         T.Sighted("tram-176080", { epoch = now * 1000 - 58633, seen = math.floor(now), source = "you" })
         local b = T.Board(TRAM, "a", now)
         eq(b.timed, true, "gemessen"); eq(b.own, true)
         eq(b.departIn > 0 and b.departIn <= 143.333 + 15, true, "Abfahrt innerhalb einer Runde")
+        -- Minimap-Tooltip: Abfahrten in der Nähe (am Bahnsteig in Sturmwind)
+        local oldPos = T.Position
+        T.Position = function() return -20, 2500, 0, 369 end
+        local lines = T.NearbyLines(4, now)
+        local tram = false
+        for _, l in ipairs(lines) do if l[1]:find("Tiefenbahn nach", 1, true) then tram = true end end
+        eq(tram, true, "Tiefenbahn steht im Tooltip")
+        T.Position = function() return nil end
+        eq(#T.NearbyLines(4, now), 0, "ohne Position nichts")
+        T.Position = oldPos
         T.Forget()
     end)
 

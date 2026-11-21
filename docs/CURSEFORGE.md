@@ -2,7 +2,7 @@
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting directory, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Version 2.36.0 · Deutsche Beschreibung weiter unten.*
+*Version 2.37.0 · Deutsche Beschreibung weiter unten.*
 
 ---
 
@@ -12,7 +12,7 @@
 
 - **Dungeons and raids for guild events** – the **New event** window has a button each for **dungeon** and **raid**: every WoW Forever dungeon and raid with level and player count, the name becomes the title. The event list gets its own column (e.g. *Raid · 40*), the lineup follows the group size, and Discord gets the choice so the bot builds the matching group.
 - **Sharing without exception** – ship and zeppelin times, rares and auction house prices are always shared with everyone using GuildPride, even with the server-wide group finder off.
-- **Ship timer** – times confirmed by several players (*confirmed 3×*), a reminder 1 minute before departure and last week's time as a guess after the reset.
+- **Departures** – times confirmed by several players (*confirmed 3×*), a reminder 1 minute before departure and last week's time as a guess after the reset.
 
 ### Guild window
 
@@ -46,7 +46,7 @@
 
 ### Travel & rares
 
-- **Ship timer** – stand at a dock (ship, zeppelin, airship) or a Deeprun Tram platform and a small window shows a countdown per connection: whether it is **at the dock and when it leaves**, when the next one arrives and the one after. Times are measured when someone rides along and are **shared with everyone using GuildPride**.
+- **Departures** – stand at a dock (ship, zeppelin, airship) or a Deeprun Tram platform and a small window shows a countdown per connection: whether it is **at the dock and when it leaves**, when the next one arrives and the one after. Times are measured when someone rides along and are **shared with everyone using GuildPride**.
 - **Your own time first** – your own measurement wins; otherwise the time most players measured themselves (*confirmed 3×*). A single differing report does not replace it. Since Blizzard's hotfix of 2026-11-20 layers can no longer be detected, so no layer numbers are shown.
 - **Reminder** – click the clock icon on a connection: raid warning and sound 1 minute before departure, even when you have left the dock.
 - **After the weekly reset** – until someone measures again, last week's time shows as *guessed*.
@@ -95,6 +95,8 @@
 | `/gp news` · `/gp changelog` | what's new |
 | `/gp report` · `/gp errors` | bug report to copy |
 | `/gp diag` | diagnostics to copy (realm, guild, Dungeon Finder, community) |
+| `/gp note <name> <text>` | your own note on a player, shown in their tooltip (only for you; without text: delete) |
+| `/gp blocklist` · `/gp block <name> [reason]` · `/gp unblock <name>` | block list: these players are not invited to the guild (officers change it; names with spaces in quotes) |
 | `/gp price <item> <price>` | price alert without the auction house window (`off` removes it, without arguments: list) |
 | `/gp options` | GuildPride page in the WoW options |
 
@@ -108,13 +110,13 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.36.0*
+*Version 2.37.0*
 
 ### NEU in 2.26
 
 - **Dungeons und Raids bei Gildenevents** – im Fenster **Neues Event** je ein Knopf für **Dungeon** und **Raid**: alle Dungeons und Raids von WoW Forever mit Stufe und Spielerzahl, der Name wird als Titel übernommen. Die Event-Liste bekommt eine eigene Spalte (z. B. *Raid · 40*), die Aufstellung richtet sich nach der Gruppengröße, und Discord bekommt die Auswahl mit, damit der Bot die passende Gruppe anlegt.
 - **Teilen ohne Ausnahme** – Schiffs- und Zeppelinzeiten, Rares und Auktionshauspreise werden immer mit allen GuildPride-Spielern geteilt, auch wenn die serverweite Gruppensuche aus ist.
-- **Schiffs-Zähler** – von mehreren Spielern bestätigte Zeiten (*3× bestätigt*), Erinnerung 1 Minute vor der Abfahrt und nach dem Reset die Zeit der letzten Woche als Vermutung.
+- **Abfahrten** – von mehreren Spielern bestätigte Zeiten (*3× bestätigt*), Erinnerung 1 Minute vor der Abfahrt und nach dem Reset die Zeit der letzten Woche als Vermutung.
 
 ### Gildenfenster
 
@@ -148,7 +150,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 ### Reisen & Rares
 
-- **Schiffs-Zähler** – stehst du an einem Anleger (Schiff, Zeppelin, Luftschiff) oder am Bahnsteig der Tiefenbahn, zeigt ein kleines Fenster je Verbindung einen Countdown: ob es **am Steg liegt und wann es ablegt**, wann das nächste kommt und das danach. Gemessen wird, wenn jemand mitfährt – und **mit allen GuildPride-Spielern geteilt**.
+- **Abfahrten** – stehst du an einem Anleger (Schiff, Zeppelin, Luftschiff) oder am Bahnsteig der Tiefenbahn, zeigt ein kleines Fenster je Verbindung einen Countdown: ob es **am Steg liegt und wann es ablegt**, wann das nächste kommt und das danach. Gemessen wird, wenn jemand mitfährt – und **mit allen GuildPride-Spielern geteilt**.
 - **Deine Zeit zuerst** – deine eigene Messung gilt; sonst die Zeit, die die meisten selbst gemessen haben (*3× bestätigt*). Eine einzelne abweichende Meldung verdrängt sie nicht. Seit Blizzards Hotfix vom 20.11.2026 lassen sich Layer nicht mehr erkennen, darum gibt es keine Layer-Nummern.
 - **Erinnerung** – Uhr-Symbol an einer Verbindung anklicken: Raid-Warnung und Ton 1 Minute vor der Abfahrt, auch wenn du nicht mehr am Anleger bist.
 - **Nach dem wöchentlichen Reset** – bis wieder jemand misst, steht die Zeit der letzten Woche als *vermutet* da.
@@ -197,6 +199,8 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 | `/gp neu` · `/gp changelog` | Neuerungen anzeigen |
 | `/gp melden` · `/gp fehler` | Fehlerbericht zum Kopieren |
 | `/gp diag` | Diagnose zum Kopieren (Realm, Gilde, Dungeonbrowser, Community) |
+| `/gp notiz <Name> <Text>` | eigene Notiz zu einem Spieler, steht in seinem Tooltip (nur für dich; ohne Text: löschen) |
+| `/gp blockliste` · `/gp block <Name> [Grund]` · `/gp unblock <Name>` | Blockliste: diese Spieler werden nicht in die Gilde eingeladen (ändern nur Offiziere; Namen mit Leerzeichen in Anführungszeichen) |
 | `/gp preis <Gegenstand> <Preis>` | Preisalarm ohne Auktionshaus-Fenster (`aus` entfernt ihn, ohne Angaben: Liste) |
 | `/gp optionen` | GuildPride-Seite in den WoW-Optionen |
 

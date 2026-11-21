@@ -1,5 +1,23 @@
 # GuildPride Changelog
 
+## 2.37.0
+
+**Deutsch**
+- **Blockliste**: Spieler, die nicht in die Gilde eingeladen werden sollen (Verwaltung › „Blockliste …“, `/gp blockliste`, `/gp block Name Grund`). Gilt für die ganze Gilde, nur Offiziere ändern sie. Einladen über GuildPride lehnt gesperrte Spieler ab, Blizzards Einladefenster zeigt beim Eintippen eine Warnung, und tritt ein gesperrter Spieler doch bei, werden Offiziere gewarnt
+- **Notizen zu Spielern**: `/gp notiz Name Text` – die Notiz steht im Tooltip des Spielers, nur für dich
+- **Abfahrten im Minimap-Tooltip**: gemessene Abfahrten in der Nähe (Schiffe, Zeppeline, Tiefenbahn) stehen im Tooltip des GuildPride-Knopfs
+- **Preisalarm-Übersicht**: `/gp preis` zeigt alle Alarme mit dem zuletzt bekannten Preis; ✓ = gerade günstiger als dein Alarm
+- **Tiefenbahn**: eigenes Lokomotiven-Symbol und passende Texte („steht am Bahnsteig“, „fährt ab“) statt Schiffs-Wörtern
+- „Schiffs-Zähler“ heißt jetzt **Abfahrten**, weil auch Zeppeline und die Bahn dazugehören
+
+**English**
+- **Block list**: players who must not be invited to the guild (Management › "Block list …", `/gp blocklist`, `/gp block name reason`). Applies to the whole guild, only officers change it. Inviting through GuildPride refuses blocked players, Blizzard's invite window shows a warning while typing, and officers are warned if a blocked player joins anyway
+- **Notes on players**: `/gp note name text` – the note shows in the player's tooltip, only for you
+- **Departures in the minimap tooltip**: measured departures nearby (ships, zeppelins, Deeprun Tram) show in the GuildPride button's tooltip
+- **Price alert overview**: `/gp price` lists all alerts with the last known price; ✓ = currently below your alert
+- **Deeprun Tram**: its own locomotive icon and fitting texts ("at the platform", "departs") instead of ship words
+- "Ship timer" is now called **Departures**, since zeppelins and the tram belong to it too
+
 ## 2.36.0
 
 **Deutsch**

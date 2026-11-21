@@ -519,7 +519,7 @@ local function Record()
     if changed then
         ride.announced = id
         if not routine then
-            if GP.Print then GP.Print(L["Schiffs-Zähler: Fahrplan durch deine Fahrt gemessen – die Gilde und andere GuildPride-Spieler bekommen ihn auch."]) end
+            if GP.Print then GP.Print(L["Abfahrten: Fahrplan durch deine Fahrt gemessen – die Gilde und andere GuildPride-Spieler bekommen ihn auch."]) end
             Share(id, nil, group)
             SharePublic(id, group)
         end

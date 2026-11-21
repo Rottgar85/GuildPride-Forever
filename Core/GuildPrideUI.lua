@@ -980,6 +980,8 @@ function ns.InviteToGuild(name)
     if CanGuildInvite and not CanGuildInvite() then
         ns.Print(L["|cffff4040Du darfst keine Spieler in die Gilde einladen.|r"]); return
     end
+    -- Blockliste (GuildPrideBlock.lua): gesperrte Spieler gar nicht erst einladen
+    if ns.Block and ns.Block.Refuse(name) then return end
     if ns.IS_FOREVER then
         if ns.GuildInviteDialog then ns.GuildInviteDialog(name) elseif ns.ShowInviteHint then ns.ShowInviteHint(name) end
         return
@@ -1994,7 +1996,7 @@ local options = {
     { key = "ahTooltip",     label = L["Auktionshauspreis im Item-Tooltip zeigen"] },
     { key = "ahTooltipWithAuctionator", label = L["Tooltip-Preis auch zeigen, wenn Auctionator geladen ist"] },
     { header = L["Reisen"] },
-    { key = "transitUI",     label = L["Schiffs-Zähler am Anleger zeigen (wann das nächste Schiff kommt)"],
+    { key = "transitUI",     label = L["Abfahrten an Anlegern und Bahnsteigen zeigen (wann Schiff, Zeppelin oder Bahn kommt)"],
       changed = function() if ns.Transit and ns.Transit.SetWindow then ns.Transit.SetWindow(GuildPrideDB.transitUI) end end },
     { key = "flightTimes",   label = L["Flugzeit am Flugmeister im Tooltip zeigen (lernt echte Zeiten beim Fliegen)"] },
     { key = "flightUI",      label = L["Flug-Zähler im Flug zeigen (Restzeit bis zur Landung)"],

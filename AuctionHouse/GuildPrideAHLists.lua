@@ -433,6 +433,22 @@ function AH.ParsePriceArgs(rest)
     return rest, nil, false
 end
 
+-- Übersicht aller Preisalarme mit dem zuletzt bekannten Preis (eigene Suche oder andere
+-- GuildPride-Spieler): { id, want, price, t, hit }, Treffer zuerst, dann nach Name
+function AH.AlertOverview()
+    local out = {}
+    for id, want in pairs(Alerts()) do
+        local price, t = AH.PriceFor(AH.Key(id))
+        out[#out + 1] = { id = id, want = want, price = price, t = t, hit = price ~= nil and price <= want,
+                          name = AH.ItemName(id) or ("#" .. id) }
+    end
+    table.sort(out, function(a, b)
+        if a.hit ~= b.hit then return a.hit end
+        return a.name < b.name
+    end)
+    return out
+end
+
 local function ItemIdOf(text)
     local id = text:match("|Hitem:(%d+)") or text:match("^#?(%d+)$")
     if id then return tonumber(id) end
@@ -449,12 +465,14 @@ do
         if cmd ~= "preis" and cmd ~= "price" then return origPrice(arg) end
         local item, copper, off = AH.ParsePriceArgs(rest)
         if not item then
-            local n = 0
-            for id, c in pairs(Alerts()) do
-                n = n + 1
-                AH.Print(("%s: %s"):format(AH.ItemName(id) or ("#" .. id), AH.Money(c)))
+            local list = AH.AlertOverview()
+            if #list == 0 then AH.Print(L["Keine Preisalarme. Neu: /gp preis Gegenstand 1g 50s"]) return end
+            AH.Print(L["Deine Preisalarme (zuletzt bekannter Preis):"])
+            for _, a in ipairs(list) do
+                local seen = a.price and ((a.hit and "|cff40ff40" or "|cffaaaaaa") .. AH.Money(a.price) .. "|r"
+                    .. (a.t and (" |cff777777(" .. date("%d.%m. %H:%M", a.t) .. ")|r") or "")) or ("|cff777777" .. L["noch kein Preis"] .. "|r")
+                print(("  %s%s: %s %s · %s"):format(a.hit and "|cff40ff40✓|r " or "", a.name, L["höchstens"], AH.Money(a.want), seen))
             end
-            if n == 0 then AH.Print(L["Keine Preisalarme. Neu: /gp preis Gegenstand 1g 50s"]) end
             return
         end
         local id = ItemIdOf(item)

@@ -1,10 +1,10 @@
--- GuildPride: Schiffs-Zähler am Anleger. Steht man an einem Steg oder Zeppelinturm, zeigt ein
+-- GuildPride: Abfahrten an Anlegern und Bahnsteigen. Steht man an einem Steg oder Zeppelinturm, zeigt ein
 -- kleines, verschiebbares Fenster je Verbindung eine Karte: Schiffs- bzw. Zeppelin-Symbol, Ziel,
 -- rechts groß der Countdown (grün „legt ab“, solange es am Steg liegt; gold „kommt an“), darunter
 -- wann das nächste kommt, und ein dünner Balken für den Fortschritt. Ungemessene Verbindungen zeigen
 -- die mittlere Wartezeit (gemessen wird beim Mitfahren, siehe GuildPrideTransit.lua).
--- Symbole: Media/transit_boat.tga und transit_zeppelin.tga aus Polestar (GPL-3.0-only).
--- Aus: Einstellungen › „Schiffs-Zähler am Anleger zeigen“. X blendet es aus, bis du den Anleger verlässt.
+-- Symbole: Media/transit_boat.tga und transit_zeppelin.tga aus Polestar (GPL-3.0-only); transit_tram.tga (Lok) eigen.
+-- Aus: Einstellungen › „Abfahrten an Anlegern und Bahnsteigen zeigen“. X blendet es aus, bis du den Anleger verlässt.
 -- Die Uhr an einer Karte erinnert 1 Minute vor der Abfahrt (Raid-Warnung und Ton), auch wenn du
 -- inzwischen woanders bist.
 local ADDON, GP = ...
@@ -18,7 +18,7 @@ local REACH = 120   -- yd um den Halt
 local MEDIA = GP.MEDIA or "Interface\\AddOns\\GuildPrideForever\\Media\\"
 local KIND = { boat = L["Schiff"], zeppelin = L["Zeppelin"], airship = L["Luftschiff"], tram = L["Tiefenbahn"] }
 local ICON = { boat = MEDIA .. "transit_boat", zeppelin = MEDIA .. "transit_zeppelin", airship = MEDIA .. "transit_zeppelin",
-              tram = MEDIA .. "transit_boat" }   -- kein eigenes Bahn-Symbol: Schiff in Grau
+              tram = MEDIA .. "transit_tram" }   -- Lokomotive, eigenes Symbol im Stil der Polestar-Bilder
 -- Farbe je Art: Schiffe meerblau, Zeppeline und Luftschiffe messing
 local TINT = { boat = { 0.45, 0.75, 1 }, zeppelin = { 1, 0.78, 0.35 }, airship = { 1, 0.78, 0.35 }, tram = { 0.75, 0.75, 0.8 } }
 local GREEN, GOLD, GREY = { 0.35, 0.95, 0.45 }, { 1, 0.82, 0.2 }, { 0.6, 0.6, 0.6 }
@@ -32,7 +32,8 @@ T.reminders = {}        -- ["id|side"] = { id, side, kind, to, skipUntil }
 local function Enabled() return not (type(GuildPrideDB) == "table" and GuildPrideDB.transitUI == false) end
 
 -- Text unter dem Ziel (Zeile 2 der Karte)
-function T.StatusText(b)
+-- kind: "tram" für die Tiefenbahn (Bahnsteig, fährt ab), sonst Schiffs-Wörter (Steg, legt ab)
+function T.StatusText(b, kind)
     if not b then return "" end
     local C = T.Countdown
     if not b.timed then
@@ -40,19 +41,22 @@ function T.StatusText(b)
         return L["|cffaaaaaanoch nicht gemessen|r"]
     end
     if b.arriveIn <= 0 then
+        if kind == "tram" then
+            return (L["|cff40ff40steht am Bahnsteig|r – fährt ab in %s · nächste kommt in %s"]):format(C(b.departIn), C(b.nextIn))
+        end
         return (L["|cff40ff40liegt am Steg|r – legt ab in %s · nächstes kommt in %s"]):format(C(b.departIn), C(b.nextIn))
     end
     return (L["kommt in |cffffd100%s|r · danach in %s"]):format(C(b.arriveIn), C(b.nextIn))
 end
 
 -- Rechte Seite der Karte: großer Countdown, Beschriftung, Farbe, Balken (0–1)
-function T.Clock(b)
+function T.Clock(b, kind)
     if not b or not b.timed then
         return "–", b and b.wait and (L["Ø %s"]):format(T.Countdown(b.wait)) or "", GREY, 0
     end
     if b.arriveIn <= 0 then
         local stay = b.stay and b.stay > 0 and b.stay or b.departIn
-        return T.Countdown(b.departIn), L["legt ab"], GREEN, math.max(0, math.min(1, b.departIn / stay))
+        return T.Countdown(b.departIn), kind == "tram" and L["fährt ab"] or L["legt ab"], GREEN, math.max(0, math.min(1, b.departIn / stay))
     end
     local wait = b.period and b.stay and (b.period - b.stay) or b.arriveIn
     return T.Countdown(b.arriveIn), L["kommt an"], GOLD, math.max(0, math.min(1, 1 - b.arriveIn / math.max(1, wait)))
@@ -98,7 +102,9 @@ local function MakeRow(i)
     r.bell:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText(L["Erinnern"], 1, 1, 1)
-        GameTooltip:AddLine(L["1 Minute vor der Abfahrt mit Raid-Warnung und Ton Bescheid geben – auch wenn du nicht mehr am Anleger bist."],
+        GameTooltip:AddLine(r.dock and r.dock.kind == "tram"
+            and L["15 Sekunden vor der Abfahrt mit Raid-Warnung und Ton Bescheid geben – auch wenn du nicht mehr am Bahnsteig bist."]
+            or L["1 Minute vor der Abfahrt mit Raid-Warnung und Ton Bescheid geben – auch wenn du nicht mehr am Anleger bist."],
             0.8, 0.8, 0.8, true)
         GameTooltip:Show()
     end)
@@ -181,13 +187,14 @@ local function DrawRow(r, d, b)
     r.icon:SetVertexColor(tint[1], tint[2], tint[3])
     r.edge:SetColorTexture(tint[1], tint[2], tint[3], 0.9)
     r.to:SetText((L["%s nach %s"]):format(KIND[d.kind] or KIND.boat, tostring(d.to)))
-    local clock, label, color, fill = T.Clock(b)
+    local clock, label, color, fill = T.Clock(b, d.kind)
     r.clock:SetText(clock); r.clock:SetTextColor(color[1], color[2], color[3])
     r.clockLabel:SetText(label)
     if b and b.timed then
         local text
         if b.arriveIn <= 0 then
-            text = (L["|cff40ff40liegt am Steg|r · nächstes in %s"]):format(T.Countdown(b.nextIn))
+            text = (d.kind == "tram" and L["|cff40ff40steht am Bahnsteig|r · nächste in %s"]
+                or L["|cff40ff40liegt am Steg|r · nächstes in %s"]):format(T.Countdown(b.nextIn))
         else
             text = (L["danach in %s"]):format(T.Countdown(b.nextIn))
         end
@@ -225,7 +232,7 @@ function T.ToggleReminder(d, now)
     T.reminders[key] = { id = d.id, side = d.side, kind = d.kind, to = d.to, skipUntil = skip }
     if GP.Print then
         GP.Print(d.kind == "tram" and (L["Tiefenbahn: Erinnerung 15 Sek. vor der Abfahrt nach %s."]):format(tostring(d.to))
-            or (L["Schiffs-Zähler: Erinnerung 1 Min. vor der Abfahrt nach %s."]):format(tostring(d.to)))
+            or (L["Abfahrten: Erinnerung 1 Min. vor der Abfahrt nach %s."]):format(tostring(d.to)))
     end
     return true
 end
@@ -268,6 +275,8 @@ local function Draw(docks, now)
     if #ask > 0 and T.RequestPublic then T.RequestPublic(ask) end
     frame.dock:SetText(docks[1] and T.EndName(docks[1].id, docks[1].side) or "")
     frame.logo:SetTexture(ICON[docks[1] and docks[1].kind] or ICON.boat)
+    -- Titel: an der Tiefenbahn „Tiefenbahn“ statt „Schiffe“
+    frame.title:SetText(docks[1] and docks[1].kind == "tram" and L["GuildPride – Tiefenbahn"] or L["GuildPride – Schiffe"])
     local h = TOP + shown * (ROW_H + GAP) + 6
     frame.hint:ClearAllPoints()
     frame.hint:SetPoint("TOPLEFT", 12, -(TOP + shown * (ROW_H + GAP)))
@@ -278,6 +287,27 @@ local function Draw(docks, now)
     frame.hint:SetShown(untimed); frame.untimed = untimed
     if untimed then h = h + 26 end
     frame:SetHeight(h)
+end
+
+-- Für den Tooltip des Minimap-Knopfs: gemessene Abfahrten in der Nähe (bis 1500 Meter),
+-- höchstens max Zeilen: { text, r, g, b }
+function T.NearbyLines(max, now)
+    now = now or T.Now()
+    local x, y, _, map = T.Position()
+    if not x then return {} end
+    local out = {}
+    for _, d in ipairs(T.DocksNear(map, x, y, 1500)) do
+        if #out >= (max or 4) then break end
+        local b = T.Board(d.id, d.side, now)
+        if b and b.timed then
+            local what = b.arriveIn <= 0
+                and (d.kind == "tram" and L["fährt ab in %s"] or L["legt ab in %s"]):format(T.Countdown(b.departIn))
+                or (L["kommt in %s"]):format(T.Countdown(b.arriveIn))
+            out[#out + 1] = { (L["%s nach %s"]):format(KIND[d.kind] or KIND.boat, tostring(d.to)) .. ": " .. what,
+                              unpack(TINT[d.kind] or TINT.boat) }
+        end
+    end
+    return out
 end
 
 function T.UpdateWindow(now)

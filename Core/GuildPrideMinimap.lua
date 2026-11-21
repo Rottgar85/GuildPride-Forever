@@ -62,6 +62,15 @@ local function FillTooltip(tip, drag)
         local online, total = OnlineCount()
         tip:AddLine((L["%d von %d Mitgliedern online"]):format(online, total), 0.8, 0.8, 0.8)
     end
+    -- Abfahrten in der Nähe (Schiffe, Zeppeline, Tiefenbahn), wenn schon gemessen
+    local T = ns.Transit
+    local ok, lines = pcall(function() return T and T.NearbyLines and T.NearbyLines(4) or {} end)
+    if ok and #lines > 0 then
+        tip:AddLine(" ")
+        tip:AddLine(L["Abfahrten in der Nähe"], 1, 0.82, 0)
+        for _, l in ipairs(lines) do tip:AddLine(l[1], l[2], l[3], l[4]) end
+        tip:AddLine(" ")
+    end
     tip:AddLine(L["Linksklick: Gildenfenster"], 1, 1, 1)
     tip:AddLine(L["Rechtsklick: Einstellungen"], 1, 1, 1)
     if drag then tip:AddLine(L["Ziehen: verschieben"], 0.7, 0.7, 0.7) end

@@ -849,6 +849,48 @@ test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", fun
     eq(match(nil, { ["Die Todesminen"] = true }), false, "ohne Dungeon nicht zeigen, wenn gefiltert")
 end)
 
+test("Blockliste: Offiziere sperren, alle gleichen ab, Fremde dürfen nichts ändern", function()
+    W.Load("GuildPrideBlock.lua")
+    local B = ns.Block
+    local oldMotd, oldIsOff = W.canMotd, ns.IsOfficerName
+    ns.IsOfficerName = function(n) return n == "Offi" end   -- Rangrechte hier fest vorgeben
+    W.canMotd = false
+    eq(select(2, B.Add("Böse", "Spam")), "recht", "kein Offizier: nicht erlaubt")
+    W.canMotd = true
+    W.sent = {}
+    eq(B.Add("Böse", "Spam im Chat"), true)
+    eq(B.IsBlocked("Böse") ~= nil, true); eq(B.IsBlocked("böse") ~= nil, true, "ohne Groß/klein")
+    eq(B.IsBlocked("Böse").reason, "Spam im Chat")
+    local sent = false
+    for _, m in ipairs(W.sent) do if m.kind == "BLK" then sent = true end end
+    eq(sent, true, "an die Gilde geschickt")
+    eq(B.Refuse("Böse"), true, "Einladen wird abgelehnt"); eq(B.Refuse("Anna"), false)
+    -- Eintrag von einem Offizier wird übernommen, von einem normalen Mitglied nicht
+    W.Receive("Offi", "BLK:Troll\031" .. (GetServerTime() + 5) .. "\031Offi\0310\031Beleidigungen")
+    eq(B.IsBlocked("Troll") ~= nil, true, "vom Offizier übernommen")
+    W.Receive("Anna", "BLK:Unschuldig\031" .. (GetServerTime() + 5) .. "\031Anna\0310\031")
+    eq(B.IsBlocked("Unschuldig"), nil, "von Nicht-Offizier ignoriert")
+    -- entfernen
+    eq(B.Remove("Böse"), true); eq(B.IsBlocked("Böse"), nil)
+    eq(#B.List(), 1)
+    -- Namen mit Leerzeichen in Anführungszeichen
+    local n, r = B.ParseArgs('"Vor Nachname" weil Spam'); eq(n, "Vor Nachname"); eq(r, "weil Spam")
+    n, r = B.ParseArgs("Einzel Grund"); eq(n, "Einzel"); eq(r, "Grund")
+    B.Remove("Troll")
+    W.canMotd, ns.IsOfficerName = oldMotd, oldIsOff
+end)
+
+test("Notizen zu Spielern: speichern, lesen, löschen – nur lokal", function()
+    W.Load("GuildPrideNotes.lua")
+    W.sent = {}
+    eq(ns.SetPlayerNote("Anna", "guter Heiler"), true)
+    eq(ns.PlayerNote("Anna"), "guter Heiler")
+    eq(ns.SetPlayerNote("Anna", "  "), true); eq(ns.PlayerNote("Anna"), nil, "leer löscht")
+    eq(ns.SetPlayerNote("Bert", "x|cffff0000rot"), true); eq(ns.PlayerNote("Bert"):find("|", 1, true), nil, "keine Farbcodes")
+    eq(#W.sent, 0, "nichts verschickt")
+    ns.SetPlayerNote("Bert", "")
+end)
+
 test("Übersetzungen: jeder Text im Code hat eine englische Fassung", function()
     local function read(p)
         local f = io.open(p, "rb")
@@ -887,6 +929,10 @@ test("Preisalarm: auch mit Preisen anderer GuildPride-Spieler", function()
     AH.SetAlert(13469, 10000)
     AH.RecordServer("13469", 15000, 1, GetServerTime(), "Anna")
     eq(#printed, 0, "teurer als der Alarm: still")
+    -- Übersicht: Treffer zuerst, mit zuletzt bekanntem Preis
+    local ov = AH.AlertOverview()
+    eq(#ov, 2); eq(ov[1].id, 13468, "Treffer zuerst"); eq(ov[1].hit, true); eq(ov[1].price, 15000)
+    eq(ov[2].hit, false, "teurer: kein Treffer")
     AH.SetAlert(13468, nil); AH.SetAlert(13469, nil)
     AH.Print, AH.IsOpen = oldPrint, oldOpen
 end)

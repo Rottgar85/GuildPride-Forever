@@ -191,7 +191,8 @@ local function Refresh()
         if e then
             row.who, row.isSelf = e.name, e.self or false
             row.name:SetText((ns.NameMark and ns.NameMark(e.name) or "") .. (e.guild and "|cff60d060" or "|cffe6e0da")
-                .. Ambiguate(e.name, "none") .. "|r" .. (e.self and (" |cff999999(" .. L["du"] .. ")|r") or ""))
+                .. Ambiguate(e.name, "none") .. "|r" .. (e.self and (" |cff999999(" .. L["du"] .. ")|r") or "")
+                .. (not e.self and ns.PlayerNote and ns.PlayerNote(e.name) and " |cffffd166✎|r" or ""))
             local zoneTxt = e.zoneText or ZoneName(e.map)
             row.zone:SetText((e.here and "|cffe6e0da" or "|cff888888") .. zoneTxt .. "|r")
             -- Version: rot = älter als deine, grün = neuer, grau = unbekannt (Version vor 2.33.0)
@@ -290,6 +291,8 @@ function P.Toggle()
             row:SetScript("OnClick", function(self, button)
                 if not self.who or self.isSelf then return end
                 local target = Ambiguate(self.who, "none")
+                -- Strg+Klick: eigene Notiz zum Spieler (GuildPrideNotes.lua)
+                if IsControlKeyDown() and ns.EditPlayerNote then ns.EditPlayerNote(self.who) return end
                 if button == "RightButton" then
                     local invite = (C_PartyInfo and C_PartyInfo.InviteUnit) or InviteUnit
                     if invite then
@@ -307,6 +310,9 @@ function P.Toggle()
                 GameTooltip:SetText(Ambiguate(self.who, "none"), 1, 1, 1)
                 GameTooltip:AddLine(L["Linksklick: anflüstern"], 0.8, 0.8, 0.8)
                 GameTooltip:AddLine(L["Rechtsklick: in die Gruppe einladen"], 0.8, 0.8, 0.8)
+                GameTooltip:AddLine(L["Strg+Klick: Notiz (nur für dich)"], 0.8, 0.8, 0.8)
+                local note = ns.PlayerNote and ns.PlayerNote(self.who)
+                if note then GameTooltip:AddLine(L["Notiz: "] .. note, 1, 0.82, 0.4, true) end
                 GameTooltip:Show()
             end)
             row:SetScript("OnLeave", function() GameTooltip:Hide() end)

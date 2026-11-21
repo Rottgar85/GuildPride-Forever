@@ -293,6 +293,8 @@ local function Edit(parent, w, x, y, label)
 end
 
 local function Decide(app, accept)
+    -- Blockliste: Bewerbung eines gesperrten Spielers nicht annehmen
+    if accept and ns.Block and ns.Block.Refuse(app.name) then return end
     app.status = accept and "accepted" or "declined"
     if accept then
         local cmd = "/ginvite " .. Ambiguate(app.name, "none")

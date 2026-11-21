@@ -749,7 +749,7 @@ local MP_MAX = 100
 
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
-local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, MHO = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
+local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, MHO = true, BLQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
                CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)

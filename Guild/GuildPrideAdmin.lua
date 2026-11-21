@@ -227,6 +227,14 @@ ns.Section(c, L["Abwesenheiten"], nil, y)
 local absNow = Hint(y - 28, "")
 local bAbs = Btn(L["Abwesenheitsliste …"], 200, nil, 4, y - 50, function() if ns.Absence then ns.Absence.ToggleList() end end)
 Btn(L["Mich abmelden …"], 160, bAbs, 8, 0, function() if ns.Absence then ns.Absence.ToggleMine() end end)
+
+---------------------------------------------------------------------
+-- Blockliste: Spieler, die nicht in die Gilde eingeladen werden (GuildPrideBlock.lua)
+---------------------------------------------------------------------
+y = y - 96
+ns.Section(c, L["Blockliste"], nil, y)
+local blockNow = Hint(y - 28, "")
+Btn(L["Blockliste …"], 200, nil, 4, y - 50, function() if ns.Block then ns.Block.Toggle() end end)
 c:SetHeight(-(y - 90))
 
 ---------------------------------------------------------------------
@@ -253,6 +261,9 @@ function page:Refresh()
         local away, total = ns.Absence.AwayToday(), #ns.Absence.List()
         absNow:SetText((L["Heute abwesend: %s  ·  gemeldet insgesamt: %d"]):format(
             #away > 0 and table.concat(away, ", ") or "–", total))
+    end
+    if ns.Block then
+        blockNow:SetText((L["Gesperrt: %d Spieler – werden nicht in die Gilde eingeladen."]):format(#ns.Block.List()))
     end
     local open = ns.RecruitOpen and ns.RecruitOpen()
     local n = 0
