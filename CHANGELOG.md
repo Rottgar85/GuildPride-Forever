@@ -1,5 +1,27 @@
 # GuildPride Changelog
 
+## 2.38.0
+
+**Deutsch**
+- **Auktionshaus-Tooltip mit eigenem Abschnitt**: GuildPride steht jetzt unter einer eigenen Überschrift, auch wenn Auctionator oder ein anderes Preis-Addon aktiv ist
+- **Preisverlauf im Tooltip**: „Verlauf (N Tage): Ø · Tief · Hoch“ aus bis zu 30 Tagen. Die Tagespreise werden mit anderen GuildPride-Spielern geteilt, so gibt es auch einen Verlauf für Gegenstände, die du nie gesucht hast
+- **Mehr im Tooltip**: wie viele Spieler den Preis gemeldet haben, Wochentrend (teurer/günstiger), Händlerpreis mit Hinweis „lieber beim Händler verkaufen“ und bei hergestellten Gegenständen Zutatenkosten und Gewinn (Berufsfenster einmal öffnen)
+- Jede Tooltip-Zeile lässt sich in den Einstellungen (Auktionshaus) einzeln abschalten
+- **Gruppensuche**: Rollen-Symbole für Tank, Heiler und Schaden, auch auf den „Fehlt noch“-Knöpfen
+- **Übersicht › Diese Woche**: „Gilde unterwegs“ zeigt, welche Mitglieder gerade in welchem Dungeon oder Raid sind
+- **Blockliste und Notizen**: gesperrte Spieler bekommen ein rotes X vor dem Namen, Spieler mit Notiz ein Zettel-Symbol
+- `/gp diag` zeigt jetzt auch andere geladene Addons und bekannte Überschneidungen
+
+**English**
+- **Auction house tooltip with its own section**: GuildPride now has its own heading, also when Auctionator or another price addon is active
+- **Price history in the tooltip**: "History (N days): avg · low · high" from up to 30 days. Daily prices are shared with other GuildPride players, so there is a history even for items you never searched
+- **More in the tooltip**: how many players reported the price, weekly trend (pricier/cheaper), vendor price with a "better sell to a vendor" hint and, for crafted items, reagent cost and profit (open the profession window once)
+- Every tooltip line can be switched off on its own in the settings (Auction house)
+- **Group finder**: role icons for tank, healer and damage, also on the "still missing" buttons
+- **Overview › This week**: "Guild out and about" shows which members are in which dungeon or raid right now
+- **Block list and notes**: blocked players get a red X before their name, players with a note a note icon
+- `/gp diag` now also lists other loaded addons and known overlaps
+
 ## 2.37.1
 
 **Deutsch**
@@ -14,7 +36,7 @@
 - **Blockliste**: Spieler, die nicht in die Gilde eingeladen werden sollen (Verwaltung › „Blockliste …“, `/gp blockliste`, `/gp block Name Grund`). Gilt für die ganze Gilde, nur Offiziere ändern sie. Einladen über GuildPride lehnt gesperrte Spieler ab, Blizzards Einladefenster zeigt beim Eintippen eine Warnung, und tritt ein gesperrter Spieler doch bei, werden Offiziere gewarnt
 - **Notizen zu Spielern**: `/gp notiz Name Text` – die Notiz steht im Tooltip des Spielers, nur für dich
 - **Abfahrten im Minimap-Tooltip**: gemessene Abfahrten in der Nähe (Schiffe, Zeppeline, Tiefenbahn) stehen im Tooltip des GuildPride-Knopfs
-- **Preisalarm-Übersicht**: `/gp preis` zeigt alle Alarme mit dem zuletzt bekannten Preis; ✓ = gerade günstiger als dein Alarm
+- **Preisalarm-Übersicht**: `/gp preis` zeigt alle Alarme mit dem zuletzt bekannten Preis; ein grüner Haken heißt: gerade günstiger als dein Alarm
 - **Tiefenbahn**: eigenes Lokomotiven-Symbol und passende Texte („steht am Bahnsteig“, „fährt ab“) statt Schiffs-Wörtern
 - „Schiffs-Zähler“ heißt jetzt **Abfahrten**, weil auch Zeppeline und die Bahn dazugehören
 
@@ -22,7 +44,7 @@
 - **Block list**: players who must not be invited to the guild (Management › "Block list …", `/gp blocklist`, `/gp block name reason`). Applies to the whole guild, only officers change it. Inviting through GuildPride refuses blocked players, Blizzard's invite window shows a warning while typing, and officers are warned if a blocked player joins anyway
 - **Notes on players**: `/gp note name text` – the note shows in the player's tooltip, only for you
 - **Departures in the minimap tooltip**: measured departures nearby (ships, zeppelins, Deeprun Tram) show in the GuildPride button's tooltip
-- **Price alert overview**: `/gp price` lists all alerts with the last known price; ✓ = currently below your alert
+- **Price alert overview**: `/gp price` lists all alerts with the last known price; a green check means: currently below your alert
 - **Deeprun Tram**: its own locomotive icon and fitting texts ("at the platform", "departs") instead of ship words
 - "Ship timer" is now called **Departures**, since zeppelins and the tram belong to it too
 

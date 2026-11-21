@@ -452,3 +452,63 @@ AH.Listen("AUCTION_HOUSE_SHOW", UpdateBar)
 AH.Listen("AUCTION_HOUSE_CLOSED", function()
     if bar then bar.searchBtn:SetEnabled(false) end
 end)
+
+---------------------------------------------------------------------
+-- Herstellkosten im Item-Tooltip: beim Öffnen eines Berufsfensters merkt sich GuildPride die
+-- Rezepte (GuildPrideDB.ahCraft[Ergebnis-ItemID] = { made, r = { { itemID, Menge }, … } }).
+-- Der Tooltip rechnet dann mit den bekannten Preisen (AH.CraftInfo), auch ohne Berufsfenster.
+---------------------------------------------------------------------
+local function CraftDB()
+    if type(GuildPrideDB) ~= "table" then return {} end
+    if type(GuildPrideDB.ahCraft) ~= "table" then GuildPrideDB.ahCraft = {} end
+    return GuildPrideDB.ahCraft
+end
+
+function AH.LearnRecipe(recipeID)
+    local T = C_TradeSkillUI
+    if not (T and T.GetRecipeSchematic and recipeID) then return false end
+    local ok, sch = pcall(T.GetRecipeSchematic, recipeID, false)
+    local out = ok and type(sch) == "table" and tonumber(sch.outputItemID)
+    if not out then return false end
+    local r = AH.RecipeReagents(recipeID)
+    if #r == 0 then return false end
+    CraftDB()[out] = { made = tonumber(sch.quantityMin) or 1, r = r }
+    return true
+end
+
+local learnPending = false
+local function LearnAll()
+    learnPending = false
+    local T = C_TradeSkillUI
+    if not (T and T.GetAllRecipeIDs) then return end
+    local ok, ids = pcall(T.GetAllRecipeIDs)
+    if not ok or type(ids) ~= "table" then return end
+    for i, id in ipairs(ids) do
+        if i > 600 then break end   -- Schutz bei riesigen Listen
+        pcall(AH.LearnRecipe, id)
+    end
+end
+local function LearnSoon()
+    if learnPending or not (C_Timer and C_Timer.After) then return end
+    learnPending = true
+    C_Timer.After(2, LearnAll)
+end
+AH.Listen("TRADE_SKILL_SHOW", LearnSoon)
+AH.Listen("TRADE_SKILL_LIST_UPDATE", LearnSoon)
+
+-- { cost, missing, sell, profit, made } für ein herstellbares Item, sonst nil
+function AH.CraftInfo(itemID)
+    local c = CraftDB()[tonumber(itemID) or 0]
+    if type(c) ~= "table" or type(c.r) ~= "table" then return nil end
+    local v = { cost = 0, missing = 0, made = c.made or 1 }
+    for _, r in ipairs(c.r) do
+        local p = AH.PriceFor(AH.Key(r[1]))
+        if p then v.cost = v.cost + p * r[2] else v.missing = v.missing + 1 end
+    end
+    local p = AH.PriceFor(AH.Key(itemID))
+    if p then
+        v.sell = p * v.made
+        v.profit = math.floor(v.sell * AH_CUT - v.cost)
+    end
+    return v
+end

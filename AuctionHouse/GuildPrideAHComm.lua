@@ -136,6 +136,33 @@ function AH.DecodeP(msg)
     return side, items
 end
 
+-- Tagespreise (Verlauf) zu einem Item: „H:Seite:Schlüssel:Tag,Preis;Tag,Preis…“ (neueste zuerst,
+-- so viele, wie in eine Nachricht passen). Ältere Versionen verwerfen „H:“ einfach.
+function AH.EncodeH(side, key, hist)
+    local msg = "H:" .. side .. ":" .. key .. ":"
+    local parts = {}
+    for i = #hist, 1, -1 do
+        local part = ("%d,%d"):format(hist[i].d, hist[i].p)
+        if #msg + #table.concat(parts, ";") + #part + 1 > MAX_LEN then break end
+        parts[#parts + 1] = part
+    end
+    if #parts == 0 then return nil end
+    return msg .. table.concat(parts, ";")
+end
+
+function AH.DecodeH(msg)
+    if type(msg) ~= "string" then return nil end
+    local side, key, body = msg:match("^H:([AHN]):([%d%.]+):(.+)$")
+    if not side or not ValidKey(key) then return nil end
+    local today, list = math.floor(GetServerTime() / 86400), {}
+    for part in body:gmatch("[^;]+") do
+        local d, p = part:match("^(%d+),(%d+)$")
+        d, p = Int(d, today - 31, today), Int(p, 1, MAX_PRICE)
+        if d and p and #list < 31 then list[#list + 1] = { d = d, p = p } end
+    end
+    return side, key, list
+end
+
 ---------------------------------------------------------------------
 -- Rundsenden und Nachfragen
 ---------------------------------------------------------------------
@@ -183,6 +210,10 @@ function AH._tick(now)
                 for _, msg in ipairs(AH.EncodeP(AH.Side(), { { key = key, p = o.p, q = o.q, t = o.t } })) do
                     Send(msg, "A:" .. key)
                 end
+                -- dazu die Tagespreise, damit der Frager einen Verlauf bekommt
+                local h = AH.History(key)
+                local hm = #h >= 2 and AH.EncodeH(AH.Side(), key, h)
+                if hm then Send(hm, "H:" .. key) end
             end
         end
     end
@@ -239,6 +270,12 @@ function AH.OnMessage(msg, sender)
             if a and it.t >= a.t then pending[it.key] = nil end
             if AH.OnPrice then AH.OnPrice(it.key) end
         end
+    elseif kind == "H:" then
+        local side, key, list = AH.DecodeH(msg)
+        if not side or #list == 0 then AH.stats.dropped = AH.stats.dropped + 1; return end
+        if side ~= AH.Side() or not KnownItem(key) then return end
+        if not AH.Store()[key] and not NewKeyAllowed(sender) then AH.stats.dropped = AH.stats.dropped + 1; return end
+        if AH.MergeHistory(key, list) > 0 and AH.OnPrice then AH.OnPrice(key) end
     elseif kind == "Q:" then
         local side, key = msg:match("^Q:([AHN]):([%d%.]+)$")
         if not side or not ValidKey(key) then AH.stats.dropped = AH.stats.dropped + 1; return end

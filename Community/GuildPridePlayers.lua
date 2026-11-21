@@ -192,7 +192,7 @@ local function Refresh()
             row.who, row.isSelf = e.name, e.self or false
             row.name:SetText((ns.NameMark and ns.NameMark(e.name) or "") .. (e.guild and "|cff60d060" or "|cffe6e0da")
                 .. Ambiguate(e.name, "none") .. "|r" .. (e.self and (" |cff999999(" .. L["du"] .. ")|r") or "")
-                .. (not e.self and ns.PlayerNote and ns.PlayerNote(e.name) and " |cffffd166✎|r" or ""))
+                )   -- Zeichen für Notiz und Blockliste hängt ns.NameMark an (GuildPrideBlock.lua)
             local zoneTxt = e.zoneText or ZoneName(e.map)
             row.zone:SetText((e.here and "|cffe6e0da" or "|cff888888") .. zoneTxt .. "|r")
             -- Version: rot = älter als deine, grün = neuer, grau = unbekannt (Version vor 2.33.0)

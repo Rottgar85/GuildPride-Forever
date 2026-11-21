@@ -150,10 +150,12 @@ end
 local levelWatch = CreateFrame("Frame")
 levelWatch:RegisterEvent("PLAYER_LEVEL_UP")
 levelWatch:SetScript("OnEvent", function() dungeonCache = nil end)
+-- Rollen-Symbole aus Blizzards Gruppensuche (UI-LFG-ICON-PORTRAITROLES, 64×64)
+local ROLE_TEX = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:14:14:0:0:64:64:%d:%d:%d:%d|t"
 local ROLES = {
-    { key = "T", label = "Tank",        color = "|cff6fa8ff", spec = "TANK" },
-    { key = "H", label = L["Heiler"],   color = "|cff40ff40", spec = "HEALER" },
-    { key = "D", label = L["DD"],       color = "|cffff6060", spec = "DAMAGER" },
+    { key = "T", label = "Tank",        color = "|cff6fa8ff", spec = "TANK",    icon = ROLE_TEX:format(0, 19, 22, 41) },
+    { key = "H", label = L["Heiler"],   color = "|cff40ff40", spec = "HEALER",  icon = ROLE_TEX:format(20, 39, 1, 20) },
+    { key = "D", label = L["DD"],       color = "|cffff6060", spec = "DAMAGER", icon = ROLE_TEX:format(20, 39, 22, 41) },
 }
 local ROLE_BY_SPEC = { TANK = "T", HEALER = "H", DAMAGER = "D" }
 -- Farben der Rollen als Zahlen (für die Füllstand-Punkte)
@@ -203,13 +205,13 @@ end
 local function NeedsString(s)
     local out = {}
     for _, r in ipairs(ROLES) do
-        if s and s:find(r.key, 1, true) then out[#out + 1] = r.color .. r.label .. "|r" end
+        if s and s:find(r.key, 1, true) then out[#out + 1] = r.icon .. " " .. r.color .. r.label .. "|r" end
     end
     return table.concat(out, ", ")
 end
 
 local function RoleLabel(key)
-    for _, r in ipairs(ROLES) do if r.key == key then return r.color .. r.label .. "|r" end end
+    for _, r in ipairs(ROLES) do if r.key == key then return r.icon .. " " .. r.color .. r.label .. "|r" end end
     return ""
 end
 
@@ -860,7 +862,7 @@ for _, r in ipairs(ROLES) do
     local b = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
     b:SetSize(74, 22)
     b:SetPoint("LEFT", prev, "RIGHT", prev == needLabel and 8 or 4, 0)
-    b:SetText(r.label)
+    b:SetText(r.icon .. " " .. r.label)
     b:SetScript("OnClick", function()
         needs[r.key] = not needs[r.key] or nil
         UpdateNeedButtons()

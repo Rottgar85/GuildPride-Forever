@@ -98,6 +98,38 @@ function ns.DiagReport()
         lines[#lines + 1] = "Communitys: " .. (#names > 0 and table.concat(names, ", ") or "-")
     end
 
+    -- Andere Addons: wer Chat, Tooltips, Gildenfenster oder Auktionshaus verändert, kann sich
+    -- mit GuildPride überschneiden (so war es beim Chat-Fehler 2.37.1)
+    Head("Andere Addons")
+    local KNOWN = {
+        chat = { "Prat-3.0", "Chattynator", "Chatter", "WIM", "ElvUI", "TukUI", "Glass", "BasicChatMods" },
+        tooltip = { "TipTac", "TinyTooltip", "ElvUI", "Auctionator", "TradeSkillMaster", "RareScanner", "Questie" },
+        gilde = { "Guildy", "GuildRoster", "GreenWall", "ElvUI" },
+        auktionshaus = { "Auctionator", "TradeSkillMaster", "Auctioneer", "aux-addon" },
+    }
+    local getNum = (C_AddOns and C_AddOns.GetNumAddOns) or GetNumAddOns
+    local getInfo = (C_AddOns and C_AddOns.GetAddOnInfo) or GetAddOnInfo
+    local isLoadedFn = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+    local okNum, num = pcall(function() return getNum and getNum() end)
+    num = okNum and tonumber(num) or 0
+    if type(getInfo) ~= "function" or type(isLoadedFn) ~= "function" then num = 0 end
+    local loaded, byName = {}, {}
+    for i = 1, num do
+        local name = getInfo(i)
+        local isLoaded = isLoadedFn(i)
+        if isLoaded and name and name ~= ADDON and not tostring(name):find("^Blizzard_") then
+            loaded[#loaded + 1] = name
+            byName[name] = true
+        end
+    end
+    table.sort(loaded)
+    lines[#lines + 1] = ("Geladen (%d): "):format(#loaded) .. (#loaded > 0 and table.concat(loaded, ", ") or "-")
+    for _, area in ipairs({ "chat", "tooltip", "gilde", "auktionshaus" }) do
+        local hits = {}
+        for _, n in ipairs(KNOWN[area]) do if byName[n] then hits[#hits + 1] = n end end
+        if #hits > 0 then lines[#lines + 1] = ("Mögliche Überschneidung (%s): %s"):format(area, table.concat(hits, ", ")) end
+    end
+
     Head("Gespeicherte Daten")
     local transit = type(GuildPrideDB) == "table" and GuildPrideDB.transit
     lines[#lines + 1] = "Schiffe je Realm: " .. Keys(transit)

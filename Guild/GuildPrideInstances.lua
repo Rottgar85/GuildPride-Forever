@@ -75,4 +75,46 @@ end
 
 function Inst.KindLabel(kind) return kind == "raid" and "Raid" or "Dungeon" end
 
+-- Instanz zu einem Zonennamen aus der Gildenliste (deutsch oder englisch); Teile wie
+-- „Scharlachrotes Kloster“ passen zum ersten Flügel. nil, wenn es keine Instanz ist.
+local byName = {}
+for _, rows in ipairs({ { DUNGEONS, "dungeon" }, { RAIDS, "raid" } }) do
+    for _, r in ipairs(rows[1]) do
+        local x = byKey[rows[2]][r[1]]
+        for _, n in ipairs({ r[2], r[3] }) do
+            if type(n) == "string" and not byName[n:lower()] then byName[n:lower()] = x end
+        end
+    end
+end
+function Inst.ByZone(zone)
+    if type(zone) ~= "string" or zone == "" then return nil end
+    local z = zone:lower()
+    if byName[z] then return byName[z] end
+    for n, x in pairs(byName) do
+        if n:sub(1, #z + 1) == z .. ":" then return x end
+    end
+    return nil
+end
+
+-- Gilde unterwegs: Online-Mitglieder in Dungeons und Raids, nach Instanz gruppiert
+-- { { inst, names = { … } }, … }, die vollste Instanz zuerst
+function Inst.GuildInInstances()
+    local groups, list = {}, {}
+    if not (IsInGuild and IsInGuild() and GetNumGuildMembers and GetGuildRosterInfo) then return list end
+    for i = 1, GetNumGuildMembers() or 0 do
+        local name, _, _, _, _, zone, _, _, online = GetGuildRosterInfo(i)
+        local inst = online and Inst.ByZone(zone)
+        if inst and name then
+            local g = groups[inst]
+            if not g then g = { inst = inst, names = {} }; groups[inst] = g; list[#list + 1] = g end
+            g.names[#g.names + 1] = Ambiguate(name, "guild")
+        end
+    end
+    table.sort(list, function(a, b)
+        if #a.names ~= #b.names then return #a.names > #b.names end
+        return a.inst.name < b.inst.name
+    end)
+    return list
+end
+
 ns.Instances = Inst

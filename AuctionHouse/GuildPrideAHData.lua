@@ -2,7 +2,8 @@
 -- Gespeichert in GuildPrideAHDB[Realm][Seite][Schlüssel]:
 --   own  = { p, q, t }                    jüngster eigener Scan (Stückpreis in Kupfer)
 --   srv  = { p, q, t, from = { [Name] = p }, seen = { [Name] = t } }   jüngster Wert vom Server
---   hist = { { d, p }, … }                Tagesminimum eigener Scans, höchstens 7
+--   hist = { { d, p }, … }                Tagesminimum je Tag, höchstens 30 (eigene Scans; Tage ohne
+--                                         eigenen Scan auch von anderen GuildPride-Spielern, AH.MergeHistory)
 local ADDON, GP = ...
 GP.AH = GP.AH or {}
 local AH = GP.AH
@@ -12,7 +13,7 @@ local OWN_FRESH = 3600          -- eigener Preis gilt als frisch für den Vorsch
 local SRV_MAX_AGE = 7 * DAY
 local OWN_MAX_AGE = 30 * DAY
 local MAX_FROM = 5
-local MAX_HIST = 7
+local MAX_HIST = 30   -- bis 2.37: 7
 local SPREAD = 1.25             -- Serverpreise höchstens 25 % auseinander
 
 local side
@@ -94,6 +95,29 @@ function AH.RecordOwn(key, p, q, t)
     end
 end
 
+-- Tagespreise anderer GuildPride-Spieler übernehmen: nur Tage, an denen du selbst nichts
+-- gesehen hast (deine eigenen Werte überschreibt niemand). list = { { d, p }, … }.
+-- Gibt die Zahl neuer Tage zurück.
+function AH.MergeHistory(key, list)
+    if not key or type(list) ~= "table" then return 0 end
+    local today = math.floor(GetServerTime() / DAY)
+    local e = Entry(key, true)
+    e.hist = e.hist or {}
+    local have, added = {}, 0
+    for _, h in ipairs(e.hist) do have[h.d] = true end
+    for _, h in ipairs(list) do
+        local d, p = tonumber(h.d), tonumber(h.p)
+        if d and p and p >= 1 and d <= today and d > today - MAX_HIST and not have[d] then
+            e.hist[#e.hist + 1] = { d = d, p = math.floor(p) }
+            have[d], added = true, added + 1
+        end
+    end
+    table.sort(e.hist, function(a, b) return a.d < b.d end)
+    while #e.hist > MAX_HIST do table.remove(e.hist, 1) end
+    if #e.hist == 0 then e.hist = nil end
+    return added
+end
+
 function AH.RecordServer(key, p, q, t, sender)
     if not key or not p or not sender then return false end
     local now = GetServerTime()
@@ -134,6 +158,14 @@ local function Median(from)
     local m = math.floor((#v + 1) / 2)
     if #v % 2 == 1 then return v[m] end
     return math.floor((v[m] + v[m + 1]) / 2 + 0.5)
+end
+
+-- Wie viele GuildPride-Spieler haben einen Preis gemeldet? (für den Tooltip)
+function AH.SenderCount(key)
+    local e = key and Entry(key)
+    local n = 0
+    for _ in pairs(e and e.srv and e.srv.from or {}) do n = n + 1 end
+    return n
 end
 
 function AH.ServerConfirmed(key)

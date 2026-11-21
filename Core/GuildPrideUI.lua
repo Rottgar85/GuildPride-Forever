@@ -786,7 +786,18 @@ function overview:Refresh()
         end
     end
     motd:SetText(text)
-    weekText:SetText(WeekSummary())
+    -- Gilde unterwegs: wer gerade in welchem Dungeon oder Raid ist (GuildPrideInstances.lua)
+    local onTheRoad = ""
+    local okRoad, road = pcall(function() return ns.Instances and ns.Instances.GuildInInstances and ns.Instances.GuildInInstances() or {} end)
+    if okRoad and #road > 0 then
+        local parts = {}
+        for i, g in ipairs(road) do
+            if i > 4 then break end
+            parts[#parts + 1] = ("|cff66ccff%s|r (%s)"):format(g.inst.name, #g.names <= 3 and table.concat(g.names, ", ") or tostring(#g.names))
+        end
+        onTheRoad = "\n" .. L["Gilde unterwegs: "] .. table.concat(parts, "  ·  ")
+    end
+    weekText:SetText(WeekSummary() .. onTheRoad)
     local lines = {}
     local log = ns.GuildLog()
     for i = 1, math.min(5, #log) do
@@ -1995,6 +2006,11 @@ local options = {
       changed = function() if ns.AH and ns.AH.SetModernUI then ns.AH.SetModernUI(GuildPrideDB.ahTab) end end },
     { key = "ahTooltip",     label = L["Auktionshauspreis im Item-Tooltip zeigen"] },
     { key = "ahTooltipWithAuctionator", label = L["Tooltip-Preis auch zeigen, wenn Auctionator geladen ist"] },
+    { key = "ahTipSenders",  label = L["Tooltip: wie viele Spieler den Preis gemeldet haben"] },
+    { key = "ahTipTrend",    label = L["Tooltip: Preistrend der Woche"] },
+    { key = "ahTipHistory",  label = L["Tooltip: Preisverlauf (bis 30 Tage)"] },
+    { key = "ahTipVendor",   label = L["Tooltip: Händlerpreis"] },
+    { key = "ahTipCraft",    label = L["Tooltip: Herstellkosten und Gewinn"] },
     { header = L["Reisen"] },
     { key = "transitUI",     label = L["Abfahrten an Anlegern und Bahnsteigen zeigen (wann Schiff, Zeppelin oder Bahn kommt)"],
       changed = function() if ns.Transit and ns.Transit.SetWindow then ns.Transit.SetWindow(GuildPrideDB.transitUI) end end },

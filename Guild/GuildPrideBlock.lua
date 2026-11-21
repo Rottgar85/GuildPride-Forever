@@ -130,6 +130,28 @@ function Block.Refuse(name)
 end
 
 ---------------------------------------------------------------------
+-- Zeichen an Namen in allen GuildPride-Listen (Gruppensuche, Spieler-Liste, Gildenliste,
+-- Gildenchat, Bewerbungen): rotes X = auf der Blockliste, Zettel = eigene Notiz (GuildPrideNotes.lua)
+---------------------------------------------------------------------
+local ICON_BLOCKED = "|TInterface\\Buttons\\UI-GroupLoot-Pass-Up:14:14|t "
+local ICON_NOTE = "|TInterface\\Buttons\\UI-GuildButton-PublicNote-Up:12:12|t "
+function Block.Marks(name)
+    if type(name) ~= "string" or name == "" or (issecretvalue and issecretvalue(name)) then return "" end
+    local out = ""
+    if Block.IsBlocked(name) then out = out .. ICON_BLOCKED end
+    if ns.PlayerNote and ns.PlayerNote(name) then out = out .. ICON_NOTE end
+    return out
+end
+do
+    local origMark = ns.NameMark
+    ns.NameMark = function(name)
+        local base = origMark and origMark(name) or ""
+        local ok, extra = pcall(Block.Marks, name)
+        return (ok and extra or "") .. base
+    end
+end
+
+---------------------------------------------------------------------
 -- Gesperrter Spieler ist trotzdem beigetreten: Offiziere deutlich warnen
 ---------------------------------------------------------------------
 do

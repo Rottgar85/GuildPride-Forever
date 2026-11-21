@@ -1,4 +1,8 @@
--- GuildPride Auktionshaus: Preis im Item-Tooltip
+-- GuildPride Auktionshaus: Preis im Item-Tooltip – als eigener Abschnitt mit Logo, damit er
+-- sich von Auctionator & Co. abhebt (die schreiben auch „Auktionshaus“):
+--     (Leerzeile)
+--     [Logo] GuildPride
+--     Auktionshaus: 30c (vor 2 Std.)
 local ADDON, GP = ...
 local AH = GP.AH
 local L = GP.L or setmetatable({}, { __index = function(_, k) return k end })
@@ -30,7 +34,80 @@ function AH.TooltipLine(link, count, now, shift)
     if shift and count > 1 then money = money .. " (x" .. count .. ")" end
     local age = Age(math.max(0, (now or GetServerTime()) - t))
     if src == "srv" then age = L["Server, "] .. age end
-    return (L["GuildPride Auktionshaus: %s (%s)"]):format(money, age)
+    return (L["Auktionshaus: %s (%s)"]):format(money, age)
+end
+
+-- Einzelne Zeilen lassen sich in den Einstellungen abschalten (Standard: an)
+local function On(k) return GuildPrideDB == nil or GuildPrideDB[k] ~= false end
+
+-- Zweite Zeile: wie viele Spieler gemeldet haben und wohin der Preis in der Woche geht
+-- (Tagestiefstwerte der letzten 7 Tage; ab 5 % Unterschied). nil, wenn nichts zu sagen ist.
+function AH.TooltipExtra(link)
+    local key = AH.KeyFromLink(link)
+    if not key then return nil end
+    local parts = {}
+    local n = AH.SenderCount and AH.SenderCount(key) or 0
+    if n > 0 and On("ahTipSenders") then parts[#parts + 1] = (L["von %d Spielern gemeldet"]):format(n) end
+    local today, h = math.floor(GetServerTime() / 86400), {}
+    for _, x in ipairs(AH.History(key)) do if x.d > today - 7 then h[#h + 1] = x end end
+    if #h >= 2 and On("ahTipTrend") then
+        local first, last = h[1].p, h[#h].p
+        if last > first * 1.05 then parts[#parts + 1] = "|cffff6060" .. L["Woche: teurer"] .. "|r"
+        elseif last < first * 0.95 then parts[#parts + 1] = "|cff40ff40" .. L["Woche: günstiger"] .. "|r"
+        else parts[#parts + 1] = L["Woche: gleich"] end
+    end
+    if #parts == 0 then return nil end
+    return "|cffaaaaaa" .. table.concat(parts, " · ") .. "|r"
+end
+
+-- Historischer Preis: aus den Tagestiefstwerten (bis 30 Tage, auch von anderen GuildPride-Spielern)
+-- Durchschnitt, Tiefst- und Höchstwert. nil, solange es weniger als zwei Tage gibt.
+function AH.TooltipHistory(link)
+    if not On("ahTipHistory") then return nil end
+    local key = AH.KeyFromLink(link)
+    local h = key and AH.History(key) or {}
+    if #h < 2 then return nil end
+    local sum, lo, hi = 0, nil, nil
+    for _, x in ipairs(h) do
+        sum = sum + x.p
+        lo = (not lo or x.p < lo) and x.p or lo
+        hi = (not hi or x.p > hi) and x.p or hi
+    end
+    local avg = math.floor(sum / #h + 0.5)
+    return "|cffaaaaaa" .. (L["Verlauf (%d Tage): Ø %s · Tief %s · Hoch %s"]):format(#h, AH.Money(avg), AH.Money(lo), AH.Money(hi)) .. "|r"
+end
+
+-- Händlerpreis; ist der Auktionspreis nach 5 % Gebühr niedriger, lieber beim Händler verkaufen
+function AH.TooltipVendor(link, count)
+    if not On("ahTipVendor") then return nil end
+    local sell = tonumber((select(11, AH.ItemInfo(link))))
+    if not sell or sell <= 0 then return nil end
+    count = count or 1
+    local text = (L["Händler: %s"]):format(AH.Money(sell * count))
+    local p = AH.PriceFor(AH.KeyFromLink(link))
+    if p and p * 0.95 < sell then text = text .. " · |cffff9040" .. L["lieber beim Händler verkaufen"] .. "|r" end
+    return "|cffaaaaaa" .. text .. "|r"
+end
+
+-- Herstellkosten (Rezept aus einem früher geöffneten Berufsfenster, GuildPrideAHCrafting.lua)
+function AH.TooltipCraft(link)
+    if not On("ahTipCraft") or not AH.CraftInfo then return nil end
+    local id = tonumber(tostring(link):match("item:(%d+)"))
+    local v = id and AH.CraftInfo(id)
+    if not v then return nil end
+    local text = (L["Herstellung: Zutaten %s"]):format(AH.Money(v.cost))
+        .. (v.missing > 0 and (" (+" .. (L["%d ohne Preis"]):format(v.missing) .. ")") or "")
+    if v.profit then
+        text = text .. " · " .. (v.profit >= 0 and "|cff40ff40" or "|cffff4040")
+            .. (L["Gewinn: %s"]):format((v.profit < 0 and "-" or "") .. AH.Money(math.abs(v.profit))) .. "|r"
+    end
+    return "|cffaaaaaa" .. text .. "|r"
+end
+
+-- Kopfzeile des eigenen Abschnitts
+function AH.TooltipHeader()
+    local icon = GP.IconString and GP.IconString(14) or ""
+    return icon .. " |cffd4af37GuildPride|r"
 end
 
 local function Show()
@@ -42,7 +119,7 @@ end
 function AH.TooltipText(link, count, now, shift)
     local line = AH.TooltipLine(link, count, now, shift)
     if line then return "|cffffd100" .. line .. "|r" end
-    if AH.Tradeable(link) then return "|cff808080" .. L["GuildPride Auktionshaus: noch kein Preis bekannt"] .. "|r" end
+    if AH.Tradeable(link) then return "|cff808080" .. L["Auktionshaus: noch kein Preis bekannt"] .. "|r" end
     return nil
 end
 
@@ -59,8 +136,16 @@ local function AddLine(tooltip, link, count)
     done[tooltip] = true
     local text = LineText(link, count)
     if text then
+        tooltip:AddLine(" ")
+        tooltip:AddLine(AH.TooltipHeader())
         tooltip:AddLine(text)
         done[tooltip] = tooltip:NumLines()
+        local ok, extra = pcall(AH.TooltipExtra, link)
+        if ok and extra then tooltip:AddLine(extra) end
+        for _, fn in ipairs({ AH.TooltipHistory, AH.TooltipVendor, AH.TooltipCraft }) do
+            local okX, line = pcall(fn, link, count)
+            if okX and line then tooltip:AddLine(line) end
+        end
         tooltip:Show()
     end
     -- Kein oder alter Preis: beim Server nachfragen (gebremst in AH.Ask)
@@ -85,6 +170,8 @@ function AH.OnPrice(key)
         local fs = _G[GameTooltip:GetName() .. "TextLeft" .. idx]
         if fs then fs:SetText(text) end
     else
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(AH.TooltipHeader())
         GameTooltip:AddLine(text)
         done[GameTooltip] = GameTooltip:NumLines()
     end

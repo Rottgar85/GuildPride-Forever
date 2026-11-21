@@ -471,7 +471,7 @@ do
             for _, a in ipairs(list) do
                 local seen = a.price and ((a.hit and "|cff40ff40" or "|cffaaaaaa") .. AH.Money(a.price) .. "|r"
                     .. (a.t and (" |cff777777(" .. date("%d.%m. %H:%M", a.t) .. ")|r") or "")) or ("|cff777777" .. L["noch kein Preis"] .. "|r")
-                print(("  %s%s: %s %s · %s"):format(a.hit and "|cff40ff40✓|r " or "", a.name, L["höchstens"], AH.Money(a.want), seen))
+                print(("  %s%s: %s %s · %s"):format(a.hit and "|TInterface\\RaidFrame\\ReadyCheck-Ready:12|t " or "", a.name, L["höchstens"], AH.Money(a.want), seen))
             end
             return
         end

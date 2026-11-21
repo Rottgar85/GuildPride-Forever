@@ -375,7 +375,7 @@ function ns.RefreshApps()
     table.sort(list, function(a, b) return (a.t or 0) > (b.t or 0) end)
     for i, app in ipairs(list) do
         local r = Row(i)
-        r.head:SetText(("%s  |cff999999%s · %s|r  %s"):format(Ambiguate(app.name, "none"),
+        r.head:SetText(("%s  |cff999999%s · %s|r  %s"):format((ns.NameMark and ns.NameMark(app.name) or "") .. Ambiguate(app.name, "none"),
             date("%d.%m. %H:%M", app.t or 0), (L["über %s"]):format(Ambiguate(app.via or "?", "guild")),
             STATUS_TEXT[app.status] or ""))
         local lines = {}

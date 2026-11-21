@@ -98,7 +98,8 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    guildTab = true, wishTooltip = true, wishDropHint = true,
                    remindMin = 15,
                    ahTab = true, ahTooltip = true, ahShare = true, ahReadAuctionator = true,
-                   ahTooltipWithAuctionator = false, transitUI = true, transitShare = true,
+                   ahTooltipWithAuctionator = true, ahTipSenders = true, ahTipTrend = true, ahTipHistory = true,
+                   ahTipVendor = true, ahTipCraft = true, transitUI = true, transitShare = true,
                    flightTimes = true, flightUI = true, showItemID = false,
                    plateColors = true, plateColorBar = false }
 
@@ -895,6 +896,12 @@ f:SetScript("OnEvent", function(_, event, ...)
             if GuildPrideDB[k] == nil then GuildPrideDB[k] = v end
         end
         GuildPrideDB.cleanStart = nil   -- alte Einmal-Bereinigung, nicht mehr nötig
+        -- 2.37.2: Der Auktionshaus-Preis steht als eigener GuildPride-Abschnitt im Tooltip und
+        -- verwechselt sich nicht mehr mit Auctionator: einmal auch bei Auctionator einschalten
+        if not GuildPrideDB.ahTooltipSection then
+            GuildPrideDB.ahTooltipSection = true
+            GuildPrideDB.ahTooltipWithAuctionator = true
+        end
         -- Bis 1.12.3 lagen Verlauf, Events, Umfragen, Anwesenheit, Chat und der
         -- Gildeninfo-Stand einmal für den ganzen Account vor, Gilden gemischt.
         -- Das wird verworfen: jede Gilde beginnt leer (GuildPrideDB.guilds) und

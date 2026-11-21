@@ -876,6 +876,10 @@ test("Blockliste: Offiziere sperren, alle gleichen ab, Fremde dürfen nichts än
     -- Namen mit Leerzeichen in Anführungszeichen
     local n, r = B.ParseArgs('"Vor Nachname" weil Spam'); eq(n, "Vor Nachname"); eq(r, "weil Spam")
     n, r = B.ParseArgs("Einzel Grund"); eq(n, "Einzel"); eq(r, "Grund")
+    -- Zeichen am Namen: rotes X für gesperrt (überall, wo GuildPride Namen zeigt)
+    eq(B.Marks("Troll"):find("UI-GroupLoot-Pass-Up", 1, true) ~= nil, true, "gesperrt: Zeichen")
+    eq(B.Marks("Anna"), "", "nicht gesperrt: nichts")
+    eq(ns.NameMark("Troll"):find("UI-GroupLoot-Pass-Up", 1, true) ~= nil, true, "über ns.NameMark")
     B.Remove("Troll")
     W.canMotd, ns.IsOfficerName = oldMotd, oldIsOff
 end)
@@ -931,6 +935,71 @@ test("Übersetzungen: jeder Text im Code hat eine englische Fassung", function()
     eq(#missing, 0, "ohne Übersetzung: " .. table.concat(missing, " | "))
 end)
 
+test("AH-Tooltip: historischer Preis aus den letzten Tagen", function()
+    local AH = ns.AH
+    local now = math.floor(W.server)
+    for d = 1, 3 do AH.RecordOwn("40001", 100 * d, 1, now - (4 - d) * 86400) end   -- 100c, 200c, 300c
+    local h = AH.TooltipHistory("|Hitem:40001:0:0:0:0:0:0:0|h")
+    eq(h ~= nil, true, "Verlauf ab zwei Tagen")
+    eq(h:find("Verlauf (3 Tage)", 1, true) ~= nil, true)
+    eq(h:find("Tief " .. AH.Money(100), 1, true) ~= nil, true); eq(h:find("Hoch " .. AH.Money(300), 1, true) ~= nil, true)
+    eq(h:find(AH.Money(200), 1, true) ~= nil, true, "Durchschnitt")
+    eq(AH.TooltipHistory("|Hitem:40002:0:0:0:0:0:0:0|h"), nil, "ohne Verlauf keine Zeile")
+end)
+
+test("AH-Verlauf: Tagespreise anderer Spieler füllen nur fehlende Tage", function()
+    local AH = ns.AH
+    local today = math.floor(W.server / 86400)
+    AH.RecordOwn("40010", 500, 1, today * 86400 + 100)                  -- heute selbst gesehen: 500c
+    local msg = AH.EncodeH("A", "40010", { { d = today - 2, p = 300 }, { d = today - 1, p = 400 }, { d = today, p = 1 } })
+    eq(msg:sub(1, 2), "H:"); eq(#msg <= 250, true, "passt in eine Nachricht")
+    local side, key, list = AH.DecodeH(msg)
+    eq(side, "A"); eq(key, "40010"); eq(#list, 3)
+    eq(AH.MergeHistory(key, list), 2, "zwei fremde Tage neu")
+    local h = AH.History("40010")
+    eq(#h, 3); eq(h[3].p, 500, "eigener Tag bleibt (nicht durch fremde 1c ersetzt)")
+    eq(h[1].d, today - 2, "nach Tag sortiert")
+    eq(select(3, AH.DecodeH("H:A:40010:1,5")) and #select(3, AH.DecodeH("H:A:40010:1,5")), 0, "uralte Tage verworfen")
+end)
+
+test("AH-Tooltip: Händlerpreis, Herstellkosten und einzeln abschaltbare Zeilen", function()
+    local AH = ns.AH
+    local now = math.floor(W.server)
+    W.itemInfo[40020] = { quality = 1, bindType = 0, classID = 7, sellPrice = 50 }
+    AH.RecordOwn("40020", 40, 1, now)   -- 40c im AH, nach 5 % Gebühr 38c < 50c beim Händler
+    local v = AH.TooltipVendor("|Hitem:40020:0:0:0:0:0:0:0|h", 1)
+    eq(v ~= nil and v:find("Händler", 1, true) ~= nil, true)
+    eq(v:find("lieber beim Händler", 1, true) ~= nil, true, "Händler zahlt mehr")
+    GuildPrideDB.ahCraft = { [40021] = { made = 1, r = { { 40020, 2 } } } }
+    AH.RecordOwn("40021", 200, 1, now)
+    local info = AH.CraftInfo(40021)
+    eq(info.cost, 80); eq(info.profit, 110, "200 × 0,95 − 80")
+    eq(AH.TooltipCraft("|Hitem:40021:0:0:0:0:0:0:0|h"):find("Gewinn", 1, true) ~= nil, true)
+    GuildPrideDB.ahTipVendor, GuildPrideDB.ahTipCraft = false, false
+    eq(AH.TooltipVendor("|Hitem:40020:0:0:0:0:0:0:0|h", 1), nil, "Händler-Zeile abgeschaltet")
+    eq(AH.TooltipCraft("|Hitem:40021:0:0:0:0:0:0:0|h"), nil, "Herstell-Zeile abgeschaltet")
+    GuildPrideDB.ahTipVendor, GuildPrideDB.ahTipCraft, GuildPrideDB.ahCraft = nil, nil, nil
+end)
+
+test("Gilde unterwegs: Zonen aus der Gildenliste als Dungeon oder Raid erkennen", function()
+    local I = ns.Instances
+    eq(I.ByZone("Die Todesminen").key, "dm"); eq(I.ByZone("The Deadmines").key, "dm", "auch englisch")
+    eq(I.ByZone("Onyxias Hort").kind, "raid")
+    eq(I.ByZone("Scharlachrotes Kloster") ~= nil, true, "Flügel über den Oberbegriff")
+    eq(I.ByZone("Sturmwind"), nil, "Stadt ist keine Instanz")
+    local oldInfo, oldRoster = GetGuildRosterInfo, W.roster
+    W.roster = { { "Anna", 3 }, { "Bert", 3 }, { "Carl", 3 }, { "Dora", 3, 60, false } }
+    local zones = { "Die Todesminen", "Die Todesminen", "Sturmwind", "Die Todesminen" }
+    GetGuildRosterInfo = function(i)
+        local m = W.roster[i]
+        if not m then return nil end
+        return m[1], "", m[2], 60, "Krieger", zones[i], "", "", m[4] ~= false
+    end
+    local road = I.GuildInInstances()
+    eq(#road, 1); eq(road[1].inst.key, "dm"); eq(#road[1].names, 2, "offline zählt nicht")
+    GetGuildRosterInfo, W.roster = oldInfo, oldRoster
+end)
+
 test("Preisalarm: auch mit Preisen anderer GuildPride-Spieler", function()
     local AH = ns.AH
     local printed, oldPrint, oldOpen = {}, AH.Print, AH.IsOpen
@@ -983,6 +1052,7 @@ test("/gp diag: Bericht entsteht ohne Fehler und nennt den Realm", function()
     eq(type(text), "string")
     eq(text:find("GetRealmName", 1, true) ~= nil, true)
     eq(text:find("== Dungeonbrowser ==", 1, true) ~= nil, true)
+    eq(text:find("== Andere Addons ==", 1, true) ~= nil, true, "Abschnitt andere Addons")
 end)
 
 test("Meilensteine: Abgleich fragt auch nach älteren Einträgen (MHO)", function()
