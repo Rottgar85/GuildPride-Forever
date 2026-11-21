@@ -1830,11 +1830,52 @@ end
 ---------------------------------------------------------------------
 -- 3) Meilensteine (Verlauf)
 ---------------------------------------------------------------------
+do
 local milestones = AddTab(L["Meilensteine"], 60)
-local msList = CreateList(milestones, 24)
+-- Filterleiste oben: Art (Alle, Stufe, Erfolge, Bosse, Gilde) und Suche nach Spielernamen
+local msCat, msText = "all", ""
+local CATS = { { "all", L["Alle"] }, { "level", L["Stufe"] }, { "ach", L["Erfolge"] }, { "boss", L["Bosse"] },
+               { "guild", L["Beitritte"] } }
+local catBtns = {}
+local function MarkCats()
+    for key, b in pairs(catBtns) do
+        if b.gpBg then b.gpBg:SetTexture(MEDIA .. (key == msCat and "nav_active" or "nav")) end
+        if key == msCat then b:LockHighlight() else b:UnlockHighlight() end
+    end
+end
+for i, c in ipairs(CATS) do
+    local b = CreateFrame("Button", nil, milestones, "UIPanelButtonTemplate")
+    b:SetSize(84, 22)
+    b:SetPoint("TOPLEFT", (i - 1) * 88, -2)
+    b:SetText(c[2])
+    b:SetScript("OnClick", function() msCat = c[1]; MarkCats(); milestones:Refresh() end)
+    catBtns[c[1]] = b
+end
+local msSearch = CreateFrame("EditBox", nil, milestones, "InputBoxTemplate")
+msSearch:SetSize(150, 20); msSearch:SetPoint("TOPRIGHT", -30, -3)
+msSearch:SetAutoFocus(false)
+if ns.SkinEditBox then ns.SkinEditBox(msSearch) end
+local msHint = msSearch:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+msHint:SetPoint("LEFT", 2, 0); msHint:SetText(L["Spieler suchen …"])
+msSearch:SetScript("OnTextChanged", function(self)
+    msText = self:GetText() or ""
+    msHint:SetShown(msText == "")
+    milestones:Refresh()
+end)
+msSearch:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+local msCount = milestones:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+msCount:SetPoint("RIGHT", msSearch, "LEFT", -10, 0)
+local listHolder = CreateFrame("Frame", nil, milestones)
+listHolder:SetPoint("TOPLEFT", 0, -28); listHolder:SetPoint("BOTTOMRIGHT")
+local msList = CreateList(listHolder, 24)
 
 function milestones:Refresh()
-    local log = ns.GuildLog()
+    MarkCats()
+    local log = {}
+    for _, e in ipairs(ns.GuildLog()) do
+        if not ns.MilestoneMatch or ns.MilestoneMatch(e, msCat, msText) then log[#log + 1] = e end
+    end
+    msCount:SetText((L["%d Einträge"]):format(#log))
     for i, e in ipairs(log) do
         local row = msList:GetRow(i)
         if not row.badge then
@@ -1860,6 +1901,7 @@ milestones:HookScript("OnShow", function()
     lastHistoryAsk = GetTime()
     ns.RequestHistory()
 end)
+end   -- Meilensteine
 
 ---------------------------------------------------------------------
 -- 4) Einstellungen

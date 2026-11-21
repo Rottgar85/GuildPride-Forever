@@ -21,21 +21,29 @@ local function Compare(a, b)
 end
 ns.CompareVersion = Compare   -- 1: a neuer, -1: a älter, 0: gleich (GuildPridePlayers.lua)
 
+-- Einmal pro Sitzung warnen, wenn jemand eine neuere Version hat – aus der Gilde (VER)
+-- oder seit 2.33.1 auch von Spielern im offenen GuildPride-Kanal (GuildPridePlayers.lua)
 local warned = false
-ns.On("VER", function(payload, sender)
-    if sender == ns.Me() then return end
-    local theirs, isReply = strsplit(ns.SEP, payload)
+function ns.NoteVersion(theirs)
     -- Nur echte Versionsnummern ("1.12.3") annehmen: der Text landet im Chat
     -- und in der Bildschirmwarnung, darf also keine Farb- oder Link-Codes enthalten
-    if not theirs or #theirs > 20 or not theirs:match("^%d+%.%d+[%.%d]*$") then return end
-    ns.Versions[sender] = theirs
-    local cmp = Compare(theirs, MY_VERSION)
-    if cmp > 0 and not warned then
+    if type(theirs) ~= "string" or #theirs > 20 or not theirs:match("^%d+%.%d+[%.%d]*$") then return false end
+    if Compare(theirs, MY_VERSION) > 0 and not warned then
         warned = true
         local msg = (L["Neue GuildPride-Version verfügbar: |cff40ff40%s|r (du hast %s). Bitte aktualisieren!"]):format(theirs, MY_VERSION)
         ns.Print(msg)
-        RaidNotice_AddMessage(RaidWarningFrame, ns.IconString(20) .. " " .. msg, ChatTypeInfo["GUILD"])
+        if RaidNotice_AddMessage and RaidWarningFrame then
+            RaidNotice_AddMessage(RaidWarningFrame, ns.IconString(20) .. " " .. msg, ChatTypeInfo["GUILD"])
+        end
     end
+    return true
+end
+
+ns.On("VER", function(payload, sender)
+    if sender == ns.Me() then return end
+    local theirs, isReply = strsplit(ns.SEP, payload)
+    if not ns.NoteVersion(theirs) then return end
+    ns.Versions[sender] = theirs
     -- Auf eine Login-Meldung antworten wir immer (einmal) per Flüstern:
     -- so erfährt der Neue, wer GuildPride hat (Logo im Chat), und ältere Versionen werden gewarnt.
     if isReply ~= "r" then

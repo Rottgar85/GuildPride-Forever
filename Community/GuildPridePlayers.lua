@@ -59,6 +59,8 @@ local function Store(sender, map, ver)
     map = tonumber(map)
     if map and (map <= 0 or map > 999999) then map = nil end
     if type(ver) ~= "string" or #ver > 20 or not ver:match("^%d+%.%d+[%.%d]*$") then ver = nil end
+    -- neuere Version auf dem Server: wie aus der Gilde einmal auf das Update hinweisen
+    if ver and ns.NoteVersion then ns.NoteVersion(ver) end
     if not P.public[sender] then
         if publicCount >= PUBLIC_MAX then return end
         publicCount = publicCount + 1

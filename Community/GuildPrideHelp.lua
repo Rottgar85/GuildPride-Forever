@@ -1474,7 +1474,8 @@ function page:Refresh()
 end
 
 -- Dungeonbrowser (Browser durchsuchen, Dungeon-Filter): GuildPrideHelpBrowser.lua
-ns.GroupFinder = { page = page, BROWSER = BROWSER, DungeonFilter = DungeonFilter, LIST_BAR_Y = LIST_BAR_Y }
+ns.GroupFinder = { page = page, BROWSER = BROWSER, DungeonFilter = DungeonFilter, LIST_BAR_Y = LIST_BAR_Y,
+                   BrowserEntry = BrowserEntry }
 
 -- Beim Öffnen die aktuellen Einträge der anderen anfragen (höchstens einmal pro Minute)
 local lastAsk = 0

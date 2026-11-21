@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.34.0
+
+**Deutsch**
+- **Alarm bei passender Gruppe**: Sind im Dungeon-Filter Dungeons angehakt, melden sich neue passende Gruppen aus dem Dungeonbrowser mit Ton und Chatzeile. Abschaltbar im Filter-Fenster („Ton bei neuen passenden Gruppen“)
+- **Schiffszeiten ehrlicher**: Hat kürzlich jemand eine andere Zeit gemeldet (z. B. von einem anderen Layer), steht „unsicher – andere Zeiten gemeldet“ statt einer scheinbar sicheren Zeit. Deine eigene Messung gilt weiter zuerst
+- **Meilensteine filtern**: Leiste über der Liste mit Alle, Stufe, Erfolge, Bosse und Beitritte, dazu eine Suche nach Spielernamen
+- **Update-Hinweis** kommt jetzt auch, wenn Spieler auf dem Server (nicht nur in der Gilde) eine neuere GuildPride-Version haben
+
+**English**
+- **Alert for matching groups**: With dungeons ticked in the dungeon filter, new matching Dungeon Finder groups announce themselves with a sound and a chat line. Can be turned off in the filter window ("Sound for new matching groups")
+- **More honest ship times**: If someone recently reported a different time (e.g. from another layer), it says "uncertain – other times reported" instead of a seemingly certain time. Your own measurement still comes first
+- **Filter milestones**: bar above the list with All, Level, Achievements, Bosses and Joins, plus a player name search
+- **Update notice** now also appears when players on the server (not only in the guild) have a newer GuildPride version
+
 ## 2.33.1
 
 **Deutsch**

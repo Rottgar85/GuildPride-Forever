@@ -80,7 +80,7 @@ if BROWSER then
     local function OpenPick()
         if not pickWin then
             pickWin = CreateFrame("Frame", "GuildPrideLFGDungeons", UIParent, "BackdropTemplate")
-            pickWin:SetSize(300, 84 + PICK_ROWS * 22)
+            pickWin:SetSize(300, 110 + PICK_ROWS * 22)   -- Platz für den Alarm-Haken unten
             pickWin:SetPoint("CENTER", 0, 40)
             pickWin:SetFrameStrata("DIALOG")
             pickWin:SetMovable(true); pickWin:EnableMouse(true); pickWin:SetClampedToScreen(true)
@@ -124,6 +124,14 @@ if BROWSER then
                 pickWin.offset = (pickWin.offset or 0) - delta * 3
                 RefreshPick()
             end)
+            -- Ton und Chatzeile bei neuen passenden Gruppen (Standard an)
+            local alarm = CreateFrame("CheckButton", nil, pickWin, "UICheckButtonTemplate")
+            alarm:SetSize(22, 22); alarm:SetPoint("BOTTOMLEFT", 12, 38)
+            alarm:SetChecked(not (GuildPrideDB and GuildPrideDB.lfgAlert == false))
+            alarm:SetScript("OnClick", function(cb) GuildPrideDB.lfgAlert = cb:GetChecked() and true or false end)
+            local alarmLabel = pickWin:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+            alarmLabel:SetPoint("LEFT", alarm, "RIGHT", 2, 0)
+            alarmLabel:SetText(L["Ton bei neuen passenden Gruppen"])
             local all = CreateFrame("Button", nil, pickWin, "UIPanelButtonTemplate")
             if ns.SkinButton then ns.SkinButton(all) end
             all:SetSize(130, 22); all:SetPoint("BOTTOMLEFT", 14, 12)
@@ -192,11 +200,44 @@ if BROWSER then
             if page:IsShown() then page:Refresh() end
         end)
     end
+    -- Alarm: Ist im Dungeon-Filter etwas gewählt, melden neue passende Gruppen aus dem Dungeonbrowser
+    -- sich mit Ton und Chatzeile (GuildPrideDB.lfgAlert, Standard an). Die erste Suche mit einer
+    -- Auswahl merkt sich nur, was schon da ist – sonst käme bei jeder neuen Auswahl eine Flut.
+    local alerted, primedFor = {}, nil
+    local function FilterKey(f)
+        local names = {}
+        for n in pairs(f) do names[#names + 1] = n end
+        table.sort(names)
+        return table.concat(names, "|")
+    end
+    local function CheckAlerts()
+        local f = DungeonFilter()
+        if not f or not GF.BrowserEntry or (GuildPrideDB and GuildPrideDB.lfgAlert == false) then return end
+        local key = FilterKey(f)
+        local silent = primedFor ~= key
+        primedFor = key
+        local _, ids = (C_LFGList.GetFilteredSearchResults or C_LFGList.GetSearchResults)()
+        local now, shown = GetServerTime(), 0
+        for _, id in ipairs(ids or {}) do
+            local ok, name, e = pcall(GF.BrowserEntry, id, now)
+            if ok and name and name ~= ns.Me() and not alerted[name] and ns.BrowserDungeonMatch(e.acts, f) then
+                alerted[name] = true
+                if not silent and shown < 3 then
+                    shown = shown + 1
+                    ns.Print((L["Neue Gruppe für %s: %s (%d/%d)"]):format(e.note or "?", Ambiguate(name, "none"), e.size or 1, e.max or 5))
+                end
+            end
+        end
+        if shown > 0 and PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.READY_CHECK or SOUNDKIT.RAID_WARNING) end
+    end
+    GF.CheckAlerts = CheckAlerts
+
     local watch = CreateFrame("Frame")
     watch:RegisterEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
     watch:RegisterEvent("LFG_LIST_SEARCH_RESULT_UPDATED")
     watch:RegisterEvent("LFG_LIST_SEARCH_FAILED")
     watch:SetScript("OnEvent", function(_, event)
+        if event == "LFG_LIST_SEARCH_RESULTS_RECEIVED" then pcall(CheckAlerts) end
         if event ~= "LFG_LIST_SEARCH_RESULT_UPDATED" then
             if asked then
                 asked = false

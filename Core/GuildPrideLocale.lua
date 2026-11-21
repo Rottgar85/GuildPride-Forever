@@ -354,6 +354,10 @@ local enUS = {
     ["MEILENSTEINE DIESE WOCHE"] = "MILESTONES THIS WEEK",
     ["Nur online"] = "Online only",
     ["Meilensteine"] = "Milestones",
+    ["Bosse"] = "Bosses",
+    ["Beitritte"] = "Joins",
+    ["Spieler suchen …"] = "Search player …",
+    ["%d Einträge"] = "%d entries",
     ["Einstellungen"] = "Settings",
     ["Dieses Fenster statt Blizzard-Gildenfenster (J)"] = "Use this window instead of Blizzard's guild window (J)",
     ["Meilenstein-Popups anzeigen"] = "Show milestone pop-ups",
@@ -595,6 +599,8 @@ local enUS = {
     ["Nichts angehakt = alle Dungeons."] = "Nothing ticked = all dungeons.",
     ["Keine Dungeons gefunden."] = "No dungeons found.",
     ["Alle Dungeons"] = "All dungeons",
+    ["Ton bei neuen passenden Gruppen"] = "Sound for new matching groups",
+    ["Neue Gruppe für %s: %s (%d/%d)"] = "New group for %s: %s (%d/%d)",
     ["Nur Gruppen für diese Dungeons zeigen (Dungeonbrowser und GuildPride). Einträge ohne Dungeon bleiben. Einen oder mehrere anhaken."] =
         "Only show groups for these dungeons (Dungeon Finder and GuildPride). Entries without a dungeon stay. Tick one or more.",
     ["Holt Gruppen aus Blizzards Dungeonbrowser in diese Liste. Du erkennst sie an der Markierung [Dungeonbrowser]."] =
@@ -985,6 +991,7 @@ local enUS = {
     ["%s nach %s legt in %d Sek. ab!"] = "%s to %s departs in %d sec!",
     ["|cff40ff40von dir gemessen|r"] = "|cff40ff40measured by you|r",
     ["|cffaaaaaavon anderen gemessen|r"] = "|cffaaaaaameasured by others|r",
+    ["|cffff9040unsicher – andere Zeiten gemeldet|r"] = "|cffff9040uncertain – other times reported|r",
     ["Schiff"] = "Boat",
     ["Zeppelin"] = "Zeppelin",
     ["Luftschiff"] = "Airship",

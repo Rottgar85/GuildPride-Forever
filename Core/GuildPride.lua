@@ -510,6 +510,21 @@ end
 local function Log() return ns.GuildTable("log") end
 ns.GuildLog = Log
 
+-- Meilensteine filtern (Leiste über der Liste): cat = "all" | "level" | "ach" | "boss" | "guild",
+-- text = Teil des Spielernamens (leer = alle)
+local MS_CATS = {
+    level = { LEVEL = true }, ach = { ACH = true, MOUNT = true }, boss = { BOSS = true, MPLUS = true },
+    guild = { JOIN = true, LEAVE = true, KICK = true },
+}
+function ns.MilestoneMatch(e, cat, text)
+    local kinds = MS_CATS[cat or "all"]
+    if kinds and not kinds[e.kind] then return false end
+    if text and text ~= "" then
+        return type(e.who) == "string" and e.who:lower():find(text:lower(), 1, true) ~= nil
+    end
+    return true
+end
+
 -- Verlauf aufräumen: je Meilenstein ein Eintrag (der früheste Zeitpunkt), neueste zuerst
 function ns.CleanLog(log)
     local first = {}

@@ -849,6 +849,18 @@ test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", fun
     eq(match(nil, { ["Die Todesminen"] = true }), false, "ohne Dungeon nicht zeigen, wenn gefiltert")
 end)
 
+test("Meilensteine: Filter nach Art und Spielername", function()
+    local m = ns.MilestoneMatch
+    local lvl = { kind = "LEVEL", who = "Anna", value = 60 }
+    local boss = { kind = "BOSS", who = "Bert", value = 1 }
+    local join = { kind = "JOIN", who = "Cora" }
+    eq(m(lvl, "all", ""), true); eq(m(boss, "all", ""), true)
+    eq(m(lvl, "level", ""), true); eq(m(boss, "level", ""), false)
+    eq(m(boss, "boss", ""), true); eq(m(join, "guild", ""), true); eq(m(join, "ach", ""), false)
+    eq(m(lvl, "all", "an"), true, "Teil des Namens, ohne Groß/klein")
+    eq(m(boss, "all", "an"), false)
+end)
+
 test("/gp diag: Bericht entsteht ohne Fehler und nennt den Realm", function()
     W.Load("GuildPrideDiag.lua")
     local text = ns.DiagReport()

@@ -301,7 +301,7 @@ function T.Board(id, side, now)
             local a, d, n, st = Visit(route.period, route.stops[i], phase)
             if not best or d < best.d then
                 best = { a = a, d = d, n = n, s = st, p = route.period, seen = anchor.seen, source = anchor.source,
-                         count = Count(anchor), guess = guess }
+                         count = Count(anchor), guess = guess, route = part.route, anchor = anchor }
             end
         end
     end
@@ -309,6 +309,14 @@ function T.Board(id, side, now)
         local route = routes[part.route]
         local anchor = route and AnchorOf(part.route, now)
         if anchor then Take(part, route, anchor) end
+    end
+    -- Ohne Layer können Messungen verschiedener Layer gegeneinander stehen: andere Zeiten dieser
+    -- Woche, die in den letzten 3 Stunden gemeldet wurden, zählen als Abweichung
+    local others = 0
+    if best and best.anchor and not best.guess then
+        for _, g in ipairs(FreshGroups(best.route, now)) do
+            if g ~= best.anchor and now - g.seen < 3 * 3600 then others = others + 1 end
+        end
     end
     if not best then
         -- Diese Woche noch nichts: die Messung der letzten Woche, um eine Woche weitergerückt
@@ -324,10 +332,11 @@ function T.Board(id, side, now)
         end
     end
     if best then
-        -- own: selbst gemessen; confirmed: so viele haben die Zeit selbst gemessen; guess: von letzter Woche vermutet
+        -- own: selbst gemessen; confirmed: so viele haben die Zeit selbst gemessen; guess: von letzter Woche vermutet;
+        -- others: so viele abweichende Zeiten wurden kürzlich gemeldet
         return { timed = true, arriveIn = pre + best.a / 1000, departIn = pre + best.d / 1000, nextIn = pre + best.n / 1000,
                  stay = best.s / 1000, period = best.p / 1000, age = max(0, now - best.seen), own = best.source == "you",
-                 confirmed = best.count, guess = best.guess or nil }
+                 confirmed = best.count, guess = best.guess or nil, others = others }
     end
     return { timed = false, wait = (s.wait or {})[side] }
 end
