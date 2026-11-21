@@ -116,6 +116,12 @@ function AH.RecordServer(key, p, q, t, sender)
     if count > MAX_FROM and oldest and oldest ~= sender then s.from[oldest] = nil; s.seen[oldest] = nil end
     if s.t and t < s.t then return false end
     s.p, s.q, s.t = p, q or 0, t
+    -- Preisalarm auch mit Preisen anderer GuildPride-Spieler, wenn du nicht selbst am Auktionshaus bist
+    -- (dort melden die eigenen Suchergebnisse)
+    if AH.CheckAlerts and not (AH.IsOpen and AH.IsOpen()) then
+        local id = tonumber(tostring(key):match("^(%d+)"))
+        if id then AH.CheckAlerts({ { itemID = id, min = p } }, true) end
+    end
     return true
 end
 

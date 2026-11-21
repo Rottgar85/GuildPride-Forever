@@ -205,7 +205,8 @@ function AH.SetAlert(id, copper)
 end
 
 -- rows = { { itemID, min = Stückpreis }, … }; meldet Treffer im Chat (mit Ton). Gibt die Treffer zurück.
-function AH.CheckAlerts(rows)
+-- shared: Preis kam von anderen GuildPride-Spielern (nicht aus deiner eigenen Suche)
+function AH.CheckAlerts(rows, shared)
     local hits, a = {}, Alerts()
     if not next(a) then return hits end
     local now = GetTime()
@@ -215,7 +216,8 @@ function AH.CheckAlerts(rows)
             alerted[r.itemID] = now
             hits[#hits + 1] = r
             local name = AH.ItemName(r.itemID) or ("#" .. r.itemID)
-            AH.Print((L["|cffffd100Preisalarm:|r %s für %s je Stück (dein Alarm: höchstens %s)"]):format(name, AH.Money(r.min), AH.Money(want)))
+            AH.Print((L["|cffffd100Preisalarm:|r %s für %s je Stück (dein Alarm: höchstens %s)"]):format(name, AH.Money(r.min), AH.Money(want))
+                .. (shared and (" |cff999999" .. L["(von anderen GuildPride-Spielern gesehen)"] .. "|r") or ""))
             if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING) end
         end
     end
@@ -409,4 +411,68 @@ function AH.AddReagents(list, reagents, crafts)
         end
     end
     return n
+end
+
+---------------------------------------------------------------------
+-- /gp preis <Gegenstand> <Preis> · /gp preis <Gegenstand> aus · /gp preis (Liste)
+-- Preisalarm ohne das Auktionshaus-Fenster. Gegenstand: Link (Shift-Klick), Item-ID oder Name
+-- (der Name klappt nur, wenn der Gegenstand schon im Spiel-Cache ist).
+---------------------------------------------------------------------
+-- Zerlegt den Text nach dem Befehl: item (Text), copper (Zahl) oder off = true
+function AH.ParsePriceArgs(rest)
+    rest = strtrim(tostring(rest or ""))
+    if rest == "" then return nil end
+    local item, tail = rest:match("^(.-)%s+(%S+)$")
+    if item and (tail:lower() == "aus" or tail:lower() == "off") then return strtrim(item), nil, true end
+    -- Preis am Ende: Ziffern, Komma/Punkt und g/s/c, auch mit Leerzeichen („1g 50s“)
+    item, tail = rest:match("^(.-)%s+([%d%.,%sgsckGSCK]+)$")
+    if item and tail:find("%d") then
+        local copper = AH.ParseMoney(tail)
+        if copper then return strtrim(item), copper, false end
+    end
+    return rest, nil, false
+end
+
+local function ItemIdOf(text)
+    local id = text:match("|Hitem:(%d+)") or text:match("^#?(%d+)$")
+    if id then return tonumber(id) end
+    local instant = AH.ItemInfoInstant(text)
+    return tonumber(instant)
+end
+
+do
+    local origPrice = SlashCmdList.GUILDPRIDE
+    SlashCmdList.GUILDPRIDE = function(arg)
+        local raw = strtrim(arg or "")
+        local cmd, rest = raw:match("^(%S+)%s*(.*)$")
+        cmd = cmd and cmd:lower()
+        if cmd ~= "preis" and cmd ~= "price" then return origPrice(arg) end
+        local item, copper, off = AH.ParsePriceArgs(rest)
+        if not item then
+            local n = 0
+            for id, c in pairs(Alerts()) do
+                n = n + 1
+                AH.Print(("%s: %s"):format(AH.ItemName(id) or ("#" .. id), AH.Money(c)))
+            end
+            if n == 0 then AH.Print(L["Keine Preisalarme. Neu: /gp preis Gegenstand 1g 50s"]) end
+            return
+        end
+        local id = ItemIdOf(item)
+        if not id then
+            AH.Print(L["Gegenstand nicht gefunden – per Shift-Klick verlinken oder die Item-ID nehmen."])
+            return
+        end
+        local name = AH.ItemName(id) or ("#" .. id)
+        if off then
+            AH.SetAlert(id, nil)
+            AH.Print(name .. ": " .. L["Preisalarm aus."])
+        elseif copper then
+            AH.SetAlert(id, copper)
+            AH.Print(name .. ": " .. (L["Preisalarm: höchstens %s je Stück."]):format(AH.Money(copper)))
+        else
+            local cur = AH.Alert(id)
+            AH.Print(name .. ": " .. (cur and (L["Preisalarm: höchstens %s je Stück."]):format(AH.Money(cur))
+                or L["kein Preisalarm. Mit Preis anlegen: /gp preis Gegenstand 1g 50s"]))
+        end
+    end
 end

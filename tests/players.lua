@@ -41,6 +41,11 @@ return function(test, eq, W, ns)
         local withMe = P.List(true)
         eq(withMe[1].self, true, "im Fenster stehst du selbst ganz oben")
         eq(withMe[1].ver, ns.VERSION); eq(#withMe, 3)
+        -- Filter: Gilde / Zone; du selbst bleibst immer stehen
+        local list = { { name = "Ich", self = true }, { name = "G", guild = true }, { name = "Z", here = true }, { name = "X" } }
+        eq(#P.Filter(list, "all"), 4)
+        local g = P.Filter(list, "guild"); eq(#g, 2); eq(g[2].name, "G")
+        local z = P.Filter(list, "zone"); eq(#z, 2); eq(z[2].name, "Z")
         -- nach 25 Minuten ohne Meldung fällt man heraus
         W.Advance(26 * 60)
         eq(P.Count(), 1, "veraltete Meldungen weg")

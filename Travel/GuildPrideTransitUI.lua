@@ -24,6 +24,9 @@ local TINT = { boat = { 0.45, 0.75, 1 }, zeppelin = { 1, 0.78, 0.35 }, airship =
 local GREEN, GOLD, GREY = { 0.35, 0.95, 0.45 }, { 1, 0.82, 0.2 }, { 0.6, 0.6, 0.6 }
 
 local REMIND_LEAD = 60   -- s vor der Abfahrt erinnern
+-- Die Tiefenbahn hält etwa alle 70 s: 1 Minute Vorlauf käme fast sofort, darum dort 15 s
+local function LeadOf(kind) return kind == "tram" and 15 or REMIND_LEAD end
+T.LeadOf = LeadOf
 local frame, dismissed, lastKey
 T.reminders = {}        -- ["id|side"] = { id, side, kind, to, skipUntil }
 local function Enabled() return not (type(GuildPrideDB) == "table" and GuildPrideDB.transitUI == false) end
@@ -218,9 +221,12 @@ function T.ToggleReminder(d, now)
     local b = T.Board(d.id, d.side, now)
     if not (b and b.timed) then return false end
     -- legt es gleich ab? Dann an die nächste Abfahrt erinnern
-    local skip = b.departIn <= REMIND_LEAD and (now + b.departIn + 1) or nil
+    local skip = b.departIn <= LeadOf(d.kind) and (now + b.departIn + 1) or nil
     T.reminders[key] = { id = d.id, side = d.side, kind = d.kind, to = d.to, skipUntil = skip }
-    if GP.Print then GP.Print((L["Schiffs-Zähler: Erinnerung 1 Min. vor der Abfahrt nach %s."]):format(tostring(d.to))) end
+    if GP.Print then
+        GP.Print(d.kind == "tram" and (L["Tiefenbahn: Erinnerung 15 Sek. vor der Abfahrt nach %s."]):format(tostring(d.to))
+            or (L["Schiffs-Zähler: Erinnerung 1 Min. vor der Abfahrt nach %s."]):format(tostring(d.to)))
+    end
     return true
 end
 
@@ -229,9 +235,9 @@ function T.CheckReminders(now)
     now = now or T.Now()
     for key, rm in pairs(T.reminders) do
         local b = (not rm.skipUntil or now >= rm.skipUntil) and T.Board(rm.id, rm.side, now)
-        if b and b.timed and b.departIn <= REMIND_LEAD then
+        if b and b.timed and b.departIn <= LeadOf(rm.kind) then
             T.reminders[key] = nil
-            local text = (L["%s nach %s legt in %d Sek. ab!"]):format(KIND[rm.kind] or KIND.boat, tostring(rm.to),
+            local text = (rm.kind == "tram" and L["%s nach %s fährt in %d Sek. ab!"] or L["%s nach %s legt in %d Sek. ab!"]):format(KIND[rm.kind] or KIND.boat, tostring(rm.to),
                 math.max(0, math.floor(b.departIn)))
             if RaidNotice_AddMessage and RaidWarningFrame then
                 RaidNotice_AddMessage(RaidWarningFrame, text, ChatTypeInfo and ChatTypeInfo["RAID_WARNING"] or { r = 1, g = 0.3, b = 0.1 })

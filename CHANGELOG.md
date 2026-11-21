@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.36.0
+
+**Deutsch**
+- **Preisalarm aus dem Chat**: `/gp preis <Gegenstand> <Preis>` legt einen Preisalarm fürs Auktionshaus an, ohne dessen Fenster zu öffnen (z. B. `/gp preis Schwarzer Lotus 1g 50s`). Gegenstand per Shift-Klick, Item-ID oder Name; `/gp preis <Gegenstand> aus` entfernt ihn, `/gp preis` zeigt alle
+- **Preisalarm mit geteilten Preisen**: Sieht ein anderer GuildPride-Spieler den Gegenstand unter deinem Wunschpreis, meldet sich der Alarm auch, wenn du nicht am Auktionshaus bist
+- **Tiefenbahn-Erinnerung** kommt 15 Sekunden vor der Abfahrt statt 1 Minute – die Bahn fährt etwa alle 70 Sekunden
+
+**English**
+- **Price alert from the chat**: `/gp price <item> <price>` adds an auction house price alert without opening its window (e.g. `/gp price Black Lotus 1g 50s`). Item by Shift-click, item ID or name; `/gp price <item> off` removes it, `/gp price` lists all
+- **Price alert with shared prices**: When another GuildPride player sees the item below your price, the alert also fires while you are away from the auction house
+- **Deeprun Tram reminder** comes 15 seconds before departure instead of 1 minute – the tram runs about every 70 seconds
+
 ## 2.35.0
 
 **Deutsch**

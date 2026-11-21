@@ -167,10 +167,23 @@ local function ZoneName(map)
     return info and info.name or L["unbekannt"]
 end
 
+-- Filter oben im Fenster: alle, nur Gilde, nur deine Zone (du selbst bleibst immer stehen)
+function P.Filter(list, mode)
+    if mode ~= "guild" and mode ~= "zone" then return list end
+    local out = {}
+    for _, e in ipairs(list) do
+        if e.self or (mode == "guild" and e.guild) or (mode == "zone" and e.here) then out[#out + 1] = e end
+    end
+    return out
+end
+local function FilterMode() return type(GuildPrideDB) == "table" and GuildPrideDB.playersFilter or "all" end
+
 local function Refresh()
     if P.button then P.button:SetText(tostring((P.Count()))) end
     if not win or not win:IsShown() then return end
-    local entries = P.List(true)   -- mit dir selbst ganz oben
+    local all = P.List(true)   -- mit dir selbst ganz oben
+    local entries = P.Filter(all, FilterMode())
+    if win.MarkFilter then win.MarkFilter() end
     local maxOff = math.max(0, #entries - ROWS)
     win.offset = math.min(win.offset or 0, maxOff)
     for i = 1, ROWS do
@@ -191,15 +204,16 @@ local function Refresh()
         end
     end
     local guildN, oldN = 0, 0
-    for _, e in ipairs(entries) do
+    for _, e in ipairs(all) do   -- Zähler immer über alle, auch mit Filter
         if e.guild and not e.self then guildN = guildN + 1 end
         if e.ver and ns.CompareVersion and ns.VERSION and ns.CompareVersion(e.ver, ns.VERSION) < 0 then oldN = oldN + 1 end
     end
     local more = #entries - ROWS - win.offset
     win.empty:SetShown(#entries <= 1)   -- nur du
-    win.empty:SetText(Available() and L["Noch keine Meldungen – die Liste füllt sich in den nächsten Sekunden."]
+    win.empty:SetText(#all > 1 and L["Niemand passt zum Filter."]
+        or Available() and L["Noch keine Meldungen – die Liste füllt sich in den nächsten Sekunden."]
         or L["Für alle Spieler auf dem Server: Einstellungen › Serverweite Gruppensuche einschalten. Ohne sie siehst du nur deine Gilde."])
-    win.count:SetText((L["%d Spieler mit GuildPride (%d aus der Gilde, grün)"]):format(#entries, guildN)
+    win.count:SetText((L["%d Spieler mit GuildPride (%d aus der Gilde, grün)"]):format(#all, guildN)
         .. (oldN > 0 and ("  ·  |cffff5050" .. (L["%d mit alter Version"]):format(oldN) .. "|r") or "")
         .. (more > 0 and ("  ·  " .. (L["… und %d weitere"]):format(more) .. " " .. L["(Mausrad)"]) or ""))
 end
@@ -234,6 +248,29 @@ function P.Toggle()
         local headVer = win:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
         headVer:SetPoint("TOPRIGHT", -16, -34); headVer:SetText(L["Version"])
         if ns.Paint then ns.Paint(headName, "title"); ns.Paint(headZone, "title"); ns.Paint(headVer, "title") end
+        -- Filter: Alle · Gilde · Zone (gemerkt in GuildPrideDB.playersFilter)
+        local fBtns = {}
+        local FILTERS = { { "all", L["Alle"] }, { "guild", L["Gilde"] }, { "zone", L["Zone"] } }
+        for i, f in ipairs(FILTERS) do
+            local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+            if ns.SkinButton then ns.SkinButton(b) end
+            b:SetSize(50, 18)
+            b:SetPoint("TOPRIGHT", -32 - (#FILTERS - i) * 52, -11)
+            b:SetText(f[2])
+            b:SetScript("OnClick", function()
+                GuildPrideDB.playersFilter = f[1] ~= "all" and f[1] or nil
+                win.offset = 0
+                Refresh()
+            end)
+            fBtns[f[1]] = b
+        end
+        function win.MarkFilter()
+            local cur = FilterMode()
+            for key, b in pairs(fBtns) do
+                if b.gpBg then b.gpBg:SetTexture(ns.MEDIA .. (key == cur and "nav_active" or "nav")) end
+                if key == cur then b:LockHighlight() else b:UnlockHighlight() end
+            end
+        end
         win:EnableMouseWheel(true)
         win:SetScript("OnMouseWheel", function(_, delta)
             win.offset = math.max(0, (win.offset or 0) - delta * 3)

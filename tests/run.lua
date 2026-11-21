@@ -849,6 +849,60 @@ test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", fun
     eq(match(nil, { ["Die Todesminen"] = true }), false, "ohne Dungeon nicht zeigen, wenn gefiltert")
 end)
 
+test("Übersetzungen: jeder Text im Code hat eine englische Fassung", function()
+    local function read(p)
+        local f = io.open(p, "rb")
+        if not f then return nil end
+        local s = f:read("*a"); f:close()
+        return s
+    end
+    local loc = read("Core/GuildPrideLocale.lua")
+    local keys = {}
+    for k in loc:gmatch('%["(.-)"%]%s*=') do keys[k] = true end
+    local missing = {}
+    for line in io.lines("GuildPrideForever.toc") do
+        local path = line:gsub("\r", ""):gsub("\\", "/")
+        if path:match("%.lua$") and not path:find("^#") and not path:find("GuildPrideLocale") then
+            local s = read(path)
+            for k in (s or ""):gmatch('%f[%w_]L%["(.-)"%]') do
+                -- zusammengesetzte Schlüssel (L["ROLE_" .. x]) kann der Test nicht prüfen
+                if not keys[k] and not k:find("\"", 1, true) then missing[#missing + 1] = path .. ": " .. k end
+            end
+        end
+    end
+    eq(#missing, 0, "ohne Übersetzung: " .. table.concat(missing, " | "))
+end)
+
+test("Preisalarm: auch mit Preisen anderer GuildPride-Spieler", function()
+    local AH = ns.AH
+    local printed, oldPrint, oldOpen = {}, AH.Print, AH.IsOpen
+    AH.Print = function(t) printed[#printed + 1] = t end
+    AH.IsOpen = function() return false end
+    AH.SetAlert(13468, 20000)
+    AH.RecordServer("13468", 15000, 1, GetServerTime(), "Anna")
+    local hit = false
+    for _, t in ipairs(printed) do if t:find("von anderen GuildPride", 1, true) then hit = true end end
+    eq(hit, true, "geteilter Preis unter dem Alarm meldet sich")
+    printed = {}
+    AH.SetAlert(13469, 10000)
+    AH.RecordServer("13469", 15000, 1, GetServerTime(), "Anna")
+    eq(#printed, 0, "teurer als der Alarm: still")
+    AH.SetAlert(13468, nil); AH.SetAlert(13469, nil)
+    AH.Print, AH.IsOpen = oldPrint, oldOpen
+end)
+
+test("/gp preis: Gegenstand und Preis aus dem Chat-Text", function()
+    local P = ns.AH.ParsePriceArgs
+    local item, copper, off = P("Schwarzer Lotus 1g 50s")
+    eq(item, "Schwarzer Lotus"); eq(copper, 15000); eq(off, false)
+    item, copper = P("13467 2,5"); eq(item, "13467"); eq(copper, 25000)
+    item, copper, off = P("Schwarzer Lotus aus"); eq(item, "Schwarzer Lotus"); eq(copper, nil); eq(off, true)
+    item, copper = P("|cff1eff00|Hitem:13467::::|h[Schwarzer Lotus]|h|r 75s")
+    eq(item:find("Hitem:13467", 1, true) ~= nil, true); eq(copper, 7500)
+    item, copper = P("Schwarzer Lotus"); eq(item, "Schwarzer Lotus"); eq(copper, nil, "ohne Preis: nur nachsehen")
+    eq(P(""), nil, "leer: Liste")
+end)
+
 test("Meilensteine: Filter nach Art und Spielername", function()
     local m = ns.MilestoneMatch
     local lvl = { kind = "LEVEL", who = "Anna", value = 60 }
