@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.37.1
+
+**Deutsch**
+- **Behoben**: Chat-Nachrichten (Gilde, Flüstern, Gruppe) kamen bei manchen Spielern nicht an
+
+**English**
+- **Fixed**: chat messages (guild, whisper, group) did not reach some players
+
 ## 2.37.0
 
 **Deutsch**

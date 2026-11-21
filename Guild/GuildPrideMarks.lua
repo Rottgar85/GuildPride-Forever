@@ -153,18 +153,35 @@ elseif GameTooltip:HasScript("OnTooltipSetUnit") then
     GameTooltip:HookScript("OnTooltipSetUnit", OnUnitTooltip)
 end
 
-local AddFilter = ChatFrame_AddMessageEventFilter or (ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter)
-if AddFilter then
-    local function Filter(_, _, msg, author, ...)
-        if Secret(msg) or Secret(author) or type(msg) ~= "string" then return false end
-        if not ns.IsMarked(author) then return false end
-        return false, ICON .. " " .. msg, author, ...
+-- Chat: Symbol vor dem Namen, nicht vor der Nachricht. Der Text der Nachricht bleibt
+-- unangetastet (kein Chat-Filter mehr, der ihn umschreibt). Blizzard baut den Namen über
+-- ChatFrameUtil.GetDecoratedSenderName (neuere Clients) bzw. GetColoredName(event, text, author, …):
+-- deren Ergebnis bekommt das Symbol vorangestellt. Geheime Werte und Fehler lassen den Namen unverändert.
+local CHAT_EVENTS = {}
+for _, e in ipairs({ "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER",
+                     "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_INSTANCE_CHAT",
+                     "CHAT_MSG_INSTANCE_CHAT_LEADER", "CHAT_MSG_SAY", "CHAT_MSG_YELL",
+                     "CHAT_MSG_WHISPER", "CHAT_MSG_CHANNEL" }) do
+    CHAT_EVENTS[e] = true
+end
+local function Decorate(name, event, author)
+    if type(name) ~= "string" or Secret(name) or Secret(author) or type(author) ~= "string" then return name end
+    if not CHAT_EVENTS[event] then return name end
+    local ok, marked = pcall(ns.IsMarked, author)
+    if ok and marked then return ICON .. " " .. name end
+    return name
+end
+if ChatFrameUtil and type(ChatFrameUtil.GetDecoratedSenderName) == "function" then
+    local orig = ChatFrameUtil.GetDecoratedSenderName
+    ChatFrameUtil.GetDecoratedSenderName = function(event, ...)
+        local name = orig(event, ...)
+        return Decorate(name, event, (select(2, ...)))
     end
-    for _, e in ipairs({ "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER", "CHAT_MSG_PARTY", "CHAT_MSG_PARTY_LEADER",
-                         "CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_INSTANCE_CHAT",
-                         "CHAT_MSG_INSTANCE_CHAT_LEADER", "CHAT_MSG_SAY", "CHAT_MSG_YELL",
-                         "CHAT_MSG_WHISPER", "CHAT_MSG_CHANNEL" }) do
-        AddFilter(e, Filter)
+elseif type(GetColoredName) == "function" then
+    local orig = GetColoredName
+    GetColoredName = function(event, ...)
+        local name = orig(event, ...)
+        return Decorate(name, event, (select(2, ...)))
     end
 end
 

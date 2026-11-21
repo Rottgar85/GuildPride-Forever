@@ -880,6 +880,22 @@ test("Blockliste: Offiziere sperren, alle gleichen ab, Fremde dürfen nichts än
     W.canMotd, ns.IsOfficerName = oldMotd, oldIsOff
 end)
 
+test("Chat: Symbol steht vor dem Namen, die Nachricht bleibt unverändert", function()
+    local oldGCN, oldUtil, oldMarked = GetColoredName, ChatFrameUtil, ns.IsMarked
+    ChatFrameUtil = nil
+    GetColoredName = function(_, _, author) return author end
+    local filters = {}
+    local oldAdd = ChatFrame_AddMessageEventFilter
+    ChatFrame_AddMessageEventFilter = function(e, fn) filters[#filters + 1] = e end
+    W.Load("GuildPrideMarks.lua")
+    ns.IsMarked = function(a) return a == "Gm" end
+    eq(#filters, 0, "kein Chat-Filter mehr, der den Text umschreibt")
+    eq(GetColoredName("CHAT_MSG_GUILD", "hallo", "Gm"):find("^|T") ~= nil, true, "Symbol vor dem Namen")
+    eq(GetColoredName("CHAT_MSG_GUILD", "hallo", "Anna"), "Anna", "andere unverändert")
+    eq(GetColoredName("CHAT_MSG_SYSTEM", "x", "Gm"), "Gm", "nur Chat-Nachrichten von Spielern")
+    GetColoredName, ChatFrameUtil, ns.IsMarked, ChatFrame_AddMessageEventFilter = oldGCN, oldUtil, oldMarked, oldAdd
+end)
+
 test("Notizen zu Spielern: speichern, lesen, löschen – nur lokal", function()
     W.Load("GuildPrideNotes.lua")
     W.sent = {}
