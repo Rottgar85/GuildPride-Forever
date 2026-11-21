@@ -32,7 +32,6 @@ local function PinEnter(pin)
         GameTooltip:AddLine(("|cff40ff40Gerade gesehen|r · %s · %s"):format(ns.Ago(e.t), e.hp and (e.hp .. "% Leben") or "Leben unbekannt"), 1, 1, 1)
         local n = ns.Confirmations(e)
         GameTooltip:AddLine(("Gemeldet von %s%s"):format(tostring(e.by), n >= ns.CONFIRM and (" · |cff40ff40bestätigt (" .. n .. ")|r") or ""), 0.8, 0.8, 0.8)
-        if e.layer and ns.myLayer and e.layer ~= ns.myLayer then GameTooltip:AddLine("Vermutlich anderer Layer", 1, 0.4, 0.4) end
     else
         GameTooltip:AddLine("Bekannter Fundort", 0.8, 0.8, 0.8)
         GameTooltip:AddLine("Zuletzt gesehen: " .. ns.Ago(e and e.t), 0.8, 0.8, 0.8)

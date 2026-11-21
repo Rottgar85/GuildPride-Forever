@@ -74,6 +74,26 @@ return function(test, eq, W, ns)
         eq(#T.DocksNear(0, -3905.2 + 500, -585.8), 0, "zu weit weg")
     end)
 
+    test("Tiefenbahn: Bahnsteige in Sturmwind und Eisenschmiede, Zeit nach Messung", function()
+        T.Forget()
+        local TRAM = "tram-stormwind-ironforge"
+        eq(T.Services()[TRAM] ~= nil, true, "Tiefenbahn in den Daten"); eq(T.Services()[TRAM].kind, "tram")
+        local function dock(x, y)
+            for _, d in ipairs(T.DocksNear(369, x, y)) do if d.id == TRAM then return d end end
+        end
+        local sw, ifo = dock(-20, 2500), dock(-20, 20)
+        eq(sw ~= nil and sw.side, "a", "Bahnsteig Sturmwind"); eq(sw.kind, "tram")
+        eq(ifo ~= nil and ifo.side, "b", "Bahnsteig Eisenschmiede")
+        eq(dock(-20, 1250), nil, "mitten im Tunnel kein Bahnsteig")
+        eq(T.Board(TRAM, "a").timed, false, "ungemessen")
+        local now = T.Now()
+        T.Sighted("tram-176080", { epoch = now * 1000 - 58633, seen = math.floor(now), source = "you" })
+        local b = T.Board(TRAM, "a", now)
+        eq(b.timed, true, "gemessen"); eq(b.own, true)
+        eq(b.departIn > 0 and b.departIn <= 143.333 + 15, true, "Abfahrt innerhalb einer Runde")
+        T.Forget()
+    end)
+
     test("Schiffe: Mitfahren misst den Fahrplan und teilt ihn mit der Gilde", function()
         T.Forget()
         local route = T.Routes()[ROUTE]
@@ -149,12 +169,7 @@ return function(test, eq, W, ns)
         T.Forget()
     end)
 
-    -- Layer und serverweiten Kanal nachbilden
-    ns.Layer = ns.Layer or {}
-    local function setLayer(map, id)
-        ns.Layer.map, ns.Layer.id = map, id
-        C_Map = map and { GetBestMapForUnit = function() return map end } or nil
-    end
+    -- serverweiten Kanal nachbilden
     local pubSent = {}
     local oldPub, oldTo, oldF, oldChat = ns.PublicChannelId, ns.QueuePublicTo, ns.IS_FOREVER, ns.PUBLIC_VIA_CHAT
     local oldIsPub = ns.IsPublicChannel
@@ -177,47 +192,37 @@ return function(test, eq, W, ns)
         W.Fire("CHAT_MSG_ADDON", "GuildPride", m, "CHANNEL", sender, "", 0, 7, "GuildPrideF")
     end
 
-    test("Schiffe: je Layer eine eigene Zeit – Layer-Wechsel wechselt die Anzeige", function()
+    test("Schiffe: ohne Layer – eigene Messung zuerst, sonst die neueste bzw. meistbestätigte", function()
         T.Forget()
-        local route = T.Routes()[ROUTE]
         local now = T.Now()
-        local e1 = now * 1000 - 54297 - 10000          -- Layer 111: liegt seit 10 s am Steg
-        local e2 = now * 1000 - 54297 + 30000          -- Layer 222: kommt in 30 s
-        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", tags = { "1437.111" } })
-        T.Sighted(ROUTE, { epoch = e2, seen = math.floor(now) - 60, source = "player", tags = { "1437.222" } })
-        eq(#GuildPrideDB.transit.Realm[ROUTE], 2, "zwei Layer = zwei Gruppen")
-        setLayer(1437, "111")
+        local e1 = now * 1000 - 54297 - 10000          -- liegt seit 10 s am Steg
+        local e2 = now * 1000 - 54297 + 30000          -- kommt in 30 s
+        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player" })
+        T.Sighted(ROUTE, { epoch = e2, seen = math.floor(now) - 60, source = "player" })
+        eq(#GuildPrideDB.transit.Realm[ROUTE], 2, "zwei Phasen = zwei Gruppen")
         local b = T.Board(ID, "a", now)
-        eq(b.timed, true); eq(b.layer, true, "dein Layer"); eq(b.arriveIn, 0, "Layer 111: liegt am Steg")
-        eq(T.LayerText(b):find("dein Layer", 1, true) ~= nil, true)
-        setLayer(1437, "222")
+        eq(b.timed, true); eq(b.arriveIn, 0, "die neueste gilt"); eq(b.layer, nil); eq(b.layerKnown, nil)
+        eq(T.SourceText(b):find("von anderen gemessen", 1, true) ~= nil, true)
+        eq(T.StatusText(b):find("Layer", 1, true), nil, "keine Layer-Angabe")
+        -- eigene Messung gewinnt
+        T.Sighted(ROUTE, { epoch = e2, seen = math.floor(now) - 60, source = "you" })
         b = T.Board(ID, "a", now)
-        eq(b.layer, true); eq(near(b.arriveIn, 30), true, "Layer 222: kommt in 30 s")
-        setLayer(1437, "333")
-        b = T.Board(ID, "a", now)
-        eq(b.timed, false, "anderer Layer: keine falsche Zeit"); eq(b.otherLayer, true)
-        setLayer(nil, nil)
-        b = T.Board(ID, "a", now)
-        eq(b.timed, true, "Layer unbekannt: neueste Messung"); eq(b.layer, nil); eq(b.arriveIn, 0)
-        eq(T.LayerText(b):find("Layer ?", 1, true) ~= nil, true)
-        -- gleiche Phase, Layer vom anderen Anleger: gehört zur Gruppe von Layer 111
-        T.Sighted(ROUTE, { epoch = e1 + 2000, seen = math.floor(now), source = "player", tags = { "1445.999" } })
+        eq(near(b.arriveIn, 30), true, "deine eigene Zeit"); eq(b.own, true)
+        eq(T.SourceText(b):find("von dir gemessen", 1, true) ~= nil, true)
+        -- gleiche Phase mit Layer einer älteren Version: kommt in dieselbe Gruppe, Layer wird nicht gemerkt
+        T.Sighted(ROUTE, { epoch = e1 + 2000, seen = math.floor(now), source = "player", tags = { "1437.444" } })
         eq(#GuildPrideDB.transit.Realm[ROUTE], 2, "zusammengeführt")
-        setLayer(1445, "999")
-        eq(T.Board(ID, "b", now).layer, true, "auch am anderen Anleger erkannt")
-        -- gleiche Phase, aber widersprüchlicher Layer: eigene Gruppe
-        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", tags = { "1437.444" } })
-        eq(#GuildPrideDB.transit.Realm[ROUTE], 3, "Widerspruch = neue Gruppe")
+        for _, g in ipairs(GuildPrideDB.transit.Realm[ROUTE]) do eq(g.tags, nil, "keine Layer gespeichert") end
         -- alte Speicherform (eine Messung) wird übernommen
         GuildPrideDB.transit.Realm[ROUTE] = { epoch = e1, seen = math.floor(now), source = "you" }
-        setLayer(nil, nil)
         eq(T.Board(ID, "a", now).timed, true, "alte Speicherform")
         eq(#GuildPrideDB.transit.Realm[ROUTE], 1)
-        -- Kodieren mit Layern; ältere Nachrichten ohne Layer werden weiter gelesen
-        local enc = T._Encode(ROUTE, { epoch = e1, seen = math.floor(now), tags = { "1437.111", "1445.999" } })
-        eq(enc:find(":1437.111,1445.999$") ~= nil, true, "Layer im Eintrag")
-        local dec = T._Decode(enc .. ";" .. ROUTE .. ":" .. math.floor(now) .. ":5000", now)
-        eq(#dec, 2); eq(dec[1].anchor.tags[2], "1445.999"); eq(#dec[2].anchor.tags, 0, "alte Form ohne Layer")
+        -- Kodieren ohne Layer; Nachrichten älterer Versionen mit Layern werden weiter gelesen
+        local enc = T._Encode(ROUTE, { epoch = e1, seen = math.floor(now), source = "player" })
+        eq(enc:match("^[%w%-]+:%d+:%d+:$") ~= nil, true, "leeres Layer-Feld")
+        local dec = T._Decode(enc .. ";" .. ROUTE .. ":" .. math.floor(now) .. ":5000:1437.111,1445.999:o", now)
+        eq(#dec, 2); eq(dec[1].anchor.own, false); eq(dec[2].anchor.own, true, "alte Form mit Layer und :o")
+        eq(dec[2].anchor.tags, nil)
         T.Forget()
     end)
 
@@ -225,59 +230,55 @@ return function(test, eq, W, ns)
         T.Forget()
         publicOn()
         local now = T.Now()
-        setLayer(1437, "111")
-        -- Messung eines Fremden im offenen Kanal
+        -- Messung eines Fremden im offenen Kanal (ältere Version mit Layer)
         chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
         local b = T.Board(ID, "a")
-        eq(b.timed, true, "von allen mit GuildPride"); eq(b.layer, true)
+        eq(b.timed, true, "von allen mit GuildPride")
         eq(GuildPrideDB.transit.Realm[ROUTE][1].source, "public")
         T.Forget()
-        chan("Fremd", msg("TPS", "R", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
+        chan("Fremd", msg("TPS", "R", "Realm", ROUTE .. ":" .. W.server .. ":1000:"))
         eq(T.Board(ID, "a").timed, false, "andere Spielversion")
-        chan("Fremd", msg("TPS", "F", "Anderer", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
+        chan("Fremd", msg("TPS", "F", "Anderer", ROUTE .. ":" .. W.server .. ":1000:"))
         eq(T.Board(ID, "a").timed, false, "anderer Realm")
         -- Antwort per Flüstern (auch von Fremden)
-        W.Receive("Fremd2", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":2000:1437.111"), "WHISPER")
+        W.Receive("Fremd2", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":2000:"), "WHISPER")
         eq(T.Board(ID, "a").timed, true, "geflüsterte Antwort")
         T.Forget()
-        -- am Anleger fragen: höchstens alle 5 Minuten je Layer
+        -- am Anleger fragen: höchstens alle 5 Minuten, ohne Layer
         W.sent = {}
         eq(T.RequestPublic({ ROUTE }), true)
         local q
         for _, m in ipairs(W.sent) do if m.kind == "TPQ" then q = m end end
         eq(q ~= nil, true, "Anfrage gesendet"); eq(q.target, "@PUBLIC")
-        eq(q.msg, msg("TPQ", "F", "Realm", "1437.111", ROUTE))
+        eq(q.msg, msg("TPQ", "F", "Realm", "", ROUTE))
         eq(T.RequestPublic({ ROUTE }), false, "nicht gleich noch einmal")
-        setLayer(1437, "222")
-        eq(T.RequestPublic({ ROUTE }), true, "nach Layer-Wechsel neu fragen")
-        -- Anfrage beantworten: eigene Messung mit passendem Layer
-        T.Sighted(ROUTE, { epoch = now * 1000 - 5000, seen = math.floor(now), source = "you", tags = { "1437.111" } })
+        -- Anfrage beantworten: nur eigene Messung (auch auf Anfragen älterer Versionen mit Layer)
+        T.Sighted(ROUTE, { epoch = now * 1000 - 5000, seen = math.floor(now), source = "you" })
         chan("Anna2", msg("TPQ", "F", "Realm", "1437.111", ROUTE))
         eq(#pubSent, 1, "geantwortet"); eq(pubSent[1].kind, "TPS")
-        eq(pubSent[1].msg:find(":1437.111", 1, true) ~= nil, true, "mit Layer")
+        eq(pubSent[1].msg:find(":o", 1, true) ~= nil, true, "selbst gemessen")
         eq(pubSent[1].to, "Anna2", "per Flüstern an den Fragenden")
-        chan("Anna3", msg("TPQ", "F", "Realm", "1437.555", ROUTE))
-        eq(#pubSent, 1, "anderer Layer: keine Antwort")
-        chan("Anna2", msg("TPQ", "F", "Realm", "1437.111", ROUTE))
+        chan("Anna2", msg("TPQ", "F", "Realm", "", ROUTE))
         eq(#pubSent, 1, "derselbe Fragende nicht gleich noch einmal")
+        T.Forget()
+        T.Sighted(ROUTE, { epoch = now * 1000 - 5000, seen = math.floor(now), source = "player" })
+        chan("Anna3", msg("TPQ", "F", "Realm", "", ROUTE))
+        eq(#pubSent, 1, "fremde Messungen werden nicht weitergegeben")
         -- Gruppensuche aus: Schiffszeiten gehen trotzdem (Teilen ist Pflicht)
         GuildPrideDB.publicLFG = nil
         T.Forget()
-        setLayer(1437, "111")
-        chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
+        chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:"))
         eq(T.Board(ID, "a").timed, true, "auch ohne Gruppensuche")
         T.Forget()
         publicOff()
-        chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:1437.111"))
+        chan("Fremd", msg("TPS", "F", "Realm", ROUTE .. ":" .. W.server .. ":1000:"))
         eq(T.Board(ID, "a").timed, false, "serverweite Gruppensuche aus")
-        setLayer(nil, nil)
         T.Forget()
     end)
 
-    test("Schiffe: Fahrt merkt sich Abfahrts- und Ankunfts-Layer und geht an alle", function()
-        -- offene Fahrt aus dem vorigen Test abschließen (und deren Nachtrag-Fenster ablaufen lassen)
+    test("Schiffe: Fahrt wird gemessen und geht an alle", function()
+        -- offene Fahrt aus dem vorigen Test abschließen
         W.Advance(40); T.Sample()
-        W.Advance(400); T.Sample()
         T.Forget()
         W.Advance(700)   -- keine „Routine“-Wiederholung
         publicOn()
@@ -294,10 +295,6 @@ return function(test, eq, W, ns)
                 end
             end
         end
-        -- am Steg: Layer erkannt
-        setLayer(1437, "111")
-        T.Sample()
-        setLayer(nil, nil)
         local x, y, map
         UnitPosition = function() return x, y, 0, map end
         UnitOnTaxi = function() return false end
@@ -310,20 +307,12 @@ return function(test, eq, W, ns)
         -- angekommen: stehen bleiben, bis die Fahrt endet
         for _ = 1, 35 do T.Sample(); W.Advance(1) end
         local g = GuildPrideDB.transit.Realm[ROUTE][1]
-        eq(g.source, "you"); eq(g.tags[1], "1437.111", "Abfahrts-Layer")
+        eq(g.source, "you"); eq(g.tags, nil, "ohne Layer")
         local tps
-        for _, m in ipairs(W.sent) do if m.kind == "TPS" and m.target == "@PUBLIC" then tps = m end end        eq(tps ~= nil, true, "an alle im offenen Kanal")
-        eq(tps.msg:find(":1437.111", 1, true) ~= nil, true)
-        -- Ziel-Anleger: Layer erkannt -> wird nachgetragen und noch einmal geteilt
-        W.sent = {}
-        setLayer(1445, "777")
-        T.Sample()
-        eq(g.tags[2], "1445.777", "Ankunfts-Layer")
-        local again
-        for _, m in ipairs(W.sent) do if m.kind == "TPS" and m.msg:find("1445.777", 1, true) then again = m end end
-        eq(again ~= nil, true, "mit neuem Layer erneut geteilt")
+        for _, m in ipairs(W.sent) do if m.kind == "TPS" and m.target == "@PUBLIC" then tps = m end end
+        eq(tps ~= nil, true, "an alle im offenen Kanal")
+        eq(tps.msg:find("::o", 1, true) ~= nil, true, "leeres Layer-Feld, selbst gemessen")
         UnitPosition, UnitOnTaxi = nil, nil
-        setLayer(nil, nil)
         publicOff()
         T.Forget()
     end)
@@ -368,73 +357,29 @@ return function(test, eq, W, ns)
         local e2 = now * 1000 - 54297 + 60000          -- abweichend: kommt in 60 s
         for i, who in ipairs({ "Anna", "Bert", "Carl" }) do
             T.Sighted(ROUTE, { epoch = e1 + i * 100, seen = math.floor(now) - 300, source = "player",
-                tags = { "1437.111" }, from = who, own = true })
+                from = who, own = true })
         end
-        T.Sighted(ROUTE, { epoch = e2, seen = math.floor(now), source = "player", tags = { "1437.111" }, from = "Fremd", own = true })
+        T.Sighted(ROUTE, { epoch = e2, seen = math.floor(now), source = "player", from = "Fremd", own = true })
         eq(#GuildPrideDB.transit.Realm[ROUTE], 2, "abweichende Phase = eigene Gruppe")
-        setLayer(1437, "111")
         local b = T.Board(ID, "a", now)
         eq(b.arriveIn, 0, "die dreifach bestätigte Zeit gilt"); eq(b.confirmed, 3)
         eq(T.ConfirmText(b):find("3", 1, true) ~= nil, true)
         -- dieselbe Person zählt nur einmal; weitergereichte (ohne ":o") zählen nicht
-        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", tags = { "1437.111" }, from = "Anna", own = true })
-        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", tags = { "1437.111" }, from = "Dora" })
+        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", from = "Anna", own = true })
+        T.Sighted(ROUTE, { epoch = e1, seen = math.floor(now), source = "player", from = "Dora" })
         eq(T.Board(ID, "a", now).confirmed, 3)
         -- Kennzeichen ":o" nur für selbst gemessene, ältere Einträge ohne werden gelesen
-        local own = T._Encode(ROUTE, { epoch = e1, seen = math.floor(now), source = "you", tags = { "1437.111" } })
-        local other = T._Encode(ROUTE, { epoch = e1, seen = math.floor(now), source = "public", tags = {} })
+        local own = T._Encode(ROUTE, { epoch = e1, seen = math.floor(now), source = "you" })
+        local other = T._Encode(ROUTE, { epoch = e1, seen = math.floor(now), source = "public" })
         eq(own:sub(-2), ":o"); eq(other:find(":o", 1, true), nil)
         local dec = T._Decode(own .. ";" .. other .. ";" .. ROUTE .. ":" .. math.floor(now) .. ":5000", now)
         eq(#dec, 3); eq(dec[1].anchor.own, true); eq(dec[2].anchor.own, false); eq(dec[3].anchor.own, false)
-        eq(dec[1].anchor.tags[1], "1437.111")
         -- über die Gilde: der Absender zählt als Bestätiger
         T.Forget()
-        W.Receive("Anna", msg("TRS", "Realm", T._Encode(ROUTE, { epoch = e1, seen = W.server, source = "you", tags = { "1437.111" } })))
-        W.Receive("Bert", msg("TRS", "Realm", T._Encode(ROUTE, { epoch = e1 + 500, seen = W.server, source = "you", tags = { "1437.111" } })))
+        W.Receive("Anna", msg("TRS", "Realm", T._Encode(ROUTE, { epoch = e1, seen = W.server, source = "you" })))
+        W.Receive("Bert", msg("TRS", "Realm", T._Encode(ROUTE, { epoch = e1 + 500, seen = W.server, source = "you" })))
         eq(T.Board(ID, "a").confirmed, 2, "zwei Gildenmitglieder")
-        setLayer(nil, nil)
         T.Forget()
-    end)
-
-    test("Schiffe: Layer-Start aus Kreaturen-GUIDs, geschätzt erst nach zwei passenden Eichungen", function()
-        T.Forget()
-        GuildPrideDB.transitStarts, GuildPrideDB.transitCalib = nil, nil
-        local now = math.floor(T.Now())
-        local function guid(zone, ago)
-            local low = (now - ago) % 2 ^ 23
-            return ("Creature-0-1-2-%s-1234-0000%06X"):format(zone, low)
-        end
-        eq(T.SpawnTime(guid("111", 100), now), now - 100, "Entstehungszeit aus der GUID")
-        eq(T.SpawnTime("Player-1-0000ABCD", now), nil)
-        -- früheste Kreatur je Layer = Start
-        T.SawCreature(guid("111", 5000), "1437.111", now)
-        T.SawCreature(guid("111", 9000), "1437.111", now)
-        T.SawCreature(guid("111", 200), "1437.111", now)
-        T.SawCreature(guid("222", 3000), "1437.222", now)
-        T.SawCreature(guid("333", 7000), "1437.333", now)
-        eq(GuildPrideDB.transitStarts.Realm["1437.111"].t, now - 9000)
-        local route = T.Routes()[ROUTE]
-        local OFF = 123456
-        local function epochFor(start) return start * 1000 + OFF end
-        T.Calibrate(ROUTE, epochFor(now - 9000), { "1437.111" }, now)
-        eq(T._Offset(ROUTE), nil, "eine Eichung reicht nicht")
-        setLayer(1437, "333")
-        eq(T.Board(ID, "a", now).timed, false, "noch nicht geschätzt")
-        T.Calibrate(ROUTE, epochFor(now - 3000) + 1500, { "1437.222" }, now)
-        eq(math.abs(T._Offset(ROUTE) - (OFF + 750)) < 1, true, "zwei Layer mit gleichem Abstand")
-        local b = T.Board(ID, "a", now)
-        eq(b.timed, true); eq(b.estimated, true); eq(b.layer, true)
-        eq(T.LayerText(b):find("geschätzt", 1, true) ~= nil, true)
-        -- echte Messung auf meinem Layer hat Vorrang vor der Schätzung
-        T.Sighted(ROUTE, { epoch = now * 1000 - 1000, seen = now, source = "player", tags = { "1437.333" } })
-        eq(T.Board(ID, "a", now).estimated, nil)
-        -- widersprüchliche Eichungen: keine Schätzung
-        GuildPrideDB.transitCalib = { [ROUTE] = { { off = 1000, start = now - 9000 }, { off = 200000, start = now - 3000 } } }
-        eq(T._Offset(ROUTE), nil)
-        GuildPrideDB.transitStarts, GuildPrideDB.transitCalib = nil, nil
-        setLayer(nil, nil)
-        T.Forget()
-        local _ = route
     end)
 
     test("Schiffe: Erinnerung 1 Minute vor der Abfahrt", function()

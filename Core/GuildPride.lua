@@ -96,7 +96,7 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    publicLFG = true, publicAlerts = false, lfgPublic = false, lfgScope = "all",
                    mapShow = true, mapShare = true, ausweisAuto = true, groupAlts = true, compactMenu = true,
                    guildTab = true, wishTooltip = true, wishDropHint = true,
-                   remindMin = 15, layerHelp = true, layerShow = true,
+                   remindMin = 15,
                    ahTab = true, ahTooltip = true, ahShare = true, ahReadAuctionator = true,
                    ahTooltipWithAuctionator = false, transitUI = true, transitShare = true,
                    flightTimes = true, flightUI = true, showItemID = false,
@@ -803,9 +803,9 @@ f:SetScript("OnEvent", function(_, event, ...)
         -- selbst), nie Dispatch – Weiterleitungen und Gildendaten sind so tabu.
         if channel == "CHANNEL" and ns.IsPublicChannel then
             local _, _, _, _, _, _, localID, chanName = ...            if not IsSecret(localID) and not IsSecret(chanName) and ns.IsPublicChannel(localID, chanName) then
-                -- Layer-Wechsel (GuildPrideLayer.lua) hat eigene Arten: LYQ/LYA/LYR
+                -- GuildPride-Spieler (GuildPridePlayers.lua): LYS/LYP
                 if message:sub(1, 2) == "LY" then
-                    if ns.OnLayerMessage then ns.OnLayerMessage(message, sender, false) end
+                    if ns.OnPlayersMessage then ns.OnPlayersMessage(message, sender) end
                 -- Schiffs-Zähler (GuildPrideTransit.lua): TPS/TPQ
                 elseif message:sub(1, 2) == "TP" then
                     if ns.OnTransitPublic then ns.OnTransitPublic(message, sender, false) end
@@ -822,12 +822,6 @@ f:SetScript("OnEvent", function(_, event, ...)
         -- Schiffs-Zähler: Antwort auf eine serverweite Anfrage, per Flüstern, auch von Fremden
         if channel == "WHISPER" and message:sub(1, 4) == "TPS:" then
             if ns.OnTransitPublic then ns.OnTransitPublic(message, sender, true) end
-            return
-        end
-        -- Layer-Wechsel: Angebot (LYA), Bitte (LYR), Absage (LYN) und Dank (LYT) kommen per Flüstern, auch von Fremden
-        if channel == "WHISPER" and (message:sub(1, 4) == "LYA:" or message:sub(1, 4) == "LYR:" or message:sub(1, 4) == "LYT:"
-            or message:sub(1, 4) == "LYN:") then
-            if ns.OnLayerMessage then ns.OnLayerMessage(message, sender, true) end
             return
         end
         -- Kanal: nur unser abgesicherter Gildenkanal zählt, keine anderen Kanäle

@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.31.0
+
+**Deutsch**
+- **Community-Knopf**: Im Gildenfenster steht links neben dem Discord-Logo ein Community-Knopf. Ein Klick tritt der Ingame-Community direkt bei (nur EU, Allianz, Server „Normal“)
+- **Schiffszeiten ohne Layer**: Seit Blizzards Hotfix vom 20.11.2026 lassen sich Layer nicht mehr erkennen. Die Fenster an den Anlegern zeigen deshalb nur noch Abfahrt, Ankunft und nächste Fahrt – deine eigene Messung zuerst, sonst die Zeit, die die meisten gemessen haben. Gespeichert wird bei dir
+- **Tiefenbahn**: Der Zähler läuft jetzt auch an den Bahnsteigen der Tiefenbahn zwischen Sturmwind und Eisenschmiede
+- **Layer-Funktionen entfernt**: Layer-Anzeige, Layer-Wechsel und der „Zum Layer“-Knopf bei Rare-Alarmen sind weg, weil Blizzard den Layer nicht mehr verrät
+
+**English**
+- **Community button**: The guild window has a community button left of the Discord logo. One click joins the in-game community directly (EU, Alliance, "Normal" server only)
+- **Ship times without layers**: Since Blizzard's hotfix of 2026-11-20 layers can no longer be detected. The dock windows now only show departure, arrival and next trip – your own measurement first, otherwise the time most players measured. Times are stored on your side
+- **Deeprun Tram**: The timer now also runs on the Deeprun Tram platforms between Stormwind and Ironforge
+- **Layer features removed**: Layer display, layer switching and the "To layer" button on rare alerts are gone, because Blizzard no longer reveals the layer
+
 ## 2.30.2
 
 **Deutsch**

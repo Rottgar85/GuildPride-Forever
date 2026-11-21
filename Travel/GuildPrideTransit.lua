@@ -1,11 +1,11 @@
--- GuildPride: Fahrpläne der Schiffe, Zeppeline und Luftschiffe – wann legt das nächste an,
+-- GuildPride: Fahrpläne der Schiffe, Zeppeline, Luftschiffe und der Tiefenbahn – wann legt das nächste an,
 -- wann fährt es ab (für das Fenster am Anleger, GuildPrideTransitUI.lua).
 --
 -- Übernommen aus Polestar (Nav/Transit.lua, Copyright (c) 2026 The Polestar authors, GPL-3.0-only),
 -- das es wiederum aus Shortest Path Forever von Cillian Berragan portiert hat
 -- (Transport/Model.lua, Timetable.lua, Observer.lua, Sync.lua; GPL-3.0-or-later, mit Erlaubnis).
 -- Portions Copyright (C) 2026 Cillian Berragan (Shortest Path Forever, GPL-3.0-or-later).
--- Für GuildPride Forever gekürzt (ohne Aufzüge, Bahn, Teleporte) und auf die Gilden-Nachrichten
+-- Für GuildPride Forever gekürzt (ohne Aufzüge und Teleporte) und auf die Gilden-Nachrichten
 -- von GuildPride umgestellt, 2026-11-17.
 --
 -- Jedes Schiff fährt eine feste Runde (GuildPrideTransitData.lua); WO es in der Runde gerade ist,
@@ -15,29 +15,25 @@
 -- Eine Messung gilt bis zum nächsten wöchentlichen Reset (die Wartung startet die Server neu und
 -- setzt die Runden zurück), höchstens 7 Tage.
 --
--- Layer: Jeder Layer ist eine eigene Server-Instanz und fährt seine Schiffe versetzt. Darum trägt
--- jede Messung die Layer, auf denen sie gemacht wurde („Karte.Layer“ aus der Kreatur-GUID, siehe
--- GuildPrideLayer.lua; die Zahl gilt je Zone, darum mit Karte). Messungen mit gleicher Phase und
--- ohne widersprüchliche Layer gehören zusammen (eine Gruppe = ein Layer) und sammeln die Layer
--- aller, die sie gemessen haben – so kennt eine Gruppe am Ende beide Anleger. Am Steg zählt die
--- Gruppe mit deinem Layer; wechselst du den Layer, wechselt die Anzeige mit.
+-- Ohne Layer: Seit Blizzards Hotfix vom 20.11.2026 verraten Kreaturen-GUIDs keinen Layer mehr.
+-- Layer fahren ihre Schiffe zwar versetzt, aber erkennen lässt sich das nicht mehr. Darum gilt:
+-- deine eigene Messung zuerst (jeder speichert sie bei sich), sonst die Zeit, die die meisten
+-- selbst gemessen haben. Messungen mit gleicher Phase bilden eine Gruppe.
 -- Je Realm gespeichert in GuildPrideDB.transit[realm][route] =
---   { { epoch, seen, source = "you"|"player"|"public", tags = { "1437.123", … },
---       by = { [Name] = Zeit } }, … }      by: wer diese Zeit selbst gemessen hat (Bestätigungen)
+--   { { epoch, seen, source = "you"|"player"|"public", by = { [Name] = Zeit } }, … }
+--   by: wer diese Zeit selbst gemessen hat (Bestätigungen)
 -- Ungemessen gibt es nur die mittlere Wartezeit. Gibt es diese Woche noch keine Messung, zeigt
 -- der Zähler die der letzten Woche als Vermutung (gleicher Abstand zum Reset).
--- Versuch (geschätzt): Kreaturen-GUIDs tragen ihre Entstehungszeit; die früheste je Layer ist
--- etwa dessen Start. Passt der Abstand Start → Fahrplan bei zwei Layern mit verschiedenem Start
--- zusammen, schätzt der Zähler auch Layer, auf denen noch niemand mitgefahren ist.
 --
 -- Teilen ist Pflicht (kein Schalter), mit der Gilde und serverweit:
 -- Gilden-Nachrichten (nie weitergeleitet):
---   TRS  realm · "route:seen:phase:tags[:o];…"   Messungen (an die Gilde oder als Antwort geflüstert)
+--   TRS  realm · "route:seen:phase:[:o];…"       Messungen (an die Gilde oder als Antwort geflüstert)
 --   TRQ  1                                       Messungen anfragen (beim Einloggen)
 -- Serverweit (offener GuildPride-Kanal, immer – unabhängig von der Gruppensuche):
---   TPS  F · realm · "route:seen:phase:tags[:o];…"   eigene Messung an alle bzw. Antwort (Flüstern)
---   TPQ  F · realm · Layer · "route,route"           am Anleger: wer hat diese Strecken (für meinen Layer)?
--- ":o" = selbst gemessen; nur das zählt als Bestätigung.
+--   TPS  F · realm · "route:seen:phase:[:o];…"   eigene Messung an alle bzw. Antwort (Flüstern)
+--   TPQ  F · realm · "" · "route,route"          am Anleger: wer hat diese Strecken?
+-- Das leere vierte Feld hieß früher Layer; ältere Versionen schicken dort noch Layer mit, die
+-- hier überlesen werden. ":o" = selbst gemessen; nur das zählt als Bestätigung.
 local ADDON, GP = ...
 local T = {}
 GP.Transit = T
@@ -59,16 +55,10 @@ local FIT_EVERY = 10           -- Messungen zwischen zwei Auswertungen während 
 local MAX_SAMPLES = 300        -- je Strecke und Fahrt
 local QUIET = 600              -- s: eigene Wiederholung so bald ist Routine (keine Meldung)
 local MAX_ROUTES_MSG = 20
-local MAX_GROUPS = 12          -- je Strecke so viele Layer-Gruppen merken
-local MAX_TAGS = 8             -- je Gruppe so viele Layer merken
-local MSG_TAGS = 3             -- je Eintrag so viele Layer verschicken (Nachrichtengrenze 255 Byte)
+local MAX_GROUPS = 12          -- je Strecke so viele Gruppen (verschiedene Phasen) merken
 local PUBLIC_LEN = 240         -- Byte: serverweite Nachrichten sind immer einteilig
-local TAG_WINDOW = 300         -- s: so lange vor dem Ablegen bzw. nach der Ankunft zählt der Layer zur Fahrt
 local CONFIRM_WINDOW = 12 * 3600   -- s: Bestätigungen so nah an der neuesten zählen
 local MAX_BY = 10              -- je Gruppe so viele Bestätiger merken
-local SPAWN_MOD = 2 ^ 23       -- s: Kreaturen-GUIDs tragen die Entstehungszeit modulo 2^23
-local MAX_CALIB = 6            -- je Strecke so viele Eichungen (Start → Fahrplan) merken
-local START_SLACK = 3600       -- s: Layer-Start so lange vor dem Reset zählt noch (Wartung)
 
 local routes, services = {}, {}
 
@@ -177,60 +167,7 @@ local function Better(a, b, now)
 end
 
 ---------------------------------------------------------------------
--- Layer: "Karte.Layer" (Layer-Zahl aus der Kreatur-GUID gilt nur innerhalb einer Zone)
----------------------------------------------------------------------
-local function ValidTag(tag)
-    if type(tag) ~= "string" then return nil end
-    local map, id = tag:match("^(%d+)%.(%d+)$")
-    map = tonumber(map)
-    if not map or map <= 0 or map > 999999 or #id > 10 or id == "0" then return nil end
-    return tag
-end
-
-local function TagMap(tag) return tag:match("^(%d+)%.") end
-
--- Mein Layer hier, sofern bekannt (eine Kreatur in dieser Zone hat ihn verraten)
-local function CurrentTag()
-    local Ly = GP.Layer
-    if type(Ly) ~= "table" or not Ly.id or not Ly.map then return nil end
-    local map = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
-    if type(map) ~= "number" or map ~= Ly.map then return nil end
-    return ValidTag(map .. "." .. tostring(Ly.id))
-end
-T.CurrentTag = CurrentTag
-
-local function HasTag(anchor, tag)
-    for _, t in ipairs(anchor.tags or {}) do if t == tag then return true end end
-    return false
-end
-
--- Widersprechen sich zwei Layer-Listen? (gleiche Zone, andere Layer-Zahl = anderer Layer)
-local function Conflicts(tagsA, tagsB)
-    for _, a in ipairs(tagsA or {}) do
-        local ma = TagMap(a)
-        for _, b in ipairs(tagsB or {}) do
-            if a ~= b and TagMap(b) == ma then return true end
-        end
-    end
-    return false
-end
-
--- Layer anhängen (neueste zuletzt, höchstens MAX_TAGS); true, wenn etwas dazukam
-local function AddTags(anchor, tags)
-    anchor.tags = anchor.tags or {}
-    local added = false
-    for _, t in ipairs(tags or {}) do
-        if ValidTag(t) and not HasTag(anchor, t) then
-            anchor.tags[#anchor.tags + 1] = t
-            added = true
-        end
-    end
-    while #anchor.tags > MAX_TAGS do table.remove(anchor.tags, 1) end
-    return added
-end
-
----------------------------------------------------------------------
--- Gruppen je Strecke (eine Gruppe = eine Phase = ein Layer)
+-- Gruppen je Strecke (eine Gruppe = eine Phase)
 ---------------------------------------------------------------------
 local function Groups(route)
     local s = Store()
@@ -256,24 +193,13 @@ local function FreshGroups(route, now, prune)
     return out
 end
 
--- Die Gruppe für den Anleger: die mit meinem Layer; ist mein Layer unbekannt, die neueste.
--- Zweiter Wert: true = auf deinem Layer gemessen, false = nur andere Layer bekannt, nil = unklar
-local function AnchorOf(route, now, tag)
-    local best, bestTagged
-    local others = false
+-- Die Gruppe für den Anleger: eigene junge Messung, sonst die meistbestätigte, sonst die neueste
+local function AnchorOf(route, now)
+    local best
     for _, a in ipairs(FreshGroups(route, now)) do
-        if tag and HasTag(a, tag) then
-            if Better(a, bestTagged, now) then bestTagged = a end
-        elseif tag and Conflicts({ tag }, a.tags) then
-            others = true
-        elseif Better(a, best, now) then
-            best = a
-        end
+        if Better(a, best, now) then best = a end
     end
-    if bestTagged then return bestTagged, true end
-    if best then return best, nil end
-    if others then return nil, false end
-    return nil, nil
+    return best
 end
 
 -- Übernimmt die neue Messung die Zeit der Gruppe? Die eigene Fahrt gewinnt gegen fremde;
@@ -285,21 +211,19 @@ local function Newer(incoming, held, now)
     return incoming.seen > held.seen
 end
 
--- Messung eintragen: in die passende Gruppe (gleiche Phase, keine widersprüchlichen Layer)
--- oder als neue Gruppe. true, wenn sich etwas geändert hat.
+-- Messung eintragen: in die Gruppe mit gleicher Phase oder als neue Gruppe.
+-- true, wenn sich etwas geändert hat.
 local function Sighted(route, anchor, now)
     local r = routes[route]
     if not r or type(anchor.epoch) ~= "number" or type(anchor.seen) ~= "number" then return false end
     local list = Groups(route)
     FreshGroups(route, now, true)
-    local tags = {}
-    for _, t in ipairs(anchor.tags or {}) do if ValidTag(t) then tags[#tags + 1] = t end end
     -- selbst gemessen (eigene Fahrt oder ":o" vom Absender): zählt als Bestätigung
     local who = anchor.own and anchor.from or nil
     for _, g in ipairs(list) do
         -- nur Gruppen dieser Woche; die der letzten Woche bleiben als Vermutung stehen
-        if Fresh(g, now) and SamePhase(g, anchor, r.period) and not Conflicts(g.tags, tags) then
-            local changed = AddTags(g, tags)
+        if Fresh(g, now) and SamePhase(g, anchor, r.period) then
+            local changed = false
             if who and Confirm(g, who, anchor.seen) then changed = true end
             if Newer(anchor, g, now) and (anchor.seen ~= g.seen or anchor.epoch ~= g.epoch or anchor.source ~= g.source) then
                 g.epoch, g.seen, g.source = anchor.epoch, anchor.seen, anchor.source
@@ -308,8 +232,7 @@ local function Sighted(route, anchor, now)
             return changed, g
         end
     end
-    local g = { epoch = anchor.epoch, seen = anchor.seen, source = anchor.source, tags = {}, by = {} }
-    AddTags(g, tags)
+    local g = { epoch = anchor.epoch, seen = anchor.seen, source = anchor.source, by = {} }
     if who then Confirm(g, who, anchor.seen) end
     list[#list + 1] = g
     -- zu viele Gruppen: die am längsten nicht bestätigte fällt weg
@@ -364,27 +287,21 @@ function T.Board(id, side, now)
     now = now or T.Now()
     local pre = s.pre or 0
     local t = (now + pre) * 1000
-    local tag = CurrentTag()
-    local best, otherLayer
-    local function Take(part, route, anchor, mine, extra)
+    local best
+    local function Take(part, route, anchor, guess)
         local phase = (t - anchor.epoch) % route.period
         for _, i in ipairs(part[side] or {}) do
             local a, d, n, st = Visit(route.period, route.stops[i], phase)
             if not best or d < best.d then
                 best = { a = a, d = d, n = n, s = st, p = route.period, seen = anchor.seen, source = anchor.source,
-                         mine = mine, count = Count(anchor), estimated = extra == "estimated", guess = extra == "guess" }
+                         count = Count(anchor), guess = guess }
             end
         end
     end
     for _, part in ipairs(s.routes or {}) do
         local route = routes[part.route]
-        local anchor, mine
-        if route then anchor, mine = AnchorOf(part.route, now, tag) end
-        -- Auf meinem Layer noch nicht gemessen: Schätzung aus dem Layer-Start, sofern geeicht
-        local est = route and tag and mine ~= true and T.Estimate(part.route, tag, now)
-        if est then Take(part, route, est, true, "estimated")
-        elseif anchor then Take(part, route, anchor, mine) end
-        if mine == false and not est then otherLayer = true end
+        local anchor = route and AnchorOf(part.route, now)
+        if anchor then Take(part, route, anchor) end
     end
     if not best then
         -- Diese Woche noch nichts: die Messung der letzten Woche, um eine Woche weitergerückt
@@ -395,20 +312,17 @@ function T.Board(id, side, now)
                 if LastWeek(g, now) and Better(g, last, now) then last = g end
             end
             if last then
-                Take(part, route, { epoch = last.epoch + WEEK * 1000, seen = last.seen, source = last.source, by = last.by }, nil, "guess")
+                Take(part, route, { epoch = last.epoch + WEEK * 1000, seen = last.seen, source = last.source, by = last.by }, true)
             end
         end
     end
     if best then
-        -- layer: true = auf deinem Layer gemessen, nil = dein Layer ist unbekannt bzw. die Messung ohne Layer
-        -- confirmed: so viele haben die Zeit selbst gemessen; estimated/guess: nur geschätzt bzw. vermutet
+        -- own: selbst gemessen; confirmed: so viele haben die Zeit selbst gemessen; guess: von letzter Woche vermutet
         return { timed = true, arriveIn = pre + best.a / 1000, departIn = pre + best.d / 1000, nextIn = pre + best.n / 1000,
                  stay = best.s / 1000, period = best.p / 1000, age = max(0, now - best.seen), own = best.source == "you",
-                 layer = best.mine, layerKnown = tag ~= nil, confirmed = best.count,
-                 estimated = best.estimated or nil, guess = best.guess or nil }
+                 confirmed = best.count, guess = best.guess or nil }
     end
-    -- otherLayer: es gibt Messungen, aber nur von anderen Layern
-    return { timed = false, wait = (s.wait or {})[side], otherLayer = otherLayer, layerKnown = tag ~= nil }
+    return { timed = false, wait = (s.wait or {})[side] }
 end
 
 function T.Countdown(seconds)
@@ -557,16 +471,7 @@ local function SpeedOf(nowMs, x, y, z, map)
     return speed
 end
 
-local Share, SharePublic, ShareSoon   -- weiter unten
-local lastTag     -- { tag, at }: zuletzt erkannter Layer (am Anleger vor dem Ablegen)
-local afterRide   -- { id, group, untilT }: nach der Ankunft den Layer der Zielzone nachtragen
-
-local function RideTags()
-    local out = {}
-    for t in pairs(ride and ride.tags or {}) do out[#out + 1] = t end
-    table.sort(out)
-    return out
-end
+local Share, SharePublic   -- weiter unten
 
 local function Record()
     if not ride then return end
@@ -578,14 +483,11 @@ local function Record()
     local id = RideRoute(fits)
     if not id then return end
     local now = T.Now()
-    local held = AnchorOf(id, now, CurrentTag())
+    local held = AnchorOf(id, now)
     local routine = held and held.source == "you" and now - held.seen < QUIET
     local me = GP.Me and GP.Me() or "you"
-    local tags = RideTags()
-    local changed, group = Sighted(id, { epoch = fits[id].epoch, seen = floor(now), source = "you", tags = tags,
+    local changed, group = Sighted(id, { epoch = fits[id].epoch, seen = floor(now), source = "you",
         from = me, own = true }, now)
-    if group then ride.group, ride.groupId = group, id end
-    T.Calibrate(id, fits[id].epoch, tags, now)
     if changed then
         ride.announced = id
         if not routine then
@@ -597,26 +499,8 @@ local function Record()
     end
 end
 
--- Nach der Ankunft: den Layer der Zielzone an die eigene Messung hängen (dann kennt sie beide Anleger)
-local function TagAfterRide(tag, now)
-    if not afterRide or now > afterRide.untilT then afterRide = nil; return end
-    local g = afterRide.group
-    if HasTag(g, tag) or Conflicts(g.tags, { tag }) then return end
-    if AddTags(g, { tag }) then
-        T.Calibrate(afterRide.id, g.epoch, { tag }, now)
-        Changed()
-        ShareSoon(afterRide.id, g)
-    end
-end
-
 function T.Sample()
     local nowMs = T.Now() * 1000
-    local tag = CurrentTag()
-    if tag then
-        lastTag = { tag = tag, at = nowMs / 1000 }
-        if ride then ride.tags[tag] = true end
-        if afterRide then TagAfterRide(tag, nowMs / 1000) end
-    end
     local x, y, z, map = Position()
     local onTaxi = UnitOnTaxi and Readable(UnitOnTaxi("player"))
     local speed = x and not onTaxi and SpeedOf(nowMs, x, y, z or 0, map) or 0
@@ -627,11 +511,7 @@ function T.Sample()
                 local found = Phases(route, map, x, y, z, scratch)
                 if #found > 0 then
                     scratch = {}
-                    if not ride then
-                        ride = { samples = {}, count = 0, tags = {} }
-                        -- Layer am Anleger, kurz vor dem Ablegen
-                        if lastTag and nowMs / 1000 - lastTag.at <= TAG_WINDOW then ride.tags[lastTag.tag] = true end
-                    end
+                    if not ride then ride = { samples = {}, count = 0 } end
                     local list = ride.samples[id] or {}
                     ride.samples[id] = list
                     list[#list + 1] = { now = nowMs, phases = found }
@@ -647,131 +527,30 @@ function T.Sample()
     end
     if ride and nowMs - ride.last > RIDE_GAP then
         Record()
-        if ride.group then afterRide = { id = ride.groupId, group = ride.group, untilT = nowMs / 1000 + TAG_WINDOW } end
         ride = nil
     end
 end
 
 ---------------------------------------------------------------------
--- Versuch: Layer-Start aus Kreaturen-GUIDs, daraus geschätzte Fahrpläne
----------------------------------------------------------------------
--- Entstehungszeit (Server-s) einer Kreatur: die letzten 23 Bit der Spawn-Kennung
--- (letztes Feld der GUID) zählen Sekunden modulo 2^23
-function T.SpawnTime(guid, now)
-    if type(guid) ~= "string" then return nil end
-    local spawnUID = select(7, strsplit("-", guid))
-    if type(spawnUID) ~= "string" or #spawnUID ~= 10 then return nil end
-    local low = tonumber(spawnUID:sub(5), 16)
-    if not low then return nil end
-    low = low % SPAWN_MOD
-    return now - ((now % SPAWN_MOD - low) % SPAWN_MOD)
-end
-
-local function Sub(key, realm)
-    if type(GuildPrideDB) ~= "table" then GuildPrideDB = {} end
-    if type(GuildPrideDB[key]) ~= "table" then GuildPrideDB[key] = {} end
-    local t = GuildPrideDB[key]
-    if realm then
-        local r = Realm()
-        if type(t[r]) ~= "table" then t[r] = {} end
-        t = t[r]
-    end
-    return t
-end
--- transitStarts[realm][tag] = { t = Start, at = zuletzt gesehen } · transitCalib[route] = { { off, start }, … }
-local function Starts() return Sub("transitStarts", true) end
-local function Calib() return Sub("transitCalib") end
-
--- Kreatur gesehen (aus GuildPrideLayer.lua): die früheste Entstehung je Layer merken
-function T.SawCreature(guid, tag, now)
-    tag = ValidTag(tag)
-    if not tag then return end
-    now = floor(now or T.Now())
-    local st = T.SpawnTime(guid, now)
-    if not st or st > now then return end
-    local reset = LastReset(now)
-    if reset and st < reset - START_SLACK then return end   -- vor der Wartung: passt nicht
-    local s = Starts()
-    local cur = s[tag]
-    if type(cur) ~= "table" or type(cur.t) ~= "number" or st < cur.t or (reset and cur.t < reset - START_SLACK) then
-        s[tag] = { t = st, at = now }
-    else
-        cur.at = now
-    end
-end
-
--- Nach einer Messung: Abstand Layer-Start → Fahrplan merken
-function T.Calibrate(route, epoch, tags, now)
-    local r = routes[route]
-    if not r or type(epoch) ~= "number" then return end
-    local s, c = Starts(), Calib()
-    local list = type(c[route]) == "table" and c[route] or {}
-    c[route] = list
-    for _, tag in ipairs(tags or {}) do
-        local st = s[tag]
-        if type(st) == "table" and type(st.t) == "number" then
-            local off = floor((epoch - st.t * 1000) % r.period)
-            for i = #list, 1, -1 do
-                if math.abs(list[i].start - st.t) < 5 then table.remove(list, i) end
-            end
-            list[#list + 1] = { off = off, start = st.t, at = floor(now or T.Now()) }
-            while #list > MAX_CALIB do table.remove(list, 1) end
-        end
-    end
-end
-
--- Geeicht ist eine Strecke erst, wenn zwei Layer mit verschiedenem Start denselben Abstand zeigen
-local function Offset(route)
-    local r, list = routes[route], Calib()[route]
-    if not r or type(list) ~= "table" then return nil end
-    for i = #list, 1, -1 do
-        for j = i - 1, 1, -1 do
-            local a, b = list[i], list[j]
-            local d = (a.off - b.off + r.period / 2) % r.period - r.period / 2
-            if math.abs(a.start - b.start) > 60 and math.abs(d) <= AGREE then
-                return (b.off + d / 2) % r.period
-            end
-        end
-    end
-    return nil
-end
-T._Offset = Offset   -- für Tests
-
--- Geschätzte Messung für meinen Layer (nil, wenn nicht geeicht oder Start unbekannt)
-function T.Estimate(route, tag, now)
-    local off = Offset(route)
-    local st = tag and Starts()[tag]
-    if not off or type(st) ~= "table" or type(st.t) ~= "number" then return nil end
-    local reset = LastReset(now or T.Now())
-    if reset and st.t < reset - START_SLACK then return nil end
-    return { epoch = st.t * 1000 + off, seen = st.at or st.t, source = "estimate" }
-end
-
----------------------------------------------------------------------
 -- Mit der Gilde teilen (nur derselbe Realm: die Runden hängen am Server)
 ---------------------------------------------------------------------
--- "route:seen:phase:Layer,Layer" (die neuesten MSG_TAGS Layer; ältere Versionen lesen nur die ersten drei Felder)
+-- "route:seen:phase:[:o]" – das leere vierte Feld trug früher Layer (ältere Versionen lesen es weiter)
 local function Encode(id, anchor)
     local route = routes[id]
     if not route then return nil end
-    local list, tags = anchor.tags or {}, {}
-    for i = max(1, #list - MSG_TAGS + 1), #list do tags[#tags + 1] = list[i] end
-    return format("%s:%d:%d:%s%s", id, anchor.seen, floor((anchor.seen * 1000 - anchor.epoch) % route.period),
-        table.concat(tags, ","), anchor.source == "you" and ":o" or "")
+    return format("%s:%d:%d:%s", id, anchor.seen, floor((anchor.seen * 1000 - anchor.epoch) % route.period),
+        anchor.source == "you" and ":o" or "")
 end
 
--- Liste von { id, anchor } (eine Strecke kann mehrfach vorkommen: mehrere Layer)
+-- Liste von { id, anchor } (eine Strecke kann mehrfach vorkommen: mehrere Phasen).
+-- Layer, die ältere Versionen im vierten Feld mitschicken, werden überlesen.
 local function Decode(text, now, source)
     local out = {}
-    for id, seenText, phaseText, tagText, ownText in tostring(text or ""):gmatch("([%w%-]+):(%d+):(%d+):?([%d%.,]*)(:?o?)") do
+    for id, seenText, phaseText, ownText in tostring(text or ""):gmatch("([%w%-]+):(%d+):(%d+):?[%d%.,]*(:?o?)") do
         local route, seen, phase = routes[id], tonumber(seenText), tonumber(phaseText)
         if route and seen and phase and phase < route.period and seen <= now + CLOCK_SLACK and now - seen <= MAX_AGE then
-            local tags = {}
-            for t in tagText:gmatch("[^,]+") do
-                if ValidTag(t) and #tags < MAX_TAGS then tags[#tags + 1] = t end
-            end
             out[#out + 1] = { id = id, anchor = { epoch = seen * 1000 - phase, seen = min(seen, floor(now)), source = source or "player",
-                tags = tags, own = ownText == ":o" } }
+                own = ownText == ":o" } }
             if #out >= MAX_ROUTES_MSG then break end
         end
     end
@@ -800,7 +579,7 @@ Share = function(id, target, group)
     if not GP.Queue or not Enabled() then return end
     local entries
     if id then
-        local anchor = group or AnchorOf(id, T.Now(), CurrentTag())
+        local anchor = group or AnchorOf(id, T.Now())
         entries = { anchor and Encode(id, anchor) }
     else
         entries = OwnEntries(T.Now())
@@ -823,20 +602,7 @@ SharePublic = function(id, group)
     if e then GP.Queue("TPS", "@PUBLIC", GP.CLIENT_TAG, Realm(), e) end
 end
 
--- Neue Layer an einer Messung: gesammelt nach kurzer Zeit noch einmal teilen
-local soonPending = false
-ShareSoon = function(id, group)
-    if soonPending then return end
-    soonPending = true
-    local function go()
-        soonPending = false
-        Share(id, nil, group)
-        SharePublic(id, group)
-    end
-    if C_Timer and C_Timer.After then C_Timer.After(20, go) else go() end
-end
-
--- Am Anleger: Messungen für diese Strecken (und meinen Layer) erfragen, je Layer höchstens alle 5 Min.
+-- Am Anleger: Messungen für diese Strecken erfragen, höchstens alle 5 Min.
 local publicAsked = {}
 function T.RequestPublic(ids)
     if not PublicOn() or type(ids) ~= "table" or #ids == 0 then return false end
@@ -844,11 +610,10 @@ function T.RequestPublic(ids)
     for _, id in ipairs(ids) do if routes[id] then list[#list + 1] = id end end
     if #list == 0 then return false end
     table.sort(list)
-    local tag = CurrentTag() or ""
-    local key = tag .. "|" .. table.concat(list, ",")
+    local key = table.concat(list, ",")
     if publicAsked[key] and GetTime() - publicAsked[key] < 300 then return false end
     publicAsked[key] = GetTime()
-    GP.Queue("TPQ", "@PUBLIC", GP.CLIENT_TAG, Realm(), tag, table.concat(list, ","))
+    GP.Queue("TPQ", "@PUBLIC", GP.CLIENT_TAG, Realm(), "", key)
     return true
 end
 
@@ -859,37 +624,23 @@ function T.RoutesOf(serviceId)
     return out
 end
 
--- Antwort per Flüstern: eigene Messungen dieser Strecken, passender Layer zuerst;
--- fremde nur, wenn sie genau den Layer des Fragenden tragen
+-- Antwort per Flüstern: nur eigene Messungen dieser Strecken
 local answeredPublic = {}
-local function AnswerPublic(sender, tag, idsText)
+local function AnswerPublic(sender, idsText)
     if answeredPublic[sender] and GetTime() - answeredPublic[sender] < 120 then return end
-    local now, first, rest = T.Now(), {}, {}
+    local now, entries, len = T.Now(), {}, 0
     local n = 0
     for id in tostring(idsText or ""):gmatch("[%w%-]+") do
         n = n + 1
         if n > 12 then break end
         if routes[id] then
             for _, g in ipairs(FreshGroups(id, now)) do
-                local exact = tag and HasTag(g, tag)
-                if exact then first[#first + 1] = Encode(id, g)
-                elseif g.source == "you" and not (tag and Conflicts({ tag }, g.tags)) then rest[#rest + 1] = Encode(id, g) end
+                local e = g.source == "you" and Encode(id, g)
+                if e and len + #e + 1 <= PUBLIC_LEN - 20 then entries[#entries + 1] = e; len = len + #e + 1 end
             end
         end
     end
-    local entries, len = {}, 0
-    for _, list in ipairs({ first, rest }) do
-        for _, e in ipairs(list) do
-            if len + #e + 1 <= PUBLIC_LEN - 20 then entries[#entries + 1] = e; len = len + #e + 1 end
-        end
-    end
     if #entries == 0 then return end
-    -- Viele GuildPride-Spieler im Kanal: nicht alle antworten (genau passende immer)
-    local count = 0
-    if type(GP.Layer) == "table" and type(GP.Layer.public) == "table" then
-        for _ in pairs(GP.Layer.public) do count = count + 1 end
-    end
-    if #first == 0 and count > 6 and math.random() > 6 / count then return end
     answeredPublic[sender] = GetTime()
     local function send() GP.QueuePublicTo(sender, "TPS", GP.CLIENT_TAG, Realm(), table.concat(entries, ";")) end
     if C_Timer and C_Timer.After then C_Timer.After(0.5 + math.random() * 4, send) else send() end
@@ -911,7 +662,7 @@ function GP.OnTransitPublic(message, sender, whisper)
         end
         if any then Changed() end
     elseif kind == "TPQ" and not whisper then
-        AnswerPublic(sender, ValidTag(f[3]), f[4])
+        AnswerPublic(sender, f[4])
     end
 end
 
@@ -967,10 +718,13 @@ ev:SetScript("OnEvent", function(_, event)
             if #Groups(id) == 0 then s[id] = nil end
         end
     end
-    local starts = Starts()
-    for tag, st in pairs(starts) do
-        if type(st) ~= "table" or type(st.at) ~= "number" or now - st.at > MAX_AGE then starts[tag] = nil end
+    -- Reste der Layer-Zeit (vor dem Hotfix vom 20.11.2026) wegräumen
+    for _, list in pairs(s) do
+        for _, g in ipairs(type(list) == "table" and list or {}) do
+            if type(g) == "table" then g.tags = nil end
+        end
     end
+    GuildPrideDB.transitStarts, GuildPrideDB.transitCalib = nil, nil
     if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(1, T.Sample) end
     if C_Timer and C_Timer.After then C_Timer.After(20, function() if IsInGuild and IsInGuild() then T.Request() end end) end
 end)

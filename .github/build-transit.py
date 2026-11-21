@@ -1,7 +1,7 @@
 """Erzeugt Travel/GuildPrideTransitData.lua aus Polestars Nav/TravelData.lua.
 
-Übernimmt nur die Fahrpläne der Schiffe, Zeppeline und Luftschiffe (routes und services),
-keine Aufzüge, Bahn, Flugpunkte oder Teleporte. Aufruf aus dem Addon-Ordner:
+Übernimmt nur die Fahrpläne der Schiffe, Zeppeline, Luftschiffe und der Tiefenbahn (routes und
+services), keine Aufzüge, Flugpunkte oder Teleporte. Aufruf aus dem Addon-Ordner:
 
     python .github/build-transit.py [Pfad zu Polestar/Nav/TravelData.lua]
 """
@@ -12,7 +12,7 @@ import sys
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', 'Polestar', 'Nav', 'TravelData.lua')
 OUT = os.path.join(HERE, 'Travel', 'GuildPrideTransitData.lua')
-KINDS = ('boat', 'zeppelin', 'airship')
+KINDS = ('boat', 'zeppelin', 'airship', 'tram')
 
 lines = open(SRC, encoding='utf-8').read().replace('\r\n', '\n').split('\n')
 
@@ -54,7 +54,7 @@ if missing:
 
 head = [l for l in lines[:12] if l.startswith('--')]
 body = [
-    '-- GuildPride: Fahrpläne der Schiffe, Zeppeline und Luftschiffe (für GuildPrideTransit.lua).',
+    '-- GuildPride: Fahrpläne der Schiffe, Zeppeline, Luftschiffe und der Tiefenbahn (für GuildPrideTransit.lua).',
     '-- Erzeugt von .github/build-transit.py aus Polestars Nav/TravelData.lua – nicht von Hand ändern.',
     '-- Herkunft (aus Polestar übernommen):',
 ] + head + [

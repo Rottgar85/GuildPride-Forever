@@ -42,17 +42,14 @@ function ns.Print(msg) if GP.Print then GP.Print("Rares: " .. tostring(msg)) els
 -- Codes und Trennzeichen aus fremden Texten entfernen
 function ns.Clean(s, max) return (tostring(s or ""):gsub("[%c|:~]", "")):sub(1, max or 40) end
 
--- NPC-ID und Layer-Hinweis aus einer Kreatur-GUID
--- "Creature-0-<server>-<instanz>-<zoneUID>-<npcId>-<spawn>"
+-- NPC-ID aus einer Kreatur-GUID ("Creature-0-<server>-<instanz>-<zone>-<npcId>-<spawn>").
+-- Die Zone verriet früher den Layer; seit Blizzards Hotfix vom 20.11.2026 nicht mehr.
 function ns.ParseGUID(guid)
     if type(guid) ~= "string" or ns.Secret(guid) then return end
-    local kind, _, _, _, zoneUID, npcId = strsplit("-", guid)
+    local kind, _, _, _, _, npcId = strsplit("-", guid)
     if kind ~= "Creature" and kind ~= "Vehicle" then return end
-    return tonumber(npcId), zoneUID
+    return tonumber(npcId)
 end
-
--- Eigener Layer: zuletzt an einer Kreatur in der Nähe gesehen
-ns.myLayer = nil
 
 function ns.Ago(t)
     if not t then return "–" end

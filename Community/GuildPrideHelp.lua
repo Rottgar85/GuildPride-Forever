@@ -556,7 +556,7 @@ end)
 -- UI-Reiter
 ---------------------------------------------------------------------
 local page = ns.AddTab(L["Gruppensuche"], 40)
-ns.GroupPage = page   -- Layer-Wechsel-Knopf (GuildPrideLayer.lua)
+ns.GroupPage = page
 
 local hint = page:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
 hint:SetPoint("TOPLEFT", 2, -2)

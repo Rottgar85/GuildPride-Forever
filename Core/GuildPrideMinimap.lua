@@ -64,7 +64,6 @@ local function FillTooltip(tip, drag)
     end
     tip:AddLine(L["Linksklick: Gildenfenster"], 1, 1, 1)
     tip:AddLine(L["Rechtsklick: Einstellungen"], 1, 1, 1)
-    if ns.IS_FOREVER and ns.Layer then tip:AddLine((L["Dein Layer: %s"]):format(ns.Layer.Text()), 0.25, 1, 0.25) end
     if drag then tip:AddLine(L["Ziehen: verschieben"], 0.7, 0.7, 0.7) end
 end
 btn:SetScript("OnEnter", function(self)

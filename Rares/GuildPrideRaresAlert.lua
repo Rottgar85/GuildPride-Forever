@@ -78,37 +78,6 @@ alert.combat:SetPoint("LEFT", alert.slot, "LEFT", 0, 0)
 local wp = ns.SkinButton(CreateFrame("Button", nil, alert, "UIPanelButtonTemplate"))
 wp:SetSize(110, 22); wp:SetPoint("LEFT", alert.slot, "RIGHT", 8, 0); wp:SetText("Wegpunkt")
 
--- Rare auf einem anderen Layer (gleiche Zone): mit GuildPride gezielt dorthin wechseln
-local L = GP.L
-local toLayer = CreateFrame("Button", nil, alert, "UIPanelButtonTemplate")
-ns.SkinButton(toLayer)
-toLayer:SetSize(112, 20); toLayer:SetPoint("BOTTOMRIGHT", -24, 14)
-toLayer:SetText(L["Zum Layer"])
-toLayer:Hide()
-alert.finder:SetPoint("RIGHT", toLayer, "LEFT", -6, 0)
-toLayer:SetScript("OnClick", function(self)
-    if self.want and GP.Layer then GP.Layer.Request(nil, self.want) end
-end)
-toLayer:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:SetText(L["Zum Layer"], 1, 1, 1)
-    GameTooltip:AddLine(L["Layer wechseln"] .. ": " .. tostring(self.want), 0.9, 0.8, 0.5)
-    GameTooltip:AddLine(L["Ein GuildPride-Spieler auf dem Layer des Rares lädt dich automatisch ein, nach dem Wechsel verlässt du die Gruppe von selbst."], 0.8, 0.8, 0.8, true)
-    GameTooltip:Show()
-end)
-toLayer:SetScript("OnLeave", GameTooltip_Hide)
-
--- Knopf nur, wenn das Rare in meiner Zone auf einem anderen (bekannten) Layer ist
-local function UpdateLayerButton(e)
-    local Lay = GP.Layer
-    local myMap = C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
-    local want = e and e.layer ~= "" and e.layer or nil
-    local show = GP.IS_FOREVER and Lay and want and myMap and not ns.Secret(myMap) and e.map == myMap
-        and want ~= Lay.id and not IsInGroup()
-    toLayer.want = show and want or nil
-    toLayer:SetShown(show and true or false)
-end
-
 -- Eigenständiger Knopf (nicht im Alarm-Fenster, damit das Fenster im Kampf
 -- frei ein- und ausgeblendet werden darf)
 local target = CreateFrame("Button", "GPRaresTarget", UIParent, "SecureActionButtonTemplate,UIPanelButtonTemplate")
@@ -173,15 +142,8 @@ function ns.ShowAlert(npcId, how)
     alert.title:SetText(e.name)
     badge:SetVertexColor(1, (e.elite or e.boss) and 0.8 or 1, (e.elite or e.boss) and 0.2 or 1)
     ns.Repaint()
-    local myLayer = (GP.Layer and GP.Layer.id) or ns.myLayer
-    local layerTxt = ""
-    if e.layer and e.layer ~= "" then
-        layerTxt = (myLayer and e.layer ~= myLayer) and (" · |cffff6060Layer " .. e.layer .. "|r")
-            or (" · Layer " .. e.layer)
-    end
-    UpdateLayerButton(e)
-    alert.sub:SetText(("%s %.1f / %.1f · %s%s%s"):format(ns.MapName(e.map), e.x * 100, e.y * 100,
-        e.hp and (e.hp .. "% · ") or "", ns.Ago(e.t), layerTxt))
+    alert.sub:SetText(("%s %.1f / %.1f · %s%s"):format(ns.MapName(e.map), e.x * 100, e.y * 100,
+        e.hp and (e.hp .. "% · ") or "", ns.Ago(e.t)))
     alert.finder:SetText("|cffa39d90Gefunden von|r |cffe8c37a" .. tostring(e.by or "?") .. "|r"
         .. (how and how ~= "" and ("  |cff8a857a(" .. how .. ")|r") or ""))
     alert:SetAlpha(1)

@@ -176,6 +176,88 @@ discord:SetScript("OnEnter", function(b)
 end)
 discord:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+-- Ingame-Community: Knopf links neben dem Discord-Logo. Klick fragt nach und tritt per
+-- C_Club.RedeemTicket direkt bei – ohne Blizzards Communities-Fenster anzufassen (Taint, Gildeneinladung).
+do
+    local COMMUNITY_TICKET = "O4qG9NnUpLM"
+    local COMMUNITY_URL = "https://www.worldofwarcraft.com/invite/" .. COMMUNITY_TICKET .. "?region=EU&faction=Alliance"
+    ns.COMMUNITY_URL = COMMUNITY_URL
+    local canJoin = ns.HAS_COMMUNITIES and C_Club and C_Club.RedeemTicket and true or false
+    StaticPopupDialogs["GUILDPRIDE_COMMUNITY"] = {
+        text = canJoin and L["GuildPride Ingame-Community beitreten?\n\nDer Link zum Weitergeben (Strg+C):"]
+            or L["GuildPride Ingame-Community\n\nStrg+C kopiert den Link, dann im Browser einfügen."],
+        button1 = canJoin and L["Beitreten"] or (CLOSE or OKAY),
+        button2 = canJoin and CANCEL or nil,
+        hasEditBox = true, editBoxWidth = 300,
+        OnShow = function(self)
+            local eb = self.editBox or self.EditBox
+            eb:SetText(COMMUNITY_URL); eb:SetFocus(); eb:HighlightText()
+        end,
+        OnAccept = function()
+            if not canJoin then return end
+            local ok = pcall(C_Club.RedeemTicket, COMMUNITY_TICKET)
+            print("|cffd4af37GuildPride|r " .. (ok and L["Beitritt zur Community angefragt – sie erscheint gleich in deinen Communitys."]
+                or L["Beitritt hat nicht geklappt. Link kopieren und im Browser öffnen."]))
+        end,
+        EditBoxOnTextChanged = function(eb)
+            if eb:GetText() ~= COMMUNITY_URL then eb:SetText(COMMUNITY_URL); eb:HighlightText() end
+        end,
+        EditBoxOnEnterPressed = function(eb) eb:GetParent():Hide() end,
+        EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
+        timeout = 0, whileDead = true, hideOnEscape = true,
+    }
+    local community = CreateFrame("Button", "GuildPrideCommunityButton", frame)
+    community:SetSize(26, 26)
+    community:SetPoint("RIGHT", discord, "LEFT", -6, 0)
+    community:SetFrameLevel(frame:GetFrameLevel() + 20)
+    -- Blizzards Communities-Zeichen (Knopf „Gilde & Communitys“ im Mikromenü), im Seitenverhältnis
+    -- des Atlas; fehlt es im Client, das Zeichen aus der Communities-Liste, dann Classics Sozial-Knopf
+    local icon = community:CreateTexture(nil, "ARTWORK")
+    icon:SetPoint("CENTER")
+    icon:SetSize(26, 26)
+    local atlas, info
+    for _, a in ipairs({ "UI-HUD-MicroMenu-GuildCommunities-Up", "communities-icon-chat" }) do
+        info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(a)
+        if info then atlas = a; break end
+    end
+    if atlas then
+        icon:SetAtlas(atlas)
+        local w, h = tonumber(info.width) or 0, tonumber(info.height) or 0
+        if w > 0 and h > 0 then icon:SetSize(26 * math.min(1, w / h), 26 * math.min(1, h / w)) end
+    elseif icon:SetTexture("Interface\\Buttons\\UI-MicroButton-Socials-Up") ~= false then
+        icon:SetTexCoord(0.05, 0.95, 0.4, 0.95)   -- Classic-Mikroknopf: Zeichen sitzt im unteren Teil
+    else
+        icon:SetColorTexture(0.83, 0.69, 0.22, 1)   -- GuildPride-Gold
+        local c = community:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
+        c:SetPoint("CENTER"); c:SetText("C"); c:SetTextColor(0, 0, 0)
+    end
+    local hl = community:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.2)
+    community:SetScript("OnClick", function()
+        if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON) end
+        StaticPopup_Show("GUILDPRIDE_COMMUNITY")
+    end)
+    community:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_BOTTOMLEFT")
+        GameTooltip:SetText(L["GuildPride Ingame-Community"])
+        GameTooltip:AddLine(L["Klick: der Community direkt im Spiel beitreten."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    community:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    -- Die Community gibt es nur für EU, Allianz, Realm „Normal“: sonst kein Knopf.
+    -- Bei jedem Öffnen neu prüfen (Fraktion kann sich ändern, z. B. Pandaren).
+    local function CommunityHere()
+        if GetCurrentRegion and GetCurrentRegion() ~= 3 then return false end   -- 3 = EU
+        if UnitFactionGroup("player") ~= "Alliance" then return false end
+        -- Seit Blizzards Hotfix vom 20.11.2026 kann der Realm-Name leer sein: dann nicht danach filtern
+        local realm = (GetRealmName and GetRealmName() or ""):lower()
+        return realm == "" or realm:find("normal", 1, true) ~= nil
+    end
+    ns.CommunityHere = CommunityHere
+    community:SetShown(CommunityHere())
+    frame:HookScript("OnShow", function() community:SetShown(CommunityHere()) end)
+end
+
 local function UpdateHeader()
     local guildName = GetGuildInfo("player")
     title:SetText(guildName or L["Keine Gilde"])
@@ -384,7 +466,7 @@ function LayoutTabs()
         end
     end
     -- Seitenleiste bleibt fest: Reicht die Höhe nicht für alle Reiter oben plus den
-    -- Block unten (Einstellungen, Layer-Knöpfe), wird das Fenster höher, statt dass
+    -- Block unten (Einstellungen), wird das Fenster höher, statt dass
     -- sich die Knöpfe überlappen. Größer/kleiner ziehen skaliert alles gleichmäßig.
     if not ns.CurrentLayout or ns.CurrentLayout() == "forge" then
         local base = frame.gpBaseH or H
@@ -1827,13 +1909,9 @@ local options = {
       changed = function() if ns.MapShowChanged then ns.MapShowChanged() end end },
     { key = "mapShare",      label = L["Eigene Position auf der Weltkarte mit der Gilde teilen"],
       changed = function() if ns.MapShareChanged then ns.MapShareChanged() end end },
-    { key = "publicLFG",     label = L["Serverweite Gruppensuche und Layer-Wechsel (Schiffe, Rares und Auktionshaus teilen immer)"], public = true,
+    { key = "publicLFG",     label = L["Serverweite Gruppensuche (Schiffe, Rares und Auktionshaus teilen immer)"], public = true,
       changed = function() if ns.PublicLFGChanged then ns.PublicLFGChanged() end end },
     { key = "publicAlerts",  label = L["Hinweis auch bei Einträgen vom Server"], public = true },
-    { key = "layerShow",     label = L["Eigenen Layer unter der Minimap anzeigen"], forever = true,
-      changed = function() if ns.LayerShowChanged then ns.LayerShowChanged() end end },
-    { key = "layerHelp",     label = L["Anderen mit GuildPride beim Layer-Wechsel helfen (lädt automatisch ein)"],
-      public = true, forever = true },
     { header = L["Auktionshaus"] },
     { key = "ahTab",         label = L["GuildPride-Auktionshaus nutzen (aus = nur Blizzards Auktionshaus)"],
       changed = function() if ns.AH and ns.AH.SetModernUI then ns.AH.SetModernUI(GuildPrideDB.ahTab) end end },

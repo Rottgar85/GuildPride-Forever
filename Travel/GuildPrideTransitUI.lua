@@ -16,10 +16,11 @@ local ROWS, ROW_H, GAP, WIDTH = 6, 46, 4, 390
 local TOP = 40      -- Kopf mit Symbol, Titel und Anlegername
 local REACH = 120   -- yd um den Halt
 local MEDIA = GP.MEDIA or "Interface\\AddOns\\GuildPrideForever\\Media\\"
-local KIND = { boat = L["Schiff"], zeppelin = L["Zeppelin"], airship = L["Luftschiff"] }
-local ICON = { boat = MEDIA .. "transit_boat", zeppelin = MEDIA .. "transit_zeppelin", airship = MEDIA .. "transit_zeppelin" }
+local KIND = { boat = L["Schiff"], zeppelin = L["Zeppelin"], airship = L["Luftschiff"], tram = L["Tiefenbahn"] }
+local ICON = { boat = MEDIA .. "transit_boat", zeppelin = MEDIA .. "transit_zeppelin", airship = MEDIA .. "transit_zeppelin",
+              tram = MEDIA .. "transit_boat" }   -- kein eigenes Bahn-Symbol: Schiff in Grau
 -- Farbe je Art: Schiffe meerblau, Zeppeline und Luftschiffe messing
-local TINT = { boat = { 0.45, 0.75, 1 }, zeppelin = { 1, 0.78, 0.35 }, airship = { 1, 0.78, 0.35 } }
+local TINT = { boat = { 0.45, 0.75, 1 }, zeppelin = { 1, 0.78, 0.35 }, airship = { 1, 0.78, 0.35 }, tram = { 0.75, 0.75, 0.8 } }
 local GREEN, GOLD, GREY = { 0.35, 0.95, 0.45 }, { 1, 0.82, 0.2 }, { 0.6, 0.6, 0.6 }
 
 local REMIND_LEAD = 60   -- s vor der Abfahrt erinnern
@@ -155,14 +156,12 @@ function T.AgeText(b)
     return (L["vor %d Tag(en)"]):format(math.floor(a / 86400))
 end
 
--- Stammt die Messung von deinem Layer?
-function T.LayerText(b)
+-- Woher stammt die Zeit? Selbst gemessen, von anderen oder nur vermutet
+function T.SourceText(b)
     if not b or not b.timed then return "" end
     if b.guess then return L["|cffaaaaaavermutet (wie letzte Woche)|r"] end
-    if b.estimated then return L["|cff66ccffgeschätzt für deinen Layer|r"] end
-    if b.layer == true then return L["|cff40ff40dein Layer|r"] end
-    if not b.layerKnown then return L["|cffaaaaaaLayer ?|r"] end
-    return L["|cffffaa00evtl. anderer Layer|r"]
+    if b.own then return L["|cff40ff40von dir gemessen|r"] end
+    return L["|cffaaaaaavon anderen gemessen|r"]
 end
 
 local function DrawRow(r, d, b)
@@ -182,11 +181,9 @@ local function DrawRow(r, d, b)
         else
             text = (L["danach in %s"]):format(T.Countdown(b.nextIn))
         end
-        -- wie alt die Messung ist, ob sie von deinem Layer stammt und wie viele sie bestätigt haben
-        local info = (b.guess or b.estimated) and "" or (" |cff888888· " .. T.AgeText(b) .. "|r")
-        r.status:SetText(text .. info .. " · " .. T.LayerText(b) .. T.ConfirmText(b))
-    elseif b and b.otherLayer then
-        r.status:SetText(L["|cffaaaaaaauf deinem Layer noch nicht gemessen|r"])
+        -- wie alt die Messung ist, wer sie gemessen hat und wie viele sie bestätigt haben
+        local info = b.guess and "" or (" |cff888888· " .. T.AgeText(b) .. "|r")
+        r.status:SetText(text .. info .. " · " .. T.SourceText(b) .. T.ConfirmText(b))
     else
         r.status:SetText(L["|cffaaaaaanoch nicht gemessen|r"])
     end
@@ -202,7 +199,7 @@ end
 
 -- „· 3× bestätigt“: so viele haben die Zeit selbst gemessen
 function T.ConfirmText(b)
-    if not b or not b.timed or b.guess or b.estimated or (b.confirmed or 1) < 2 then return "" end
+    if not b or not b.timed or b.guess or (b.confirmed or 1) < 2 then return "" end
     return (L[" |cff888888· %d× bestätigt|r"]):format(b.confirmed)
 end
 
@@ -240,7 +237,7 @@ end
 
 -- Neu zeichnen; docks = T.DocksNear(...)
 local function Draw(docks, now)
-    local shown, untimed, unknown = 0, false, false
+    local shown, untimed = 0, false
     local ask = {}
     for i, r in ipairs(frame.rows) do
         local d = docks[i]
@@ -248,9 +245,8 @@ local function Draw(docks, now)
             local b = T.Board(d.id, d.side, now)
             DrawRow(r, d, b)
             if b and not b.timed then untimed = true end
-            if b and not b.layerKnown then unknown = true end
-            -- nicht für deinen Layer gemessen: andere GuildPride-Spieler fragen
-            if b and not (b.timed and b.layer == true) and T.RoutesOf then
+            -- nicht selbst gemessen: andere GuildPride-Spieler fragen
+            if b and not (b.timed and b.own) and T.RoutesOf then
                 for _, id in ipairs(T.RoutesOf(d.id)) do ask[#ask + 1] = id end
             end
             shown = i
@@ -262,15 +258,12 @@ local function Draw(docks, now)
     local h = TOP + shown * (ROW_H + GAP) + 6
     frame.hint:ClearAllPoints()
     frame.hint:SetPoint("TOPLEFT", 12, -(TOP + shown * (ROW_H + GAP)))
-    -- Hinweis: einmal mitfahren bzw. Layer erkennen lassen
+    -- Hinweis: einmal mitfahren
     if untimed then
         frame.hint:SetText(L["Fahr einmal mit – dann misst GuildPride die Zeiten für dich und deine Gilde."])
-    elseif unknown then
-        frame.hint:SetText(L["Tipp: eine Kreatur anvisieren – dann erkennt GuildPride deinen Layer und zeigt dessen Zeiten."])
     end
-    local hint = untimed or unknown
-    frame.hint:SetShown(hint); frame.untimed = untimed
-    if hint then h = h + 26 end
+    frame.hint:SetShown(untimed); frame.untimed = untimed
+    if untimed then h = h + 26 end
     frame:SetHeight(h)
 end
 

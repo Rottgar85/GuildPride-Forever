@@ -2,19 +2,19 @@
 
 [English](#english) · [Deutsch](#deutsch) · [Screenshots](#screenshots)
 
-World of Warcraft addon for WoW Forever only · Version 2.30.2 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
+World of Warcraft addon for WoW Forever only · Version 2.31.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
 
 ---
 
 ## English
 
-**Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship and zeppelin timers per layer, a rare scanner, a full auction house, layer switching with one click, a crafting directory, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
+**Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting directory, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
 ### NEW in 2.26
 
 - **Dungeons and raids for guild events** – the **New event** window has a button each for **dungeon** and **raid**: every WoW Forever dungeon and raid with level and player count, the name becomes the title. The event list gets its own column (e.g. *Raid · 40*), the lineup follows the group size, and Discord gets the choice so the bot builds the matching group.
 - **Sharing without exception** – ship and zeppelin times, rares and auction house prices are always shared with everyone using GuildPride, even with the server-wide group finder off.
-- **Ship timer** – times confirmed by several players (*confirmed 3×*), a reminder 1 minute before departure, automatic layer detection and last week's time as a guess after the reset.
+- **Ship timer** – times confirmed by several players (*confirmed 3×*), a reminder 1 minute before departure and last week's time as a guess after the reset.
 
 ### Guild window
 
@@ -46,14 +46,13 @@ World of Warcraft addon for WoW Forever only · Version 2.30.2 · Author: Rottga
 - **Prices for everyone** – prices are shared server-wide (own faction, goblin auction houses separate) and only count as confirmed when at least two players report them. Works alongside Auctionator.
 - **Profession window** – *AH: Reagents* searches only the reagents of a recipe, *To shopping list*, and shows reagent cost, sale value and profit.
 
-### Travel, rares & layers
+### Travel & rares
 
-- **Ship timer** – stand at a dock (ship, zeppelin, airship) and a small window shows a countdown per connection: whether it is **at the dock and when it leaves**, when the next one arrives and the one after. Times are measured when someone rides along and are **shared with everyone using GuildPride**.
-- **Per layer** – every layer runs its ships offset; the window shows the times of **your** layer and switches with you. Times confirmed by several players show *confirmed 3×*; a single differing report does not replace them.
+- **Ship timer** – stand at a dock (ship, zeppelin, airship) or a Deeprun Tram platform and a small window shows a countdown per connection: whether it is **at the dock and when it leaves**, when the next one arrives and the one after. Times are measured when someone rides along and are **shared with everyone using GuildPride**.
+- **Your own time first** – your own measurement wins; otherwise the time most players measured themselves (*confirmed 3×*). A single differing report does not replace it. Since Blizzard's hotfix of 2026-11-20 layers can no longer be detected, so no layer numbers are shown.
 - **Reminder** – click the clock icon on a connection: raid warning and sound 1 minute before departure, even when you have left the dock.
-- **After the weekly reset** – until someone measures again, last week's time shows as *guessed*. Experimental: when the layer start time matches on two measured layers, unmeasured layers get an *estimated* time.
-- **Rare scanner & world bosses** (`/gp rares`) – rares are detected via target, mouse and nameplates and shared with everyone on the server using GuildPride, with alert, sound and the sighting's layer. The world map shows known spawn points of over 300 rares.
-- **Switch layers with one click** – button in the guild window, in the group finder or `/gp layer`: a player on another layer in your zone invites you, the invite is accepted and you leave the group by yourself. Your layer shows below the minimap. The layer list shows everyone with GuildPride on the server with zone and layer; **Go here** switches to a specific player's layer, **To layer** in the rare alert takes you to the sighting.
+- **After the weekly reset** – until someone measures again, last week's time shows as *guessed*.
+- **Rare scanner & world bosses** (`/gp rares`) – rares are detected via target, mouse and nameplates and shared with everyone on the server using GuildPride, with alert and sound. The world map shows known spawn points of over 300 rares.
 
 ### Scales
 
@@ -68,8 +67,8 @@ World of Warcraft addon for WoW Forever only · Version 2.30.2 · Author: Rottga
 ### Security & sharing
 
 - **Guild data** (milestones, events, polls, DKP, chat, alts) is only exchanged with members of **your** guild, over a hidden channel protected by a random key of the guild leadership. A new key is created when someone leaves.
-- **Shared with everyone on the server using GuildPride, always:** ship timetables (with layer), rare sightings and auction house prices – no guild names, own faction only.
-- **Only with the server-wide group finder switched on:** group finder listings and layer switching.
+- **Shared with everyone on the server using GuildPride, always:** ship timetables, rare sightings and auction house prices – no guild names, own faction only.
+- **Only with the server-wide group finder switched on:** group finder listings.
 - Everything that arrives is checked and limited – no injected colour or link codes, no flooding. Guild data is stored per guild.
 - **One-click backup** (`/gp backup`): keeps the last 5 states, automatically once a week.
 
@@ -81,7 +80,6 @@ World of Warcraft addon for WoW Forever only · Version 2.30.2 · Author: Rottga
 | `/gp sound` · `/gp popup` | sounds or pop-ups on/off |
 | `/gp blizzard` | switch between GuildPride and Blizzard's guild window |
 | `/gp invite First Last` | invite a player to the guild |
-| `/gp layer` | switch layer (`list`, `display`, `on`/`off`, `leave`) |
 | `/gp rares` · `/gpr` | rare scanner |
 | `/scales` | Scales |
 | `/gp ah` | auction house (`on`/`off`, `status`, `scan`, `window`) |
@@ -108,15 +106,15 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 ## Deutsch
 
-**Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs- und Zeppelinzeiten je Layer, einen Rare-Scanner, ein vollständiges Auktionshaus, Layer-Wechsel mit einem Klick, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
+**Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.30.2*
+*Version 2.31.0*
 
 ### NEU in 2.26
 
 - **Dungeons und Raids bei Gildenevents** – im Fenster **Neues Event** je ein Knopf für **Dungeon** und **Raid**: alle Dungeons und Raids von WoW Forever mit Stufe und Spielerzahl, der Name wird als Titel übernommen. Die Event-Liste bekommt eine eigene Spalte (z. B. *Raid · 40*), die Aufstellung richtet sich nach der Gruppengröße, und Discord bekommt die Auswahl mit, damit der Bot die passende Gruppe anlegt.
 - **Teilen ohne Ausnahme** – Schiffs- und Zeppelinzeiten, Rares und Auktionshauspreise werden immer mit allen GuildPride-Spielern geteilt, auch wenn die serverweite Gruppensuche aus ist.
-- **Schiffs-Zähler** – von mehreren Spielern bestätigte Zeiten (*3× bestätigt*), Erinnerung 1 Minute vor der Abfahrt, Layer automatisch erkannt und nach dem Reset die Zeit der letzten Woche als Vermutung.
+- **Schiffs-Zähler** – von mehreren Spielern bestätigte Zeiten (*3× bestätigt*), Erinnerung 1 Minute vor der Abfahrt und nach dem Reset die Zeit der letzten Woche als Vermutung.
 
 ### Gildenfenster
 
@@ -148,14 +146,13 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 - **Preise für alle** – Preise werden serverweit geteilt (eigene Fraktion, Goblin-Auktionshäuser getrennt) und gelten erst als bestätigt, wenn mindestens zwei Spieler sie melden. Läuft auch zusammen mit Auctionator.
 - **Berufsfenster** – *AH: Zutaten* sucht nur die Zutaten eines Rezepts, *Zur Einkaufsliste*, dazu Kosten der Zutaten, Verkaufswert und Gewinn.
 
-### Reisen, Rares & Layer
+### Reisen & Rares
 
-- **Schiffs-Zähler** – stehst du an einem Anleger (Schiff, Zeppelin, Luftschiff), zeigt ein kleines Fenster je Verbindung einen Countdown: ob es **am Steg liegt und wann es ablegt**, wann das nächste kommt und das danach. Gemessen wird, wenn jemand mitfährt – und **mit allen GuildPride-Spielern geteilt**.
-- **Je Layer** – jeder Layer fährt seine Schiffe versetzt; das Fenster zeigt die Zeiten **deines** Layers und wechselt mit. Von mehreren Spielern gemessene Zeiten stehen mit *3× bestätigt* da; eine einzelne abweichende Meldung verdrängt sie nicht.
+- **Schiffs-Zähler** – stehst du an einem Anleger (Schiff, Zeppelin, Luftschiff) oder am Bahnsteig der Tiefenbahn, zeigt ein kleines Fenster je Verbindung einen Countdown: ob es **am Steg liegt und wann es ablegt**, wann das nächste kommt und das danach. Gemessen wird, wenn jemand mitfährt – und **mit allen GuildPride-Spielern geteilt**.
+- **Deine Zeit zuerst** – deine eigene Messung gilt; sonst die Zeit, die die meisten selbst gemessen haben (*3× bestätigt*). Eine einzelne abweichende Meldung verdrängt sie nicht. Seit Blizzards Hotfix vom 20.11.2026 lassen sich Layer nicht mehr erkennen, darum gibt es keine Layer-Nummern.
 - **Erinnerung** – Uhr-Symbol an einer Verbindung anklicken: Raid-Warnung und Ton 1 Minute vor der Abfahrt, auch wenn du nicht mehr am Anleger bist.
-- **Nach dem wöchentlichen Reset** – bis wieder jemand misst, steht die Zeit der letzten Woche als *vermutet* da. Versuch: Passt der Layer-Start bei zwei gemessenen Layern zusammen, bekommen auch ungemessene Layer eine *geschätzte* Zeit.
-- **Rare-Scanner & Weltbosse** (`/gp rares`) – Rares werden über Ziel, Maus und Namensplaketten erkannt und mit allen GuildPride-Spielern auf dem Server geteilt, mit Alarm, Ton und dem Layer der Sichtung. Die Weltkarte zeigt bekannte Fundorte von über 300 Rares.
-- **Layer wechseln mit einem Klick** – Knopf im Gildenfenster, in der Gruppensuche oder `/gp layer`: Ein Spieler auf einem anderen Layer in deiner Zone lädt dich ein, die Einladung wird angenommen und du verlässt die Gruppe von selbst. Dein Layer steht unter der Minimap. Die Layer-Liste zeigt alle mit GuildPride auf dem Server mit Zone und Layer; **Hierhin** wechselt gezielt auf den Layer eines Spielers, **Zum Layer** im Rare-Alarm bringt dich zur Sichtung.
+- **Nach dem wöchentlichen Reset** – bis wieder jemand misst, steht die Zeit der letzten Woche als *vermutet* da.
+- **Rare-Scanner & Weltbosse** (`/gp rares`) – Rares werden über Ziel, Maus und Namensplaketten erkannt und mit allen GuildPride-Spielern auf dem Server geteilt, mit Alarm und Ton. Die Weltkarte zeigt bekannte Fundorte von über 300 Rares.
 
 ### Scales
 
@@ -170,8 +167,8 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 ### Sicherheit & Teilen
 
 - **Gildendaten** (Meilensteine, Events, Umfragen, DKP, Chat, Twinks) gehen nur an Mitglieder **eurer** Gilde, über einen versteckten Kanal, geschützt durch einen zufälligen Schlüssel der Gildenleitung. Verlässt jemand die Gilde, wird ein neuer Schlüssel erzeugt.
-- **Immer mit allen GuildPride-Spielern auf dem Server geteilt:** Schiffs-Fahrpläne (mit Layer), Rare-Sichtungen und Auktionshauspreise – ohne Gildennamen, nur eigene Fraktion.
-- **Nur mit eingeschalteter serverweiter Gruppensuche:** Gruppensuche-Einträge und Layer-Wechsel.
+- **Immer mit allen GuildPride-Spielern auf dem Server geteilt:** Schiffs-Fahrpläne, Rare-Sichtungen und Auktionshauspreise – ohne Gildennamen, nur eigene Fraktion.
+- **Nur mit eingeschalteter serverweiter Gruppensuche:** Gruppensuche-Einträge.
 - Alles, was ankommt, wird geprüft und begrenzt – keine eingeschleusten Farb- oder Link-Codes, kein Fluten. Gildendaten werden je Gilde getrennt gespeichert.
 - **Datensicherung per Knopfdruck** (`/gp sicherung`): die letzten 5 Stände, einmal pro Woche automatisch.
 
@@ -183,7 +180,6 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 | `/gp sound` · `/gp popup` | Sounds oder Popups an/aus |
 | `/gp blizzard` | zwischen GuildPride und dem Blizzard-Gildenfenster wechseln |
 | `/gp einladen Vorname Nachname` | Spieler in die Gilde einladen |
-| `/gp layer` | Layer wechseln (`liste`, `anzeige`, `an`/`aus`, `raus`) |
 | `/gp rares` · `/gpr` | Rare-Scanner |
 | `/scales` | Scales |
 | `/gp ah` | Auktionshaus (`an`/`aus`, `status`, `scan`, `fenster`) |

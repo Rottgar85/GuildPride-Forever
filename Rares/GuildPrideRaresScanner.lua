@@ -43,9 +43,8 @@ local function CheckUnit(unit, source)
     if not ns.Enabled() then return end
     if not UnitExists(unit) or UnitIsPlayer(unit) then return end
     local guid = UnitGUID(unit)
-    local npcId, layer = ns.ParseGUID(guid)
+    local npcId = ns.ParseGUID(guid)
     if not npcId then return end
-    if layer then ns.myLayer = layer end
     local class = UnitClassification(unit)
     if ns.Secret(class) then return end
     if not (RARE[class] or ns.WORLD_BOSSES[npcId] or ns.StaticInfo(npcId)) then return end
@@ -55,7 +54,7 @@ local function CheckUnit(unit, source)
     -- Tot? Dann als getötet melden
     local dead = UnitIsDead(unit)
     if not ns.Secret(dead) and dead then
-        if ns.DB().seen[npcId] and ns.AddKill(npcId) then ns.Send("K", npcId, "", layer or "", GetServerTime()) end
+        if ns.DB().seen[npcId] and ns.AddKill(npcId) then ns.Send("K", npcId, "", "", GetServerTime()) end
         return
     end
     -- Leben in Prozent nur, wenn der Wert nicht geschützt ist
@@ -63,7 +62,7 @@ local function CheckUnit(unit, source)
     local cur, max = UnitHealth(unit), UnitHealthMax(unit)
     if not ns.Secret(cur) and not ns.Secret(max) and max and max > 0 then hp = math.floor(cur / max * 100 + 0.5) end
     local map, x, y = PlayerPos()   -- Gegner ist in Reichweite: eigene Position genügt
-    Found(npcId, name, map, x, y, hp, layer, source, class == "rareelite" or class == "worldboss" or (ns.StaticInfo(npcId) and ns.StaticInfo(npcId)[2] == 1))
+    Found(npcId, name, map, x, y, hp, nil, source, class == "rareelite" or class == "worldboss" or (ns.StaticInfo(npcId) and ns.StaticInfo(npcId)[2] == 1))
 end
 
 ns.Listen("PLAYER_TARGET_CHANGED", function() CheckUnit("target", "Ziel") end)
@@ -83,13 +82,12 @@ local function ScanVignettes()
     for _, vguid in ipairs(V.GetVignettes() or {}) do
         local info = V.GetVignetteInfo(vguid)
         if info and not ns.Secret(info.objectGUID) then
-            local npcId, layer = ns.ParseGUID(info.objectGUID)
+            local npcId = ns.ParseGUID(info.objectGUID)
             ns.scanStats.vignettes = ns.scanStats.vignettes + 1
             ns.scanStats.lastVignette = tostring(info.name) .. " (" .. tostring(info.atlasName) .. ")"
             if npcId and info.name and not ns.Secret(info.name) then
-                if layer then ns.myLayer = layer end
                 if info.isDead then
-                    if ns.DB().seen[npcId] and ns.AddKill(npcId) then ns.Send("K", npcId, map, layer or "", GetServerTime()) end
+                    if ns.DB().seen[npcId] and ns.AddKill(npcId) then ns.Send("K", npcId, map, "", GetServerTime()) end
                 else
                     local pos = V.GetVignettePosition and V.GetVignettePosition(vguid, map)
                     local x, y
@@ -97,7 +95,7 @@ local function ScanVignettes()
                     if not x then map, x, y = PlayerPos() end
                     local hp = V.GetHealthPercent and V.GetHealthPercent(vguid)
                     if ns.Secret(hp) then hp = nil end
-                    Found(npcId, info.name, map, x, y, hp and math.floor(hp * (hp <= 1 and 100 or 1)), layer, "Minikarte")
+                    Found(npcId, info.name, map, x, y, hp and math.floor(hp * (hp <= 1 and 100 or 1)), nil, "Minikarte")
                 end
             end
         end
