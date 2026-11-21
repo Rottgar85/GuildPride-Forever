@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.33.1
+
+**Deutsch**
+- Kleine Verbesserungen und Aufräumarbeiten
+
+**English**
+- Small improvements and clean-up
+
 ## 2.33.0
 
 **Deutsch**

@@ -102,7 +102,7 @@ end
 ---------------------------------------------------------------------
 -- Liste: gleiche Zone zuerst, dann Gilde, dann Name
 ---------------------------------------------------------------------
-function P.List()
+function P.List(withSelf)
     local list, seen, now, myMap = {}, {}, GetTime(), MapId()
     -- Gildenmitglieder mit GuildPride (Versionsabfrage), die online sind
     if ns.Versions and GetNumGuildMembers and GetGuildRosterInfo then
@@ -130,7 +130,13 @@ function P.List()
         end
     end
     for _, x in ipairs(list) do x.here = x.map ~= nil and x.map == myMap end
+    -- withSelf (Fenster): du selbst ganz oben, mit deiner Version und Zone
+    if withSelf and ns.Me then
+        list[#list + 1] = { name = ns.Me(), self = true, here = true, map = myMap, ver = ns.VERSION,
+                            guild = IsInGuild and IsInGuild() or false }
+    end
     table.sort(list, function(a, b)
+        if (a.self or false) ~= (b.self or false) then return a.self end
         if a.here ~= b.here then return a.here end
         if a.guild ~= b.guild then return a.guild end
         return a.name < b.name
@@ -162,14 +168,14 @@ end
 local function Refresh()
     if P.button then P.button:SetText(tostring((P.Count()))) end
     if not win or not win:IsShown() then return end
-    local entries = P.List()
+    local entries = P.List(true)   -- mit dir selbst ganz oben
     local maxOff = math.max(0, #entries - ROWS)
     win.offset = math.min(win.offset or 0, maxOff)
     for i = 1, ROWS do
         local row, e = win.rows[i], entries[i + win.offset]
         if e then
             row.name:SetText((ns.NameMark and ns.NameMark(e.name) or "") .. (e.guild and "|cff60d060" or "|cffe6e0da")
-                .. Ambiguate(e.name, "none") .. "|r")
+                .. Ambiguate(e.name, "none") .. "|r" .. (e.self and (" |cff999999(" .. L["du"] .. ")|r") or ""))
             local zoneTxt = e.zoneText or ZoneName(e.map)
             row.zone:SetText((e.here and "|cffe6e0da" or "|cff888888") .. zoneTxt .. "|r")
             -- Version: rot = älter als deine, grün = neuer, grau = unbekannt (Version vor 2.33.0)
@@ -183,14 +189,14 @@ local function Refresh()
     end
     local guildN, oldN = 0, 0
     for _, e in ipairs(entries) do
-        if e.guild then guildN = guildN + 1 end
+        if e.guild and not e.self then guildN = guildN + 1 end
         if e.ver and ns.CompareVersion and ns.VERSION and ns.CompareVersion(e.ver, ns.VERSION) < 0 then oldN = oldN + 1 end
     end
     local more = #entries - ROWS - win.offset
-    win.empty:SetShown(#entries == 0)
+    win.empty:SetShown(#entries <= 1)   -- nur du
     win.empty:SetText(Available() and L["Noch keine Meldungen – die Liste füllt sich in den nächsten Sekunden."]
         or L["Für alle Spieler auf dem Server: Einstellungen › Serverweite Gruppensuche einschalten. Ohne sie siehst du nur deine Gilde."])
-    win.count:SetText((L["%d Spieler mit GuildPride (%d aus der Gilde, grün)"]):format(#entries + 1, guildN)
+    win.count:SetText((L["%d Spieler mit GuildPride (%d aus der Gilde, grün)"]):format(#entries, guildN)
         .. (oldN > 0 and ("  ·  |cffff5050" .. (L["%d mit alter Version"]):format(oldN) .. "|r") or "")
         .. (more > 0 and ("  ·  " .. (L["… und %d weitere"]):format(more) .. " " .. L["(Mausrad)"]) or ""))
 end
@@ -247,7 +253,7 @@ function P.Toggle()
             win.rows[i] = row
         end
         win.empty = win:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
-        win.empty:SetPoint("TOPLEFT", 14, -48); win.empty:SetPoint("RIGHT", -14, 0)
+        win.empty:SetPoint("TOPLEFT", 14, -74)   -- unter deiner eigenen Zeile; win.empty:SetPoint("RIGHT", -14, 0)
         win.empty:SetJustifyH("LEFT")
         win.count = win:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
         win.count:SetPoint("BOTTOMLEFT", 14, 44); win.count:SetPoint("RIGHT", -14, 0)

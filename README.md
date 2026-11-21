@@ -2,7 +2,7 @@
 
 [English](#english) · [Deutsch](#deutsch) · [Screenshots](#screenshots)
 
-World of Warcraft addon for WoW Forever only · Version 2.33.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
+World of Warcraft addon for WoW Forever only · Version 2.33.1 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
 
 ---
 
@@ -109,7 +109,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.33.0*
+*Version 2.33.1*
 
 ### NEU in 2.26
 

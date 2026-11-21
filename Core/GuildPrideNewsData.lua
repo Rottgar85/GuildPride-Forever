@@ -2,6 +2,9 @@
 -- ERZEUGT aus CHANGELOG.md mit: python .github/build-news.py (bei jeder Version neu erzeugen)
 local ADDON, ns = ...
 ns.NEWS = {
+    { version = "2.33.1",
+      de = { "Kleine Verbesserungen und Aufräumarbeiten" },
+      en = { "Small improvements and clean-up" } },
     { version = "2.33.0",
       de = { "|cffffd100Mehr Meilensteine|r: GuildPride behält jetzt bis zu 500 statt 100 Einträge. Beim Öffnen der Meilensteine werden auch ältere Einträge bei anderen Mitgliedern nachgefragt, so füllt sich der Verlauf nach und nach wieder auf", "|cffffd100Community-Knopf|r verschwindet, sobald du in der Community bist", "|cffffd100Dungeon-Filter|r gilt jetzt auch für Einträge von GuildPride-Spielern mit Dungeon; Einträge ohne Dungeon (z. B. Quest-Hilfe) bleiben sichtbar", "|cffffd100/gp diag|r zeigt einen Diagnose-Bericht zum Kopieren (Realm, Gilde, Dungeonbrowser, Community, gespeicherte Daten) – hilft bei Blizzard-Änderungen" },
       en = { "|cffffd100More milestones|r: GuildPride now keeps up to 500 instead of 100 entries. Opening Milestones also asks other members for older entries, so the history fills up again over time", "|cffffd100Community button|r disappears once you are in the community", "|cffffd100Dungeon filter|r now also applies to GuildPride entries with a dungeon; entries without a dungeon (e.g. quest help) stay visible", "|cffffd100/gp diag|r shows a diagnostics report to copy (realm, guild, Dungeon Finder, community, saved data) – helps with Blizzard changes" } },
@@ -17,7 +20,4 @@ ns.NEWS = {
     { version = "2.30.1",
       de = { "|cffffd100Layer wechseln geht schneller|r: Anfrage, Angebot und Einladung werden sofort verschickt statt im 2-Sekunden-Takt, der Helfer wird gleich nach dem ersten Angebot gewählt, und nach dem Wechsel geht es ohne Wartezeit aus der Gruppe", "|cffffd100Layer-Wechsel wird geprüft|r: Die Gruppe wird erst verlassen, wenn der neue Layer sicher erkannt ist (zwei Kreaturen oder eine über 1,5 s). Danach wird 10 s nachgeprüft, ob der Layer hält – erst dann gibt es Dank und Zähler, sonst kommt der Hinweis „hat nicht gehalten“" },
       en = { "|cffffd100Faster layer switching|r: request, offer and invite are sent right away instead of every 2 seconds, the helper is picked right after the first offer, and you leave the group without delay after the switch", "|cffffd100Layer switch is verified|r: the group is only left once the new layer is clearly detected (two creatures or one for 1.5 s). Afterwards it checks for 10 s that the layer holds – only then are thanks and counter updated, otherwise you get a \"did not hold\" notice" } },
-    { version = "2.30.0",
-      de = { "|cffffd100Einheitliches Design|r: Alle Fenster, die GuildPride öffnet (Auktionshaus, Berufe-Einkaufsliste, Flug- und Reisefenster, Rare-Liste, Einladungen, Mitglieder, DKP, Raid, Termine, Umfragen, Sicherung, Kopieren und Einführung), haben jetzt dasselbe dunkle Design mit goldenem Rand" },
-      en = { "|cffffd100Unified design|r: Every window GuildPride opens (auction house, profession shopping list, flight and travel windows, rare list, invites, members, DKP, raid, events, polls, backup, copy and intro) now shares the same dark look with a golden border" } },
 }
