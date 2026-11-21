@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.35.0
+
+**Deutsch**
+- **Community-Knopf für die Horde**: Horde-Spieler (EU, Server „Normal“) bekommen jetzt den Einladungslink der Horden-Community, Allianz-Spieler weiter ihren
+- **Alarm auch für GuildPride-Einträge**: Trägt sich ein Gilden- oder Server-Spieler für einen Dungeon ein, den du im Dungeon-Filter angehakt hast, kommen Ton und Chatzeile
+- **Schiffe: beide Zeiten**: Ist die Zeit unsicher, steht die zweite gemeldete Abfahrt gleich dabei („unsicher – oder ab in 3:10“)
+
+**English**
+- **Community button for the Horde**: Horde players (EU, "Normal" server) now get the Horde community's invite link, Alliance players keep theirs
+- **Alert for GuildPride entries too**: When a guild or server player signs up for a dungeon ticked in your dungeon filter, you get a sound and a chat line
+- **Ships: both times**: When the time is uncertain, the other reported departure is shown right away ("uncertain – or departs in 3:10")
+
 ## 2.34.0
 
 **Deutsch**

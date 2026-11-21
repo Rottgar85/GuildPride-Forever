@@ -179,9 +179,14 @@ discord:SetScript("OnLeave", function() GameTooltip:Hide() end)
 -- Ingame-Community: Knopf links neben dem Discord-Logo. Klick zeigt den Einladungslink zum Einfügen in Blizzards Fenster –
 -- ohne Blizzards Communities-Fenster selbst anzufassen (Taint, Gildeneinladung).
 do
-    local COMMUNITY_TICKET = "O4qG9NnUpLM"
-    local COMMUNITY_URL = "https://www.worldofwarcraft.com/invite/" .. COMMUNITY_TICKET .. "?region=EU&faction=Alliance"
-    ns.COMMUNITY_URL = COMMUNITY_URL
+    -- je Fraktion eine eigene Community (Einladungscode aus dem Blizzard-Link)
+    local COMMUNITY_TICKETS = { Alliance = "O4qG9NnUpLM", Horde = "vpG0eJPCqEX" }
+    local function CommunityURL()
+        local faction = UnitFactionGroup("player")
+        local ticket = COMMUNITY_TICKETS[faction]
+        return ticket and ("https://www.worldofwarcraft.com/invite/" .. ticket .. "?region=EU&faction=" .. faction) or nil
+    end
+    ns.CommunityURL = CommunityURL
     local canJoin = ns.HAS_COMMUNITIES and C_Club and true or false
     StaticPopupDialogs["GUILDPRIDE_COMMUNITY"] = {
         text = canJoin and L["GuildPride Ingame-Community\n\n1. Strg+C kopiert den Link\n2. „Gilde & Communitys“ im Mikromenü öffnen\n3. Community beitreten › Link einfügen (Strg+V)"]
@@ -190,10 +195,11 @@ do
         hasEditBox = true, editBoxWidth = 300,
         OnShow = function(self)
             local eb = self.editBox or self.EditBox
-            eb:SetText(COMMUNITY_URL); eb:SetFocus(); eb:HighlightText()
+            eb:SetText(CommunityURL() or ""); eb:SetFocus(); eb:HighlightText()
         end,
         EditBoxOnTextChanged = function(eb)
-            if eb:GetText() ~= COMMUNITY_URL then eb:SetText(COMMUNITY_URL); eb:HighlightText() end
+            local url = CommunityURL() or ""
+            if eb:GetText() ~= url then eb:SetText(url); eb:HighlightText() end
         end,
         EditBoxOnEnterPressed = function(eb) eb:GetParent():Hide() end,
         EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
@@ -258,11 +264,11 @@ do
         GameTooltip:Show()
     end)
     community:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    -- Die Community gibt es nur für EU, Allianz, Realm „Normal“: sonst kein Knopf.
+    -- Die Community gibt es nur für EU, Realm „Normal“, je eine für Allianz und Horde: sonst kein Knopf.
     -- Bei jedem Öffnen neu prüfen (Fraktion kann sich ändern, z. B. Pandaren).
     local function CommunityHere()
         if GetCurrentRegion and GetCurrentRegion() ~= 3 then return false end   -- 3 = EU
-        if UnitFactionGroup("player") ~= "Alliance" then return false end
+        if not CommunityURL() then return false end   -- weder Allianz noch Horde (Pandaren ohne Fraktion)
         -- Seit Blizzards Hotfix vom 20.11.2026 kann der Realm-Name leer sein: dann nicht danach filtern
         local realm = (GetRealmName and GetRealmName() or ""):lower()
         if realm ~= "" and not realm:find("normal", 1, true) then return false end

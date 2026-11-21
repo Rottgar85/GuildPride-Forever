@@ -90,6 +90,7 @@ function ns.DiagReport()
     Add("C_Club", C_Club ~= nil, C_Club and C_Club.RedeemTicket ~= nil)
     Add("Knopf sichtbar", ns.CommunityHere and ns.CommunityHere())
     Add("Gemerkte Community", type(GuildPrideDB) == "table" and GuildPrideDB.communityClubId)
+    Add("Link", ns.CommunityURL and ns.CommunityURL())
     if C_Club and C_Club.GetSubscribedClubs then
         local ok, clubs = pcall(C_Club.GetSubscribedClubs)
         local names = {}

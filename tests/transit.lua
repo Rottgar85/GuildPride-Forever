@@ -39,6 +39,8 @@ return function(test, eq, W, ns)
         local b2 = T.Board(ID, "a", now)
         eq(b2.others, 1, "eine andere Zeit gemeldet")
         eq(T.SourceText(b2):find("unsicher", 1, true) ~= nil, true)
+        eq(b2.altDepartIn ~= nil, true, "zweite Zeit dabei"); eq(b2.altDepartIn ~= b2.departIn, true)
+        eq(T.SourceText(b2):find("oder ab in", 1, true) ~= nil, true)
         -- 30 s bevor es ankommt
         T.Forget()
         T.Sighted(ROUTE, { epoch = now * 1000 - 54297 + 30000, seen = math.floor(now), source = "player" })

@@ -162,7 +162,12 @@ function T.SourceText(b)
     if b.guess then return L["|cffaaaaaavermutet (wie letzte Woche)|r"] end
     if b.own then return L["|cff40ff40von dir gemessen|r"] end
     -- andere Zeiten gemeldet (z. B. von einem anderen Layer): dann ehrlich „unsicher“
-    if (b.others or 0) > 0 then return L["|cffff9040unsicher – andere Zeiten gemeldet|r"] end
+    if (b.others or 0) > 0 then
+        if b.altDepartIn and T.Countdown then
+            return (L["|cffff9040unsicher – oder ab in %s|r"]):format(T.Countdown(b.altDepartIn))
+        end
+        return L["|cffff9040unsicher – andere Zeiten gemeldet|r"]
+    end
     return L["|cffaaaaaavon anderen gemessen|r"]
 end
 

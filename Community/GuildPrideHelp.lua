@@ -382,6 +382,29 @@ local function Alert(sender, e)
     if GuildPrideDB.sound then PlaySound(SOUNDKIT.TELL_MESSAGE) end
 end
 
+-- Passt der Dungeon eines Eintrags zum Dungeon-Filter? Filter-Namen kommen aus dem Dungeonbrowser
+-- und können einen Schwierigkeitszusatz tragen („Die Todesminen (Normal)“)
+local function DungeonInFilter(d, filter)
+    if type(d) ~= "table" or not d.name or not filter then return false end
+    if filter[d.name] then return true end
+    for n in pairs(filter) do
+        local base, suffix = n:match("^(.-)%s*%(([^%(%)]*)%)%s*$")
+        if base == d.name and SuffixDiff(suffix) then return true end
+    end
+    return false
+end
+
+-- Alarm aus dem Dungeon-Filter (wie bei Gruppen aus dem Dungeonbrowser, GuildPrideHelpBrowser.lua):
+-- ein neuer oder geänderter Eintrag für einen angehakten Dungeon meldet sich mit Ton und Chatzeile,
+-- auch wenn die normalen Gruppensuche-Hinweise aus sind
+local function FilterAlert(sender, e, alreadyShown)
+    local GF = ns.GroupFinder
+    local f = GF and GF.DungeonFilter and GF.DungeonFilter()
+    if not f or GuildPrideDB.lfgAlert == false or not DungeonInFilter(e.dungeon, f) then return end
+    if not alreadyShown then Alert(sender, e) end
+    if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.READY_CHECK or SOUNDKIT.RAID_WARNING) end
+end
+
 ns.On("LFG", function(payload, sender)
     if sender == ns.Me() then return end
     local kind, note, level, zone, size, max, need, role, class, ver, map, keyLevel, questId, questLevel, questName,
@@ -399,7 +422,9 @@ ns.On("LFG", function(payload, sender)
             map, keyLevel, questId, questLevel, questName, dName, dMin, dMax, dDiff, dKey)
         e.lfj = lfj == "1"
         entries[sender] = e
-        if alert and GuildPrideDB.helpAlerts ~= false then Alert(sender, e) end
+        local shown = alert and GuildPrideDB.helpAlerts ~= false
+        if shown then Alert(sender, e) end
+        if alert then FilterAlert(sender, e, shown) end
     end
     if ns.RefreshUI then ns.RefreshUI() end
 end)
@@ -451,7 +476,9 @@ local function OnPublicEntry(payload, sender)
         e.public, e.faction, e.lfj = true, faction, lfj == "1"
         publicEntries[sender] = e
         -- Gildenmitglieder melden sich schon über die Gilde
-        if alert and GuildPrideDB.publicAlerts and not entries[sender] then Alert(sender, e) end
+        local shown = alert and GuildPrideDB.publicAlerts and not entries[sender]
+        if shown then Alert(sender, e) end
+        if alert and not entries[sender] then FilterAlert(sender, e, shown) end
     end
     if ns.RefreshUI then ns.RefreshUI() end
 end
@@ -1343,15 +1370,7 @@ function page:Refresh()
         local kept = {}
         for _, item in ipairs(list) do
             local d = not item.e.browser and item.e.dungeon
-            if not d or item.name == ns.Me() or ns.BrowserDungeonMatch({ d.name }, dfilter) then
-                kept[#kept + 1] = item
-            else
-                -- Filter-Namen können den Schwierigkeitszusatz tragen („Die Todesminen (Normal)“)
-                for n in pairs(dfilter) do
-                    local base, suffix = n:match("^(.-)%s*%(([^%(%)]*)%)%s*$")
-                    if base == d.name and SuffixDiff(suffix) then kept[#kept + 1] = item break end
-                end
-            end
+            if not d or item.name == ns.Me() or DungeonInFilter(d, dfilter) then kept[#kept + 1] = item end
         end
         list = kept
     end

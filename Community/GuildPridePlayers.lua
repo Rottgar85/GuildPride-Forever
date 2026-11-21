@@ -176,6 +176,7 @@ local function Refresh()
     for i = 1, ROWS do
         local row, e = win.rows[i], entries[i + win.offset]
         if e then
+            row.who, row.isSelf = e.name, e.self or false
             row.name:SetText((ns.NameMark and ns.NameMark(e.name) or "") .. (e.guild and "|cff60d060" or "|cffe6e0da")
                 .. Ambiguate(e.name, "none") .. "|r" .. (e.self and (" |cff999999(" .. L["du"] .. ")|r") or ""))
             local zoneTxt = e.zoneText or ZoneName(e.map)
@@ -240,12 +241,38 @@ function P.Toggle()
         end)
         win.rows = {}
         for i = 1, ROWS do
-            local row = CreateFrame("Frame", nil, win)
+            -- Zeile anklickbar: links anflüstern, rechts in die Gruppe einladen (nicht bei dir selbst)
+            local row = CreateFrame("Button", nil, win)
             row:SetSize(312, 20)
             row:SetPoint("TOPLEFT", 14, -48 - (i - 1) * 22)
             if ns.Paint then
                 if i % 2 == 0 then ns.Paint(row:CreateTexture(nil, "BACKGROUND"), "glow", 0.05):SetAllPoints() end
+                local hl = row:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(); ns.Paint(hl, "glow", 0.15)
             end
+            row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+            row:SetScript("OnClick", function(self, button)
+                if not self.who or self.isSelf then return end
+                local target = Ambiguate(self.who, "none")
+                if button == "RightButton" then
+                    local invite = (C_PartyInfo and C_PartyInfo.InviteUnit) or InviteUnit
+                    if invite then
+                        invite(target)
+                        ns.Print((L["Einladung an |cffffd100%s|r gesendet."]):format(target))
+                    end
+                else
+                    local tell = (ChatFrameUtil and ChatFrameUtil.SendTell) or ChatFrame_SendTell
+                    if tell then tell(target) end
+                end
+            end)
+            row:SetScript("OnEnter", function(self)
+                if not self.who or self.isSelf then return end
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(Ambiguate(self.who, "none"), 1, 1, 1)
+                GameTooltip:AddLine(L["Linksklick: anflüstern"], 0.8, 0.8, 0.8)
+                GameTooltip:AddLine(L["Rechtsklick: in die Gruppe einladen"], 0.8, 0.8, 0.8)
+                GameTooltip:Show()
+            end)
+            row:SetScript("OnLeave", function() GameTooltip:Hide() end)
             row.name = row:CreateFontString(nil, "OVERLAY", "GPFont_Text")
             row.name:SetPoint("LEFT", 0, 0); row.name:SetWidth(138); row.name:SetJustifyH("LEFT"); row.name:SetWordWrap(false)
             row.zone = row:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")

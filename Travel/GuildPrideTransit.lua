@@ -301,7 +301,7 @@ function T.Board(id, side, now)
             local a, d, n, st = Visit(route.period, route.stops[i], phase)
             if not best or d < best.d then
                 best = { a = a, d = d, n = n, s = st, p = route.period, seen = anchor.seen, source = anchor.source,
-                         count = Count(anchor), guess = guess, route = part.route, anchor = anchor }
+                         count = Count(anchor), guess = guess, route = part.route, anchor = anchor, part = part }
             end
         end
     end
@@ -312,10 +312,21 @@ function T.Board(id, side, now)
     end
     -- Ohne Layer können Messungen verschiedener Layer gegeneinander stehen: andere Zeiten dieser
     -- Woche, die in den letzten 3 Stunden gemeldet wurden, zählen als Abweichung
-    local others = 0
+    -- Die jüngste abweichende Zeit wird mitgezeigt (altDepartIn: wann es nach ihr ablegt)
+    local others, altDepart, altSeen = 0, nil, -1
     if best and best.anchor and not best.guess then
+        local route = routes[best.route]
         for _, g in ipairs(FreshGroups(best.route, now)) do
-            if g ~= best.anchor and now - g.seen < 3 * 3600 then others = others + 1 end
+            if g ~= best.anchor and now - g.seen < 3 * 3600 then
+                others = others + 1
+                if g.seen > altSeen and route then
+                    local phase = (t - g.epoch) % route.period
+                    for _, i in ipairs(best.part[side] or {}) do
+                        local _, d = Visit(route.period, route.stops[i], phase)
+                        if g.seen > altSeen or d < altDepart then altDepart, altSeen = d, g.seen end
+                    end
+                end
+            end
         end
     end
     if not best then
@@ -336,7 +347,8 @@ function T.Board(id, side, now)
         -- others: so viele abweichende Zeiten wurden kürzlich gemeldet
         return { timed = true, arriveIn = pre + best.a / 1000, departIn = pre + best.d / 1000, nextIn = pre + best.n / 1000,
                  stay = best.s / 1000, period = best.p / 1000, age = max(0, now - best.seen), own = best.source == "you",
-                 confirmed = best.count, guess = best.guess or nil, others = others }
+                 confirmed = best.count, guess = best.guess or nil, others = others,
+                 altDepartIn = altDepart and (pre + altDepart / 1000) or nil }
     end
     return { timed = false, wait = (s.wait or {})[side] }
 end
