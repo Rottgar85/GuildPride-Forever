@@ -95,7 +95,8 @@ function page:Refresh()
             local y, m, d, h
             if not online and GetGuildRosterLastOnline then y, m, d, h = GetGuildRosterLastOnline(i) end
             local hours = online and -1 or (((y or 0) * 365 + (m or 0) * 30 + (d or 0)) * 24 + (h or 0))
-            data[#data + 1] = { name = Ambiguate(name, "guild"), rank = rank, class = classFile,
+            local away = ns.Absence and ns.Absence.Until(full)
+            data[#data + 1] = { name = Ambiguate(name, "guild"), rank = rank, class = classFile, away = away,
                 online = online, hours = hours, last = not online and OfflineText(y, m, d, h) or nil,
                 st = stats[full] or EMPTY, discord = seen[full] }
         end
@@ -109,7 +110,7 @@ function page:Refresh()
 
     local long, never = 0, 0
     for n, r in ipairs(data) do
-        if r.hours >= 30 * 24 then long = long + 1 end
+        if r.hours >= 30 * 24 and not r.away then long = long + 1 end
         if r.st.any == 0 then never = never + 1 end
         local row = list:GetRow(n)
         row.left:SetText(("|cff%s%s|r |cff999999%s|r"):format(ClassHex(r.class), r.name, r.rank or ""))
@@ -124,7 +125,9 @@ function page:Refresh()
             ev = ev .. " · |cff8c9effDiscord " .. AgoDays(math.floor((now - r.discord) / 86400)) .. "|r"
         end
         row.mid:SetText(ev)
+        -- abgemeldete Mitglieder nicht rot markieren: sie haben Bescheid gesagt
         row.right:SetText(r.online and ("|cff40ff40" .. L["online"] .. "|r")
+            or (r.away and ("|cff8cc8ff" .. (L["abgemeldet bis %s"]):format(r.away) .. "|r"))
             or (r.hours >= 30 * 24 and ("|cffff6060" .. r.last .. "|r") or r.last))
     end
     list:Finish(#data)

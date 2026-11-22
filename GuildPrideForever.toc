@@ -3,7 +3,7 @@
 ## Notes: Guild window, milestones, events, guild info and guild chat for your guild
 ## Notes-deDE: Gildenfenster, Meilensteine, Events, Gildeninfo und Gildenchat für deine Gilde
 ## Author: Rottgar85
-## Version: 2.38.0
+## Version: 2.39.0
 ## SavedVariables: GuildPrideDB, GuildPrideBackupDB, GuildPrideRaresDB, ScalesDB, GuildPrideAHDB
 ## SavedVariablesPerCharacter: ScalesCharDB
 ## OptionalDeps: EllesmereUIBags, BagBrother, Bagnon, Bagnonium, Combuctor, ElvUI, Baganator, AdiBags, BetterBags
@@ -24,6 +24,8 @@ Guild\GuildPrideInvite.lua
 Core\GuildPrideUI.lua
 Core\GuildPrideCopy.lua
 Guild\GuildPrideInstances.lua
+Guild\GuildPrideBank.lua
+Guild\GuildPrideGuildLinks.lua
 Guild\GuildPrideEvents.lua
 Guild\GuildPrideRoster.lua
 Guild\GuildPrideRecruit.lua
@@ -40,16 +42,22 @@ Guild\GuildPrideRules.lua
 Guild\GuildPrideKeys.lua
 Community\GuildPrideHelp.lua
 Community\GuildPrideHelpBrowser.lua
+Community\GuildPrideNeeds.lua
+Community\GuildPrideMessenger.lua
+Community\GuildPrideWhisper.lua
+Community\GuildPrideMessengerUI.lua
 Community\GuildPrideMap.lua
 Core\GuildPrideVersion.lua
 Guild\GuildPrideChat.lua
 Guild\GuildPridePolls.lua
 Guild\GuildPrideManage.lua
 Core\GuildPrideSkin.lua
+Core\GuildPrideListWindow.lua
 Guild\GuildPrideActivity.lua
 Community\GuildPridePlayers.lua
 Community\GuildPrideNotes.lua
 Core\GuildPrideDiag.lua
+Core\GuildPrideSettingsIO.lua
 Guild\GuildPrideMilestone.lua
 Core\GuildPrideMinimap.lua
 Guild\GuildPrideCrafts.lua
@@ -57,6 +65,8 @@ Guild\GuildPrideGoals.lua
 Guild\GuildPrideBoard.lua
 Guild\GuildPrideAbsence.lua
 Guild\GuildPrideBlock.lua
+Guild\GuildPrideWelcomePack.lua
+Guild\GuildPrideQuestions.lua
 Guild\GuildPrideNameplates.lua
 Guild\GuildPrideWishlist.lua
 Core\GuildPrideLayout.lua
@@ -80,6 +90,7 @@ AuctionHouse\GuildPrideAHLists.lua
 AuctionHouse\GuildPrideAHCrafting.lua
 AuctionHouse\GuildPrideAHOrders.lua
 AuctionHouse\GuildPrideAHTooltip.lua
+AuctionHouse\GuildPrideAHSell.lua
 AuctionHouse\GuildPrideAHUI.lua
 AuctionHouse\GuildPrideAHModernUI.lua
 Travel\GuildPrideTransitData.lua
@@ -88,6 +99,7 @@ Travel\GuildPrideTransitUI.lua
 Travel\GuildPrideFlightData.lua
 Travel\GuildPrideFlight.lua
 Travel\GuildPrideFlightUI.lua
+Buffs\GuildPrideBuffs.lua
 Scales\GuildPrideScalesLocaleEN.lua
 Scales\GuildPrideScalesLocaleDE.lua
 Scales\GuildPrideScalesCompat.lua

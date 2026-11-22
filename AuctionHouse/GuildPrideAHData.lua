@@ -200,6 +200,15 @@ function AH.History(key)
     return out
 end
 
+-- Tagespreise nach Tag `since` (nil = alle)
+function AH.HistorySince(key, since)
+    local out = {}
+    for _, h in ipairs(AH.History(key)) do
+        if not since or h.d > since then out[#out + 1] = h end
+    end
+    return out
+end
+
 function AH.Suggest(key, freshForeignMin, now)
     if freshForeignMin then return math.max(1, freshForeignMin - 1), "fresh" end
     local e = key and Entry(key)

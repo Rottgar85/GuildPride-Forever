@@ -235,6 +235,74 @@ y = y - 96
 ns.Section(c, L["Blockliste"], nil, y)
 local blockNow = Hint(y - 28, "")
 Btn(L["Blockliste …"], 200, nil, 4, y - 50, function() if ns.Block then ns.Block.Toggle() end end)
+
+---------------------------------------------------------------------
+-- Links der Gilde: eigener Discord-Server und Ingame-Community (GuildPrideGuildLinks.lua)
+-- Für Willkommensfenster und Begrüßungstext ({discord}, {community}); alle Mitglieder bekommen sie.
+---------------------------------------------------------------------
+y = y - 96
+ns.Section(c, L["Links der Gilde"], nil, y)
+Hint(y - 28, L["Discord- und Community-Link eurer Gilde. Stehen im Willkommensfenster neuer Mitglieder und im Begrüßungstext als {discord} und {community}. Leer lassen = kein Link."])
+local function LinkBox(label, yy)
+    local fs = c:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+    fs:SetPoint("TOPLEFT", 4, yy - 4); fs:SetWidth(90); fs:SetJustifyH("LEFT"); fs:SetText(label)
+    local b = CreateFrame("EditBox", nil, c, "InputBoxTemplate")
+    b:SetSize(420, 22); b:SetPoint("TOPLEFT", 100, yy)
+    b:SetAutoFocus(false); b:SetMaxLetters(120)
+    b:SetScript("OnEscapePressed", b.ClearFocus)
+    return b
+end
+local discordBox = LinkBox(L["Discord:"], y - 56)
+local communityBox = LinkBox(L["Community:"], y - 82)
+local linksNow = Hint(y - 110, "")
+local function SaveLinks()
+    if not ns.GuildLinks then return end
+    local ok, why = ns.GuildLinks.Set(discordBox:GetText(), communityBox:GetText())
+    discordBox:ClearFocus(); communityBox:ClearFocus()
+    if ok then ns.Print(L["Links der Gilde gespeichert und an die Gilde geschickt."])
+    elseif why == "discord" then ns.Print(L["Das ist kein Discord-Einladungslink (z. B. https://discord.gg/abc123)."])
+    elseif why == "community" then ns.Print(L["Das ist kein Community-Einladungslink (z. B. https://www.worldofwarcraft.com/invite/…)."])
+    else ns.Print(L["Nur Offiziere können die Links der Gilde ändern."]) end
+    if page.Refresh then page:Refresh() end
+end
+discordBox:SetScript("OnEnterPressed", SaveLinks)
+communityBox:SetScript("OnEnterPressed", SaveLinks)
+Btn(L["Speichern"], 120, communityBox, 10, 0, SaveLinks)
+y = y - 40
+
+---------------------------------------------------------------------
+-- Fragen neuer Mitglieder (GuildPrideQuestions.lua): wer was gefragt hat, beantwortet oder offen
+---------------------------------------------------------------------
+y = y - 96
+ns.Section(c, L["Fragen neuer Mitglieder"], nil, y)
+local qNow = Hint(y - 28, "")
+local Q_ROWS = 5
+local qRows = {}
+for i = 1, Q_ROWS do
+    local row = CreateFrame("Frame", nil, c)
+    row:SetSize(620, 22); row:SetPoint("TOPLEFT", 4, y - 50 - (i - 1) * 24)
+    row.text = row:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+    row.text:SetPoint("LEFT", 0, 0); row.text:SetPoint("RIGHT", -100, 0)
+    row.text:SetJustifyH("LEFT"); row.text:SetWordWrap(false)
+    row.btn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    row.btn:SetSize(92, 20); row.btn:SetPoint("RIGHT", 0, 0); row.btn:SetText(L["Antworten"])
+    row.btn:SetScript("OnClick", function(self)
+        if self.main and ns.Messenger and ns.Messenger.Open then ns.Messenger.Open(self.main) end
+    end)
+    row:Hide()
+    qRows[i] = row
+end
+y = y - Q_ROWS * 24 + 8
+
+---------------------------------------------------------------------
+-- Gildenbank: lesbarer Verlauf (GuildPrideBank.lua) – nur, wenn es eine Gildenbank gibt
+---------------------------------------------------------------------
+if ns.Bank and ns.Bank.Available() then
+    y = y - 96
+    ns.Section(c, L["Gildenbank"], nil, y)
+    Hint(y - 28, L["Wer was eingezahlt oder genommen hat, mit Namensfilter und Wochensumme."])
+    Btn(L["Gildenbank-Verlauf …"], 200, nil, 4, y - 50, function() ns.Bank.Toggle() end)
+end
 c:SetHeight(-(y - 90))
 
 ---------------------------------------------------------------------
@@ -261,6 +329,28 @@ function page:Refresh()
         local away, total = ns.Absence.AwayToday(), #ns.Absence.List()
         absNow:SetText((L["Heute abwesend: %s  ·  gemeldet insgesamt: %d"]):format(
             #away > 0 and table.concat(away, ", ") or "–", total))
+    end
+    if ns.Questions then
+        local list, open = ns.Questions.List(), ns.Questions.OpenCount()
+        qNow:SetText(#list == 0 and L["Noch keine Fragen. Neue Mitglieder fragen über ihr Willkommensfenster."]
+            or (L["%d offen · Antworten im Messenger; dann gilt die Frage für alle Offiziere als beantwortet."]):format(open))
+        for i, row in ipairs(qRows) do
+            local e = list[i]
+            row:SetShown(e ~= nil)
+            if e then
+                local age = ns.Messenger and ns.Messenger.TimeText and ns.Messenger.TimeText(e.t or 0) or ""
+                local state = e.answeredBy and ("|cff40ff40" .. (L["beantwortet von %s"]):format(Ambiguate(e.answeredBy, "guild")) .. "|r")
+                    or ("|cffffd100" .. L["offen"] .. "|r")
+                row.text:SetText(("|cff999999%s|r  %s: %s  ·  %s"):format(age, Ambiguate(e.who or "", "guild"), e.text or "", state))
+                row.btn.main = e.main
+            end
+        end
+    end
+    if ns.GuildLinks then
+        if not discordBox:HasFocus() then discordBox:SetText(ns.GuildLinks.Get("discord") or "") end
+        if not communityBox:HasFocus() then communityBox:SetText(ns.GuildLinks.Get("community") or "") end
+        local by = ns.GuildTable("links").by
+        linksNow:SetText(by and by ~= "" and (L["Zuletzt geändert von %s."]):format(Ambiguate(by, "guild")) or "")
     end
     if ns.Block then
         blockNow:SetText((L["Gesperrt: %d Spieler – werden nicht in die Gilde eingeladen."]):format(#ns.Block.List()))

@@ -888,6 +888,11 @@ local function Set(kind)
                  t = GetServerTime(), public = ns.PublicLFGOn() and GuildPrideDB.lfgPublic or false }
         UpdateMyKey()
         ns.Print(L["Du bist eingetragen: "] .. KindLabel(kind, (GroupSize())))
+        -- Mitspieler-Vorschläge: passende Online-Mitglieder, wer den Dungeon braucht zuerst
+        if kind == "group" and ns.Needs and ns.Needs.Suggest then
+            local ok, list = pcall(ns.Needs.Suggest, pickedDungeon, NeedsCode(), 6)
+            if ok and #list > 0 then ns.Print(L["Passend online: "] .. ns.Needs.SuggestText(list)) end
+        end
     else
         mine = nil
         ns.Print(L["Du bist ausgetragen."])
@@ -962,6 +967,23 @@ local status = page:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
 status:SetPoint("LEFT", bOffer:IsShown() and bOffer or bSignOff, "RIGHT", 12, 0)
 status:SetJustifyH("LEFT")
 local STATUS_W = bOffer:IsShown() and 260 or 396
+-- Über dem Status: Tooltip mit passenden Mitspielern (solange du eingetragen bist)
+local statusHover = CreateFrame("Frame", nil, page)
+statusHover:SetAllPoints(status)
+statusHover:EnableMouse(true)
+statusHover:SetScript("OnEnter", function(self)
+    if not (mine and ns.Needs and ns.Needs.Suggest) then return end
+    local ok, list = pcall(ns.Needs.Suggest, pickedDungeon, NeedsCode(), 10)
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    GameTooltip:SetText(L["Passend online"], 1, 1, 1)
+    if ok and #list > 0 then
+        for _, x in ipairs(list) do GameTooltip:AddLine(ns.Needs.SuggestText({ x }), 0.8, 0.8, 0.8) end
+    else
+        GameTooltip:AddLine(L["Gerade niemand passendes online."], 0.6, 0.6, 0.6)
+    end
+    GameTooltip:Show()
+end)
+statusHover:SetScript("OnLeave", GameTooltip_Hide)
 
 local divider = page:CreateTexture(nil, "ARTWORK")
 divider:SetPoint("TOPLEFT", 2, LIST_BAR_Y + 8); divider:SetPoint("TOPRIGHT", -2, LIST_BAR_Y + 8)

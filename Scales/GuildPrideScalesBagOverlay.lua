@@ -43,10 +43,40 @@ local function ShowArrow(t, verdict)
   end
 end
 
+-- GuildPride sell hint: a small coin in the bottom left when the auction price is currently high
+-- (GuildPrideAHSell.lua). Drawn next to the arrows, independent of the Scales arrow options.
+local COIN = "Interface\\MoneyFrame\\UI-GoldIcon"
+local function SellHint(link)
+  local AH = GP.AH
+  if not (link and AH and AH.SellHint) then return false end
+  local ok, hint = pcall(AH.SellHint, link)
+  return ok and hint or false
+end
+local function PaintCoin(coins, button, host, link)
+  local hint = SellHint(link)
+  local t = coins[button]
+  if hint and not t then
+    t = host:CreateTexture(nil, "OVERLAY", nil, 7)
+    t:SetSize(12, 12)
+    t:SetTexture(COIN)
+    coins[button] = t
+  end
+  if t then
+    if t:GetParent() ~= host or not t:GetPoint() then
+      t:SetParent(host)
+      t:ClearAllPoints()
+      t:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", 2, 2)
+    end
+    t:SetShown(hint and true or false)
+  end
+end
+B.SellHint = SellHint
+
 -- Blizzard bags ----------------------------------------------------------------------
 
 -- Kept in our own weak table, so nothing is written onto Blizzard's secure buttons.
 local blizzArrows = setmetatable({}, { __mode = "k" })
+local blizzCoins = setmetatable({}, { __mode = "k" })
 
 local function GetArrow(button)
   local t = blizzArrows[button]
@@ -61,9 +91,11 @@ end
 
 local function UpdateButton(button, bag, slot)
   if not button then return end
-  local verdict = bag and slot and ArrowFor(C.GetContainerItemLink(bag, slot))
+  local link = bag and slot and C.GetContainerItemLink(bag, slot)
+  local verdict = link and ArrowFor(link)
   if verdict then ShowArrow(GetArrow(button), verdict)
   elseif blizzArrows[button] then blizzArrows[button]:Hide() end
+  PaintCoin(blizzCoins, button, button, link)
 end
 
 function B.Refresh()
@@ -105,6 +137,7 @@ local painters = {}
 local function NewPainter(name, point, x, y, size, getLink)
   local p = { name = name, calls = 0,
     arrows = setmetatable({}, { __mode = "k" }),
+    coins = setmetatable({}, { __mode = "k" }),
     hosts = setmetatable({}, { __mode = "kv" }), -- the host is often the button itself
     links = setmetatable({}, { __mode = "k" }) }
 
@@ -127,6 +160,7 @@ local function NewPainter(name, point, x, y, size, getLink)
       end
       ShowArrow(t, verdict)
     end
+    PaintCoin(p.coins, button, host, link)
   end
 
   -- A Scales error must never break the bag addon's redraw.
@@ -224,6 +258,18 @@ local function InitBaganator()
     end,
     { corner = "top_left", priority = 1 })
   if not ok then p.lastError = tostring(err) end
+  pcall(api.RegisterCornerWidget, "GuildPride", "guildpride_sell",
+    function(corner, details)
+      local link = details and details.itemLink
+      return SellHint(link) and true or false
+    end,
+    function(itemButton)
+      local t = itemButton:CreateTexture(nil, "OVERLAY", nil, 7)
+      t:SetSize(12, 12)
+      t:SetTexture(COIN)
+      return t
+    end,
+    { corner = "bottom_left", priority = 1 })
   -- Baganator redraws its own corners on request.
   p.Repaint = function() if api.RequestItemButtonsRefresh then pcall(api.RequestItemButtonsRefresh) end end
 end

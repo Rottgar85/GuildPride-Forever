@@ -293,6 +293,8 @@ function P.Toggle()
                 local target = Ambiguate(self.who, "none")
                 -- Strg+Klick: eigene Notiz zum Spieler (GuildPrideNotes.lua)
                 if IsControlKeyDown() and ns.EditPlayerNote then ns.EditPlayerNote(self.who) return end
+                -- Umschalt+Klick: Nachricht im GuildPride-Messenger (auch offline)
+                if IsShiftKeyDown() and ns.OpenMessenger then ns.OpenMessenger(self.who) return end
                 if button == "RightButton" then
                     local invite = (C_PartyInfo and C_PartyInfo.InviteUnit) or InviteUnit
                     if invite then
@@ -311,6 +313,7 @@ function P.Toggle()
                 GameTooltip:AddLine(L["Linksklick: anflüstern"], 0.8, 0.8, 0.8)
                 GameTooltip:AddLine(L["Rechtsklick: in die Gruppe einladen"], 0.8, 0.8, 0.8)
                 GameTooltip:AddLine(L["Strg+Klick: Notiz (nur für dich)"], 0.8, 0.8, 0.8)
+                GameTooltip:AddLine(L["Umschalt+Klick: Nachricht (auch offline)"], 0.8, 0.8, 0.8)
                 local note = ns.PlayerNote and ns.PlayerNote(self.who)
                 if note then GameTooltip:AddLine(L["Notiz: "] .. note, 1, 0.82, 0.4, true) end
                 GameTooltip:Show()

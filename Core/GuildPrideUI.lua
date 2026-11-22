@@ -317,7 +317,7 @@ content:SetPoint("BOTTOMRIGHT", -14, 14)
 -- Der erste Schlüssel ist der Gastgeber.
 local GROUPS = {
     { host = "10", label = L["Übersicht"], keys = { "10", "60", "65" } },
-    { host = "30", label = L["Planen"],    keys = { "30", "45", "50", "55" } },
+    { host = "30", label = L["Planen"],    keys = { "30", "45", "50", "55", "57" } },
 }
 local groupOf = {}
 for _, g in ipairs(GROUPS) do for _, k in ipairs(g.keys) do groupOf[k] = g end end
@@ -2011,17 +2011,29 @@ local options = {
     { key = "ahTipHistory",  label = L["Tooltip: Preisverlauf (bis 30 Tage)"] },
     { key = "ahTipVendor",   label = L["Tooltip: Händlerpreis"] },
     { key = "ahTipCraft",    label = L["Tooltip: Herstellkosten und Gewinn"] },
+    { key = "ahSellHint",    label = L["Verkaufs-Hinweis: Münze in den Taschen, wenn ein Preis gerade hoch ist"] },
+    { key = "ahMailSummary", label = L["Briefkasten: Auktionsbriefe zusammenfassen"] },
     { header = L["Reisen"] },
     { key = "transitUI",     label = L["Abfahrten an Anlegern und Bahnsteigen zeigen (wann Schiff, Zeppelin oder Bahn kommt)"],
       changed = function() if ns.Transit and ns.Transit.SetWindow then ns.Transit.SetWindow(GuildPrideDB.transitUI) end end },
     { key = "flightTimes",   label = L["Flugzeit am Flugmeister im Tooltip zeigen (lernt echte Zeiten beim Fliegen)"] },
     { key = "flightUI",      label = L["Flug-Zähler im Flug zeigen (Restzeit bis zur Landung)"],
       changed = function() if ns.Flight and ns.Flight.SetWindow then ns.Flight.SetWindow(GuildPrideDB.flightUI) end end },
+    { header = L["Buffs & Erholung"] },
+    { key = "buffFood",      label = L["Buff-Food-Fenster, wenn „Satt“ ausläuft (bestes Essen für deine Klasse)"],
+      changed = function() if ns.Buffs then ns.Buffs.Check() end end },
+    { key = "restReminder",  label = L["Schlafsack-/Lagerfeuer-Fenster, wenn „Boosted Rest“ ausläuft (beim Leveln)"],
+      changed = function() if ns.Buffs then ns.Buffs.Check() end end },
     { header = L["Namensplaketten"] },
     { key = "plateColors",   label = L["Eigene Farben auf den Namensplaketten (nur für dich)"],
       changed = function() if ns.Plates then ns.Plates.RefreshAll() end end },
     { header = L["Gilde"] },
     { key = "welcome",       label = L["Neue Mitglieder automatisch im Gildenchat begrüßen"] },
+    { key = "welcomePack",   label = L["Willkommensfenster, wenn du einer Gilde beitrittst"] },
+    { key = "whisperWindow", label = L["Messenger-Fenster geht auf, wenn dich jemand anflüstert"] },
+    { key = "whisperCombat", label = L["… auch im Kampf (sonst erst danach)"] },
+    { key = "whisperOutgoing", label = L["Selbst flüstern (/w, R, Namensmenü) im Messenger-Fenster"] },
+    { key = "whisperKnownOnly", label = L["… nur bei Gilde, Freunden und Gruppe"] },
     { key = "discordBridge", label = L["Discord-Anbindung nutzen (Events, Anmeldungen, DKP an Discord)"] },
     { key = "discordLinked", label = L["Mein Discord ist mit WoW verknüpft (Optionen > Soziales)"] },
     { key = "discordViaGuild", label = L["Discord-Zeilen immer in den Gildenchat (sonst eigener Discord-Kanal der Gilde)"] },
@@ -2137,7 +2149,7 @@ end
 local welcomeY = OPT_Y - (#options * 30) - 46
 local welcomeLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
 welcomeLabel:SetPoint("TOPLEFT", 4, welcomeY)
-welcomeLabel:SetText(L["Begrüßungstext ({name} = neues Mitglied)"])
+welcomeLabel:SetText(L["Begrüßungstext ({name} = neues Mitglied, {discord} und {community} = Links der Gilde)"])
 -- Fehler melden: fertiger Bericht zum Kopieren (GuildPrideErrors.lua)
 do
     local bugBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")

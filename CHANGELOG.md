@@ -1,5 +1,37 @@
 # GuildPride Changelog
 
+## 2.39.0
+
+**Deutsch**
+- **Messenger**: Nachrichten an Gildenmitglieder mit GuildPride – auch, wenn sie offline sind. Andere Mitglieder heben die Nachricht bis zur Zustellung auf (bis 14 Tage), du siehst „zugestellt“. Geht an den Main, also an alle Charaktere. Fenster mit Unterhaltungen und Verlauf, in der Größe ziehbar; Sprechblase oben im Gildenfenster und Zahl am Minimap-Knopf bei Ungelesenem. `/gp nachrichten`, `/gp nachricht Name Text`
+- **Flüstern im Messenger (wie WIM)**: Wer dich anflüstert, bekommt eine Unterhaltung und das Fenster geht auf; auch beim eigenen Flüstern (`/w`, R, Namensmenü). Antworten im Fenster sind normales Flüstern, Blizzards Chat bleibt unverändert. Einstellbar: im Kampf, nur Gilde/Freunde/Gruppe, eigenes Flüstern
+- **Willkommensfenster** für neue Mitglieder: Nachricht des Tages, Gildeninfo, Discord- und Community-Link der Gilde, Frage an die Offiziere (`/gp willkommen`)
+- **Fragen neuer Mitglieder**: gehen über den Messenger an alle Offiziere (auch offline); Verwaltung › „Fragen neuer Mitglieder“ zeigt offen/beantwortet, Antworten im Messenger
+- **Links der Gilde**: Offiziere tragen unter Verwaltung den eigenen Discord- und Community-Link ein; gilt für alle Mitglieder, im Willkommensfenster und im Begrüßungstext als `{discord}` und `{community}`
+- **Buff-Food- und Erholungs-Erinnerung**: läuft „Satt“ aus, zeigt ein kleines Fenster das beste Essen für deine Klasse aus deinen Taschen – ein Klick isst es. Beim Leveln genauso für Schlafsack und Lagerfeuer, wenn die Erholung ausläuft (`/gp buff`, `/gp rast`)
+- **Offene Dungeons** (unter „Planen“): wer in der Gilde welchen Dungeon oder Raid noch braucht; Klick lädt alle ein, die online sind. Die Gruppensuche schlägt passende Mitspieler vor („Passend online“)
+- **Auktionshaus**: Briefkasten fasst Verkäufe zusammen („3 verkauft, 34g nach Gebühr · 1 abgelaufen“); Goldmünze in den Taschen, wenn ein Preis gerade 25 % über dem Schnitt liegt
+- **Gildenbank-Verlauf** lesbar mit Namensfilter und Wochensumme (`/gp bank`, wo es eine Gildenbank gibt)
+- **Abwesenheit**: abgemeldete Mitglieder zeigen „abgemeldet bis …“ statt roter Offline-Zeit
+- **Abfahrten**: Ankunftszeit am Ziel („Ankunft ~14:32“)
+- **Einstellungen sichern**: `/gp export` und `/gp import` für anderen PC oder Twink
+- Preistausch sparsamer: Antworten schicken nur die Tage, die fehlen
+
+**English**
+- **Messenger**: messages to guild members with GuildPride – even when they are offline. Other members keep the message until delivery (up to 14 days), you see "delivered". Goes to the main, so all their characters get it. Window with conversations and history, resizable; speech bubble at the top of the guild window and a count on the minimap button for unread messages. `/gp messages`, `/gp message name text`
+- **Whispers in the messenger (like WIM)**: whoever whispers you gets a conversation and the window opens; also for your own whispers (`/w`, R, name menu). Replies in the window are normal whispers, Blizzard's chat stays unchanged. Options: in combat, only guild/friends/group, own whispers
+- **Welcome window** for new members: message of the day, guild info, the guild's Discord and community link, question to the officers (`/gp welcome`)
+- **Questions from new members**: go to all officers through the messenger (even offline); Management › "Questions from new members" shows open/answered, reply in the messenger
+- **Guild links**: officers enter the guild's own Discord and community link under Management; applies to all members, in the welcome window and in the greeting text as `{discord}` and `{community}`
+- **Buff food and rest reminder**: when "Well Fed" runs out, a small window shows the best food for your class from your bags – one click eats it. While levelling the same for sleeping bag and campfire when the rest bonus runs out (`/gp buff`, `/gp rest`)
+- **Open dungeons** (under "Plan"): who in the guild still needs which dungeon or raid; a click invites everyone online. The group finder suggests fitting players ("Online and fitting")
+- **Auction house**: the mailbox sums up sales ("3 sold, 34g after fee · 1 expired"); gold coin in your bags when a price is currently 25 % above average
+- **Guild bank log** readable with name filter and weekly totals (`/gp bank`, where there is a guild bank)
+- **Absence**: members who reported absence show "away until …" instead of a red offline time
+- **Departures**: arrival time at the destination ("arrives ~14:32")
+- **Back up settings**: `/gp export` and `/gp import` for another PC or character
+- Leaner price exchange: answers only send the days that are missing
+
 ## 2.38.0
 
 **Deutsch**

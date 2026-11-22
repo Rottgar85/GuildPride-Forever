@@ -142,7 +142,7 @@ local function AddLine(tooltip, link, count)
         done[tooltip] = tooltip:NumLines()
         local ok, extra = pcall(AH.TooltipExtra, link)
         if ok and extra then tooltip:AddLine(extra) end
-        for _, fn in ipairs({ AH.TooltipHistory, AH.TooltipVendor, AH.TooltipCraft }) do
+        for _, fn in ipairs({ AH.TooltipHistory, AH.TooltipVendor, AH.TooltipCraft, AH.TooltipSell }) do
             local okX, line = pcall(fn, link, count)
             if okX and line then tooltip:AddLine(line) end
         end

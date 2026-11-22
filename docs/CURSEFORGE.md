@@ -2,7 +2,7 @@
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting directory, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Version 2.38.0 · Deutsche Beschreibung weiter unten.*
+*Version 2.39.0 · Deutsche Beschreibung weiter unten.*
 
 ---
 
@@ -97,6 +97,11 @@
 | `/gp diag` | diagnostics to copy (realm, guild, Dungeon Finder, community) |
 | `/gp note <name> <text>` | your own note on a player, shown in their tooltip (only for you; without text: delete) |
 | `/gp blocklist` · `/gp block <name> [reason]` · `/gp unblock <name>` | block list: these players are not invited to the guild (officers change it; names with spaces in quotes) |
+| `/gp bank` | guild bank log: who deposited or withdrew what, name filter and weekly totals (read when you open the guild bank) |
+| `/gp welcome` | welcome window with message of the day, guild info, Discord and community link, question to the officers |
+| `/gp export` · `/gp import` | copy your GuildPride settings as text and paste them on another PC or character |
+| `/gp buff` · `/gp rest` | buff food window (best food for your class from your bags) · sleeping bag and campfire window while levelling |
+| `/gp messages [name]` · `/gp message <name> <text>` | messenger: messages to guild members with GuildPride, even when they are offline; whispers open the window too, like WIM (other members keep them until delivery; to the main, so all their characters get it) |
 | `/gp price <item> <price>` | price alert without the auction house window (`off` removes it, without arguments: list) |
 | `/gp options` | GuildPride page in the WoW options |
 
@@ -110,7 +115,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.38.0*
+*Version 2.39.0*
 
 ### NEU in 2.26
 
@@ -201,6 +206,11 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 | `/gp diag` | Diagnose zum Kopieren (Realm, Gilde, Dungeonbrowser, Community) |
 | `/gp notiz <Name> <Text>` | eigene Notiz zu einem Spieler, steht in seinem Tooltip (nur für dich; ohne Text: löschen) |
 | `/gp blockliste` · `/gp block <Name> [Grund]` · `/gp unblock <Name>` | Blockliste: diese Spieler werden nicht in die Gilde eingeladen (ändern nur Offiziere; Namen mit Leerzeichen in Anführungszeichen) |
+| `/gp bank` | Gildenbank-Verlauf: wer was eingezahlt oder genommen hat, mit Namensfilter und Wochensumme (gelesen beim Öffnen der Gildenbank) |
+| `/gp willkommen` | Willkommensfenster mit Nachricht des Tages, Gildeninfo, Discord- und Community-Link und Frage an die Offiziere |
+| `/gp export` · `/gp import` | GuildPride-Einstellungen als Text kopieren und auf einem anderen PC oder Charakter einfügen |
+| `/gp buff` · `/gp rast` | Buff-Food-Fenster (bestes Essen für deine Klasse aus den Taschen) · Schlafsack- und Lagerfeuer-Fenster beim Leveln |
+| `/gp nachrichten [Name]` · `/gp nachricht <Name> <Text>` | Messenger: Nachrichten an Gildenmitglieder mit GuildPride, auch wenn sie offline sind; auch Flüstern öffnet das Fenster, wie bei WIM (andere Mitglieder heben sie bis zur Zustellung auf; an den Main, also an alle seine Charaktere) |
 | `/gp preis <Gegenstand> <Preis>` | Preisalarm ohne Auktionshaus-Fenster (`aus` entfernt ihn, ohne Angaben: Liste) |
 | `/gp optionen` | GuildPride-Seite in den WoW-Optionen |
 

@@ -97,6 +97,19 @@ function Absence.AwayToday()
     return names
 end
 
+-- Abgemeldet: Ende der heutigen Abwesenheit als Text („30.11.2026“) oder nil.
+-- who = voller Name (Name-Realm) oder Kurzname
+function Absence.Until(who)
+    if type(who) ~= "string" or who == "" then return nil end
+    local today, short = Today(), Ambiguate(who, "none")
+    for _, e in ipairs(Absence.List()) do
+        if e.from <= today and e.to >= today and (e.who == who or Ambiguate(e.who, "none") == short) then
+            return FmtDay(e.to), e.reason
+        end
+    end
+    return nil
+end
+
 local function Send(target, id)
     local e = DB()[id]
     if not e then return end

@@ -343,12 +343,17 @@ function T.Board(id, side, now)
         end
     end
     if best then
+        -- Ankunft am Ziel: Abfahrt + Fahrzeit (aus den Fahrplan-Daten) + Ausstieg
+        local ride = s.ride and tonumber(s.ride[side])
+        local departIn = pre + best.d / 1000
+        local arriveThereIn = ride and (departIn + ride + (s.post or 0)) or nil
         -- own: selbst gemessen; confirmed: so viele haben die Zeit selbst gemessen; guess: von letzter Woche vermutet;
         -- others: so viele abweichende Zeiten wurden kürzlich gemeldet
         return { timed = true, arriveIn = pre + best.a / 1000, departIn = pre + best.d / 1000, nextIn = pre + best.n / 1000,
                  stay = best.s / 1000, period = best.p / 1000, age = max(0, now - best.seen), own = best.source == "you",
                  confirmed = best.count, guess = best.guess or nil, others = others,
-                 altDepartIn = altDepart and (pre + altDepart / 1000) or nil }
+                 altDepartIn = altDepart and (pre + altDepart / 1000) or nil, rideTime = ride,
+                 arriveThereIn = arriveThereIn }
     end
     return { timed = false, wait = (s.wait or {})[side] }
 end

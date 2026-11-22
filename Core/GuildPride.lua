@@ -99,9 +99,12 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    remindMin = 15,
                    ahTab = true, ahTooltip = true, ahShare = true, ahReadAuctionator = true,
                    ahTooltipWithAuctionator = true, ahTipSenders = true, ahTipTrend = true, ahTipHistory = true,
-                   ahTipVendor = true, ahTipCraft = true, transitUI = true, transitShare = true,
+                   ahTipVendor = true, ahTipCraft = true, ahSellHint = true, ahMailSummary = true, transitUI = true, transitShare = true,
                    flightTimes = true, flightUI = true, showItemID = false,
-                   plateColors = true, plateColorBar = false }
+                   plateColors = true, plateColorBar = false, welcomePack = true,
+                   buffFood = true, restReminder = true,
+                   whisperWindow = true, whisperCombat = true, whisperKnownOnly = false, whisperOutgoing = true }
+ns.DEFAULTS = defaults   -- für /gp export und /gp import
 
 -- Weitere Meilensteine neben LEVEL (Wert ist Text bzw. ID)
 local EXTRA_KINDS = { ACH = true, BOSS = true, MPLUS = true, MOUNT = true }
@@ -751,7 +754,7 @@ local MP_MAX = 100
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
 local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, MHO = true, BLQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
-               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true }
+               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true, DNQ = true, NMQ = true, GLQ = true, FQQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender

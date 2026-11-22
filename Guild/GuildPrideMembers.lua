@@ -117,6 +117,7 @@ local function Welcome(name)
         if not IsInGuild() then return end
         local text = strtrim(GuildPrideDB.welcomeText or "")
         if text == "" then text = ns.WELCOME_DEFAULT end
+        if ns.GuildLinks then text = ns.GuildLinks.Fill(text) end
         for _, w in ipairs(pendingWelcome) do if w.short == short then return end end
         pendingWelcome[#pendingWelcome + 1] = { short = short, t = GetTime(),
             text = (text:gsub("{name}", Ambiguate(name, "guild"))) }

@@ -200,7 +200,8 @@ local function DrawRow(r, d, b)
         end
         -- wie alt die Messung ist, wer sie gemessen hat und wie viele sie bestätigt haben
         local info = b.guess and "" or (" |cff888888· " .. T.AgeText(b) .. "|r")
-        r.status:SetText(text .. info .. " · " .. T.SourceText(b) .. T.ConfirmText(b))
+        local arrive = T.ArrivalText(b)
+        r.status:SetText(text .. (arrive ~= "" and (" · |cffffd100" .. arrive .. "|r") or "") .. info .. " · " .. T.SourceText(b) .. T.ConfirmText(b))
     else
         r.status:SetText(L["|cffaaaaaanoch nicht gemessen|r"])
     end
@@ -212,6 +213,13 @@ local function DrawRow(r, d, b)
     r.bar:SetWidth(math.max(1, (WIDTH - 23) * fill))
     r.bar:SetShown(fill > 0)
     r:Show()
+end
+
+-- „Ankunft ~14:32“: Uhrzeit (Spieluhr des Rechners), zu der man am Ziel ist, wenn man diese Abfahrt nimmt
+function T.ArrivalText(b, now)
+    if not b or not b.timed or not b.arriveThereIn then return "" end
+    now = now or time()
+    return (L["Ankunft ~%s"]):format(date("%H:%M", math.floor(now + b.arriveThereIn)))
 end
 
 -- „· 3× bestätigt“: so viele haben die Zeit selbst gemessen
@@ -303,6 +311,8 @@ function T.NearbyLines(max, now)
             local what = b.arriveIn <= 0
                 and (d.kind == "tram" and L["fährt ab in %s"] or L["legt ab in %s"]):format(T.Countdown(b.departIn))
                 or (L["kommt in %s"]):format(T.Countdown(b.arriveIn))
+            local arrive = T.ArrivalText(b)
+            if arrive ~= "" then what = what .. " · " .. arrive end
             out[#out + 1] = { (L["%s nach %s"]):format(KIND[d.kind] or KIND.boat, tostring(d.to)) .. ": " .. what,
                               unpack(TINT[d.kind] or TINT.boat) }
         end

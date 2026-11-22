@@ -190,6 +190,10 @@ function AH.Ask(key)
     lastAsk[key] = now
     askTimes[#askTimes + 1] = now
     Send("Q:" .. AH.Side() .. ":" .. key, "Q:" .. key)
+    -- Sparsam: wer schon einen Verlauf hat, sagt bis zu welchem Tag – Antworten schicken dann nur
+    -- neuere Tage (eigene Nachricht, damit ältere GuildPride-Versionen „Q:“ weiter verstehen)
+    local h = AH.History(key)
+    if #h >= 2 then Send("K:" .. AH.Side() .. ":" .. key .. ":" .. h[#h].d, "K:" .. key) end
 end
 
 -- Geplante Antworten: genau einer soll antworten. Jeder wartet zufällig
@@ -210,10 +214,12 @@ function AH._tick(now)
                 for _, msg in ipairs(AH.EncodeP(AH.Side(), { { key = key, p = o.p, q = o.q, t = o.t } })) do
                     Send(msg, "A:" .. key)
                 end
-                -- dazu die Tagespreise, damit der Frager einen Verlauf bekommt
-                local h = AH.History(key)
-                local hm = #h >= 2 and AH.EncodeH(AH.Side(), key, h)
-                if hm then Send(hm, "H:" .. key) end
+                -- dazu die Tagespreise, damit der Frager einen Verlauf bekommt – nur die Tage, die ihm
+                -- fehlen (a.since aus „K:“), und nicht, wenn ein anderer den Verlauf schon geschickt hat
+                local h = AH.HistorySince(key, a.since)
+                local hm = not a.hDone and #h >= (a.since and 1 or 2) and AH.EncodeH(AH.Side(), key, h)
+                if hm then Send(hm, "H:" .. key); AH.stats.histSent = (AH.stats.histSent or 0) + 1
+                elseif not a.hDone then AH.stats.histSaved = (AH.stats.histSaved or 0) + 1 end
             end
         end
     end
@@ -275,7 +281,14 @@ function AH.OnMessage(msg, sender)
         if not side or #list == 0 then AH.stats.dropped = AH.stats.dropped + 1; return end
         if side ~= AH.Side() or not KnownItem(key) then return end
         if not AH.Store()[key] and not NewKeyAllowed(sender) then AH.stats.dropped = AH.stats.dropped + 1; return end
+        -- ein anderer hat den Verlauf schon geschickt: eigene geplante Antwort ohne Verlauf
+        if pending[key] then pending[key].hDone = true end
         if AH.MergeHistory(key, list) > 0 and AH.OnPrice then AH.OnPrice(key) end
+    elseif kind == "K:" then
+        local side, key, d = msg:match("^K:([AHN]):([%d%.]+):(%d+)$")
+        if not side or not ValidKey(key) then AH.stats.dropped = AH.stats.dropped + 1; return end
+        local a = side == AH.Side() and pending[key]
+        if a then a.since = math.max(a.since or 0, tonumber(d) or 0) end
     elseif kind == "Q:" then
         local side, key = msg:match("^Q:([AHN]):([%d%.]+)$")
         if not side or not ValidKey(key) then AH.stats.dropped = AH.stats.dropped + 1; return end

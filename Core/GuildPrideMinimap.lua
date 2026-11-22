@@ -71,6 +71,12 @@ local function FillTooltip(tip, drag)
         for _, l in ipairs(lines) do tip:AddLine(l[1], l[2], l[3], l[4]) end
         tip:AddLine(" ")
     end
+    -- ungelesene Nachrichten (GuildPrideMessenger.lua)
+    local unread = ns.Messenger and ns.Messenger.AllUnread and ns.Messenger.AllUnread() or 0
+    if unread > 0 then
+        tip:AddLine((L["%d ungelesene Nachrichten (/gp nachrichten)"]):format(unread), 1, 0.82, 0)
+        tip:AddLine(" ")
+    end
     tip:AddLine(L["Linksklick: Gildenfenster"], 1, 1, 1)
     tip:AddLine(L["Rechtsklick: Einstellungen"], 1, 1, 1)
     if drag then tip:AddLine(L["Ziehen: verschieben"], 0.7, 0.7, 0.7) end
