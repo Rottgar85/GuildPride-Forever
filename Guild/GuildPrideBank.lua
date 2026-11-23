@@ -46,6 +46,9 @@ function Bank.ReadTab(tab, now)
             list[#list + 1] = { who = who, kind = kind, item = item, count = tonumber(count) or 1, t = now - Ago(y, m, d, h) }
         end
     end
+    -- Noch nicht geladenes Fach (leere Antwort) überschreibt keinen gelesenen Stand
+    local old = DB().tabs[tab]
+    if #list == 0 and old and old.list and #old.list > 0 then return end
     DB().tabs[tab] = { read = now, list = list }
 end
 
@@ -59,6 +62,8 @@ function Bank.ReadMoney(now)
             list[#list + 1] = { who = who, kind = kind, amount = tonumber(amount) or 0, t = now - Ago(y, m, d, h) }
         end
     end
+    local old = DB().money
+    if #list == 0 and old and old.list and #old.list > 0 then return end
     DB().money = { read = now, list = list }
 end
 
@@ -133,13 +138,13 @@ end
 ---------------------------------------------------------------------
 -- Einlesen beim Öffnen der Gildenbank
 ---------------------------------------------------------------------
+-- Neuere Clients (auch WoW Forever) melden die Gildenbank nicht mehr mit
+-- GUILDBANKFRAME_OPENED, sondern über PLAYER_INTERACTION_MANAGER_FRAME_SHOW.
+-- Der Server beantwortet nur eine Protokoll-Abfrage nach der anderen: Fächer
+-- darum einzeln im Abstand abfragen, jede Antwort (GUILDBANKLOG_UPDATE) einlesen.
 local ev = CreateFrame("Frame")
-local open = false
-local function Query()
-    if not Bank.Available() then return end
-    for tab = 1, (GetNumGuildBankTabs and GetNumGuildBankTabs() or 0) do pcall(QueryGuildBankLog, tab) end
-    pcall(QueryGuildBankLog, MONEY_TAB)
-end
+local open, session = false, 0
+local GUILD_BANKER = Enum and Enum.PlayerInteractionType and Enum.PlayerInteractionType.GuildBanker or 10
 local function ReadAll()
     if not Bank.Available() or not IsInGuild() then return end
     local now = GetServerTime()
@@ -147,12 +152,51 @@ local function ReadAll()
     pcall(Bank.ReadMoney, now)
     if Bank.Refresh then Bank.Refresh() end
 end
-for _, e in ipairs({ "GUILDBANKFRAME_OPENED", "GUILDBANKFRAME_CLOSED", "GUILDBANKLOG_UPDATE" }) do pcall(ev.RegisterEvent, ev, e) end
-ev:SetScript("OnEvent", function(_, event)
-    if event == "GUILDBANKFRAME_OPENED" then open = true; C_Timer.After(0.5, Query)
-    elseif event == "GUILDBANKFRAME_CLOSED" then open = false
+local function Query()
+    if not Bank.Available() then return end
+    session = session + 1
+    local mine = session
+    local list = {}
+    for tab = 1, (GetNumGuildBankTabs and GetNumGuildBankTabs() or 0) do list[#list + 1] = tab end
+    list[#list + 1] = MONEY_TAB
+    for i, tab in ipairs(list) do
+        C_Timer.After((i - 1) * 0.8, function()
+            if not open or mine ~= session then return end
+            pcall(QueryGuildBankLog, tab)
+        end)
+    end
+    -- falls eine Antwort kein Ereignis auslöst: am Ende noch einmal alles lesen
+    C_Timer.After(#list * 0.8 + 1, function() if open and mine == session then ReadAll() end end)
+end
+local function Opened()
+    if open then return end
+    open = true
+    C_Timer.After(0.5, Query)
+end
+local function Closed() open = false end
+for _, e in ipairs({ "GUILDBANKFRAME_OPENED", "GUILDBANKFRAME_CLOSED", "GUILDBANKLOG_UPDATE",
+                     "PLAYER_INTERACTION_MANAGER_FRAME_SHOW", "PLAYER_INTERACTION_MANAGER_FRAME_HIDE",
+                     "ADDON_LOADED" }) do
+    pcall(ev.RegisterEvent, ev, e)
+end
+local hooked = false
+local function HookFrame()
+    -- Zusätzlich am Blizzard-Fenster selbst (lädt erst beim ersten Öffnen)
+    if hooked or not GuildBankFrame then return end
+    hooked = true
+    GuildBankFrame:HookScript("OnShow", Opened)
+    GuildBankFrame:HookScript("OnHide", Closed)
+    if GuildBankFrame:IsShown() then Opened() end
+end
+ev:SetScript("OnEvent", function(_, event, arg)
+    if event == "GUILDBANKFRAME_OPENED" then Opened()
+    elseif event == "GUILDBANKFRAME_CLOSED" then Closed()
+    elseif event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW" and arg == GUILD_BANKER then Opened()
+    elseif event == "PLAYER_INTERACTION_MANAGER_FRAME_HIDE" and arg == GUILD_BANKER then Closed()
+    elseif event == "ADDON_LOADED" and arg == "Blizzard_GuildBankUI" then HookFrame()
     elseif event == "GUILDBANKLOG_UPDATE" and open then ReadAll() end
 end)
+HookFrame()
 
 ---------------------------------------------------------------------
 -- Fenster (/gp bank, Verwaltung › „Gildenbank …“)

@@ -344,8 +344,7 @@ local function ShowSwitchBar(g, selectedTab)
             local b = switchBar.buttons[n]
             if not b then
                 b = CreateFrame("Button", nil, switchBar, "UIPanelButtonTemplate")
-                b:SetSize(130, 24)
-                b:SetPoint("LEFT", (n - 1) * 136, 0)
+                b:SetHeight(24)
                 if ns.SkinButton then ns.SkinButton(b) end   -- GuildPride-Design statt Blizzard-Rot
                 switchBar.buttons[n] = b
             end
@@ -361,9 +360,31 @@ local function ShowSwitchBar(g, selectedTab)
         end
     end
     for i = n + 1, #switchBar.buttons do switchBar.buttons[i]:Hide() end
+    switchBar.count = n
+    switchBar:Layout()
     switchBar:SetShown(n > 1)
     return n > 1
 end
+-- Knöpfe teilen sich die Breite (höchstens 130 px): fünf Planen-Seiten passten
+-- mit fester Breite nicht ins Fenster; beim Größerziehen neu verteilen
+function switchBar:Layout()
+    local n = self.count or 0
+    if n == 0 then return end
+    local gap = 6
+    local width = self:GetWidth()
+    if not width or width <= 0 then width = content:GetWidth() or 0 end
+    local w = math.min(130, math.floor((width - (n - 1) * gap) / n))
+    if w < 40 then w = 40 end
+    for i = 1, n do
+        local b = self.buttons[i]
+        b:ClearAllPoints()
+        b:SetPoint("LEFT", (i - 1) * (w + gap), 0)
+        b:SetWidth(w)
+        local fs = b:GetFontString()
+        if fs then fs:SetWidth(w - 8); fs:SetWordWrap(false) end
+    end
+end
+switchBar:SetScript("OnSizeChanged", function(self) self:Layout() end)
 
 local function MarkTabs()
     local t = ns.Theme()
@@ -2019,10 +2040,12 @@ local options = {
     { key = "flightTimes",   label = L["Flugzeit am Flugmeister im Tooltip zeigen (lernt echte Zeiten beim Fliegen)"] },
     { key = "flightUI",      label = L["Flug-Zähler im Flug zeigen (Restzeit bis zur Landung)"],
       changed = function() if ns.Flight and ns.Flight.SetWindow then ns.Flight.SetWindow(GuildPrideDB.flightUI) end end },
+    { key = "mapNotes",      label = L["Notizzettel auf der Karte (Gilde blau, alle anderen weiß; gehen auf ~5 m auf)"],
+      changed = function() if ns.Zettel then ns.Zettel.Changed() end end },
     { header = L["Buffs & Erholung"] },
     { key = "buffFood",      label = L["Buff-Food-Fenster, wenn „Satt“ ausläuft (bestes Essen für deine Klasse)"],
       changed = function() if ns.Buffs then ns.Buffs.Check() end end },
-    { key = "restReminder",  label = L["Schlafsack-/Lagerfeuer-Fenster, wenn „Boosted Rest“ ausläuft (beim Leveln)"],
+    { key = "restReminder",  label = L["Schlafsack-/Lagerfeuer-Fenster, wenn „Gut erholt“ oder „Lagervorteile“ fehlt (beim Leveln)"],
       changed = function() if ns.Buffs then ns.Buffs.Check() end end },
     { header = L["Namensplaketten"] },
     { key = "plateColors",   label = L["Eigene Farben auf den Namensplaketten (nur für dich)"],

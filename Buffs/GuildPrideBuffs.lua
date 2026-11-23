@@ -2,7 +2,7 @@
 -- * Buff-Food (buffFood): läuft „Satt“ (Well Fed) aus, öffnet sich ein kleines
 --   Fenster mit dem Buff-Food aus deinen Taschen – das beste für deine Klasse
 --   steht vorne. Ein Klick isst es, das Fenster verschwindet.
--- * Erholung (restReminder, nur unter der Höchststufe): läuft „Boosted Rest“
+-- * Erholung (restReminder, nur unter der Höchststufe): läuft „Lagervorteile“
 --   vom Lagerfeuer aus (oder wird der Gemütliche Schlafsack wieder bereit),
 --   öffnet sich das Fenster mit Schlafsack und bestem Lagerfeuer. Ein Klick
 --   benutzt es, das Fenster verschwindet.
@@ -19,7 +19,9 @@ local L = ns.L
 local Buffs = {}
 ns.Buffs = Buffs
 
-Buffs.REST_SPELL = 1229451          -- Boosted Rest (am Lagerfeuer sitzen)
+Buffs.REST_SPELL = 1229451          -- Lagervorteile / Boosted Rest (am Lagerfeuer sitzen)
+-- Buff des Lagerfeuers am Namen (deutscher und englischer Client)
+Buffs.FIRE_BUFF_NAMES = { ["Lagervorteile"] = true, ["Boosted Rest"] = true }
 Buffs.BAG_ITEM = 211527             -- Gemütlicher Schlafsack (Cozy Sleeping Bag)
 -- Lagerfeuer, das beste zuerst: Bausätze, danach Kochen-Zauber „Einfaches Lagerfeuer“
 Buffs.CAMPFIRES = {
@@ -72,7 +74,8 @@ function Buffs.ParseFood(lines)
             if low:find("use:", 1, true) or low:find("benutzen:", 1, true) then
                 e = select(2, low:find("well fed", 1, true))
                 if not e then
-                    local s = low:find("satt[^%a\128-\255]")
+                    -- danach kein Buchstabe: \195 beginnt ä/ö/ü/ß, Anführungszeichen („Satt“) sind erlaubt
+                    local s = low:find("satt[^%a\195]")
                     e = s and s + 3
                 end
             end
@@ -263,7 +266,7 @@ local function RestChoices()
             end
         elseif c.spell and SpellKnown(c.spell) and SpellUsable(c.spell) and SpellReady(c.spell) then
             list[#list + 1] = { kind = "spell", id = c.spell, name = SpellName(c.spell), icon = SpellIcon(c.spell),
-                                note = L["Lagerfeuer anzünden"] }
+                                note = L["Lagerfeuer anzünden"], place = true }
             break
         end
     end
@@ -280,7 +283,7 @@ local function BagSpell()
     return f(Buffs.BAG_ITEM)
 end
 
--- Aktive Buffs: satt? Boosted Rest (Lagerfeuer)? Gut erholt (Schlafsack)?
+-- Aktive Buffs: satt? Lagervorteile (Lagerfeuer)? Gut erholt (Schlafsack)?
 -- Geheime Werte im Kampf -> nil = unbekannt
 local function ReadAuras()
     local fedName, restName = SpellName(WELL_FED_SPELL), SpellName(Buffs.REST_SPELL)
@@ -288,7 +291,9 @@ local function ReadAuras()
     local fed, rest, rested = false, false, false
     local function Check(name, icon, spellId)
         if Secret(name) or Secret(spellId) or Secret(icon) then error("secret") end
-        if spellId == Buffs.REST_SPELL or (restName and name == restName) then rest = true end
+        if spellId == Buffs.REST_SPELL or Buffs.FIRE_BUFF_NAMES[name] or (restName and name == restName) then
+            rest = true
+        end
         if Buffs.BAG_BUFF_NAMES[name] or (bagSpell and spellId == bagSpell) or (bagName and name == bagName) then
             rested = true
         end
@@ -322,7 +327,7 @@ end
 ---------------------------------------------------------------------
 -- Ein Fenster, drei Symbole: Buff-Food · Schlafsack · Lagerfeuer.
 -- Buff-Food zeigt sich, wenn „Satt“ fehlt; Schlafsack und Lagerfeuer, wenn
--- „Boosted Rest“ fehlt. Was du nicht benutzen kannst, ist grau und sagt
+-- „Lagervorteile“ fehlt. Was du nicht benutzen kannst, ist grau und sagt
 -- darunter, warum (keins dabei, Abklingzeit …). Klick benutzt es.
 ---------------------------------------------------------------------
 local SLOT_W, ICON = 84, 44
@@ -387,10 +392,14 @@ local function SetSlot(b, c, icon, status, why)
     b.choice, b.why = c, why
     if c then
         if c.place then
-            -- Schlafsack und Lagerfeuer-Bausätze werden auf den Boden gelegt:
-            -- [@player] legt sie gleich an deine Füße, ohne Zielkreis
+            -- Schlafsack und Lagerfeuer werden auf den Boden gelegt:
+            -- [@player] legt sie gleich neben dich, ohne Zielkreis
             b:SetAttribute("type", "macro")
-            b:SetAttribute("macrotext", "/use [@player] item:" .. c.id)
+            if c.kind == "spell" then
+                b:SetAttribute("macrotext", "/cast [@player] " .. (c.name or SpellName(c.id) or ""))
+            else
+                b:SetAttribute("macrotext", "/use [@player] item:" .. c.id)
+            end
         else
             b:SetAttribute("macrotext", nil)
             b:SetAttribute("type", c.kind)
@@ -486,7 +495,7 @@ local function Show(needFood, needBag, needFire)
     if needFire then
         local fire
         for _, c in ipairs(RestChoices()) do if c.id ~= Buffs.BAG_ITEM then fire = c end end
-        if fire then SetSlot(slots.fire, fire, ICON_FIRE, fire.place and L["aufstellen"] or L["anzünden"])
+        if fire then SetSlot(slots.fire, fire, ICON_FIRE, fire.kind == "item" and L["aufstellen"] or L["anzünden"])
         else SetSlot(slots.fire, nil, ICON_FIRE, L["keins dabei"],
             L["Kein Lagerfeuer-Bausatz dabei und kein Lagerfeuer zum Anzünden – setz dich an ein Lagerfeuer."]) end
         order[#order + 1] = slots.fire
@@ -520,7 +529,7 @@ Check = function()
     if rest then snoozeFire = 0 end
     if Blocked() then win:Hide(); return end
     local resting = Opt("restReminder") and Leveling()
-    -- Schlafsack weg, sobald „Gut erholt“ aktiv ist; Lagerfeuer weg bei „Boosted Rest“
+    -- Schlafsack weg, sobald „Gut erholt“ aktiv ist; Lagerfeuer weg bei „Lagervorteile“
     Show(not fed and Opt("buffFood") and now >= snoozeFood,
          not rested and resting and now >= snoozeBag,
          not rest and resting and now >= snoozeFire)
@@ -540,7 +549,7 @@ function Buffs.Info()
     local fed, rest, rested = ReadAuras()
     local function yn(v) return v == nil and "?" or (v and L["ja"] or L["nein"]) end
     local max = (GetMaxPlayerLevel and GetMaxPlayerLevel()) or MAX_PLAYER_LEVEL or 60
-    ns.Print((L["Satt: %s · Boosted Rest: %s · Stufe %d/%d · Schalter Essen %s, Erholung %s"]):format(
+    ns.Print((L["Satt: %s · Lagervorteile: %s · Stufe %d/%d · Schalter Essen %s, Erholung %s"]):format(
         yn(fed), yn(rest), UnitLevel("player") or 0, max, yn(Opt("buffFood")), yn(Opt("restReminder"))))
     ns.Print((L["Schlafsack: %d dabei, bereit: %s · Gut erholt: %s"]):format(ItemCount(Buffs.BAG_ITEM),
         yn(ItemReady(Buffs.BAG_ITEM)), yn(rested)))

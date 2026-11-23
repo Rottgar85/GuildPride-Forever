@@ -840,6 +840,7 @@ require("itemid")(test, eq, W, ns)
 require("players")(test, eq, W, ns)
 require("more")(test, eq, W, ns)
 require("buffs")(test, eq, W, ns)
+require("zettel")(test, eq, W, ns)
 
 test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", function()
     local match = ns.BrowserDungeonMatch

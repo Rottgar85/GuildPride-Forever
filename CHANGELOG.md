@@ -1,5 +1,19 @@
 # GuildPride Changelog
 
+## 2.40.0
+
+**Deutsch**
+- **Notizzettel auf der Karte**: „Zettel schreiben“ (Knopf auf der Weltkarte, Kartenfilter oder `/gp zettel schreiben`) hängt einen Zettel genau dort auf, wo du stehst – für die Gilde (blau, über den abgesicherten Gildenkanal) oder für alle (weiß, über den offenen Kanal). Wer bis auf etwa 5 m herankommt, dem geht der Zettel auf: wie ein echter Zettel aus dem Ringbuch, mit Text und Vor- und Nachnamen als Unterschrift. Zettel halten 7 Tage, eigene kannst du abreißen. Abschaltbar wie die Rares: Rechtsklick auf den Knopf, Kartenfilter, Einstellungen oder `/gp zettel aus`
+- **Buff-Erinnerung**: Lagerfeuer wird am deutschen Buff „Lagervorteile“ erkannt, „Satt“ in Anführungszeichen wird gefunden, das Lagerfeuer wird per Klick direkt neben dich gesetzt
+- **Gildenbank-Verlauf**: liest das Protokoll jetzt auch in WoW Forever beim Öffnen der Gildenbank (Fächer nacheinander); leere Antworten überschreiben nichts mehr
+- **Planen**: die Knöpfe oben passen ins Fenster („Offene Dungeons“ ragte heraus)
+
+**English**
+- **Notes on the map**: "Write a note" (button on the world map, map filter or `/gp zettel write`) pins a note right where you stand – for the guild (blue, through the secured guild channel) or for everyone (white, through the open channel). Whoever comes within about 5 m gets the note opened: like a real note torn from a ring binder, with the text and first and last name as signature. Notes last 7 days, you can tear off your own. Can be turned off like the rares: right-click the button, map filter, settings or `/gp zettel off`
+- **Buff reminder**: the campfire is recognised by the German buff name too, "Well Fed" in quotes is found, a click puts the campfire right next to you
+- **Guild bank log**: now reads the log in WoW Forever when you open the guild bank (one tab after another); empty answers no longer overwrite anything
+- **Plan**: the buttons at the top fit into the window ("Open dungeons" stuck out)
+
 ## 2.39.0
 
 **Deutsch**

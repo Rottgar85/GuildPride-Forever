@@ -14,6 +14,13 @@ return function(test, eq, W, ns)
         eq(s.str, 20, "Stärke"); eq(s.hp5, nil, "Gesundheit vor „satt“ zählt nicht")
     end)
 
+    test("Buff-Food: „Satt“ in Anführungszeichen", function()
+        local s = B.ParseFood({ "Benutzen: Wenn Ihr mindestens 10 Sek. mit Essen verbringt, erhaltet Ihr den Effekt „Satt“ und 15 Min. lang 12 Ausdauer und Willenskraft." })
+        eq(s and s.sta, 12, "Ausdauer"); eq(s and s.spi, 12, "Willenskraft")
+        s = B.ParseFood({ "Benutzen: ... werdet Ihr 'Satt' und erhaltet 15 Min. lang 10 Beweglichkeit." })
+        eq(s and s.agi, 10, "einfache Anführungszeichen")
+    end)
+
     test("Buff-Food: Mana alle 5 Sek. und kein Buff-Food", function()
         local s = B.ParseFood({ "Use: ... you will become well fed and gain 8 Mana every 5 seconds for 10 min." })
         eq(s.mp5, 8, "Mana/5")

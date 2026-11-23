@@ -102,7 +102,7 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    ahTipVendor = true, ahTipCraft = true, ahSellHint = true, ahMailSummary = true, transitUI = true, transitShare = true,
                    flightTimes = true, flightUI = true, showItemID = false,
                    plateColors = true, plateColorBar = false, welcomePack = true,
-                   buffFood = true, restReminder = true,
+                   buffFood = true, restReminder = true, mapNotes = true,
                    whisperWindow = true, whisperCombat = true, whisperKnownOnly = false, whisperOutgoing = true }
 ns.DEFAULTS = defaults   -- für /gp export und /gp import
 
@@ -971,6 +971,9 @@ f:SetScript("OnEvent", function(_, event, ...)
                 -- Schiffs-Zähler (GuildPrideTransit.lua): TPS/TPQ
                 elseif message:sub(1, 2) == "TP" then
                     if ns.OnTransitPublic then ns.OnTransitPublic(message, sender, false) end
+                -- Notizzettel für alle (GuildPrideZettel.lua): ZTP/ZTD
+                elseif message:sub(1, 2) == "ZT" then
+                    if ns.OnZettelPublic then ns.OnZettelPublic(message, sender) end
                 elseif ns.OnPublicMessage then ns.OnPublicMessage(message, sender) end
                 return
             end
