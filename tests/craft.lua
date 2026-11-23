@@ -205,6 +205,67 @@ return function(test, eq, W, ns)
         GuildPrideDB.craftReagents[99123] = nil
     end)
 
+    test("Handwerk: Tracker stellt nacheinander her – Zwischenprodukte zuerst, zählt runter", function()
+        local oldTS, oldOpen, oldAll = C_TradeSkillUI, Craft.OpenLine, GuildPrideDB.craftAll
+        local crafted
+        C_TradeSkillUI = {
+            GetRecipeInfo = function(id) return { learned = true, numAvailable = id == 99201 and 3 or 0 } end,
+            CraftRecipe = function(id, n) crafted = { id, n } end,
+        }
+        Craft.OpenLine = function() return 164 end
+        GuildPrideDB.craftAll = { [164] = { [99201] = true, [99202] = true } }
+        GuildPrideDB.craftReagents[99201] = { made = 1, out = 99301, r = { { 2772, 1 } } }   -- Barren schmelzen
+        GuildPrideDB.craftReagents[99202] = { made = 1, out = 99302, r = { { 99301, 2 } } }  -- braucht die Barren
+        Track.Clear()
+        Track.AddRecipe(99202, 2)
+        Track.AddRecipe(99201, 4)
+        local order = Track.CraftOrder()
+        eq(order[1], 99201, "Zwischenprodukt zuerst")
+        local id, n = Track.NextCraft()
+        eq(id, 99201); eq(n, 3, "nur so viele, wie Zutaten da sind")
+        eq(Track.CraftNext(), true)
+        eq(crafted[1], 99201); eq(crafted[2], 3)
+        for _ = 1, 4 do Track.Crafted(99201) end
+        eq(Track.DB().recipes[99201], nil, "fertig – aus dem Tracker")
+        eq(Track.Crafted(12345), false, "anderer Zauber zählt nicht")
+        local none, why = Track.NextCraft()
+        eq(none, nil); eq(why:find("fehlen", 1, true) ~= nil, true, why)
+        -- Forever: Spiel meldet numAvailable 0, Taschen reichen aber → Knopf geht trotzdem
+        Track.AddRecipe(99202, 1)
+        stock[99301] = 4
+        id, n = Track.NextCraft()
+        eq(id, 99202, "Taschen zählen, wenn numAvailable 0 ist"); eq(n, 2, "4 Barren reichen für 2")
+        stock[99301] = 0
+        -- noch nicht gelernt → eigener Grund
+        C_TradeSkillUI.GetRecipeInfo = function() return { learned = false, numAvailable = 0 } end
+        local _, why3 = Track.NextCraft()
+        eq(why3:find("Lehrer", 1, true) ~= nil, true, why3)
+        Track.CraftDiag()
+        Craft.OpenLine = function() return nil end
+        local _, why2 = Track.NextCraft()
+        eq(why2:find("Berufsfenster", 1, true) ~= nil, true)
+        Track.Clear()
+        GuildPrideDB.craftReagents[99201] = nil; GuildPrideDB.craftReagents[99202] = nil
+        C_TradeSkillUI, Craft.OpenLine, GuildPrideDB.craftAll = oldTS, oldOpen, oldAll
+    end)
+
+    test("Handwerk: Menü „Mehr …“ – Ansichten und Fenster", function()
+        local modes, actions = {}, {}
+        for _, e in ipairs(Win.MENU) do
+            if e.mode then modes[e.mode] = true end
+            if e.action then actions[e.action] = true end
+        end
+        eq(modes.codex and modes.profit and modes.guild, true, "alle Ansichten erreichbar")
+        eq(modes.prof, nil, "Leveln ist das Fenster selbst")
+        eq(actions.tracker and actions.mini, true)
+        local opened
+        local oldToggle = Track.Toggle
+        Track.Toggle = function() opened = true end
+        Win.MenuPick({ action = "tracker" })
+        Track.Toggle = oldToggle
+        eq(opened, true, "Tracker geht auf")
+    end)
+
     test("Handwerk: Fenster baut sich und wechselt alle vier Reiter ohne Fehler", function()
         local ok, err = pcall(function()
             Win.Show(164, "prof")
@@ -441,10 +502,32 @@ return function(test, eq, W, ns)
         Fish.session = {}
         GuildPrideDB.craftFish = nil
         Fish.Record(6291, 3)
-        local _, n = Fish.SessionValue()
+        W.itemInfo[6291] = { quality = 1, bindType = 0, classID = 7, sellPrice = 4 }   -- Rohe Brassbarbe: 4 Kupfer beim Händler
+        local v, n = Fish.SessionValue()
         eq(n, 3)
+        eq(v, 12, "Händlerpreis zählt, auch ohne AH-Preis")
+        W.itemInfo[6291] = nil
         eq(Fish.Stats().total[6291], 3)
         stock[6530] = 0; stock[6529] = 0
+    end)
+
+    test("Handwerk: Angeln – Fang aus der Beute-Chatzeile, nur direkt nach dem Angeln", function()
+        LOOT_ITEM_SELF = "Ihr erhaltet Beute: %s."
+        LOOT_ITEM_SELF_MULTIPLE = "Ihr erhaltet Beute: %sx%d."
+        LOOT_ITEM_PUSHED_SELF = "Ihr bekommt einen Gegenstand: %s."
+        LOOT_ITEM_PUSHED_SELF_MULTIPLE = "Ihr bekommt einen Gegenstand: %sx%d."
+        local link = "|cffffffff|Hitem:6291::::::::20:::::|h[Rohe Brassbarbe]|h|r"
+        local id, n = Fish.ParseLoot("Ihr erhaltet Beute: " .. link .. "x3.")
+        eq(id, 6291); eq(n, 3)
+        id, n = Fish.ParseLoot("Ihr erhaltet Beute: " .. link .. ".")
+        eq(id, 6291); eq(n, 1)
+        eq(Fish.ParseLoot("Thrall erhält Beute: " .. link .. "."), nil, "fremde Beute zählt nicht")
+        Fish.fishUntil = 0
+        eq(Fish.FromFishing(), false)
+        Fish.fishUntil = GetTime() + 5
+        eq(Fish.FromFishing(), true)
+        W.Advance(6)
+        eq(Fish.FromFishing(), false, "Zeitfenster abgelaufen")
     end)
 
     test("Handwerk: Angel-Taste – Tasten und Maustasten richtig benannt", function()

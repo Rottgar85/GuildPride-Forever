@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.41.1
+
+**Deutsch**
+- **Handwerk einfacher**: das Fenster zeigt nur noch **Leveln**. Rezepte, Gewinn, Gilde & Twinks, Tracker und Kompaktansicht findest du unter **„Mehr …“**, zurück geht es mit **„‹ Leveln“**
+- **Tracker stellt her**: Knopf **„Herstellen: X ×N“** – jeder Klick stellt das nächste getrackte Rezept her, so oft wie getrackt und Zutaten da sind. Zwischenprodukte (z. B. Barren) kommen zuerst, der Tracker zählt mit und streicht fertige Rezepte. Bei geschlossenem Berufsfenster steht „Erst Berufsfenster öffnen“ auf dem Knopf
+- **Angeln**: der Fang wird jetzt richtig gezählt (auch mit Auto-Beute) und mit Gold bewertet – Händlerpreis oder Auktionshaus nach Gebühr, je nachdem was mehr bringt
+
+**English**
+- **Simpler crafting**: the window only shows **Leveling** now. Recipes, profit, guild & alts, tracker and compact view are under **"More …"**, **"‹ Leveling"** takes you back
+- **Tracker crafts**: button **"Craft: X ×N"** – every click crafts the next tracked recipe, as often as tracked and reagents allow. Intermediates (e.g. bars) come first, the tracker counts down and removes finished recipes. With the profession window closed the button says "Open the profession window first"
+- **Fishing**: your catch is now counted correctly (also with auto loot) and valued in gold – vendor price or auction house after the fee, whichever pays more
+
 ## 2.41.0
 
 **Deutsch**

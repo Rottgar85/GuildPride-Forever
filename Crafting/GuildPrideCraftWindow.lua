@@ -1,4 +1,4 @@
--- GuildPride Handwerk: Hauptfenster (/gp handwerk) – vier Reiter:
+-- GuildPride Handwerk: Hauptfenster (/gp handwerk) – zeigt nur das Leveln, der Rest über „Mehr …“:
 --   Leveln:  links deine Berufe (mit Balken), rechts Kopf mit Fortschritt und Rang, der Kasten
 --            „Als Nächstes“ (aktueller Schritt mit Zutaten, Bestand, was fehlt) und der ganze
 --            Weg bis 300. Klick wählt das Rezept, Umschalt+Klick trackt, Rechtsklick hakt ab.
@@ -327,11 +327,15 @@ function W.NowLines(line)
 end
 
 local GOLD = { 0.79, 0.64, 0.36 }
-local MODES = {
-    { key = "prof",   text = "Leveln",         w = 100 },
-    { key = "codex",  text = "Rezepte",        w = 100 },
-    { key = "profit", text = "Gewinn",         w = 100 },
-    { key = "guild",  text = "Gilde & Twinks", w = 130 },
+-- Klappmenü „Mehr …“: weitere Ansichten und Fenster (das Fenster selbst zeigt nur das Leveln)
+local MODE_NAMES = { prof = "Leveln", codex = "Rezepte", profit = "Gewinn", guild = "Gilde & Twinks" }
+W.MENU = {
+    { mode = "codex",  text = "Rezepte",        hint = "Alle Rezepte und wer sie kann" },
+    { mode = "profit", text = "Gewinn",         hint = "Was sich zum Herstellen lohnt" },
+    { mode = "guild",  text = "Gilde & Twinks", hint = "Deine Charaktere und wer in der Gilde was kann" },
+    { sep = true },
+    { action = "tracker", text = "Tracker",        hint = "Was du gerade sammelst" },
+    { action = "mini",    text = "Kompaktansicht", hint = "Kleines Fenster beim Leveln" },
 }
 
 local function Line(parent, x1, y, x2)
@@ -393,16 +397,49 @@ local function Build()
     close:SetPoint("TOPRIGHT", -4, -4)
     if ns.SkinClose then ns.SkinClose(close) end
 
-    -- nur vier Reiter, in einer Reihe neben dem Titel
-    win.tabs = {}
-    local prev
-    for _, m in ipairs(MODES) do
-        local b = Button(win, L[m.text], m.w, function() W.SetMode(m.key) end)
-        if prev then b:SetPoint("LEFT", prev, "RIGHT", 4, 0) else b:SetPoint("TOPLEFT", X0, -12) end
-        win.tabs[m.key] = b
-        prev = b
-    end
+    -- keine Reiter: nur „Mehr …“ (Klappmenü) und, außerhalb des Levelns, „‹ Leveln“ zurück
+    win.view = win:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+    win.view:SetPoint("LEFT", title, "RIGHT", 10, -1)
+    win.more = Button(win, L["Mehr …"], 90, function() W.ToggleMenu() end)
+    win.more:SetPoint("TOPRIGHT", -34, -12)
+    win.back = Button(win, L["‹ Leveln"], 90, function() W.SetMode("prof") end)
+    win.back:SetPoint("RIGHT", win.more, "LEFT", -6, 0)
     Line(win, 14, -44, -14)
+
+    local menu = CreateFrame("Frame", nil, win)
+    menu:SetFrameStrata("DIALOG")
+    menu:SetPoint("TOPRIGHT", win.more, "BOTTOMRIGHT", 0, -2)
+    menu:SetWidth(240)
+    menu:EnableMouse(true)
+    local mbg = menu:CreateTexture(nil, "BACKGROUND")
+    mbg:SetAllPoints(); mbg:SetColorTexture(0.06, 0.06, 0.07, 0.96)
+    local medge = menu:CreateTexture(nil, "BORDER")
+    medge:SetPoint("TOPLEFT"); medge:SetPoint("TOPRIGHT"); medge:SetHeight(2)
+    medge:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 1)
+    local y = -6
+    for _, e in ipairs(W.MENU) do
+        if e.sep then
+            local t = menu:CreateTexture(nil, "ARTWORK")
+            t:SetHeight(1); t:SetPoint("TOPLEFT", 8, y - 4); t:SetPoint("RIGHT", -8, 0)
+            t:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.35)
+            y = y - 9
+        else
+            local b = CreateFrame("Button", nil, menu)
+            b:SetHeight(34); b:SetPoint("TOPLEFT", 4, y); b:SetPoint("RIGHT", -4, 0)
+            b:SetHighlightTexture("Interface\\Buttons\\UI-Listbox-Highlight2", "ADD")
+            b.text = b:CreateFontString(nil, "OVERLAY", "GPFont_Text")
+            b.text:SetPoint("TOPLEFT", 8, -3); b.text:SetText(L[e.text])
+            b.hint = b:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
+            b.hint:SetPoint("TOPLEFT", b.text, "BOTTOMLEFT", 0, -2); b.hint:SetPoint("RIGHT", -6, 0)
+            b.hint:SetJustifyH("LEFT"); b.hint:SetWordWrap(false); b.hint:SetText(L[e.hint])
+            b:SetScript("OnClick", function() menu:Hide(); W.MenuPick(e) end)
+            y = y - 36
+        end
+    end
+    menu:SetHeight(6 - y)
+    menu:Hide()
+    win.menu = menu
+    win:HookScript("OnHide", function() menu:Hide() end)
 
     -- Berufsliste links: „Deine Berufe“, darunter „Weitere Berufe“
     win.side = CreateFrame("Frame", nil, win)
@@ -672,6 +709,17 @@ local function SetRows(list, x, top, n)
     end
 end
 
+function W.ToggleMenu()
+    if win and win.menu then win.menu:SetShown(not win.menu:IsShown()) end
+end
+
+-- Eintrag im Klappmenü: Ansicht wechseln oder Fenster öffnen
+function W.MenuPick(e)
+    if e.mode then W.SetMode(e.mode)
+    elseif e.action == "tracker" then if ns.CraftTrack then ns.CraftTrack.Toggle() end
+    elseif e.action == "mini" then if ns.CraftMini then ns.CraftMini.Toggle() end end
+end
+
 function W.SetMode(m)
     mode = m
     if win then win.offset = 0; win.jump = true end
@@ -762,9 +810,8 @@ end
 
 function W.Refresh()
     if not (win and win:IsShown()) then return end
-    for key, b in pairs(win.tabs) do
-        if b.gpBg then b.gpBg:SetTexture("Interface\\AddOns\\GuildPrideForever\\Media\\" .. (key == mode and "nav_active" or "nav")) end
-    end
+    win.back:SetShown(mode ~= "prof")
+    win.view:SetText(mode ~= "prof" and ("· " .. L[MODE_NAMES[mode] or "Leveln"]) or "")
     local isProf, isCodex, isGuild = mode == "prof", mode == "codex", mode == "guild"
     win.side:SetShown(isProf or isCodex)
     win.head:SetShown(isProf); win.now:SetShown(isProf); win.listTitle:SetShown(isProf)
@@ -812,7 +859,7 @@ function W.Show(line, m)
     if not win then Build() end
     if line then selLine = line end
     if ns.CraftNPC and selLine then ns.CraftNPC.SetLine(selLine) end
-    mode = m or mode
+    mode = m or "prof"   -- öffnet immer beim Leveln
     win.jump = true
     win:Show()
     W.Refresh()
@@ -829,7 +876,9 @@ local origSlash = SlashCmdList.GUILDPRIDE
 SlashCmdList.GUILDPRIDE = function(arg)
     local cmd, rest = strtrim(arg or ""):match("^(%S*)%s*(.-)$")
     cmd, rest = (cmd or ""):lower(), (rest or ""):lower()
-    if (cmd == "handwerk" or cmd == "crafting") and rest == "diag" then Craft.Diag()
+    if (cmd == "handwerk" or cmd == "crafting") and rest == "diag" then
+        Craft.Diag()
+        if ns.CraftTrack and ns.CraftTrack.CraftDiag then ns.CraftTrack.CraftDiag() end
     elseif (cmd == "handwerk" or cmd == "crafting") and (rest == "mini" or rest == "kompakt") then
         if ns.CraftMini then ns.CraftMini.Toggle() end
     elseif cmd == "handwerk" or cmd == "crafting" or cmd == "guide" then W.Toggle()

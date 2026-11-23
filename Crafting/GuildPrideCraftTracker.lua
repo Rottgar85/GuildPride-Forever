@@ -134,6 +134,111 @@ function Track.Lines()
     return lines
 end
 
+---------------------------------------------------------------------
+-- Nacheinander herstellen: jeder Klick stellt das nächste getrackte Rezept her
+-- (so viele, wie getrackt und mit deinen Zutaten möglich). Zwischenprodukte zuerst –
+-- wer Barren für ein anderes getracktes Rezept schmilzt, schmilzt vor dem Schmieden.
+-- Jede fertige Herstellung zählt den Tracker um eins runter.
+---------------------------------------------------------------------
+function Track.CraftOrder()
+    local d = DB()
+    local ids, feeds = {}, {}
+    for id in pairs(d.recipes) do ids[#ids + 1] = id end
+    -- liefert id etwas, das ein anderes getracktes Rezept braucht?
+    for _, id in ipairs(ids) do
+        local out = Craft.OutputItem and Craft.OutputItem(id)
+        if out then
+            for _, other in ipairs(ids) do
+                if other ~= id then
+                    for _, x in ipairs(Craft.KnownReagents(other) or {}) do
+                        if x[1] == out then feeds[id] = true end
+                    end
+                end
+            end
+        end
+    end
+    table.sort(ids, function(a, b)
+        if (feeds[a] or false) ~= (feeds[b] or false) then return feeds[a] == true end
+        return Craft.RecipeName(a) < Craft.RecipeName(b)
+    end)
+    return ids
+end
+
+-- Wie oft geht es gerade? Live aus dem Berufsfenster, sonst nach deinen Taschen
+-- (Forever meldet numAvailable nicht immer richtig: deshalb zählt auch, was deine Taschen hergeben)
+local function Possible(id)
+    local info = Craft.RecipeInfo(id)
+    local live = tonumber(info and info.numAvailable) or 0
+    local bags = tonumber(Craft.CanCraft(id)) or 0
+    return math.max(live, bags), info and info.learned, info
+end
+
+-- Gehört das Rezept zum offenen Beruf? (gemerkte Rezeptliste oder das Spiel kennt es gelernt)
+local function InOpenProfession(id, line, info)
+    local all = type(GuildPrideDB) == "table" and type(GuildPrideDB.craftAll) == "table" and GuildPrideDB.craftAll[line]
+    if type(all) == "table" and all[id] then return true end
+    return info ~= nil and info.learned == true
+end
+
+-- Nächstes herstellbares Rezept im offenen Berufsfenster: id, Anzahl – sonst nil, Grund
+function Track.NextCraft()
+    local d = DB()
+    if next(d.recipes) == nil then return nil, L["Im Tracker steht kein Rezept."] end
+    local line = Craft.OpenLine()
+    if not line then return nil, L["Öffne das Berufsfenster, dann geht es los."] end
+    local missing, unlearned
+    for _, id in ipairs(Track.CraftOrder()) do
+        local can, learned, info = Possible(id)
+        if InOpenProfession(id, line, info) then
+            if learned == false then
+                unlearned = unlearned or id
+            elseif can > 0 then
+                return id, math.min(can, d.recipes[id])
+            else
+                missing = missing or id
+            end
+        end
+    end
+    if missing then return nil, (L["Für %s fehlen dir Zutaten."]):format(Craft.RecipeName(missing)) end
+    if unlearned then return nil, (L["%s kannst du noch nicht – erst beim Lehrer lernen."]):format(Craft.RecipeName(unlearned)) end
+    return nil, L["Keins der getrackten Rezepte gehört zu diesem Beruf."]
+end
+
+-- Für /gp handwerk diag: warum der Herstellen-Knopf (nicht) geht
+function Track.CraftDiag()
+    local line = Craft.OpenLine()
+    local id, why = Track.NextCraft()
+    ns.Print(("Tracker diag: line=%s next=%s %s"):format(tostring(line), tostring(id), tostring(why or "")))
+    for _, rid in ipairs(Track.CraftOrder()) do
+        local info = Craft.RecipeInfo(rid)
+        ns.Print(("  %s (%s): info=%s learned=%s numAvailable=%s taschen=%s hier=%s"):format(
+            Craft.RecipeName(rid), tostring(rid), tostring(info ~= nil), tostring(info and info.learned),
+            tostring(info and info.numAvailable), tostring(Craft.CanCraft(rid)),
+            tostring(line and InOpenProfession(rid, line, info) or false)))
+    end
+end
+
+function Track.CraftNext()
+    local id, n = Track.NextCraft()
+    if not id then ns.Print(n); return false end
+    local T = C_TradeSkillUI
+    if not (T and T.CraftRecipe) then return false end
+    local ok = pcall(T.CraftRecipe, id, n)
+    if ok then ns.Print((L["Stelle her: %d× %s"]):format(n, Craft.RecipeName(id))) end
+    return ok
+end
+
+-- fertige Herstellung: Tracker zählt runter
+function Track.Crafted(id)
+    local d = DB()
+    if not d.recipes[id] then return false end
+    local left = d.recipes[id] - 1
+    d.recipes[id] = left > 0 and left or nil
+    if left <= 0 then ns.Print((L["Tracker: %s fertig."]):format(Craft.RecipeName(id))) end
+    Track.Refresh()
+    return true
+end
+
 -- Ziel erreicht? Einmal im Chat melden
 local function CheckDone()
     local d = DB()
@@ -191,7 +296,7 @@ end
 
 local function Build()
     win = CreateFrame("Frame", "GuildPrideCraftTracker", UIParent, "BackdropTemplate")
-    win:SetSize(WIDTH, 98 + ROWS * ROW_H)
+    win:SetSize(WIDTH, 122 + ROWS * ROW_H)
     win:SetFrameStrata("HIGH")
     win:SetToplevel(true)
     win:SetClampedToScreen(true)
@@ -296,6 +401,18 @@ local function Build()
         if ns.CraftVendor then ns.CraftVendor.AskBuy() end
     end)
     win.vendor:SetPoint("BOTTOMLEFT", 10, 32)
+    -- nacheinander herstellen: jeder Klick das nächste Rezept
+    win.craft = SmallButton(win, L["Nächstes herstellen"], WIDTH - 20, function() Track.CraftNext() end)
+    win.craft:SetPoint("BOTTOMLEFT", 10, 54)
+    win.craft:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L["Nächstes herstellen"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Jeder Klick stellt das nächste getrackte Rezept her – so oft, wie getrackt und mit deinen Zutaten möglich. Zwischenprodukte (z. B. Barren) kommen zuerst. Der Tracker zählt mit."], 1, 1, 1, true)
+        local id, why = Track.NextCraft()
+        if not id then GameTooltip:AddLine(why, 1, 0.5, 0.3, true) end
+        GameTooltip:Show()
+    end)
+    win.craft:SetScript("OnLeave", GameTooltip_Hide)
     win.vendor:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:AddLine(L["Beim Händler kaufen"], 1, 0.82, 0)
@@ -366,8 +483,16 @@ function Track.Refresh(show)
         end
     end
     win.search:SetEnabled(next((Track.Missing())) ~= nil)
+    local cid, cn = Track.NextCraft()
+    win.craft:SetText(cid and (L["Herstellen: %s ×%d"]):format(Craft.RecipeName(cid), cn)
+        or (not Craft.OpenLine() and L["Erst Berufsfenster öffnen"]) or L["Nächstes herstellen"])
+    win.craft:SetEnabled(cid ~= nil)
+    win.craft:SetShown(next(DB().recipes) ~= nil)
     local V = ns.CraftVendor
     win.vendor:SetShown(V and V.open or false)
+    -- Herstellen-Knopf rutscht nach unten, wenn kein Händler offen ist
+    win.craft:ClearAllPoints()
+    win.craft:SetPoint("BOTTOMLEFT", 10, (V and V.open) and 54 or 32)
     if V and V.open then
         local list, total = V.Buyable()
         local money = ns.AH and ns.AH.Money or tostring
@@ -396,9 +521,12 @@ local function Soon()
 end
 Craft.OnChanged(Soon)
 local ev = CreateFrame("Frame")
-ns.RegisterEvents(ev, "PLAYER_LOGIN", "BAG_UPDATE_DELAYED", "AUCTION_HOUSE_SHOW")
-ev:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_LOGIN" then
+ns.RegisterEvents(ev, "PLAYER_LOGIN", "BAG_UPDATE_DELAYED", "AUCTION_HOUSE_SHOW", "UNIT_SPELLCAST_SUCCEEDED",
+    "TRADE_SKILL_SHOW", "TRADE_SKILL_CLOSE")
+ev:SetScript("OnEvent", function(_, event, unit, _, spellID)
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        if unit == "player" and spellID then Track.Crafted(spellID) end
+    elseif event == "PLAYER_LOGIN" then
         C_Timer.After(3, function()
             if type(GuildPrideDB) == "table" and GuildPrideDB.craftTrackShown and not Track.IsEmpty() then Track.Show() end
         end)

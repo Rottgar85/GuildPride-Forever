@@ -48,15 +48,55 @@ function F.HasLure()
     return has and true or false
 end
 
--- Wert des Fangs dieser Sitzung (günstigster bekannter Preis)
+-- Was ein Stück Fang dir bringt: Händler-Verkaufspreis oder AH-Preis nach 5 % Gebühr, je nachdem was mehr ist
+function F.ItemValue(id)
+    local best = 0
+    if GetItemInfo then
+        local sell = select(11, GetItemInfo(id))
+        best = tonumber(sell) or 0
+    end
+    local AH = ns.AH
+    local ah = AH and AH.PriceFor and AH.Key and tonumber((AH.PriceFor(AH.Key(id))))
+    if ah and ah * 0.95 > best then best = ah * 0.95 end
+    return math.floor(best + 0.5)
+end
+
+-- Wert des Fangs dieser Sitzung
 function F.SessionValue()
     local sum, n = 0, 0
     for id, k in pairs(F.session) do
         n = n + k
-        local p = Craft.CheapestPrice and Craft.CheapestPrice(id)
-        if p then sum = sum + p * k end
+        sum = sum + F.ItemValue(id) * k
     end
     return sum, n
+end
+
+-- „Ihr erhaltet Beute: [X]x3.“ → itemID, Anzahl (nur eigene Beute; Muster aus den Spieltexten)
+local function LootPattern(fmt)
+    if type(fmt) ~= "string" then return nil end
+    fmt = fmt:gsub("%%%d%$", "%%")                          -- %1$s → %s
+    fmt = fmt:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")    -- Sonderzeichen schützen
+    fmt = fmt:gsub("%%s", "(.+)"):gsub("%%d", "(%%d+)")
+    return "^" .. fmt
+end
+
+function F.ParseLoot(msg)
+    if type(msg) ~= "string" then return nil end
+    for _, fmt in ipairs({ LOOT_ITEM_SELF_MULTIPLE, LOOT_ITEM_PUSHED_SELF_MULTIPLE, LOOT_ITEM_SELF, LOOT_ITEM_PUSHED_SELF }) do
+        local pat = LootPattern(fmt)
+        if pat then
+            local link, qty = msg:match(pat)
+            local id = link and tonumber(link:match("item:(%d+)"))
+            if id then return id, tonumber(qty) or 1 end
+        end
+    end
+    return nil
+end
+
+-- Kam die Beute gerade vom Angeln? (während der Angel draußen ist bzw. kurz danach)
+F.fishUntil = 0
+function F.FromFishing()
+    return GetTime() <= F.fishUntil
 end
 
 function F.Record(id, count)
@@ -294,9 +334,15 @@ end
 local stopToken = 0
 local ev = CreateFrame("Frame")
 ns.RegisterEvents(ev, "PLAYER_LOGIN", "PLAYER_EQUIPMENT_CHANGED", "UNIT_INVENTORY_CHANGED", "PLAYER_REGEN_ENABLED",
-    "PLAYER_REGEN_DISABLED", "LOOT_OPENED", "BAG_UPDATE_DELAYED", "UNIT_SPELLCAST_CHANNEL_START",
+    "PLAYER_REGEN_DISABLED", "CHAT_MSG_LOOT", "BAG_UPDATE_DELAYED", "UNIT_SPELLCAST_CHANNEL_START",
     "UNIT_SPELLCAST_CHANNEL_STOP")
 ev:SetScript("OnEvent", function(_, event, arg, _, spellID)
+    -- Angel-Zeitfenster merken (unabhängig von Leiste und Taste)
+    if arg == "player" and event == "UNIT_SPELLCAST_CHANNEL_START" and F.IsFishing(spellID) then
+        F.fishUntil = GetTime() + 40
+    elseif arg == "player" and event == "UNIT_SPELLCAST_CHANNEL_STOP" and F.fishUntil > GetTime() then
+        F.fishUntil = GetTime() + 5
+    end
     if event == "UNIT_SPELLCAST_CHANNEL_START" then
         -- Angel ist draußen: dieselbe Taste holt jetzt ein
         if arg == "player" and bar and bar:IsShown() and F.IsFishing(spellID) then
@@ -320,15 +366,10 @@ ev:SetScript("OnEvent", function(_, event, arg, _, spellID)
         if bar then ClearOverrideBindings(bar) end
         F.reeling = false
         F.SoftOff()
-    elseif event == "LOOT_OPENED" then
-        if IsFishingLoot and IsFishingLoot() then
-            for i = 1, (GetNumLootItems and GetNumLootItems() or 0) do
-                local link = GetLootSlotLink and GetLootSlotLink(i)
-                local id = link and tonumber(link:match("item:(%d+)"))
-                local _, _, qty = GetLootSlotInfo(i)
-                if id then F.Record(id, tonumber(qty) or 1) end
-            end
-            F.Refresh()
+    elseif event == "CHAT_MSG_LOOT" then
+        if F.FromFishing() then
+            local id, qty = F.ParseLoot(arg)
+            if id then F.Record(id, qty); F.Refresh() end
         end
     elseif event == "UNIT_INVENTORY_CHANGED" and arg ~= "player" then
         return
