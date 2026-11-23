@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.41.2
+
+**Deutsch**
+- **Handwerk im Hauptmenü**: das Gildenfenster hat jetzt einen eigenen Eintrag „Handwerk“ (Berufe der Gilde, Knopf „Handwerk & Guides“). „Planen“ zeigt nur noch Events, Wünsche und Umfragen
+
+**English**
+- **Crafting in the main menu**: the guild window now has its own "Crafting" entry (guild professions, "Crafting & guides" button). "Plan" only shows events, wishes and polls
+
 ## 2.41.1
 
 **Deutsch**

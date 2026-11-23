@@ -539,7 +539,7 @@ end)
 -- Reiter "Berufe"
 ---------------------------------------------------------------------
 if not ns.AddTab then return end
-local page = ns.AddTab(L["Berufe"], 55)   -- im kompakten Menü unter „Planen“
+local page = ns.AddTab(L["Handwerk"], 55)   -- eigener Platz im Hauptmenü
 ns.CraftsPage = page
 
 local search = CreateFrame("EditBox", nil, page, "InputBoxTemplate")

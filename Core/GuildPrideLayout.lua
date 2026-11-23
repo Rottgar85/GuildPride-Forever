@@ -56,7 +56,7 @@ local RIBBONS = {
 local RIBBON_DEFAULT = { 0.40, 0.27, 0.15 }
 local SHORT = {
     ["10"] = L["START"], ["20"] = L["GILDE"], ["30"] = L["PLANEN"], ["40"] = L["SUCHE"], ["45"] = L["WÜNSCHE"], ["50"] = L["UMFRAGE"],
-    ["55"] = L["BERUFE"], ["60"] = L["CHRONIK"], ["65"] = L["ZIELE"], ["70"] = L["INFO"], ["80"] = L["RAT"],
+    ["55"] = L["HANDWERK"], ["60"] = L["CHRONIK"], ["65"] = L["ZIELE"], ["70"] = L["INFO"], ["80"] = L["RAT"],
     ["90"] = L["OPTION"],
 }
 
