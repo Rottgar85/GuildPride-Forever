@@ -102,7 +102,7 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    ahTipVendor = true, ahTipCraft = true, ahSellHint = true, ahMailSummary = true, transitUI = true, transitShare = true,
                    flightTimes = true, flightUI = true, showItemID = false,
                    plateColors = true, plateColorBar = false, welcomePack = true,
-                   buffFood = true, restReminder = true, mapNotes = true,
+                   buffFood = true, restReminder = true, mapNotes = true, mapNotesPublic = true, mapNotesMinimap = true, craftCard = true, craftHints = true, craftTooltip = true, craftBank = true, craftNPCMap = true, craftTips = true, craftTrade = true, craftNodes = true, craftFish = true, craftSell = true,
                    whisperWindow = true, whisperCombat = true, whisperKnownOnly = false, whisperOutgoing = true }
 ns.DEFAULTS = defaults   -- für /gp export und /gp import
 

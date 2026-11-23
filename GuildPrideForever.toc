@@ -3,7 +3,7 @@
 ## Notes: Guild window, milestones, events, guild info and guild chat for your guild
 ## Notes-deDE: Gildenfenster, Meilensteine, Events, Gildeninfo und Gildenchat für deine Gilde
 ## Author: Rottgar85
-## Version: 2.40.0
+## Version: 2.41.0
 ## SavedVariables: GuildPrideDB, GuildPrideBackupDB, GuildPrideRaresDB, ScalesDB, GuildPrideAHDB
 ## SavedVariablesPerCharacter: ScalesCharDB
 ## OptionalDeps: EllesmereUIBags, BagBrother, Bagnon, Bagnonium, Combuctor, ElvUI, Baganator, AdiBags, BetterBags
@@ -94,6 +94,22 @@ AuctionHouse\GuildPrideAHTooltip.lua
 AuctionHouse\GuildPrideAHSell.lua
 AuctionHouse\GuildPrideAHUI.lua
 AuctionHouse\GuildPrideAHModernUI.lua
+Crafting\GuildPrideCraftGuides.lua
+Crafting\GuildPrideCraftCore.lua
+Crafting\GuildPrideCraftMats.lua
+Crafting\GuildPrideCraftExtras.lua
+Crafting\GuildPrideCraftTracker.lua
+Crafting\GuildPrideCraftVendor.lua
+Crafting\GuildPrideCraftCard.lua
+Crafting\GuildPrideCraftBank.lua
+Crafting\GuildPrideCraftMini.lua
+Crafting\GuildPrideCraftAsk.lua
+Crafting\GuildPrideCraftNPCs.lua
+Crafting\GuildPrideCraftTips.lua
+Crafting\GuildPrideCraftGather.lua
+Crafting\GuildPrideCraftFish.lua
+Crafting\GuildPrideCraftSell.lua
+Crafting\GuildPrideCraftWindow.lua
 Travel\GuildPrideTransitData.lua
 Travel\GuildPrideTransit.lua
 Travel\GuildPrideTransitUI.lua

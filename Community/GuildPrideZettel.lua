@@ -1,12 +1,24 @@
 -- GuildPride: Notizzettel auf der Karte
 -- „Zettel schreiben“ (Knopf auf der Weltkarte, Kartenfilter, /gp zettel) hängt einen
 -- Zettel genau dort auf, wo du stehst. Wer bis auf ~5 m herankommt, dem geht der
--- Zettel auf: Text und als Unterschrift der Charaktername des Schreibers.
---   Gildenzettel (blau):  über den abgesicherten Gildenkanal  ZTG/ZTX (ns.On)
---   Zettel für alle (weiß): über den offenen Kanal            ZTP/ZTD (GuildPride.lua → ns.OnZettelPublic)
--- Die Schlüssel ergeben sich aus dem Absender, darum kann niemand fremde Zettel
--- überschreiben oder abreißen. Der Schreiber schickt seine Zettel regelmäßig
--- erneut, damit auch später Eingeloggte sie bekommen. Zettel halten 7 Tage.
+-- Zettel auf: Text und als Unterschrift Vor- und Nachname des Schreibers. In der
+-- Nähe zeigt die Minimap die Zettel ebenfalls.
+--
+-- Nachrichten (Schlüssel eines Zettels = Art + Schreiber + Nummer):
+--   Gilde (abgesicherter Gildenkanal, ns.On):
+--     ZTG num·map·x·y·t·text            eigener Zettel
+--     ZTX num                           eigenen Zettel abreißen
+--     ZTQ 1                             Abgleich: welche Zettel kennt ihr?
+--     ZTR autor·num·map·x·y·t·text      Antwort: bekannter Zettel eines anderen
+--   Offener Kanal (GuildPride.lua → ns.OnZettelPublic), mit Kennung der Spielversion:
+--     ZTP F·num·…  ZTD F·num  ZTQ F  ZTS F·autor·num·…   (wie oben)
+-- Weitergereichte Zettel (ZTR/ZTS): in der Gilde vertraut; im offenen Kanal nur von
+-- Gildenmitgliedern oder wenn zwei verschiedene Spieler denselben Zettel melden –
+-- so kann niemand allein Zettel unter fremdem Namen unterschieben.
+-- Antworten auf den Abgleich kommen mit Zufallsverzögerung; wer sieht, dass ein
+-- Zettel schon geschickt wurde, schickt ihn nicht noch einmal.
+-- Abgerissene, ausgeblendete und abgelaufene Zettel merkt sich jeder (zettelGone),
+-- damit sie über den Abgleich nicht wiederkommen. Zettel halten 7 Tage.
 -- Abschalten: Weltkarten-Knopf (Rechtsklick), Kartenfilter, Einstellungen, /gp zettel aus
 local ADDON, ns = ...
 local L = ns.L
@@ -22,26 +34,34 @@ local SEND_GAP    = 3              -- s zwischen zwei eigenen Zettel-Nachrichten
 local TRIGGER     = 5.5            -- Yards (~5 m)
 local REARM       = 15             -- erst so weit weg, dann löst der Zettel wieder aus
 local MAX_OWN     = 10
-local MAX_SENDER  = 5              -- fremde Zettel je Absender (offener Kanal)
+local MAX_SENDER  = 5              -- fremde Zettel je Schreiber (offener Kanal)
 local MAX_PUBLIC  = 300
+local MAX_SYNC    = 25             -- höchstens so viele Zettel je Abgleich-Antwort
 local MEDIA       = "Interface\\AddOns\\GuildPrideForever\\Media\\"
 local PAPER       = MEDIA .. "zettel"
 local PIN         = MEDIA .. "zettel_pin"
+local HAND        = "Fonts\\MORPHEUS.TTF"   -- wirkt handgeschrieben, hat Umlaute
 local BLUE, WHITE = { 0.35, 0.65, 1 }, { 1, 1, 1 }
 local INK         = { 0.12, 0.16, 0.42 }
 
 ---------------------------------------------------------------------
--- Daten
+-- Daten und Schalter
 ---------------------------------------------------------------------
-local function DB()
+local function Saved(key)
     if type(GuildPrideDB) ~= "table" then return {} end
-    if type(GuildPrideDB.zettel) ~= "table" then GuildPrideDB.zettel = {} end
-    return GuildPrideDB.zettel
+    if type(GuildPrideDB[key]) ~= "table" then GuildPrideDB[key] = {} end
+    return GuildPrideDB[key]
 end
+local function DB() return Saved("zettel") end
+local function Gone() return Saved("zettelGone") end      -- [Schlüssel] = Zeit des Zettels
+local function Muted() return Saved("zettelMuted") end    -- [Name] = true
 
-function Z.Enabled()
-    return not (type(GuildPrideDB) == "table" and GuildPrideDB.mapNotes == false)
+local function Opt(key)
+    return not (type(GuildPrideDB) == "table" and GuildPrideDB[key] == false)
 end
+function Z.Enabled() return Opt("mapNotes") end
+function Z.ShowPublic() return Opt("mapNotesPublic") end
+function Z.ShowMinimap() return Opt("mapNotesMinimap") end
 
 local function Me() return ns.Me and ns.Me() or UnitName("player") end
 -- Unterschrift: Vor- und Nachname (WoW Forever liefert den Absender schon als
@@ -67,6 +87,12 @@ local function Cut(s, max)
 end
 Z.Cut = Cut
 
+-- Zeichen zählen (Umlaute zählen einfach, nicht doppelt)
+function Z.Chars(s)
+    local _, n = tostring(s or ""):gsub("[^\128-\191]", "")
+    return n
+end
+
 local function Num(v, lo, hi)
     v = tonumber(v)
     if not v or v ~= v or v < lo or v > hi then return nil end
@@ -79,11 +105,20 @@ local function ValidMap(map)
     return true
 end
 
-local function Key(guild, sender, num) return (guild and "g:" or "p:") .. sender .. "#" .. num end
+local function Key(guild, author, num) return (guild and "g:" or "p:") .. author .. "#" .. num end
+
+-- Soll dieser Zettel gezeigt werden (Schalter, Stummschaltung)?
+local function Visible(n)
+    if not n then return false end
+    if not n.guild and not Z.ShowPublic() and n.sender ~= Me() then return false end
+    if Muted()[n.sender] then return false end
+    return true
+end
+Z.Visible = Visible
 
 -- Abgelaufene wegräumen; bei zu vielen fremden Zetteln die ältesten
 local function Prune()
-    local db, now = DB(), GetServerTime()
+    local db, gone, now = DB(), Gone(), GetServerTime()
     local public = {}
     for k, n in pairs(db) do
         if type(n) ~= "table" or not n.t or now - n.t > LIFETIME then db[k] = nil
@@ -93,44 +128,64 @@ local function Prune()
         table.sort(public, function(a, b) return db[a].t < db[b].t end)
         for i = 1, #public - MAX_PUBLIC do db[public[i]] = nil end
     end
+    for k, t in pairs(gone) do
+        if type(t) ~= "number" or now - t > LIFETIME then gone[k] = nil end
+    end
 end
 
 local function Refresh()
     if ns.RefreshMapPins then ns.RefreshMapPins(true) end
+    if Z.UpdateMinimap then Z.UpdateMinimap() end
 end
 
--- Eingang (aus beiden Kanälen). Rückgabe: true, wenn neu oder geändert
-function Z.Apply(guild, sender, num, map, x, y, t, text)
+-- Wie oft wurde ein Zettel in dieser Abgleich-Runde schon geschickt?
+local seenRound = {}
+
+-- Eingang (aus beiden Kanälen). author = Schreiber (bei Weitergabe nicht der Absender).
+-- Rückgabe: true, wenn neu oder geändert
+function Z.Apply(guild, author, num, map, x, y, t, text)
     num, map = Num(num, 1, 999999), Num(map, 1, 99999)
     x, y = Num(x, 0, 10000), Num(y, 0, 10000)
     t = ns.Stamp and ns.Stamp(t) or tonumber(t)
     text = Cut(text, MAX_TEXT)
+    if type(author) ~= "string" or author == "" then return false end
     if not (num and map and x and y and t and t > 0) or text == "" or not ValidMap(map) then return false end
     if GetServerTime() - t > LIFETIME then return false end
-    if ns.Block and ns.Block.IsBlocked and ns.Block.IsBlocked(sender) then return false end
-    local db, key = DB(), Key(guild, sender, num)
+    if ns.Block and ns.Block.IsBlocked and ns.Block.IsBlocked(author) then return false end
+    if Muted()[author] then return false end
+    if not guild and not Z.ShowPublic() then return false end
+    local db, key = DB(), Key(guild, author, num)
+    seenRound[key] = (seenRound[key] or 0) + 1
+    local gone = Gone()[key]
+    if gone and gone >= t then return false end
     local old = db[key]
     if old and old.t >= t then return false end
     if not old and not guild then
         local n = 0
-        for _, e in pairs(db) do if not e.guild and e.sender == sender then n = n + 1 end end
+        for _, e in pairs(db) do if not e.guild and e.sender == author then n = n + 1 end end
         if n >= MAX_SENDER then return false end
     end
     db[key] = { num = num, map = map, x = x / 10000, y = y / 10000, t = t, text = text,
-                sender = sender, by = Short(sender), guild = guild and true or nil }
+                sender = author, by = Short(author), guild = guild and true or nil }
     Prune()
     Refresh()
     return true
+end
+
+local function Forget(key, t)
+    local n = DB()[key]
+    Gone()[key] = math.max(t or 0, n and n.t or 0, Gone()[key] or 0)
+    DB()[key] = nil
+    if Z.shownKey == key and Z.reader then Z.reader:Hide() end
+    Refresh()
 end
 
 function Z.Remove(guild, sender, num)
     num = Num(num, 1, 999999)
     if not num then return false end
     local key = Key(guild, sender, num)
-    if not DB()[key] then return false end
-    DB()[key] = nil
-    if Z.shownKey == key and Z.reader then Z.reader:Hide() end
-    Refresh()
+    -- auch ohne bekannten Zettel merken: kommt er später per Abgleich, bleibt er weg
+    Forget(key, GetServerTime())
     return true
 end
 
@@ -149,13 +204,29 @@ local function Fields(n)
     return n.num, n.map, math.floor(n.x * 10000 + 0.5), math.floor(n.y * 10000 + 0.5), n.t, n.text
 end
 
+local function PublicOk() return ns.PublicChannelId and ns.PublicChannelId() and true or false end
+
 local function SendNote(n)
     Push({ key = (n.guild and "g" or "p") .. n.num, fn = function()
         if n.guild then
             if IsInGuild() then ns.Queue("ZTG", "@CHANNEL", Fields(n)) end
-        elseif ns.PublicChannelId and ns.PublicChannelId() then
+        elseif PublicOk() then
             ns.Queue("ZTP", "@PUBLIC", ns.CLIENT_TAG, Fields(n))
         end
+    end })
+end
+
+-- Bekannten Zettel eines anderen weiterreichen (Antwort auf den Abgleich)
+local function SendRelay(key, n)
+    Push({ key = "r" .. key, fn = function()
+        if DB()[key] ~= n then return end                  -- inzwischen weg
+        if (seenRound[key] or 0) >= (n.guild and 1 or 2) then return end   -- schon geschickt
+        if n.guild then
+            if IsInGuild() then ns.Queue("ZTR", "@CHANNEL", n.sender, Fields(n)) end
+        elseif PublicOk() then
+            ns.Queue("ZTS", "@PUBLIC", ns.CLIENT_TAG, n.sender, Fields(n))
+        end
+        seenRound[key] = (seenRound[key] or 0) + 1
     end })
 end
 
@@ -210,20 +281,65 @@ end
 function Z.Tear(key)
     local n = DB()[key]
     if not n or n.sender ~= Me() then return false end
-    DB()[key] = nil
+    Forget(key, n.t)
     SendRemove(n.guild, n.num)
-    if Z.shownKey == key and Z.reader then Z.reader:Hide() end
-    Refresh()
     return true
 end
 
+-- Fremden Zettel nur bei dir ausblenden
+function Z.Hide(key)
+    if not DB()[key] then return false end
+    Forget(key)
+    return true
+end
+
+-- Alle Zettel dieses Spielers bei dir ausblenden (und künftige nicht annehmen)
+function Z.Mute(name)
+    if type(name) ~= "string" or name == "" or name == Me() then return false end
+    Muted()[name] = true
+    for k, n in pairs(DB()) do if n.sender == name then Forget(k) end end
+    return true
+end
+function Z.Unmute(name) Muted()[name] = nil end
+
 -- Eigene Zettel regelmäßig erneut verschicken (für später Eingeloggte)
+local lastOwnSend = 0
 local function ResendOwn()
     if not Z.Enabled() then return end
     Prune()
+    lastOwnSend = GetTime()
     for _, k in ipairs(OwnNotes()) do SendNote(DB()[k]) end
 end
 C_Timer.NewTicker(RESEND, ResendOwn)
+
+---------------------------------------------------------------------
+-- Abgleich: beim Einloggen fragen, andere antworten mit dem, was sie kennen
+---------------------------------------------------------------------
+local answered = {}       -- [Fragender] = GetTime()
+local function Answer(guild, asker)
+    if not Z.Enabled() or asker == Me() then return end
+    if answered[asker] and GetTime() - answered[asker] < 300 then return end
+    answered[asker] = GetTime()
+    -- neue Runde: zählen, was andere schon schicken
+    for k in pairs(seenRound) do seenRound[k] = nil end
+    -- eigene Zettel kommen im Original (höchstens alle 2 Minuten)
+    if GetTime() - lastOwnSend > 120 then ResendOwn() end
+    C_Timer.After(2 + math.random() * 8, function()
+        local list, me = {}, Me()
+        for k, n in pairs(DB()) do
+            if n.sender ~= me and (n.guild and true or false) == guild then list[#list + 1] = k end
+        end
+        table.sort(list, function(a, b) return DB()[a].t > DB()[b].t end)
+        for i = 1, math.min(#list, MAX_SYNC) do SendRelay(list[i], DB()[list[i]]) end
+    end)
+end
+Z.Answer = Answer
+
+function Z.Sync()
+    if not Z.Enabled() then return end
+    if IsInGuild() then ns.Queue("ZTQ", "@CHANNEL", 1) end
+    if Z.ShowPublic() and PublicOk() then ns.Queue("ZTQ", "@PUBLIC", ns.CLIENT_TAG) end
+end
 
 ---------------------------------------------------------------------
 -- Empfang
@@ -237,6 +353,14 @@ ns.On("ZTX", function(payload, sender)
     if sender == Me() then return end
     Z.Remove(true, sender, (strsplit(SEP, payload or "")))
 end)
+ns.On("ZTQ", function(_, sender) Answer(true, sender) end)
+ns.On("ZTR", function(payload, sender)
+    if sender == Me() or not Z.Enabled() then return end
+    local a = { strsplit(SEP, payload or "") }
+    local author = ns.Clean and ns.Clean(a[1], 60) or a[1]
+    if not author or author == "" or author == Me() then return end
+    Z.Apply(true, author, a[2], a[3], a[4], a[5], a[6], a[7])
+end)
 
 -- Offener Kanal: jeder kann schreiben – gebremst und streng geprüft
 local perSender = {}
@@ -247,21 +371,42 @@ local function Allowed(sender)
     if s.blockedUntil and now < s.blockedUntil then return false end
     if now - s.since > 60 then s.n, s.since = 0, now end
     s.n = s.n + 1
-    if s.n > 12 then s.blockedUntil = now + 600; return false end
+    if s.n > 30 then s.blockedUntil = now + 600; return false end
     return true
+end
+
+-- Weitergereicht von Fremden: erst angenommen, wenn zwei verschiedene es melden
+local pending = {}        -- [Schlüssel|t|text] = { [Absender] = true, n = Zahl, at = Zeit }
+local function Confirmed(id, sender)
+    local p = pending[id]
+    if not p or GetTime() - p.at > 600 then p = { n = 0, at = GetTime(), by = {} }; pending[id] = p end
+    if not p.by[sender] then p.by[sender] = true; p.n = p.n + 1 end
+    return p.n >= 2
 end
 
 function ns.OnZettelPublic(message, sender)
     if type(message) ~= "string" or #message > 255 or sender == Me() or not Z.Enabled() then return end
     local kind, value = message:match("^(%u+):(.*)$")
-    if kind ~= "ZTP" and kind ~= "ZTD" then return end
+    if kind ~= "ZTP" and kind ~= "ZTD" and kind ~= "ZTQ" and kind ~= "ZTS" then return end
     if not Allowed(sender) then return end
     local a = { strsplit(SEP, value) }
     if a[1] ~= ns.CLIENT_TAG then return end
     if kind == "ZTP" then
         Z.Apply(false, sender, a[2], a[3], a[4], a[5], a[6], a[7])
-    else
+    elseif kind == "ZTD" then
         Z.Remove(false, sender, a[2])
+    elseif kind == "ZTQ" then
+        if Z.ShowPublic() then Answer(false, sender) end
+    else
+        local author = ns.Clean and ns.Clean(a[2], 60) or a[2]
+        if not author or author == "" or author == Me() then return end
+        local key = Key(false, author, tostring(a[3]))
+        seenRound[key] = (seenRound[key] or 0) + 1
+        local trusted = ns.IsGuildMember and ns.IsGuildMember(sender)
+        if not trusted and not Confirmed(key .. "|" .. tostring(a[7]) .. "|" .. tostring(a[8]), sender) then return end
+        -- Apply zählt die Runde selbst noch einmal: ausgleichen
+        seenRound[key] = seenRound[key] - 1
+        Z.Apply(false, author, a[3], a[4], a[5], a[6], a[7], a[8])
     end
 end
 
@@ -283,9 +428,9 @@ Z.Translate = Translate
 
 local function Ago(t)
     local d = GetServerTime() - (t or 0)
-    if d < 3600 then return ("vor %d Min."):format(math.max(1, math.floor(d / 60))) end
-    if d < 86400 then return ("vor %d Std."):format(math.floor(d / 3600)) end
-    return ("vor %d Tag(en)"):format(math.floor(d / 86400))
+    if d < 3600 then return (L["vor %d Min."]):format(math.max(1, math.floor(d / 60))) end
+    if d < 86400 then return (L["vor %d Std."]):format(math.floor(d / 3600)) end
+    return (L["vor %d Tag(en)"]):format(math.floor(d / 86400))
 end
 
 local function PinEnter(pin, n)
@@ -301,11 +446,13 @@ local function Pins(shown)
     local list = {}
     if not Z.Enabled() or not shown then return list end
     for _, n in pairs(DB()) do
-        local x, y = Translate(n.map, n.x, n.y, shown)
-        if x then
-            list[#list + 1] = { x = x, y = y, tex = PIN, size = 13, ring = false,
-                color = n.guild and BLUE or WHITE, alpha = 0.95,
-                enter = function(pin) PinEnter(pin, n) end }
+        if Visible(n) then
+            local x, y = Translate(n.map, n.x, n.y, shown)
+            if x then
+                list[#list + 1] = { x = x, y = y, tex = PIN, size = 13, ring = false,
+                    color = n.guild and BLUE or WHITE, alpha = 0.95,
+                    enter = function(pin) PinEnter(pin, n) end }
+            end
         end
     end
     return list
@@ -314,8 +461,29 @@ if ns.AddMapSource then ns.AddMapSource(Pins) end
 
 ---------------------------------------------------------------------
 -- Zettel-Fenster (Lesen und Schreiben): Papier mit Ringbuch-Abriss oben,
--- zerfranst unten (Media/zettel.tga)
+-- zerfranst unten (Media/zettel.tga), Schrift wie von Hand
 ---------------------------------------------------------------------
+local function Hand(fs, size)
+    -- ältere Clients geben nichts zurück: nur bei ausdrücklichem false ausweichen
+    if fs:SetFont(HAND, size or 15, "") == false then
+        fs:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", (size or 15) - 1, "")
+    end
+    fs:SetTextColor(INK[1], INK[2], INK[3])
+    if fs.SetShadowOffset then fs:SetShadowOffset(0, 0) end
+end
+
+local function Small(fs, size)
+    fs:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", size or 10, "")
+    fs:SetTextColor(0.45, 0.42, 0.35)
+    fs:SetShadowOffset(0, 0)
+end
+
+local function PaperSound()
+    if not (PlaySound and SOUNDKIT) then return end
+    local id = SOUNDKIT.IG_SPELLBOOK_OPEN or SOUNDKIT.IG_QUEST_LOG_OPEN
+    if id then PlaySound(id) end
+end
+
 local function Paper(name)
     local f = CreateFrame("Frame", name, UIParent)
     f:SetSize(320, 320)
@@ -332,50 +500,89 @@ local function Paper(name)
     local bg = f:CreateTexture(nil, "BACKGROUND")
     bg:SetAllPoints()
     bg:SetTexture(PAPER)
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    f.title:SetPoint("TOPLEFT", 48, -44)
-    f.title:SetPoint("TOPRIGHT", -30, -44)
+    f.title = f:CreateFontString(nil, "OVERLAY")
+    Hand(f.title, 17)
+    f.title:SetPoint("TOPLEFT", 48, -42)
+    f.title:SetPoint("TOPRIGHT", -30, -42)
     f.title:SetJustifyH("LEFT")
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -6, -30)
     close:SetScale(0.8)
+    -- sanft einblenden (wie ein Zettel, der dir in die Hand fällt)
+    if f.CreateAnimationGroup then
+        local ag = f:CreateAnimationGroup()
+        local a = ag:CreateAnimation("Alpha")
+        if a.SetFromAlpha then
+            a:SetFromAlpha(0); a:SetToAlpha(1); a:SetDuration(0.3); a:SetSmoothing("OUT")
+            f.fadeIn = ag
+        end
+    end
+    f:SetScript("OnShow", function(self)
+        PaperSound()
+        if self.fadeIn then self.fadeIn:Stop(); self.fadeIn:Play() end
+    end)
     tinsert(UISpecialFrames, name)
     return f
 end
 
-local function Ink(fs, size)
-    local font = (STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF")
-    fs:SetFont(font, size or 13, "")
-    fs:SetTextColor(INK[1], INK[2], INK[3])
-    fs:SetShadowOffset(0, 0)
+local function Btn(parent, w, text, onClick)
+    local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    b:SetSize(w, 20)
+    b:SetText(text)
+    b:SetScript("OnClick", onClick)
+    return b
 end
 
 local function Reader()
     if Z.reader then return Z.reader end
     local f = Paper("GuildPrideZettelFrame")
     f.text = f:CreateFontString(nil, "OVERLAY")
-    Ink(f.text, 14)
-    f.text:SetPoint("TOPLEFT", 48, -70)
-    f.text:SetPoint("TOPRIGHT", -26, -70)
+    Hand(f.text, 16)
+    f.text:SetPoint("TOPLEFT", 48, -72)
+    f.text:SetPoint("TOPRIGHT", -26, -72)
     f.text:SetJustifyH("LEFT"); f.text:SetJustifyV("TOP")
-    f.text:SetSpacing(4)
+    f.text:SetSpacing(3)
     f.sign = f:CreateFontString(nil, "OVERLAY")
-    Ink(f.sign, 15)
-    f.sign:SetPoint("BOTTOMRIGHT", -30, 52)
+    Hand(f.sign, 17)
+    f.sign:SetPoint("BOTTOMRIGHT", -30, 54)
     f.sign:SetJustifyH("RIGHT")
     f.when = f:CreateFontString(nil, "OVERLAY")
-    Ink(f.when, 10)
-    f.when:SetTextColor(0.45, 0.42, 0.35)
-    f.when:SetPoint("BOTTOMLEFT", 48, 54)
-    f.tear = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    f.tear:SetSize(110, 20)
-    f.tear:SetPoint("BOTTOMLEFT", 44, 26)
-    f.tear:SetText(L["Abreißen"])
-    f.tear:SetScript("OnClick", function()
+    Small(f.when, 10)
+    f.when:SetPoint("BOTTOMLEFT", 48, 58)
+    -- eigener Zettel: abreißen · fremder: ausblenden / Spieler ausblenden
+    f.tear = Btn(f, 110, L["Abreißen"], function()
         if Z.shownKey then Z.Tear(Z.shownKey) end
         f:Hide()
     end)
+    f.tear:SetPoint("BOTTOMLEFT", 44, 26)
+    f.hide = Btn(f, 96, L["Ausblenden"], function()
+        if Z.shownKey then Z.Hide(Z.shownKey) end
+        f:Hide()
+    end)
+    f.hide:SetPoint("BOTTOMLEFT", 44, 26)
+    f.hide:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L["Diesen Zettel nur bei dir ausblenden."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    f.hide:SetScript("OnLeave", GameTooltip_Hide)
+    f.mute = Btn(f, 132, L["Spieler ausblenden"], function()
+        local n = Z.shownKey and DB()[Z.shownKey]
+        if n and Z.Mute(n.sender) then
+            ns.Print((L["Zettel von %s werden nicht mehr gezeigt (/gp zettel zeigen %s)."]):format(n.by or n.sender, n.sender))
+        end
+        f:Hide()
+    end)
+    f.mute:SetPoint("LEFT", f.hide, "RIGHT", 6, 0)
+    f.mute:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L["Alle Zettel dieses Spielers bei dir ausblenden – auch künftige."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    f.mute:SetScript("OnLeave", GameTooltip_Hide)
+    local base = f:GetScript("OnShow")
     f:SetScript("OnHide", function() Z.shownKey = nil end)
+    f:SetScript("OnShow", base)
     Z.reader = f
     return f
 end
@@ -384,6 +591,7 @@ function Z.Show(key)
     local n = DB()[key]
     if not n then return end
     local f = Reader()
+    if f:IsShown() then f:Hide() end   -- neu einblenden (OnHide setzt shownKey zurück)
     Z.shownKey = key
     if n.guild then
         f.title:SetText(("|cff3a78c8%s|r"):format(L["Notizzettel der Gilde"]))
@@ -393,9 +601,11 @@ function Z.Show(key)
     f.text:SetText(n.text)
     f.sign:SetText("– " .. (n.by or "?"))
     f.when:SetText(Ago(n.t))
-    f.tear:SetShown(n.sender == Me())
+    local own = n.sender == Me()
+    f.tear:SetShown(own)
+    f.hide:SetShown(not own)
+    f.mute:SetShown(not own)
     f:Show()
-    if PlaySound and SOUNDKIT and SOUNDKIT.IG_QUEST_LOG_OPEN then PlaySound(SOUNDKIT.IG_QUEST_LOG_OPEN) end
 end
 
 -- Schreiben
@@ -407,19 +617,20 @@ local function Writer()
     eb:SetMultiLine(true)
     eb:SetAutoFocus(false)
     eb:SetMaxBytes(MAX_TEXT + 1)
-    eb:SetPoint("TOPLEFT", 48, -70)
-    eb:SetPoint("TOPRIGHT", -26, -70)
+    eb:SetPoint("TOPLEFT", 48, -72)
+    eb:SetPoint("TOPRIGHT", -26, -72)
     eb:SetHeight(170)
-    eb:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 14, "")
+    if eb:SetFont(HAND, 16, "") == false then eb:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", 14, "") end
     eb:SetTextColor(INK[1], INK[2], INK[3])
-    eb:SetSpacing(4)
+    eb:SetSpacing(3)
     eb:SetScript("OnEscapePressed", function() f:Hide() end)
     f.count = f:CreateFontString(nil, "OVERLAY")
-    Ink(f.count, 10)
-    f.count:SetTextColor(0.45, 0.42, 0.35)
-    f.count:SetPoint("BOTTOMRIGHT", -30, 56)
+    Small(f.count, 10)
+    f.count:SetPoint("BOTTOMRIGHT", -30, 58)
     eb:SetScript("OnTextChanged", function(self)
-        f.count:SetText(("%d/%d"):format(#(self:GetText() or ""), MAX_TEXT))
+        local s = self:GetText() or ""
+        -- Grenze ist in Byte (Kanal); angezeigt werden echte Zeichen
+        f.count:SetText(("%d/%d"):format(Z.Chars(s), Z.Chars(s) + math.max(0, MAX_TEXT - #s)))
     end)
     -- Klick irgendwo aufs Papier setzt den Schreibcursor
     f:SetScript("OnMouseDown", function() eb:SetFocus() end)
@@ -432,22 +643,20 @@ local function Writer()
             f:Hide()
         end
     end
-    f.guildBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    f.guildBtn:SetSize(112, 22)
+    f.guildBtn = Btn(f, 112, L["Für die Gilde"], function() Done(true) end)
+    f.guildBtn:SetHeight(22)
     f.guildBtn:SetPoint("BOTTOMLEFT", 44, 24)
-    f.guildBtn:SetText(L["Für die Gilde"])
-    f.guildBtn:SetScript("OnClick", function() Done(true) end)
-    f.allBtn = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
-    f.allBtn:SetSize(112, 22)
+    f.allBtn = Btn(f, 112, L["Für alle"], function() Done(false) end)
+    f.allBtn:SetHeight(22)
     f.allBtn:SetPoint("LEFT", f.guildBtn, "RIGHT", 8, 0)
-    f.allBtn:SetText(L["Für alle"])
-    f.allBtn:SetScript("OnClick", function() Done(false) end)
+    local base = f:GetScript("OnShow")
     f:SetScript("OnHide", function() eb:ClearFocus() end)
+    f:SetScript("OnShow", base)
     Z.writer = f
     return f
 end
 
--- Auf Kontinent- oder Weltkarte geklickt: möglichst auf die Gebietskarte umrechnen
+-- Auf Kontinent- oder Weltkarte: möglichst auf die Gebietskarte umrechnen
 local function ZoneOf(map, x, y)
     local zoneType = Enum and Enum.UIMapType and Enum.UIMapType.Zone or 3
     local info = C_Map.GetMapInfo and C_Map.GetMapInfo(map)
@@ -472,7 +681,7 @@ function Z.OpenWriter(map, x, y)
 end
 
 ---------------------------------------------------------------------
--- Auslösen: auf ~5 m heran → Zettel geht auf
+-- Abstand zum Spieler: Auslösen (~5 m) und Minimap
 ---------------------------------------------------------------------
 Z.armed = {}
 local sizeCache = {}
@@ -492,16 +701,28 @@ local function MapSize(map)
     return sizeCache[map] or nil
 end
 
--- Abstand in Yards zwischen Spieler und Zettel (nil = nicht auf dieser Karte)
-function Z.Distance(n)
+-- Versatz Zettel – Spieler in Yards (x nach Osten, y nach Süden); nil = nicht auf dieser Karte
+local posCache, posAt = {}, 0
+function Z.Offset(n)
     if not C_Map.GetPlayerMapPosition then return end
-    local pos = C_Map.GetPlayerMapPosition(n.map, "player")
-    if not pos then return end
-    local px, py = pos:GetXY()
-    if not px or (px == 0 and py == 0) then return end
+    if GetTime() ~= posAt then posCache, posAt = {}, GetTime() end
+    local p = posCache[n.map]
+    if p == nil then
+        local pos = C_Map.GetPlayerMapPosition(n.map, "player")
+        local px, py
+        if pos then px, py = pos:GetXY() end
+        if px and not (px == 0 and py == 0) then p = { px, py } else p = false end
+        posCache[n.map] = p
+    end
+    if not p then return end
     local s = MapSize(n.map)
     if not s then return end
-    local dx, dy = (px - n.x) * s[1], (py - n.y) * s[2]
+    return (n.x - p[1]) * s[1], (n.y - p[2]) * s[2]
+end
+
+function Z.Distance(n)
+    local dx, dy = Z.Offset(n)
+    if not dx then return end
     return math.sqrt(dx * dx + dy * dy)
 end
 
@@ -509,7 +730,7 @@ C_Timer.NewTicker(0.5, function()
     if not Z.Enabled() or UnitIsDeadOrGhost("player") then return end
     local best, bestD
     for key, n in pairs(DB()) do
-        local d = Z.Distance(n)
+        local d = Visible(n) and Z.Distance(n)
         if d then
             if d <= TRIGGER and Z.armed[key] ~= false then
                 if not bestD or d < bestD then best, bestD = key, d end
@@ -523,6 +744,61 @@ C_Timer.NewTicker(0.5, function()
         Z.Show(best)
     end
 end)
+
+-- Minimap: Zettel in Reichweite als kleine Symbole
+-- Sichtweite der Minimap (Durchmesser in Yards) je Zoomstufe, draußen und drinnen
+local MM_OUT = { [0] = 466.67, 400, 333.33, 266.67, 200, 133.33 }
+local MM_IN  = { [0] = 300, 240, 180, 120, 80, 50 }
+local mmPins = {}
+local function MinimapPin(i)
+    local b = mmPins[i]
+    if b then return b end
+    b = CreateFrame("Button", nil, Minimap)
+    b:SetSize(12, 12)
+    b:SetFrameLevel(Minimap:GetFrameLevel() + 5)
+    b.tex = b:CreateTexture(nil, "OVERLAY")
+    b.tex:SetAllPoints()
+    b.tex:SetTexture(PIN)
+    b:SetScript("OnEnter", function(self) if self.note then PinEnter(self, self.note) end end)
+    b:SetScript("OnLeave", GameTooltip_Hide)
+    mmPins[i] = b
+    return b
+end
+
+function Z.UpdateMinimap()
+    if not Minimap then return end
+    local n = 0
+    local width = Minimap.GetWidth and Minimap:GetWidth()
+    if Z.Enabled() and Z.ShowMinimap() and type(width) == "number" and width > 0 then
+        local zoom = Minimap:GetZoom() or 0
+        local indoor = IsIndoors and IsIndoors()
+        local radius = ((indoor and MM_IN or MM_OUT)[zoom] or 200) / 2
+        local pxRadius = width / 2
+        local rotate = GetCVar and GetCVar("rotateMinimap") == "1"
+        local facing = rotate and GetPlayerFacing and GetPlayerFacing() or 0
+        local cf, sf = math.cos(facing), math.sin(facing)
+        for _, note in pairs(DB()) do
+            if Visible(note) then
+                local dx, dy = Z.Offset(note)
+                if dx and dx * dx + dy * dy <= (radius * 0.95) ^ 2 then
+                    -- Bildschirm: x nach rechts (Osten), y nach oben (Norden)
+                    local sx, sy = dx, -dy
+                    if rotate then sx, sy = sx * cf + sy * sf, -sx * sf + sy * cf end
+                    n = n + 1
+                    local b = MinimapPin(n)
+                    b.note = note
+                    local c = note.guild and BLUE or WHITE
+                    b.tex:SetVertexColor(c[1], c[2], c[3])
+                    b:ClearAllPoints()
+                    b:SetPoint("CENTER", Minimap, "CENTER", sx / radius * pxRadius, sy / radius * pxRadius)
+                    b:Show()
+                end
+            end
+        end
+    end
+    for i = n + 1, #mmPins do mmPins[i]:Hide(); mmPins[i].note = nil end
+end
+C_Timer.NewTicker(0.2, function() Z.UpdateMinimap() end)
 
 ---------------------------------------------------------------------
 -- Ein/Aus und Knopf auf der Weltkarte (wie bei den Rares)
@@ -545,7 +821,11 @@ function Z.SetEnabled(on)
     UpdateButton()
     Refresh()
 end
-function Z.Changed() Z.SetEnabled(Z.Enabled()) end
+function Z.SetOption(key, on)
+    if type(GuildPrideDB) == "table" then GuildPrideDB[key] = on and true or false end
+    Refresh()
+end
+function Z.Changed() UpdateButton(); Refresh() end
 
 -- „Zettel schreiben“: der Zettel kommt direkt an die Stelle, an der du stehst
 function Z.WriteHere()
@@ -612,6 +892,10 @@ local function HookFilterMenu()
         root:CreateTitle(L["GuildPride Notizzettel"])
         root:CreateCheckbox(L["Notizzettel zeigen"], function() return Z.Enabled() end,
             function() Z.SetEnabled(not Z.Enabled()) end)
+        root:CreateCheckbox(L["Zettel für alle (weiß) zeigen"], function() return Z.ShowPublic() end,
+            function() Z.SetOption("mapNotesPublic", not Z.ShowPublic()) end)
+        root:CreateCheckbox(L["Zettel auf der Minimap"], function() return Z.ShowMinimap() end,
+            function() Z.SetOption("mapNotesMinimap", not Z.ShowMinimap()) end)
         root:CreateButton(L["Zettel schreiben"], function() Z.WriteHere() end)
     end)
 end
@@ -628,31 +912,37 @@ ev:SetScript("OnEvent", function(_, event, name)
     if event == "PLAYER_LOGIN" then
         Setup()
         Prune()
-        -- eigene Zettel nach dem Kanalbeitritt erneut verschicken
+        -- nach dem Kanalbeitritt: eigene Zettel verschicken, die der anderen abfragen
         C_Timer.After(45, ResendOwn)
+        C_Timer.After(55, Z.Sync)
     elseif name == "Blizzard_WorldMap" then
         Setup()
     end
 end)
 
 ---------------------------------------------------------------------
--- /gp zettel [an|aus|schreiben|weg]
+-- /gp zettel [an|aus|schreiben|weg|zeigen Name]
 ---------------------------------------------------------------------
 local origSlash = SlashCmdList.GUILDPRIDE
 SlashCmdList.GUILDPRIDE = function(arg)
     local cmd, rest = strtrim(arg or ""):match("^(%S*)%s*(.-)$")
-    cmd, rest = (cmd or ""):lower(), (rest or ""):lower()
+    local word, name = (rest or ""):match("^(%S*)%s*(.-)$")
+    cmd, word = (cmd or ""):lower(), (word or ""):lower()
     if cmd ~= "zettel" and cmd ~= "notes" then return origSlash(arg) end
-    if rest == "aus" or rest == "off" then
+    if word == "aus" or word == "off" then
         Z.SetEnabled(false); ns.Print(L["Notizzettel |cffff6060aus|r – auf der Karte ausgeblendet"])
-    elseif rest == "an" or rest == "on" then
+    elseif word == "an" or word == "on" then
         Z.SetEnabled(true); ns.Print(L["Notizzettel |cff40ff40an|r"])
-    elseif rest == "weg" or rest == "clear" then
+    elseif word == "weg" or word == "clear" then
         local own = OwnNotes()
         for _, k in ipairs(own) do Z.Tear(k) end
         ns.Print((L["%d eigene Zettel abgerissen."]):format(#own))
-    elseif rest == "schreiben" or rest == "write" then
+    elseif word == "schreiben" or word == "write" then
         Z.WriteHere()
+    elseif (word == "zeigen" or word == "show") and name ~= "" then
+        local found
+        for n in pairs(Muted()) do if n:lower() == name:lower() then found = n end end
+        if found then Z.Unmute(found); ns.Print((L["Zettel von %s werden wieder gezeigt."]):format(found)) end
     else
         local n, own = 0, #OwnNotes()
         for _ in pairs(DB()) do n = n + 1 end

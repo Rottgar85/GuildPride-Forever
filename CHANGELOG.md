@@ -1,5 +1,39 @@
 # GuildPride Changelog
 
+## 2.41.0
+
+**Deutsch**
+- **Handwerk – alles neu** (`/gp handwerk`, Knopf „Handwerk & Guides“ im Berufe-Reiter): ein Fenster mit vier Reitern
+  - **Leveln**: Weg von 1 bis 300 für jeden Beruf – was du wie oft herstellst, Kasten „Als Nächstes“ mit Zutaten, Bestand und was fehlt, Fortschrittsbalken, nächster Rang beim Lehrer, Kosten bis zum Ziel. Klick wählt das Rezept im Berufsfenster, Umschalt+Klick trackt, Rechtsklick hakt einen Schritt ab
+  - **Rezepte**: alle Rezepte eines Berufs und wer von deinen Charakteren sie kann; **Gewinn**: was sich lohnt; **Gilde & Twinks**: Berufe und Abklingzeiten deiner Charaktere, wer in der Gilde was kann, „Gilde fragen“
+  - Tooltip über einem Rezept zeigt das hergestellte Item mit Werten und die Zutaten mit Bildern; dünne Scrollleisten, wo die Liste länger ist
+- **Rezeptkarte** neben dem Berufsfenster (frei verschiebbar): Farbe, ab wann grau, Zutaten, Gewinn, „Guide-Rezept“ und „Bestes jetzt“
+- **Tracker** (`/gp tracker`): zählt, was du sammelst; am Händler kauft ein Klick genau, was fehlt; im Auktionshaus sucht ein Klick die fehlenden Sachen
+- **Lehrer auf der Karte**: Klick auf einen Beruf zeigt alle Lehrer deiner Fraktion auf der Weltkarte, mit Wegpunkt; Bauplan-Händler werden beim Besuch gemerkt
+- **Hinweise**: Guide-Schritt geschafft, Rang-Limit erreicht, was du am Lehrer lernen solltest; Bank und Briefkasten: Mats holen, einlagern oder an den Twink schicken; Kompaktansicht mit Punkten pro Stunde (`/gp handwerk mini`)
+- **Sammeln**: deine Erz- und Kräuterfundorte auf der Weltkarte, gefärbt nach deiner Fertigkeit; Hinweis, wenn ein Vorkommen keine Punkte mehr gibt
+- **Angel-Leiste** mit Angel in der Hand: Auswerfen, bester Köder, Fang mit Wert. **Eine Taste fürs Angeln**: Taste wählen – einmal drücken wirft aus, nochmal holt ein
+- **Tooltips**: Baupläne (wer es lernen kann), Bestand deiner Charaktere, was dein Guide noch braucht, Herkunft der Materialien, und **Verkaufs-Berater**: Händler, Auktionshaus oder behalten
+- Hinweis, wenn im Handelschannel jemand sucht, was du herstellen kannst
+- **Notizzettel**: Zettel kommen auch nach, wenn du offline warst; kleine Zettel auf der Minimap; Zettel ausblenden oder Schreiber stummschalten; schöneres Papier und Schrift; Zettel für alle lassen sich getrennt abschalten
+- Alles einzeln abschaltbar in den Einstellungen unter „Handwerk“
+
+**English**
+- **Crafting – all new** (`/gp handwerk`, "Crafting & guides" button in the professions tab): one window with four tabs
+  - **Leveling**: the way from 1 to 300 for every profession – what to craft and how often, "Up next" box with reagents, stock and what is missing, progress bar, next rank at the trainer, cost to the goal. Click selects the recipe in the profession window, shift-click tracks, right-click ticks off a step
+  - **Recipes**: all recipes of a profession and which of your characters know them; **Profit**: what pays off; **Guild & alts**: professions and cooldowns of your characters, who in the guild can craft what, "Ask the guild"
+  - The tooltip over a recipe shows the crafted item with its stats and the reagents with icons; thin scroll bars where a list is longer
+- **Recipe card** next to the profession window (free to move): colour, when it turns gray, reagents, profit, "Guide recipe" and "Best now"
+- **Tracker** (`/gp tracker`): counts what you gather; at a vendor one click buys exactly what is missing; at the auction house one click searches the missing items
+- **Trainers on the map**: clicking a profession shows all trainers of your faction on the world map, with a waypoint; pattern vendors are remembered when you visit them
+- **Hints**: guide step done, rank limit reached, what to learn at the trainer; bank and mailbox: fetch mats, deposit them or send them to an alt; compact view with points per hour (`/gp handwerk mini`)
+- **Gathering**: your ore and herb spots on the world map, coloured by your skill; hint when a node no longer gives points
+- **Fishing bar** while holding a fishing pole: cast, best lure, catch with value. **One key for fishing**: choose a key – press once to cast, again to reel in
+- **Tooltips**: patterns (who can learn it), stock of your characters, what your guide still needs, where materials come from, and a **sell advisor**: vendor, auction house or keep
+- Notice when someone in trade chat looks for something you can craft
+- **Map notes**: notes arrive even if you were offline; small notes on the minimap; hide notes or mute a writer; nicer paper and font; public notes can be turned off separately
+- Everything can be turned off one by one in the settings under "Crafting"
+
 ## 2.40.0
 
 **Deutsch**

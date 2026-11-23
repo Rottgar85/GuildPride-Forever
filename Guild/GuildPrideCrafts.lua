@@ -548,8 +548,16 @@ search:SetAutoFocus(false); search:SetMaxLetters(40)
 local ph = search:CreateFontString(nil, "OVERLAY", "GPFont_Muted")
 ph:SetPoint("LEFT", 4, 0); ph:SetText(L["Name, Beruf oder Rezept suchen …"])
 local info = page:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
-info:SetPoint("LEFT", search, "RIGHT", 12, 0); info:SetWidth(330); info:SetJustifyH("LEFT")
+info:SetPoint("LEFT", search, "RIGHT", 12, 0); info:SetWidth(230); info:SetJustifyH("LEFT")
 info:SetText(L["Klick auf einen Namen zeigt die Berufe. Mit GuildPride: Klick auf einen Beruf zeigt die Rezepte. Ohne GuildPride: Klick fragt per Flüstern nach einem Link."])
+-- Eigenes Handwerk-Fenster: deine Berufe, Leveling-Guides, Twinks, Tracker
+do
+    local open = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    open:SetSize(130, 22); open:SetPoint("TOPRIGHT", -8, -6)
+    open:SetText(L["Handwerk & Guides"])
+    if ns.SkinButton then ns.SkinButton(open) end
+    open:SetScript("OnClick", function() if ns.CraftWindow then ns.CraftWindow.Show() end end)
+end
 
 local holder = CreateFrame("Frame", nil, page)
 holder:SetPoint("TOPLEFT", 0, -36); holder:SetPoint("BOTTOMRIGHT")
