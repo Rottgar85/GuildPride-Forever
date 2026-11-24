@@ -175,7 +175,7 @@ function AH.Share(keys)
         local p, t, src = AH.PriceFor(key)
         if p and src == "own" and (not lastShare[key] or now - lastShare[key] >= SHARE_GAP) then
             lastShare[key] = now
-            items[#items + 1] = { key = key, p = p, q = AH.Store()[key].own.q, t = t }
+            items[#items + 1] = { key = key, p = p, q = AH.Entry(key).own.q, t = t }
         end
     end
     for _, msg in ipairs(AH.EncodeP(AH.Side(), items)) do Send(msg) end
@@ -207,7 +207,7 @@ function AH._tick(now)
     for key, a in pairs(pending) do
         if now >= a.due then
             pending[key] = nil
-            local e = AH.Store()[key]
+            local e = AH.Entry(key)
             local o = e and e.own
             if o and GetServerTime() - o.t < ANSWER_MAX_AGE then
                 lastShare[key] = GetServerTime()
@@ -293,7 +293,7 @@ function AH.OnMessage(msg, sender)
         local side, key = msg:match("^Q:([AHN]):([%d%.]+)$")
         if not side or not ValidKey(key) then AH.stats.dropped = AH.stats.dropped + 1; return end
         if side ~= AH.Side() or pending[key] then return end
-        local e = AH.Store()[key]
+        local e = AH.Entry(key)
         local o = e and e.own
         if not o or GetServerTime() - o.t >= ANSWER_MAX_AGE then return end
         pending[key] = { due = GetTime() + 1 + math.random() * 3, t = o.t }

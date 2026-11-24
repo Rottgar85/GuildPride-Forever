@@ -52,6 +52,8 @@ local function QuestLogList()
     return out
 end
 
+ns.QuestLogList = QuestLogList   -- für GuildPrideGuildQuests.lua
+
 -- Dungeon-Auswahl nur außerhalb von Retail (dort gibt es den Dungeonbrowser/M+)
 local HAS_DUNGEON_PICK = not ns.IS_RETAIL
 

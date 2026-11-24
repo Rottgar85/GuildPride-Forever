@@ -102,6 +102,8 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    ahTipVendor = true, ahTipCraft = true, ahSellHint = true, ahMailSummary = true, transitUI = true, transitShare = true,
                    flightTimes = true, flightUI = true, showItemID = false,
                    plateColors = true, plateColorBar = false, welcomePack = true,
+                   raidReady = true, guildQuests = true, bossNotes = true, cooldownShare = true,
+                   albumShot = false, easyRead = false, colorSafe = false,
                    buffFood = true, restReminder = true, mapNotes = true, mapNotesPublic = true, mapNotesMinimap = true, craftCard = true, craftHints = true, craftTooltip = true, craftBank = true, craftNPCMap = true, craftTips = true, craftTrade = true, craftNodes = true, craftFish = true, craftSell = true,
                    whisperWindow = true, whisperCombat = true, whisperKnownOnly = false, whisperOutgoing = true }
 ns.DEFAULTS = defaults   -- für /gp export und /gp import
@@ -301,6 +303,35 @@ function ns.Confirmed(key, sender)
     local n = 0
     for _ in pairs(set) do n = n + 1; if n >= 2 then return true end end
     return false
+end
+
+-- Abgleich von Listen, die Offiziere pflegen (Boss-Notizen, Materialliste), ohne dass alle
+-- gleichzeitig alles schicken: gleicher Prüfwert = keine Antwort; Offiziere antworten zuerst,
+-- andere später und nur, wenn noch kein Offizier und keine zwei Mitglieder geantwortet haben
+-- (ihre Meldungen zählen erst bei zwei gleichen, siehe ns.Confirmed).
+function ns.SyncHash(db)
+    local n, sum = 0, 0
+    for _, e in pairs(db) do n = n + 1; sum = (sum + (tonumber(e.ver) or 0)) % 1000000007 end
+    return n .. "." .. sum
+end
+local syncHeard = {}   -- [Art] = { [Absender] = GetTime() }
+function ns.SyncHeard(kind, sender)
+    syncHeard[kind] = syncHeard[kind] or {}
+    syncHeard[kind][sender] = GetTime()
+end
+function ns.SyncAnswer(kind, send)
+    local asked = GetTime()
+    local officer = ns.IsOfficerName(ns.Me())
+    C_Timer.After(officer and (1 + math.random() * 4) or (8 + math.random() * 8), function()
+        local n = 0
+        for who, t in pairs(syncHeard[kind] or {}) do
+            if t >= asked then
+                if ns.IsOfficerName(who) then return end
+                n = n + 1
+            end
+        end
+        if n < 2 then send() end
+    end)
 end
 
 -- Rangnummer eines Gildenmitglieds (0 = Gildenleitung), nil wenn unbekannt
@@ -746,7 +777,8 @@ local multipart = {}   -- ["Sender:id"] = { n, got, parts, t }
 local NO_RELAY = { DKP = true, DRW = true, ALT = true, AUS = true, AUSX = true, AUSL = true,
                    AUC = true, AUH = true, AUE = true, CKY = true, DEL = true, JHL = true, LAY = true, RCP = true, APK = true,
                    CRF = true, CRR = true, GOL = true, BRD = true, LFJ = true, LFJA = true, WSH = true, GPS = true,
-                   ORD = true, ORA = true, TRS = true }
+                   ORD = true, ORA = true, TRS = true, RDQ = true, RDY = true, GQL = true, MGC = true,
+                   CDN = true, PAT = true, QZQ = true, QZA = true, QZR = true, HNT = true, HNX = true, HNF = true }
 local recent, recentSweep = {}, 0   -- zuletzt empfangene Nachrichten (gegen Doppelte)
 local forwarded = {}   -- ["Name:id"] = Zeit, gegen doppelte Weiterleitungen
 local MP_MAX = 100
@@ -754,7 +786,7 @@ local MP_MAX = 100
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
 local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, MHO = true, BLQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
-               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true, DNQ = true, NMQ = true, GLQ = true, FQQ = true }
+               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true, DNQ = true, RDQ = true, GQQ = true, BOQ = true, MGQ = true, PAQ = true, NMQ = true, GLQ = true, FQQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender
@@ -960,6 +992,12 @@ f:SetScript("OnEvent", function(_, event, ...)
             if ns.OnMarkMessage then ns.OnMarkMessage(message, sender) end
             return
         end
+        -- Fehler an den Entwickler (GuildPrideErrorShare.lua prüft Absender und Weg selbst):
+        -- auch von Fremden, nie Dispatch
+        if message:match("^DV[AEKF]:") then
+            if ns.OnErrorShareMessage then ns.OnErrorShareMessage(message, sender, channel) end
+            return
+        end
         -- Serverweite Gruppensuche: offener Kanal, in dem jeder schreiben kann.
         -- Nur die Gruppensuche bekommt diese Nachrichten (prüft Art und Kennung
         -- selbst), nie Dispatch – Weiterleitungen und Gildendaten sind so tabu.
@@ -1056,6 +1094,8 @@ SlashCmdList.GUILDPRIDE = function(arg)
         if ns.BugReport then ns.BugReport() end
     elseif arg == "fehler" or arg == "errors" then
         if ns.ErrorReport then ns.ErrorReport() end
+    elseif arg == "fehlertest" or arg == "errortest" then
+        if ns.ThrowTestError then ns.ThrowTestError() end
     elseif arg == "fehler löschen" or arg == "errors clear" then
         if ns.ClearErrors then ns.ClearErrors() end
     elseif arg == "bewerbungen" or arg == "applications" then

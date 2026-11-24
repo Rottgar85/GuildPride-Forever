@@ -349,12 +349,21 @@ function T.SetWindow(on)
     T.UpdateWindow()
 end
 
+-- Takt 0,5 s; ohne offenes Fenster und ohne Erinnerung reicht jedes vierte Mal (alle 2 s)
+local tick = 0
+function T.Tick()
+    tick = tick + 1
+    if tick % 4 ~= 0 and not (frame and frame:IsShown()) and not next(T.reminders) then return end
+    T.UpdateWindow()
+    T.CheckReminders()
+end
+
 T.onChanged = function() if frame and frame:IsShown() then T.UpdateWindow() end end
 
 if C_Timer and C_Timer.NewTicker then
     local ev = CreateFrame("Frame")
     ev:RegisterEvent("PLAYER_LOGIN")
     ev:SetScript("OnEvent", function()
-        C_Timer.NewTicker(0.5, function() T.UpdateWindow(); T.CheckReminders() end)
+        C_Timer.NewTicker(0.5, T.Tick)
     end)
 end

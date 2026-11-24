@@ -1,7 +1,7 @@
 -- GuildPride: Fehlerbericht zum Kopieren
 --
 -- Lua-Fehler, die aus GuildPride stammen, werden mitgeschrieben (die letzten 20,
--- nur diese Sitzung und gespeichert). Beim ersten Fehler einer Sitzung kommt ein
+-- gespeichert bis zum nächsten Update). Beim ersten Fehler einer Sitzung kommt ein
 -- Hinweis im Chat; /gp fehler zeigt alles zum Kopieren (Version, Spielversion,
 -- Zeit, Fehler mit Aufrufstapel), damit Nutzer ihn leicht melden können.
 -- Der vorhandene Fehlerbehandler (Blizzard, BugGrabber …) läuft weiter wie bisher.
@@ -28,25 +28,100 @@ loader:SetScript("OnEvent", function(self, _, name)
     self:UnregisterEvent("ADDON_LOADED")
     loaded = true
     local list = Store()
-    for i = #early, 1, -1 do table.insert(list, 1, early[i]) end
+    -- Fehler älterer Versionen sind nach einem Update erledigt
+    for i = #list, 1, -1 do
+        if list[i].v ~= ns.VERSION then table.remove(list, i) end
+    end
+    for i = #early, 1, -1 do
+        early[i].v = ns.VERSION
+        table.insert(list, 1, early[i])
+    end
     while #list > MAX do table.remove(list) end
     early = nil
 end)
 
-local function Record(msg)
+-- Addon-Ordner aus einem Pfad, auch ohne „Interface/AddOns/“ (BugGrabber kürzt es weg)
+-- und mit angehängter Version („Name-1.2“); nil bei gekürzten Pfaden („...“) und Code ohne Datei
+local CLIENT = { Interface = true, FrameXML = true, SharedXML = true, AddOns = true }
+local function AddonOf(path)
+    path = path:gsub("\\", "/")
+    local name = path:match("Interface/AddOns/([^/]+)/") or path:match("^([%w_!][%w_!%-%. ]*)/")
+    name = name and name:gsub("%-v?%d.*$", "")
+    return name ~= "" and not CLIENT[name or ""] and name or nil
+end
+local function Foreign(addon)
+    return addon and addon ~= ADDON and not addon:find("^Blizzard_")
+end
+
+-- Aufrufstapel ohne diesen Fehlerbehandler selbst (er steht immer obenauf)
+local function CleanStack(stack)
+    local out, leading = {}, true
+    for line in stack:gmatch("[^\r\n]+") do
+        if not (leading and (line:find("GuildPrideErrors.lua]", 1, true) or line:find("^%[[^%]]*BugGrabber[^%]]*%]"))) then
+            leading = false
+            out[#out + 1] = line
+        end
+    end
+    return table.concat(out, "\n")
+end
+
+-- Stammt der Fehler von uns? Zuerst zählt die Datei in der Meldung (vorn gekürzt, der
+-- Dateiname bleibt), sonst das Addon, in dem er entstand. Fehler in Blizzards Code
+-- zählen nur, wenn GuildPride ihn aufgerufen hat.
+local function Ours(msg, stack)
+    local file = msg:match("^([^\n]-%.%a+):%d+:")
+    if file then
+        if file:find("GuildPride%w*%.%a+$") then return true end
+        if Foreign(AddonOf(file)) then return false end
+    end
+    local first
+    for line in stack:gmatch("[^\n]+") do
+        local path = line:match("^%[string \"@?([^\"]*)") or line:match("^%[([^%]]*)%]")
+        local addon = path and AddonOf(path)
+        if addon then
+            first = first or addon
+            if Foreign(first) then return false end
+            if addon == ADDON then return true end
+        end
+    end
+    return false
+end
+
+-- Umstände eines Fehlers, ohne Namen: Kampf, Instanzart, offene GuildPride-Fenster
+local function Context()
+    local _, kind = IsInInstance()
+    local wins = {}
+    for _, name in ipairs(UISpecialFrames) do
+        local f = name:find("^GuildPride%w+$") and _G[name]
+        if type(f) == "table" and #wins < 3 and f:IsShown() then wins[#wins + 1] = name end
+    end
+    if ns.GuildFrame and ns.GuildFrame:IsShown() and ns.CurrentTabKey then wins[#wins + 1] = "tab" .. tostring(ns.CurrentTabKey()) end
+    return ("combat=%s inst=%s win=%s"):format(InCombatLockdown() and "yes" or "no",
+        type(kind) == "string" and kind or "none", #wins > 0 and table.concat(wins, ",") or "none"):sub(1, 120)
+end
+
+-- rawStack und count nur von BugGrabber (PollBugGrabber); sonst eigener Aufrufstapel, einmal
+local function Record(msg, rawStack, count)
     if type(msg) ~= "string" or (issecretvalue and issecretvalue(msg)) then return end
-    local stack = debugstack and debugstack(3) or ""
-    if not (msg:find("GuildPride", 1, true) or stack:find("GuildPride", 1, true)) then return end
+    local stack = CleanStack(rawStack or (debugstack and debugstack(3)) or "")
+    if not Ours(msg, stack) then return end
+    msg = msg:sub(1, 500)
     local list = Store()
     -- gleicher Fehler mehrfach: nur zählen
     for _, e in ipairs(list) do
-        if e.msg == msg then e.n = (e.n or 1) + 1; e.t = time(); return end
+        if e.msg == msg then e.n = (e.n or 1) + (count or 1); e.t = time(); return end
     end
-    table.insert(list, 1, { msg = msg:sub(1, 500), stack = stack:sub(1, 1500), t = time(), n = 1 })
+    local okCtx, ctx = pcall(Context)
+    table.insert(list, 1, { msg = msg, stack = stack:sub(1, 1500), t = time(), n = count or 1, v = ns.VERSION, ctx = okCtx and ctx or nil })
     while #list > MAX do table.remove(list) end
+    if ns.ErrorShare then ns.ErrorShare.Recorded() end
     if not hinted and ns.Print then
         hinted = true
-        ns.Print(L["Es ist ein Fehler aufgetreten. Mit |cffffd100/gp fehler|r kannst du ihn kopieren und melden."])
+        if type(GuildPrideDB) == "table" and GuildPrideDB.errorShare == true then
+            ns.Print(L["Es ist ein GuildPride-Fehler aufgetreten. Er geht automatisch an den Entwickler, du musst nichts tun."])
+        else
+            ns.Print(L["Es ist ein Fehler aufgetreten. Mit |cffffd100/gp fehler|r kannst du ihn kopieren und melden."])
+        end
     end
 end
 
@@ -56,6 +131,45 @@ if seterrorhandler and geterrorhandler then
         pcall(Record, msg)
         if previous then return previous(msg, ...) end
     end)
+end
+
+-- BugGrabber lädt früher und macht seterrorhandler zur Leerfunktion: Dann sehen wir keinen
+-- Fehler selbst und schauen in seine Liste. (Kein RegisterCallback: damit würde BugGrabber
+-- seine eigenen Chat-Hinweise abstellen.)
+local grabbed = setmetatable({}, { __mode = "k" })   -- [Eintrag] = schon übernommene Anzahl
+local function ReadBugGrabber()
+    local bg = BugGrabber
+    if type(bg) ~= "table" or type(bg.GetDB) ~= "function" then return end
+    local list = bg:GetDB()
+    if type(list) ~= "table" then return end
+    local session = type(bg.GetSessionId) == "function" and bg:GetSessionId() or nil
+    for i = 1, #list do
+        local e = list[i]
+        if type(e) == "table" and type(e.message) == "string" and (session == nil or e.session == session) then
+            local n, seen = tonumber(e.counter) or 1, grabbed[e] or 0
+            if n > seen then
+                grabbed[e] = n
+                Record(e.message, type(e.stack) == "string" and e.stack or "", n - seen)
+            end
+        end
+    end
+end
+function ns.PollBugGrabber() return pcall(ReadBugGrabber) end
+
+local poll = CreateFrame("Frame")
+poll:RegisterEvent("PLAYER_LOGIN")
+poll:SetScript("OnEvent", function()
+    if type(BugGrabber) ~= "table" then return end
+    C_Timer.After(10, ns.PollBugGrabber)
+    C_Timer.NewTicker(30, ns.PollBugGrabber)
+end)
+
+-- /gp fehlertest: harmloser echter Fehler, um Bericht und Versand auszuprobieren
+-- (mit Uhrzeit: jeder Testfehler ist ein eigener Eintrag)
+function ns.ThrowTestError()
+    local at = date("%H:%M:%S", time())
+    C_Timer.After(0, function() error("GuildPride-Testfehler " .. at .. " (harmlos)") end)
+    ns.Print(L["Testfehler ausgelöst. Er ist harmlos und steht jetzt unter |cffffd100/gp fehler|r."])
 end
 
 function ns.ErrorReport()

@@ -842,6 +842,10 @@ require("more")(test, eq, W, ns)
 require("buffs")(test, eq, W, ns)
 require("zettel")(test, eq, W, ns)
 require("craft")(test, eq, W, ns)
+require("errors")(test, eq, W, ns)
+require("errorshare")(test, eq, W, ns)
+require("gilde2")(test, eq, W, ns)
+require("gilde3")(test, eq, W, ns)
 
 test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", function()
     local match = ns.BrowserDungeonMatch
@@ -1057,6 +1061,21 @@ test("/gp diag: Bericht entsteht ohne Fehler und nennt den Realm", function()
     eq(text:find("GetRealmName", 1, true) ~= nil, true)
     eq(text:find("== Dungeonbrowser ==", 1, true) ~= nil, true)
     eq(text:find("== Andere Addons ==", 1, true) ~= nil, true, "Abschnitt andere Addons")
+    -- Leistung: nur wenn der Client Zahlen liefert, sonst ohne Fehler weglassen
+    eq(text:find("Speicher:", 1, true), nil)
+    local oldM, oldP, oldE, oldAH, oldA = GetAddOnMemoryUsage, C_AddOnProfiler, Enum, GuildPrideAHDB, C_AddOns
+    C_AddOns = {}
+    GetAddOnMemoryUsage = function() return 2048 end
+    Enum = { AddOnProfilerMetric = { RecentAverageTime = 1, PeakTime = 4 } }
+    C_AddOnProfiler = { GetAddOnMetric = function(_, m) return m == 1 and 0.25 or m == 4 and 12 or nil end }
+    GuildPrideAHDB = { R = { A = { ["1"] = "1|o 1 1 1", ["2"] = {} } } }
+    local ok, t2 = pcall(ns.DiagReport)
+    GetAddOnMemoryUsage, C_AddOnProfiler, Enum, GuildPrideAHDB, C_AddOns = oldM, oldP, oldE, oldAH, oldA
+    eq(ok, true, tostring(t2))
+    eq(t2:find("Speicher: 2.0 MB", 1, true) ~= nil, true)
+    eq(t2:find("CPU je Bild zuletzt: 0.250 ms", 1, true) ~= nil, true)
+    eq(t2:find("CPU längster Ruckler: 12.000 ms", 1, true) ~= nil, true)
+    eq(t2:find("Auktionspreise: 2, davon gepackt 1", 1, true) ~= nil, true)
 end)
 
 test("Meilensteine: Abgleich fragt auch nach älteren Einträgen (MHO)", function()

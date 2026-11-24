@@ -160,5 +160,35 @@ return function(test, eq, W, ns)
         eq(Z.Chars(""), 0)
     end)
 
+    test("Zettel: ferne Zettel werden höchstens einmal je Sekunde gerechnet, nahe sofort richtig", function()
+        local oldPos, oldSize, oldMini, oldOffset = C_Map.GetPlayerMapPosition, C_Map.GetMapWorldSize, Minimap, Z.Offset
+        C_Map.GetPlayerMapPosition = function() return { GetXY = function() return 0.5, 0.5 end } end
+        C_Map.GetMapWorldSize = function() return 10000, 10000 end
+        Minimap = { GetWidth = function() return 140 end, GetZoom = function() return 0 end, GetFrameLevel = function() return 1 end }
+        GuildPrideDB.zettel = {}
+        for i = 1, 100 do
+            GuildPrideDB.zettel["p:Fern#" .. i] = { map = 1429, x = 0.1, y = 0.1, t = W.server, sender = "Fern" .. i, text = "x" }
+        end
+        local near = { map = 1429, x = 0.505, y = 0.5, t = W.server, sender = "Nah", text = "x" }   -- 50 Yards entfernt
+        GuildPrideDB.zettel["p:Nah#1"] = near
+        local calls = 0
+        Z.Offset = function(n) calls = calls + 1; return oldOffset(n) end
+        Z.ForgetNear()
+        local ok, err = pcall(function()
+            for _ = 1, 5 do Z.UpdateMinimap(); W.Advance(0.1) end
+            eq(calls <= 110, true, "Rechnungen: " .. calls)
+            eq(Z.Near()["p:Nah#1"], near); eq(Z.Near()["p:Fern#1"], nil)
+            -- weiter weg ist er wieder scharf, gelöscht ist er weg
+            Z.armed["p:Nah#1"] = false
+            W.Advance(2); Z.Near(); eq(Z.armed["p:Nah#1"], true, "wieder scharf")
+            GuildPrideDB.zettel["p:Nah#1"] = nil
+            Z.ForgetNear(); eq(Z.Near()["p:Nah#1"], nil)
+        end)
+        Z.Offset = oldOffset
+        C_Map.GetPlayerMapPosition, C_Map.GetMapWorldSize, Minimap = oldPos, oldSize, oldMini
+        GuildPrideDB.zettel = {}
+        if not ok then error(err, 0) end
+    end)
+
     C_Map = oldMap
 end

@@ -69,6 +69,8 @@ local function Own()
     return own
 end
 
+function ns.IsDev() return Own() == true end
+
 local function IsMarkedCode(code)
     if K2[code] then return true end
     local k = Known()

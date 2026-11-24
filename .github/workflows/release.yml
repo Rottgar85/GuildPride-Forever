@@ -27,6 +27,8 @@ jobs:
         run: for f in $(git ls-files "*.lua"); do luac5.1 -p "$f" || exit 1; done
       - name: Tests
         run: lua5.1 tests/run.lua
+      - name: Fenstertest (alle Dateien laden, jedes Fenster öffnen)
+        run: lua5.1 tests/windows.lua
       - name: Version passt zu Tag, Changelog und Spiel-Changelog
         run: |
           tag="${GITHUB_REF_NAME#v}"

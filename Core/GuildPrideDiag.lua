@@ -137,6 +137,37 @@ function ns.DiagReport()
     Add("GuildPride-Spieler", ns.Players and ns.Players.Count and ns.Players.Count())
     Add("Versionen in der Gilde", Count(ns.Versions))
 
+    -- Leistung: was GuildPride gerade braucht (nur Zahlen, die dieser Client liefert)
+    Head("Leistung")
+    local update = (C_AddOns and C_AddOns.UpdateAddOnMemoryUsage) or UpdateAddOnMemoryUsage
+    local memory = (C_AddOns and C_AddOns.GetAddOnMemoryUsage) or GetAddOnMemoryUsage
+    local okMem, kb = pcall(function()
+        if update then update() end
+        return memory and memory(ADDON)
+    end)
+    if okMem and type(kb) == "number" then lines[#lines + 1] = ("Speicher: %.1f MB"):format(kb / 1024) end
+    local prof, metric = C_AddOnProfiler, Enum and Enum.AddOnProfilerMetric
+    if type(prof) == "table" and type(metric) == "table" then
+        for _, m in ipairs({ { "RecentAverageTime", "CPU je Bild zuletzt: %.3f ms" }, { "SessionAverageTime", "CPU je Bild, Sitzung: %.3f ms" },
+                             { "PeakTime", "CPU längster Ruckler: %.3f ms" }, { "CountTimeOver5Ms", "Bilder über 5 ms: %d" },
+                             { "CountTimeOver50Ms", "Bilder über 50 ms: %d" } }) do
+            local okT, n = pcall(function() return metric[m[1]] and prof.GetAddOnMetric(ADDON, metric[m[1]]) end)
+            if okT and type(n) == "number" then lines[#lines + 1] = m[2]:format(n) end
+        end
+    end
+    local items, packed = 0, 0
+    for _, sides in pairs(type(GuildPrideAHDB) == "table" and GuildPrideAHDB or {}) do
+        for _, list in pairs(type(sides) == "table" and sides or {}) do
+            for _, e in pairs(type(list) == "table" and list or {}) do
+                items = items + 1
+                if type(e) == "string" then packed = packed + 1 end
+            end
+        end
+    end
+    lines[#lines + 1] = ("Auktionspreise: %d, davon gepackt %d"):format(items, packed)
+    Add("Zettel", Count(type(GuildPrideDB) == "table" and GuildPrideDB.zettel))
+    Add("Gespeicherte Fehler", Count(type(GuildPrideDB) == "table" and GuildPrideDB.errors))
+
     return table.concat(lines, "\n")
 end
 

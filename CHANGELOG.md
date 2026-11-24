@@ -1,5 +1,41 @@
 # GuildPride Changelog
 
+## 2.42.0
+
+**Deutsch**
+- **Werkzeuge** (neue Seite unter „Planen“): alles Neue für Gilde und Raid mit einem Klick
+- **Raid-Bereitschaft** (`/gp bereit`): Leiter und Assistenten sehen Haltbarkeit, „Satt“, Tränke und Elixiere der Gruppe, Probleme zuerst; beim Bereitschaftscheck antworten alle von selbst
+- **Quests der Gilde** (`/gp quests`): wer online ist und dieselbe Quest hat, deine Zone zuerst; Klick lädt ein
+- **Boss-Notizen** (`/gp boss`): Offiziere schreiben je Boss eine kurze Taktik; das Fenster geht beim Betreten der Instanz einmal auf
+- **Materialliste der Gilde** (`/gp material`): was gebraucht wird und wer wie viel beisteuert; Rechtsklick legt den Rest in den Tracker
+- **Loot-Verlauf** (`/gp loot`), **Abklingzeiten der Gruppe** (`/gp abklingzeiten`), **Event-Auswertung** für Offiziere (`/gp auswertung`)
+- **Paten für Neue** (`/gp paten`), **Gildenquiz** (`/gp quiz`), **Schnitzeljagd** (`/gp jagd`), **Gildenalbum** mit den ersten Bosskills (`/gp album`)
+- **Jubiläen** in der Übersicht: 30 und 100 Tage, ein halbes Jahr, jedes Jahr in der Gilde
+- **Suche über alles** (Lupe oben im Gildenfenster, `/gp suche`): Mitglieder, Events, Einstellungen, Befehle, Boss-Notizen und Rezepte
+- **Pakete** (`/gp paket gilde`, `raid` oder `alles`): schaltet nur an, was du brauchst; alles bleibt einzeln änderbar
+- **Besser lesbar** und **Farben für Farbenblinde** (Einstellungen › Allgemein)
+- **Fehler automatisch melden – nur mit deinem Ja**: hat GuildPride einen Fehler, wirst du einmal gefragt, ob er an den Entwickler gehen darf. Abschaltbar unter Einstellungen › Teilen
+- **Fehlerbericht** zählt nur noch GuildPride-Fehler (bisher landeten Fehler anderer Addons darin) und ist nach einem Update leer; auch mit BugGrabber; `/gp fehlertest` zum Ausprobieren
+- **Weniger Speicher**: Auktionspreise brauchen nur noch einen Bruchteil von Arbeitsspeicher und Dateigröße; Zettel und Schiffe rechnen seltener; `/gp diag` zeigt die Leistung
+- **Einführung** mit neuen Seiten; erste Texte auf Französisch, Spanisch und Russisch
+
+**English**
+- **Tools** (new page under "Plan"): everything new for guild and raid with one click
+- **Raid readiness** (`/gp ready`): leader and assistants see durability, well fed, potions and elixirs of the group, problems first; on a ready check everyone answers by itself
+- **Guild quests** (`/gp quests`): who is online and has the same quest, your zone first; a click invites
+- **Boss notes** (`/gp boss`): officers write short tactics per boss; the window opens once when you enter the instance
+- **Guild material list** (`/gp mats`): what is needed and who contributes how much; right click puts the rest into your tracker
+- **Loot history** (`/gp loot`), **group cooldowns** (`/gp cooldowns`), **event statistics** for officers (`/gp stats`)
+- **Mentors for new members** (`/gp mentor`), **guild quiz** (`/gp quiz`), **treasure hunt** (`/gp hunt`), **guild album** with your first boss kills (`/gp album`)
+- **Anniversaries** on the overview: 30 and 100 days, half a year, every year in the guild
+- **Search everything** (magnifier at the top of the guild window, `/gp search`): members, events, settings, commands, boss notes and recipes
+- **Presets** (`/gp preset guild`, `raid` or `all`): turns on only what you need; everything can still be changed one by one
+- **Easier to read** and **colours for colour blindness** (Settings › General)
+- **Report errors automatically – only with your yes**: if GuildPride has an error, you are asked once whether it may go to the developer. Can be turned off under Settings › Sharing
+- **Error report** only counts GuildPride errors (errors of other addons ended up there before) and is empty after an update; also with BugGrabber; `/gp errortest` to try it
+- **Less memory**: auction prices need only a fraction of the memory and file size; notes and ships calculate less often; `/gp diag` shows the performance
+- **Introduction** with new pages; first texts in French, Spanish and Russian
+
 ## 2.41.3
 
 **Deutsch**

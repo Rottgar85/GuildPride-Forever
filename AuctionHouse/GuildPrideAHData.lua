@@ -4,6 +4,10 @@
 --   srv  = { p, q, t, from = { [Name] = p }, seen = { [Name] = t } }   jüngster Wert vom Server
 --   hist = { { d, p }, … }                Tagesminimum je Tag, höchstens 30 (eigene Scans; Tage ohne
 --                                         eigenen Scan auch von anderen GuildPride-Spielern, AH.MergeHistory)
+-- Seit 2.42 liegt ein Eintrag gepackt als Text da (spart Speicher und Ladezeit), zum Beispiel
+--   "1|o 100 7 1800000000|s 110 4 1800000000|f Anna=110@1800000000;Bert=112@1800000000|h 20774:120 20776:100"
+-- Beim ersten Zugriff (AH.Entry) wird er wieder zur Tabelle, beim Ausloggen und nach dem
+-- Einloggen (in Häppchen) gepackt. Tabellen aus älteren Versionen bleiben lesbar.
 local ADDON, GP = ...
 GP.AH = GP.AH or {}
 local AH = GP.AH
@@ -51,6 +55,61 @@ local function Realm()
 end
 AH.Realm = Realm
 
+-- Packen und Auspacken
+local function Num(v) return v and ("%.14g"):format(v) or "-" end
+local function Pack(e)
+    local out = { "1" }
+    local o, s = e.own, e.srv
+    if o then out[#out + 1] = "o " .. Num(o.p) .. " " .. Num(o.q) .. " " .. Num(o.t) end
+    if s then
+        out[#out + 1] = "s " .. Num(s.p) .. " " .. Num(s.q) .. " " .. Num(s.t)
+        local f = {}
+        for name, p in pairs(s.from or {}) do
+            f[#f + 1] = name:gsub("[|;=@%c]", "") .. "=" .. Num(p) .. "@" .. Num(s.seen and s.seen[name])
+        end
+        if #f > 0 then out[#out + 1] = "f " .. table.concat(f, ";") end
+    end
+    if e.hist and #e.hist > 0 then
+        local h = {}
+        for i, d in ipairs(e.hist) do h[i] = Num(d.d) .. ":" .. Num(d.p) end
+        out[#out + 1] = "h " .. table.concat(h, " ")
+    end
+    return table.concat(out, "|")
+end
+local function Values(body)
+    local p, q, t = body:match("^(%S+) (%S+) (%S+)$")
+    return tonumber(p), tonumber(q), tonumber(t)
+end
+local function Unpack(text)
+    local e = {}
+    if text:sub(1, 2) ~= "1|" then return e end
+    for kind, body in text:gmatch("|(%a) ([^|]*)") do
+        if kind == "o" then
+            local p, q, t = Values(body)
+            if p and t then e.own = { p = p, q = q or 0, t = t } end
+        elseif kind == "s" then
+            local p, q, t = Values(body)
+            if t then e.srv = { p = p, q = q or 0, t = t, from = {}, seen = {} } end
+        elseif kind == "f" and e.srv then
+            for name, p, seen in body:gmatch("([^;=]+)=([^;@]+)@([^;]+)") do
+                e.srv.from[name], e.srv.seen[name] = tonumber(p), tonumber(seen)
+            end
+        elseif kind == "h" then
+            local h = {}
+            for d, p in body:gmatch("(%d+):(%d+)") do h[#h + 1] = { d = tonumber(d), p = tonumber(p) } end
+            if #h > 0 then e.hist = h end
+        end
+    end
+    return e
+end
+local function UnpackSides(realm)
+    for _, items in pairs(realm) do
+        if type(items) == "table" then
+            for key, e in pairs(items) do if type(e) == "string" then items[key] = Unpack(e) end end
+        end
+    end
+end
+
 function AH.Store()
     if type(GuildPrideAHDB) ~= "table" then GuildPrideAHDB = {} end
     local r = Realm()
@@ -58,6 +117,7 @@ function AH.Store()
     if r ~= "?" and GP.MergeSaved then
         for _, old in ipairs({ "", "?" }) do
             if type(GuildPrideAHDB[old]) == "table" then
+                UnpackSides(GuildPrideAHDB[r]); UnpackSides(GuildPrideAHDB[old])
                 GP.MergeSaved(GuildPrideAHDB[r], GuildPrideAHDB[old])
                 GuildPrideAHDB[old] = nil
             end
@@ -70,9 +130,12 @@ end
 
 local function Entry(key, create)
     local st = AH.Store()
-    if not st[key] and create then st[key] = {} end
-    return st[key]
+    local e = st[key]
+    if type(e) == "string" then e = Unpack(e); st[key] = e end
+    if not e and create then e = {}; st[key] = e end
+    return e
 end
+AH.Entry = Entry
 
 function AH.RecordOwn(key, p, q, t)
     if not key or not p or p < 1 then return end
@@ -223,28 +286,65 @@ function AH.Suggest(key, freshForeignMin, now)
     return nil
 end
 
-function AH.Prune(now)
-    if type(GuildPrideAHDB) ~= "table" then return end
-    now = now or GetServerTime()
-    for _, sides in pairs(GuildPrideAHDB) do
+-- Einen Eintrag aufräumen; gepackte bleiben gepackt, mit pack = true werden auch Tabellen gepackt
+local function PruneEntry(items, key, now, pack)
+    local e = items[key]
+    local packed = type(e) == "string"
+    if packed then e = Unpack(e) end
+    if type(e) ~= "table" then items[key] = nil; return end
+    if e.srv and now - (e.srv.t or 0) > SRV_MAX_AGE then e.srv = nil end
+    if e.own and now - (e.own.t or 0) > OWN_MAX_AGE then e.own = nil end
+    if e.hist then
+        for i = #e.hist, 1, -1 do
+            if now - e.hist[i].d * DAY > OWN_MAX_AGE then table.remove(e.hist, i) end
+        end
+        if #e.hist == 0 then e.hist = nil end
+    end
+    if not e.own and not e.srv and not e.hist then items[key] = nil
+    elseif packed or pack then items[key] = Pack(e) end
+end
+
+-- Alle Einträge aller Realms und Seiten: { items, key }, …
+local function AllKeys()
+    local list = {}
+    for _, sides in pairs(type(GuildPrideAHDB) == "table" and GuildPrideAHDB or {}) do
         if type(sides) == "table" then
             for _, items in pairs(sides) do
                 if type(items) == "table" then
-                    for key, e in pairs(items) do
-                        if e.srv and now - (e.srv.t or 0) > SRV_MAX_AGE then e.srv = nil end
-                        if e.own and now - (e.own.t or 0) > OWN_MAX_AGE then e.own = nil end
-                        if e.hist then
-                            for i = #e.hist, 1, -1 do
-                                if now - e.hist[i].d * DAY > OWN_MAX_AGE then table.remove(e.hist, i) end
-                            end
-                            if #e.hist == 0 then e.hist = nil end
-                        end
-                        if not e.own and not e.srv and not e.hist then items[key] = nil end
-                    end
+                    for key in pairs(items) do list[#list + 1] = { items, key } end
                 end
             end
         end
     end
+    return list
+end
+
+function AH.Prune(now)
+    now = now or GetServerTime()
+    for _, a in ipairs(AllKeys()) do PruneEntry(a[1], a[2], now) end
+end
+
+function AH.PackAll()
+    for _, a in ipairs(AllKeys()) do
+        local e = a[1][a[2]]
+        if type(e) == "table" then a[1][a[2]] = Pack(e) end
+    end
+end
+
+-- Nach dem Einloggen: aufräumen und packen, je 0,1 s nur ein Häppchen (kein Ruckler)
+local BATCH = 300
+function AH.PackSoon()
+    local list, i, now = AllKeys(), 0, GetServerTime()
+    local function Step()
+        for _ = 1, BATCH do
+            i = i + 1
+            local a = list[i]
+            if not a then return end
+            if a[1][a[2]] ~= nil then PruneEntry(a[1], a[2], now, true) end
+        end
+        C_Timer.After(0.1, Step)
+    end
+    Step()
 end
 
 -- Kleiner Ereignis-Verteiler für den Auktionshaus-Teil
@@ -316,4 +416,5 @@ function AH.Opt(k)
 end
 function AH.Print(msg) if GP.Print then GP.Print(msg) else print("GuildPride: " .. tostring(msg)) end end
 
-AH.Listen("PLAYER_LOGIN", function() AH.Prune() end)
+AH.Listen("PLAYER_LOGIN", function() C_Timer.After(15, AH.PackSoon) end)
+AH.Listen("PLAYER_LOGOUT", function() AH.PackAll() end)

@@ -3,7 +3,7 @@
 ## Notes: Guild window, milestones, events, guild info and guild chat for your guild
 ## Notes-deDE: Gildenfenster, Meilensteine, Events, Gildeninfo und Gildenchat für deine Gilde
 ## Author: Rottgar85
-## Version: 2.41.3
+## Version: 2.42.0
 ## SavedVariables: GuildPrideDB, GuildPrideBackupDB, GuildPrideRaresDB, ScalesDB, GuildPrideAHDB
 ## SavedVariablesPerCharacter: ScalesCharDB
 ## OptionalDeps: EllesmereUIBags, BagBrother, Bagnon, Bagnonium, Combuctor, ElvUI, Baganator, AdiBags, BetterBags
@@ -12,8 +12,10 @@
 ## X-Wago-ID: 5NRgdJ63
 
 Core\GuildPrideLocale.lua
+Core\GuildPrideLocaleMore.lua
 Core\GuildPrideErrors.lua
 Core\GuildPrideTheme.lua
+Core\GuildPrideReadable.lua
 Core\GuildPride.lua
 Guild\GuildPrideMarks.lua
 Community\GuildPrideMapPins.lua
@@ -22,6 +24,7 @@ Core\GuildPrideInk.lua
 Core\GuildPrideItemID.lua
 Guild\GuildPrideInvite.lua
 Core\GuildPrideUI.lua
+Core\GuildPrideSettingsUI.lua
 Core\GuildPrideCopy.lua
 Guild\GuildPrideInstances.lua
 Guild\GuildPrideBank.lua
@@ -43,6 +46,7 @@ Guild\GuildPrideKeys.lua
 Community\GuildPrideHelp.lua
 Community\GuildPrideHelpBrowser.lua
 Community\GuildPrideNeeds.lua
+Community\GuildPrideGuildQuests.lua
 Community\GuildPrideMessenger.lua
 Community\GuildPrideWhisper.lua
 Community\GuildPrideMessengerUI.lua
@@ -56,8 +60,10 @@ Core\GuildPrideListWindow.lua
 Guild\GuildPrideActivity.lua
 Community\GuildPridePlayers.lua
 Community\GuildPrideZettel.lua
+Community\GuildPrideHunt.lua
 Community\GuildPrideNotes.lua
 Core\GuildPrideDiag.lua
+Core\GuildPrideErrorShare.lua
 Core\GuildPrideSettingsIO.lua
 Guild\GuildPrideMilestone.lua
 Core\GuildPrideMinimap.lua
@@ -70,6 +76,18 @@ Guild\GuildPrideWelcomePack.lua
 Guild\GuildPrideQuestions.lua
 Guild\GuildPrideNameplates.lua
 Guild\GuildPrideWishlist.lua
+Guild\GuildPrideReady.lua
+Guild\GuildPrideBossNotes.lua
+Guild\GuildPrideJubilee.lua
+Guild\GuildPrideEventStats.lua
+Guild\GuildPrideStock.lua
+Guild\GuildPrideLoot.lua
+Guild\GuildPrideAlbum.lua
+Guild\GuildPrideCooldowns.lua
+Guild\GuildPrideMentor.lua
+Guild\GuildPrideQuiz.lua
+Guild\GuildPrideTools.lua
+Core\GuildPrideSearch.lua
 Core\GuildPrideLayout.lua
 Core\GuildPrideCrest.lua
 Core\GuildPrideNewsData.lua

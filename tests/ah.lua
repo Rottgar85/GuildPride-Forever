@@ -1424,4 +1424,69 @@ return function(test, eq, W, ns)
         C_Container, ItemLocation = oldC, oldLoc
         assert(ok, err)
     end)
+
+    test("AH-Speicher: gepackt und wieder gelesen ist alles gleich", function()
+        local now = math.floor(W.server)
+        local st = AH.Store()
+        for k in pairs(st) do st[k] = nil end
+        AH.RecordOwn("501", 120, 3, now - 2 * 86400)
+        AH.RecordOwn("501", 100, 7, now)
+        AH.RecordServer("501", 110, 4, now, "Lu-Na O'Stern")
+        AH.RecordServer("501", 112, 4, now, "Bert")
+        AH.RecordServer("502", 5, 1, now, "Anna")
+        AH.RecordOwn("9792.14314", 6800, 2, now)
+        local function Snap()
+            local e = AH.Entry("501")
+            return { e.own.p, e.own.q, e.own.t, e.srv.p, e.srv.q, e.srv.t, e.srv.from["Lu-Na O'Stern"], e.srv.seen.Bert,
+                #AH.History("501"), AH.History("501")[1].p, AH.History("501")[2].p, AH.ServerConfirmed("501"),
+                AH.SenderCount("501"), AH.PriceFor("502"), AH.PriceFor("9792.14314"), AH.Suggest("501", nil, now) }
+        end
+        local before = Snap()
+        eq(#before, 17, "alles da")
+        AH.PackAll()
+        eq(type(st["501"]), "string"); eq(type(st["502"]), "string")
+        local after = Snap()
+        for i, v in ipairs(before) do eq(after[i], v, "Wert " .. i) end
+        eq(AH.Entry("999"), nil, "unbekannt")
+        -- weiter beschreiben
+        AH.PackAll()
+        AH.RecordOwn("501", 90, 1, now + 1); eq(AH.PriceFor("501"), 90)
+        AH.PackAll()
+        eq(AH.MergeHistory("501", { { d = math.floor(now / 86400) - 1, p = 77 } }), 1); eq(#AH.History("501"), 3)
+    end)
+
+    test("AH-Speicher: Beim Ausloggen gepackt, beschädigte Einträge stören nicht, alte Tabellen bleiben lesbar", function()
+        local now, st = math.floor(W.server), AH.Store()
+        for k in pairs(st) do st[k] = nil end
+        st["601"] = { own = { p = 5, q = 1, t = now }, hist = { { d = math.floor(now / 86400), p = 5 } } }   -- bis 2.41
+        st["602"] = "1|o kaputt|||h x:y"
+        st["603"] = "Unsinn"
+        eq(AH.PriceFor("601"), 5); eq(AH.PriceFor("602"), nil); eq(AH.PriceFor("603"), nil); eq(#AH.History("602"), 0)
+        W.Fire("PLAYER_LOGOUT")
+        for k, v in pairs(st) do eq(type(v), "string", k) end
+        eq(AH.PriceFor("601"), 5)
+    end)
+
+    test("AH-Speicher: Aufräumen wirkt auch auf gepackte Einträge", function()
+        local now, st = math.floor(W.server), AH.Store()
+        for k in pairs(st) do st[k] = nil end
+        AH.RecordOwn("701", 5, 1, now - 40 * 86400)   -- zu alt: ganz weg
+        AH.RecordOwn("702", 9, 1, now)
+        AH.RecordServer("702", 9, 1, now - 8 * 86400, "Anna")   -- Serverpreis zu alt
+        AH.PackAll(); AH.Prune(now)
+        eq(st["701"], nil)
+        eq(AH.PriceFor("702"), 9); eq(AH.Entry("702").srv, nil); eq(AH.Entry("702").own.p, 9)
+    end)
+
+    test("AH-Speicher: nach dem Einloggen in Häppchen aufgeräumt und gepackt", function()
+        local now, st = math.floor(W.server), AH.Store()
+        for k in pairs(st) do st[k] = nil end
+        for i = 1, 1000 do AH.RecordOwn(tostring(80000 + i), i, 1, now) end
+        AH.RecordOwn("701", 5, 1, now - 40 * 86400)
+        AH.PackSoon()
+        local n = 0
+        for k, v in pairs(st) do n = n + 1; eq(type(v), "string", k) end
+        eq(n, 1000)
+        for k in pairs(st) do st[k] = nil end
+    end)
 end

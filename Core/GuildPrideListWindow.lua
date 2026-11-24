@@ -52,7 +52,7 @@ function ns.ListWindow(o)
         for i = 1, rows do
             local line = self.lines[i + self.offset]
             self.rows[i]:SetShown(line ~= nil)
-            if line then self.rows[i].text:SetText(line) end
+            if line then self.rows[i].text:SetText(ns.ColorSafe and ns.ColorSafe(line) or line) end
         end
         self.empty:SetShown(#self.lines == 0)
     end

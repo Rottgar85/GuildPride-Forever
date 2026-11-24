@@ -19,3 +19,5 @@ jobs:
         run: for f in $(git ls-files "*.lua"); do luac5.1 -p "$f" || exit 1; done
       - name: Tests (Sicherheitsregeln, Ausweis, DKP, Sicherung)
         run: lua5.1 tests/run.lua
+      - name: Fenstertest (alle Dateien laden, jedes Fenster öffnen)
+        run: lua5.1 tests/windows.lua

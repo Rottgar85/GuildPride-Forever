@@ -152,7 +152,7 @@ local NILS = { GuildPrideDB = true, GuildPrideBackupDB = true, issecretvalue = t
     QueryGuildEventLog = true, C_DateAndTime = true, Settings = true, C_MythicPlus = true,
     JoinTemporaryChannel = true, C_Club = true, C_ChallengeMode = true,
     GuildPrideAHDB = true, Auctionator = true, C_AuctionHouse = true, IsUsingLegacyAuctionClient = true, C_Item = true,
-    AuctionCategories = true }
+    AuctionCategories = true, BugGrabber = true }
 
 -- Rest: Alles-Objekt
 setmetatable(_G, { __index = function(_, k) if NILS[k] then return nil end return magic end })

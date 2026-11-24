@@ -340,6 +340,27 @@ return function(test, eq, W, ns)
         T.Forget()
     end)
 
+    test("Schiffe: weitab vom Anleger wird nur alle 2 s geschaut, am Fenster weiter jede halbe", function()
+        T.Forget()
+        local looks, x, y = 0, 9000, 9000
+        UnitPosition = function() looks = looks + 1; return x, y, 0, 0 end
+        T.UpdateWindow()   -- Fenster zu
+        looks = 0
+        for _ = 1, 8 do T.Tick() end
+        eq(looks, 2, "weitab")
+        x, y = -3905.2, -585.8
+        for _ = 1, 4 do T.Tick() end
+        eq(T._Window():IsShown(), true, "spätestens nach 2 s da")
+        looks = 0
+        for _ = 1, 4 do T.Tick() end
+        eq(looks, 4, "am Anleger")
+        x, y = 9000, 9000
+        T.Tick()
+        eq(T._Window():IsShown(), false)
+        UnitPosition = nil
+        T.Forget()
+    end)
+
     test("Schiffe: Fenster am Anleger", function()
         T.Forget()
         local x, y = -3905.2, -585.8

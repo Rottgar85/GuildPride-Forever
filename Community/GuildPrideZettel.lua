@@ -135,7 +135,7 @@ end
 
 local function Refresh()
     if ns.RefreshMapPins then ns.RefreshMapPins(true) end
-    if Z.UpdateMinimap then Z.UpdateMinimap() end
+    if Z.UpdateMinimap then Z.ForgetNear(); Z.UpdateMinimap() end
 end
 
 -- Wie oft wurde ein Zettel in dieser Abgleich-Runde schon geschickt?
@@ -726,18 +726,32 @@ function Z.Distance(n)
     return math.sqrt(dx * dx + dy * dy)
 end
 
-C_Timer.NewTicker(0.5, function()
-    if not Z.Enabled() or UnitIsDeadOrGhost("player") then return end
-    local best, bestD
+-- Zettel im Umkreis: höchstens einmal je Sekunde über alle Zettel gehen, die schnellen Takte
+-- (Aufgehen, Minimap) rechnen nur noch mit diesen
+local NEAR = 400          -- Yards (größter Minimap-Radius ~235, dazu Platz für schnelles Reiten)
+local near, nearAt = {}, -1
+function Z.ForgetNear() nearAt = -1 end
+function Z.Near()
+    local now = GetTime()
+    if nearAt >= 0 and now - nearAt < 1 then return near end
+    nearAt = now
+    wipe(near)
     for key, n in pairs(DB()) do
         local d = Visible(n) and Z.Distance(n)
         if d then
-            if d <= TRIGGER and Z.armed[key] ~= false then
-                if not bestD or d < bestD then best, bestD = key, d end
-            elseif d > REARM then
-                Z.armed[key] = true
-            end
+            if d > REARM then Z.armed[key] = true end
+            if d <= NEAR then near[key] = n end
         end
+    end
+    return near
+end
+
+C_Timer.NewTicker(0.5, function()
+    if not Z.Enabled() or not next(Z.Near()) or UnitIsDeadOrGhost("player") then return end
+    local best, bestD
+    for key, n in pairs(Z.Near()) do
+        local d = Visible(n) and Z.Distance(n)
+        if d and d <= TRIGGER and Z.armed[key] ~= false and (not bestD or d < bestD) then best, bestD = key, d end
     end
     if best and Z.shownKey ~= best then
         Z.armed[best] = false
@@ -768,7 +782,8 @@ end
 function Z.UpdateMinimap()
     if not Minimap then return end
     local n = 0
-    local width = Minimap.GetWidth and Minimap:GetWidth()
+    local list = Z.Enabled() and Z.ShowMinimap() and Z.Near()
+    local width = list and next(list) and Minimap.GetWidth and Minimap:GetWidth()
     if Z.Enabled() and Z.ShowMinimap() and type(width) == "number" and width > 0 then
         local zoom = Minimap:GetZoom() or 0
         local indoor = IsIndoors and IsIndoors()
@@ -777,7 +792,7 @@ function Z.UpdateMinimap()
         local rotate = GetCVar and GetCVar("rotateMinimap") == "1"
         local facing = rotate and GetPlayerFacing and GetPlayerFacing() or 0
         local cf, sf = math.cos(facing), math.sin(facing)
-        for _, note in pairs(DB()) do
+        for _, note in pairs(list) do
             if Visible(note) then
                 local dx, dy = Z.Offset(note)
                 if dx and dx * dx + dy * dy <= (radius * 0.95) ^ 2 then

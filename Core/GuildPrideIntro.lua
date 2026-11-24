@@ -2,7 +2,7 @@
 -- Die letzte Seite fragt nach der Discord-Anbindung (GuildPrideDiscord.lua).
 local ADDON, ns = ...
 local L = ns.L
-local INTRO_VERSION = 3   -- 3: Einrichtung (welches Gildenfenster, Aussehen)
+local INTRO_VERSION = 4   -- 3: Einrichtung (welches Gildenfenster, Aussehen), 4: Messenger bis Fehler melden
 
 -- Seiten mit "since" sind Neuerungen: Wer die Tour schon kennt, sieht nur diese
 local ALL_PAGES = {
@@ -10,6 +10,8 @@ local ALL_PAGES = {
       text = L["GuildPride ist der Treffpunkt deiner Gilde: Gildenfenster, Chat, Events, Gruppensuche, DKP und Discord-Anbindung an einem Ort.\n\nDiese kurze Tour zeigt dir in fünf Schritten das Wichtigste. Du kannst sie jederzeit mit /gp intro wieder öffnen."] },
     { setup = true, since = 3, title = L["Einrichtung: dein Gildenfenster"],
       text = L["GuildPride bringt ein eigenes Gildenfenster mit: Chat, Events, Gruppensuche, Berufe, DKP und mehr.\n\nWas soll die Taste J öffnen? Erreichbar bleiben beide: GuildPride über den Minimap-Knopf oder /gp, Blizzards Fenster über die Einstellungen.\n\nDu kannst das jederzeit wieder ändern: Einstellungen > „Einrichtung …“."] },
+    { preset = true, title = L["Was möchtest du nutzen?"],
+      text = L["GuildPride kann sehr viel. Such dir ein Paket aus, dann ist nur das an, was du brauchst.\n\n• Nur Gilde: Gildenfenster, Chat, Events, Hinweise\n• Gilde und Raid: dazu Bereitschaft, Boss-Notizen, Buff-Food, Wünsche\n• Alles: dazu Auktionshaus, Handwerk, Reisen, Zettel und mehr\n\nAlles lässt sich später einzeln ändern (Einstellungen oder /gp paket)."] },
     { title = L["Das Gildenfenster"],
       text = L["Drücke J (oder /gp), um das Gildenfenster zu öffnen.\n\n• Übersicht: wer online ist, nächstes Event, Neuigkeiten der Woche\n• Gilde & Chat: Gilden-, Offiziers- und Community-Chat mit Mitgliederliste\n• Gruppensuche: Hilfe für Quests und Dungeons finden\n• Umfragen, Meilensteine und Gildeninfo\n\nMit /gp blizzard kommst du zurück zum Blizzard-Fenster."] },
     { title = L["Events und Raids"],
@@ -24,6 +26,12 @@ local ALL_PAGES = {
       text = L["Alle Charaktere eines Spielers erscheinen jetzt als eine Zeile in der Mitgliederliste, Twinks klappst du mit „+3“ auf.\n\nDein BattleTag bleibt dabei privat: Er verlässt nie deinen PC, die Gilde sieht nur einen daraus berechneten Code.\n\nRechtsklick auf einen eigenen Charakter: „Als Main festlegen“."] },
     { since = 2, title = L["Neu: Sicherung und Protokoll"],
       text = L["Einstellungen > „Datensicherung …“ sichert alle GuildPride-Daten mit einem Klick (und einmal pro Woche automatisch).\n\nIm DKP-Fenster zeigt „Protokoll …“ jede Buchung mit Wer, Wann und Warum.\n\nFalls einmal etwas schiefgeht: /gp fehler zeigt einen Fehlerbericht zum Kopieren."] },
+    { since = 4, title = L["Neu: Messenger und Notizzettel"],
+      text = L["• Messenger: Nachrichten an Gildenmitglieder mit GuildPride, auch wenn sie offline sind. Flüstern landet auf Wunsch im selben Fenster.\n\n• Notizzettel: /gp zettel schreiben hängt einen Zettel genau dort auf, wo du stehst – blau für die Gilde, weiß für alle. Kommt jemand vorbei, geht er auf.\n\nAlles einzeln abschaltbar in den Einstellungen."] },
+    { since = 4, title = L["Neu: Auktionshaus und Handwerk"],
+      text = L["• Auktionshaus: Preise im Tooltip, Einkaufslisten, Preisalarm und Aufträge der Gilde. Das eigene Fenster öffnest du im Auktionshaus mit „GuildPride“.\n\n• Handwerk: Weg von 1 bis 300 für jeden Beruf, Tracker für Zutaten, Lehrer auf der Karte, Angeln mit einer Taste (/gp handwerk)."] },
+    { since = 4, title = L["Neu: Reisen, Buffs und Fehler melden"],
+      text = L["• Reisen: Abfahrten von Schiffen, Zeppelinen und der Tiefenbahn, Flugzeiten am Flugmeister.\n\n• Buffs: Erinnerung an Buff-Food, Schlafsack und Lagerfeuer – ein Klick benutzt es.\n\n• Fehler: Hat GuildPride einen Fehler, wirst du einmal gefragt, ob er automatisch an den Entwickler gehen darf. Ohne dein Ja wird nichts gesendet."] },
 }
 local PAGES = ALL_PAGES
 
@@ -47,6 +55,8 @@ local function Show(i)
     win.next:SetText(i < #PAGES and L["Weiter"] or L["Fertig"])
     win.discord:SetShown(p.discord == true)
     win.setup:SetShown(p.setup == true)
+    win.preset:SetShown(p.preset == true)
+    if p.preset then win.PresetRefresh() end
     if p.setup then win.SetupRefresh() end
     if p.discord then
         win.useCb:SetChecked(GuildPrideDB.discordBridge == true)
@@ -137,6 +147,24 @@ local function Build()
             b:SetEnabled(b.key ~= cur)
             if b.gpBg then b.gpBg:SetTexture(ns.MEDIA .. (b.key == cur and "nav_active" or "nav")) end
         end
+    end
+
+    -- Pakete: welche Funktionen an sein sollen (GuildPrideSearch.lua)
+    win.preset = CreateFrame("Frame", nil, win)
+    win.preset:SetPoint("BOTTOMLEFT", 20, 46); win.preset:SetSize(400, 28)
+    local presetBtns = {}
+    for i, o in ipairs({ { "guild", L["Nur Gilde"] }, { "raid", L["Gilde und Raid"] }, { "all", L["Alles"] } }) do
+        local b = CreateFrame("Button", nil, win.preset, "UIPanelButtonTemplate")
+        b:SetSize(126, 24); b:SetPoint("LEFT", (i - 1) * 134, 0); b:SetText(o[2])
+        b:SetScript("OnClick", function()
+            if ns.ApplyPreset then ns.ApplyPreset(o[1]) end
+            win.PresetRefresh()
+        end)
+        presetBtns[i] = { b = b, key = o[1] }
+    end
+    function win.PresetRefresh()
+        local cur = GuildPrideDB.preset or "all"
+        for _, p in ipairs(presetBtns) do p.b:SetEnabled(p.key ~= cur) end
     end
 
     win.step = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
