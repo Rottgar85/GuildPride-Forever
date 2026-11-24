@@ -1,5 +1,37 @@
 # GuildPride Changelog
 
+## 2.43.0
+
+**Deutsch**
+- **Werkzeuge als Kacheln** mit Symbol; Rechtsklick blendet aus, was du nicht brauchst
+- **Alle Befehle mit Erklärung**: `/gp hilfe`, ein Klick führt einen aus
+- **Einstellungen**: Sprungleiste oben mit einem Knopf je Abschnitt
+- **Raid-Bereitschaft** geht auf, wenn du einen Bereitschaftscheck startest; Mindestmenge Tränke einstellbar, Tränke werden an der Item-Art erkannt
+- **Boss-Notizen** mit mehreren Zeilen und Vorlage
+- **Materialliste**: Gegenstand über den Namen finden, Bestand der Gildenbank zählt mit
+- **Schnitzeljagd** mit eigenem Fenster; **Loot-Verlauf** und **Quiz-Rangliste** gleichen sich über Offiziere ab
+- **Paten** sehen, wenn ein neues Mitglied online ist; **Abklingzeiten** mit der echten Dauer, wo das Spiel sie nennt
+- **Anwesenheit** bei Events: Nachzügler werden ergänzt; Hinweis, wenn nichts erfasst wird
+- **Farben für Farbenblinde** gelten auch in den Reitern mit Listen
+- **Nutzung mitteilen – nur mit deinem Ja**: eine Seite in der Einführung fragt einmal nach Fehlern und Nutzung (nur Zähler, nie Inhalte); ohne Haken wird nichts gesendet. Einstellungen › Teilen
+- **Weniger Nachrichten** in der Gilde beim Einloggen; gelöschte Notizen und Ziele werden nach 60 Tagen vergessen
+- Texte, Befehlsübersicht und Einführung auf den neuen Stand gebracht
+
+**English**
+- **Tools as tiles** with an icon; right click hides what you do not need
+- **All commands with explanations**: `/gp help`, a click runs one
+- **Settings**: jump bar at the top with one button per section
+- **Raid readiness** opens when you start a ready check; minimum number of potions adjustable, potions are recognised by item type
+- **Boss notes** with several lines and a template
+- **Material list**: find items by name, the guild bank stock counts too
+- **Treasure hunt** with its own window; **loot history** and **quiz leaderboard** sync through officers
+- **Mentors** see when a new member is online; **cooldowns** with the real duration where the game tells it
+- **Attendance** at events: latecomers are added; a hint when nothing is recorded
+- **Colours for colour blindness** also apply in the tabs with lists
+- **Share usage – only with your yes**: a page in the introduction asks once about errors and usage (only counters, never contents); without a check mark nothing is sent. Settings › Sharing
+- **Fewer messages** in the guild at login; deleted notes and goals are forgotten after 60 days
+- Texts, command overview and introduction brought up to date
+
 ## 2.42.0
 
 **Deutsch**

@@ -1,4 +1,4 @@
-GuildPride Forever 2.42.0 (nur WoW Forever / WoW Forever only) - Autor / author: Rottgar85
+GuildPride Forever 2.43.0 (nur WoW Forever / WoW Forever only) - Autor / author: Rottgar85
 CurseForge: Projekt / project 1788777
 
 DEUTSCH
@@ -9,7 +9,7 @@ Messenger, DKP und Discord-Anbindung. Fast alles lässt sich einzeln abschalten.
 
 Installation: Ordner "GuildPrideForever" nach World of Warcraft/_forever_/Interface/AddOns kopieren.
 
-Wichtige Befehle (mehr mit Erklärung: /gp suche)
+Wichtige Befehle (alle mit Erklärung: /gp hilfe)
   /gp                  Gildenfenster    /gp suche         Suche über alles
   /gp bereit           Raid-Bereitschaft  /gp quests      Quests der Gilde
   /gp boss             Boss-Notizen     /gp material      Materialliste
@@ -28,7 +28,7 @@ Nearly everything can be turned off one by one.
 
 Installation: copy the "GuildPrideForever" folder to World of Warcraft/_forever_/Interface/AddOns.
 
-Important commands (more with explanations: /gp search)
+Important commands (all with explanations: /gp help)
   /gp                  guild window     /gp search        search everything
   /gp ready            raid readiness   /gp quests        guild quests
   /gp boss             boss notes       /gp mats          material list
@@ -41,10 +41,10 @@ Important commands (more with explanations: /gp search)
 
 Datenschutz: Gildendaten gehen nur an Mitglieder der eigenen Gilde. Immer serverweit geteilt (eigene Fraktion) werden
 Schiffszeiten, Rare-Sichtungen und Auktionspreise; Gruppensuche und Zettel für alle sind abschaltbar. Fehlerberichte
-gehen nur mit deinem Ja an den Entwickler (Einstellungen > Teilen).
+und Nutzungszähler gehen nur mit deinem Ja an den Entwickler (Einstellungen > Teilen).
 Privacy: guild data only goes to members of your own guild. Always shared server-wide (own faction) are ship times,
-rare sightings and auction prices; the group finder and public notes can be turned off. Error reports only go to the
-developer with your yes (Settings > Sharing).
+rare sightings and auction prices; the group finder and public notes can be turned off. Error reports and usage
+counters only go to the developer with your yes (Settings > Sharing).
 
 Lizenz / License: GNU GPL v3.0 (LICENSE.txt)
 Rare-Fundorte / rare spawn points: ForeverMapNotes (GPL-3.0), QuestieDB Forever data (Questie team),

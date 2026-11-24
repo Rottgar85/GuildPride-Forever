@@ -34,14 +34,27 @@ local ALL_PAGES = {
       text = L["• Reisen: Abfahrten von Schiffen, Zeppelinen und der Tiefenbahn, Flugzeiten am Flugmeister.\n\n• Buffs: Erinnerung an Buff-Food, Schlafsack und Lagerfeuer – ein Klick benutzt es.\n\n• Fehler: Hat GuildPride einen Fehler, wirst du einmal gefragt, ob er automatisch an den Entwickler gehen darf. Ohne dein Ja wird nichts gesendet."] },
     { since = 5, title = L["Neu: Werkzeuge, Suche und Pakete"],
       text = L["• Werkzeuge (unter „Planen“): Raid-Bereitschaft, Quests der Gilde, Boss-Notizen, Materialliste, Loot-Verlauf, Paten, Quiz und mehr.\n\n• Suche über alles: die Lupe oben im Gildenfenster oder /gp suche.\n\n• Pakete: /gp paket gilde, raid oder alles schaltet nur an, was du brauchst.\n\n• Besser lesbar: größere Schrift und Farben für Farbenblinde unter Einstellungen > Allgemein."] },
+    { consent = true, since = 5, title = L["Hilfst du mit, GuildPride zu verbessern?"],
+      text = L["Beides ist freiwillig und lässt sich jederzeit ändern (Einstellungen › Teilen). Ohne Haken wird nichts gesendet.\n\n• Fehler: Fehlertext (kann selten einen Spielernamen enthalten), Stelle im Code, Versionen, Sprache, Umstände (Kampf, Instanzart, offene GuildPride-Fenster).\n\n• Nutzung: nur Zähler, welche Reiter, GuildPride-Fenster und /gp-Befehle du öffnest und welche Schalter du geändert hast. Höchstens einmal am Tag.\n\nNie Chat, Gold oder Notizen. Der Entwickler speichert statt deines Namens nur einen Zählcode."] },
 }
 local PAGES = ALL_PAGES
 
 local win, page = nil, 1
 
 local hadDiscord = false
+-- Seite „Mithelfen“: nur zeigen, wenn noch etwas offen ist; nie dem Entwickler
+local sawConsent = false
+local function NeedsConsent()
+    if ns.IsDev and ns.IsDev() then return false end
+    return GuildPrideDB.errorShare == nil or GuildPrideDB.usageShare == nil
+end
 local function Close()
     GuildPrideDB.introSeen = INTRO_VERSION
+    -- gesehen und kein Haken gesetzt heißt Nein (dann fragt nichts mehr nach)
+    if sawConsent then
+        if GuildPrideDB.errorShare == nil then GuildPrideDB.errorShare = false end
+        if GuildPrideDB.usageShare == nil then GuildPrideDB.usageShare = false end
+    end
     -- Wer die Tour schließt, ohne zu wählen, hat die Anbindung aus
     if hadDiscord and GuildPrideDB.discordBridge == nil then GuildPrideDB.discordBridge = false end
     win:Hide()
@@ -58,6 +71,11 @@ local function Show(i)
     win.discord:SetShown(p.discord == true)
     win.setup:SetShown(p.setup == true)
     win.preset:SetShown(p.preset == true)
+    win.consent:SetShown(p.consent == true)
+    if p.consent then
+        sawConsent = true
+        win.errCb:SetChecked(GuildPrideDB.errorShare == true); win.useCb2:SetChecked(GuildPrideDB.usageShare == true)
+    end
     if p.preset then win.PresetRefresh() end
     if p.setup then win.SetupRefresh() end
     if p.discord then
@@ -80,7 +98,7 @@ end
 
 local function Build()
     win = CreateFrame("Frame", "GuildPrideIntroFrame", UIParent, "BasicFrameTemplateWithInset")
-    win:SetSize(440, 360)
+    win:SetSize(440, 420)   -- Platz für die Seite „Mithelfen“ mit zwei Haken
     win:SetPoint("CENTER", 0, 60)
     win:SetFrameStrata("DIALOG")
     win:SetMovable(true); win:EnableMouse(true)
@@ -151,6 +169,15 @@ local function Build()
         end
     end
 
+    -- Mithelfen: zwei Haken, ab Werk aus
+    win.consent = CreateFrame("Frame", nil, win)
+    win.consent:SetPoint("BOTTOMLEFT", 20, 38); win.consent:SetSize(400, 56)
+    win.errCb = Check(win.consent, 0, L["GuildPride-Fehler automatisch senden"], function(self) GuildPrideDB.errorShare = self:GetChecked() and true or false end)
+    win.useCb2 = Check(win.consent, -26, L["Mitteilen, welche Funktionen ich benutze"], function(self)
+        GuildPrideDB.usageShare = self:GetChecked() and true or false
+        if ns.Usage then ns.Usage.Changed() end
+    end)
+
     -- Pakete: welche Funktionen an sein sollen (GuildPrideSearch.lua)
     win.preset = CreateFrame("Frame", nil, win)
     win.preset:SetPoint("BOTTOMLEFT", 20, 46); win.preset:SetSize(400, 28)
@@ -189,10 +216,10 @@ function ns.ShowIntro(onlyNew)
     local seen = GuildPrideDB and GuildPrideDB.introSeen or 0
     if seen >= INTRO_VERSION then seen = INTRO_VERSION - 1 end   -- /gp neu: letzte Neuerungen
     for _, p in ipairs(ALL_PAGES) do
-        if not onlyNew or (p.since or 1) > seen then PAGES[#PAGES + 1] = p end
+        if (not onlyNew or (p.since or 1) > seen) and (not p.consent or NeedsConsent()) then PAGES[#PAGES + 1] = p end
     end
     if #PAGES == 0 then PAGES = ALL_PAGES end
-    hadDiscord = false
+    hadDiscord, sawConsent = false, false
     for _, p in ipairs(PAGES) do if p.discord then hadDiscord = true end end
     win:Show()
     Show(1)

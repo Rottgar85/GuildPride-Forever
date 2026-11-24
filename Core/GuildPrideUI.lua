@@ -416,6 +416,7 @@ local function SelectTab(id)
         page:SetShown(i == id)
     end
     frame.selected = id
+    if ns.Usage and tabs[id] then ns.Usage.Count("tab:" .. tabs[id].key) end
     if g then g.last = tab.key end
     MarkTabs()
     local host = g and TabByKey(g.host)
@@ -682,6 +683,11 @@ local function CreateList(parent, rowHeight, width)
             row.mid:SetPoint("LEFT", 200, 0)
             row.right = row:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
             row.right:SetPoint("RIGHT", -8, 0)
+            -- Farben für Farbenblinde (GuildPrideReadable.lua) gelten auch in diesen Listen
+            for _, fs in ipairs({ row.left, row.mid, row.right }) do
+                local set = fs.SetText
+                fs.SetText = function(o, text) return set(o, ns.ColorSafe and ns.ColorSafe(text) or text) end
+            end
             self.rows[i] = row
         end
         row:Show()

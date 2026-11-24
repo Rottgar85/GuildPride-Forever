@@ -75,6 +75,20 @@ local function FirstRank(spellID)
     return type(n) == "string" and byName[n] or nil
 end
 
+-- Dauer aus dem Spiel (Talente), wenn lesbar; sonst Tabelle. Unter 10 s ist es die globale Abklingzeit.
+function C.Duration(first, spellID)
+    local max = C.SPELLS[first]
+    local ok, d = pcall(function()
+        if C_Spell and C_Spell.GetSpellCooldown then
+            local i = C_Spell.GetSpellCooldown(spellID)
+            return type(i) == "table" and i.duration or nil
+        end
+        if GetSpellCooldown then return (select(2, GetSpellCooldown(spellID))) end
+    end)
+    if not ok or type(d) ~= "number" or (issecretvalue and issecretvalue(d)) or d < 10 then return max end
+    return math.min(math.floor(d + 0.5), max)
+end
+
 local ev = CreateFrame("Frame")
 ns.RegisterEvents(ev, "UNIT_SPELLCAST_SUCCEEDED")
 ev:SetScript("OnEvent", function(_, _, unit, _, spellID)
@@ -82,8 +96,11 @@ ev:SetScript("OnEvent", function(_, _, unit, _, spellID)
     if type(spellID) ~= "number" or (issecretvalue and issecretvalue(spellID)) then return end
     local first = FirstRank(spellID)
     if not first then return end
-    C.Set(ns.Me(), first, C.SPELLS[first])
-    ns.Queue("CDN", "@CHANNEL", first, C.SPELLS[first])
+    C_Timer.After(0.5, function()
+        local d = C.Duration(first, spellID)
+        C.Set(ns.Me(), first, d)
+        ns.Queue("CDN", "@CHANNEL", first, d)
+    end)
 end)
 
 ---------------------------------------------------------------------
@@ -137,14 +154,9 @@ function C.Open()
             sub = L["Nur Gildenmitglieder mit GuildPride; ein Zauber erscheint, sobald er einmal benutzt wurde."],
             empty = L["Noch nichts gemeldet."] })
         win:SetScript("OnShow", function() win.offset = 0; C.Refresh() end)
-        C_Timer.NewTicker(1, function() if win:IsShown() then C.Refresh() end end)
+        ns.Every(1, function() if win:IsShown() then C.Refresh() end end)
     end
     win:SetShown(not win:IsShown())
 end
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    local cmd = strtrim(arg or ""):lower()
-    if cmd == "abklingzeiten" or cmd == "cooldowns" or cmd == "cd" then return C.Open() end
-    return slash(arg)
-end
+ns.Command({ "abklingzeiten", "cooldowns", "cd" }, function() C.Open() end)

@@ -249,6 +249,7 @@ call("Ready.Open"); call("GuildQuests.Open"); call("BossNotes.Open"); call("Stoc
 call("Loot.Open"); call("Album.Open"); call("Cooldowns.Open"); call("Mentor.Open"); call("Quiz.Open"); call("Search.Open", "hand")
 for _, p in ipairs({ "guild", "raid", "all" }) do call("ApplyPreset", p) end
 call("ApplyReadable")
+call("Search.Help"); call("Usage.Open"); call("Usage.Choose", true); call("Usage.HookWindows"); call("Hunt.Open"); call("ShowCreateDialog")
 call("DiagReport")
 
 for _, cmd in ipairs({ "", "dkp", "bank", "spieler", "hilfe", "zettel", "zettel schreiben", "handwerk", "handwerk mini", "tracker",

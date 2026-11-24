@@ -13,7 +13,7 @@ local frame = ns.GuildFrame
 local settingsPage = AddTab(L["Einstellungen"], 90)
 -- Die Seite ist länger als das Fenster: Inhalt in einem Scrollbereich
 local settingsScroll = ns.NewScroll(settingsPage)
-settingsScroll:SetPoint("TOPLEFT", 0, -30)
+settingsScroll:SetPoint("TOPLEFT", 0, -78)   -- Platz für Suche und Sprungleiste
 settingsScroll:SetPoint("BOTTOMRIGHT", -26, 0)
 local settings = CreateFrame("Frame", nil, settingsScroll)
 settings:SetSize(640, 1)
@@ -64,7 +64,7 @@ local options = {
     { key = "showItemID",    label = L["Item-ID im Item-Tooltip zeigen"] },
     { key = "easyRead",      label = L["Besser lesbar: größere Schrift und hellere graue Texte"],
       changed = function() if ns.ApplyReadable then ns.ApplyReadable() end end },
-    { key = "colorSafe",     label = L["Farben für Farbenblinde in Listenfenstern (Blau und Orange statt Grün und Rot)"] },
+    { key = "colorSafe",     label = L["Farben für Farbenblinde in Listen (Blau und Orange statt Grün und Rot)"] },
     { key = "crestGuild",    label = L["Oben das Gildenwappen statt des Fraktionslogos zeigen"],
       changed = function() if ns.UpdateCrestChoice then ns.UpdateCrestChoice() end end },
     { key = "compactMenu",   label = L["Kompaktes Menü (Übersicht + Meilensteine, Events + Gruppensuche + Umfragen zusammen)"],
@@ -85,8 +85,11 @@ local options = {
     { key = "shareMilestones", label = L["Eigene Erfolge, Bosse, M+ und Reittiere mit der Gilde teilen"] },
     { key = "raidReady",     label = L["Raid-Bereitschaft: Leitern und Assistenten deiner Gruppe Haltbarkeit, Buff-Food und Tränke melden"] },
     { key = "cooldownShare", label = L["Abklingzeiten: eigene wichtige Zauber mit der Gilde teilen (nur in einer Gruppe)"] },
+    { key = "readyWindow",   label = L["Raid-Bereitschaft öffnen, wenn ich einen Bereitschaftscheck starte"] },
     { key = "guildQuests",   label = L["Quests der Gilde: eigene Quests (nur die Nummern) mit der Gilde teilen"],
       changed = function() if ns.GuildQuests then ns.GuildQuests.Changed() end end },
+    { key = "usageShare",    label = L["Dem Entwickler mitteilen, welche Funktionen ich benutze (nur Zähler, keine Inhalte)"],
+      changed = function() if ns.Usage then ns.Usage.Changed() end end },
     { key = "errorShare",    label = L["GuildPride-Fehler automatisch an den Entwickler senden (Fehlertext, Versionen, Sprache, Umstände)"] },
     { key = "mapShow",       label = L["Gildenmitglieder mit GuildPride auf der Weltkarte zeigen"],
       changed = function() if ns.MapShowChanged then ns.MapShowChanged() end end },
@@ -239,6 +242,29 @@ settingsSearch:SetScript("OnTextChanged", function(self)
         settingsScroll:SetVerticalScroll(math.min(range, math.max(0, -first.y - 40)))
     end
 end)
+end
+
+do
+-- Sprungleiste: ein Knopf je Abschnitt, dazu „Menü & Größe“ ganz unten
+local n = 0
+local function Jump(label, y)
+    local b = CreateFrame("Button", nil, settingsPage, "UIPanelButtonTemplate")
+    if ns.SkinButton then ns.SkinButton(b) end
+    b:SetSize(102, 20)
+    b:SetPoint("TOPLEFT", 4 + (n % 6) * 106, -30 - math.floor(n / 6) * 23)
+    b:SetText(label)
+    local fs = b:GetFontString()
+    if fs then fs:SetWidth(96); fs:SetWordWrap(false) end
+    b:SetScript("OnClick", function()
+        local range = settingsScroll:GetVerticalScrollRange() or 0
+        settingsScroll:SetVerticalScroll(math.min(range, math.max(0, y())))
+    end)
+    n = n + 1
+end
+for _, opt in ipairs(options) do
+    if opt.header and n < 11 then Jump(opt.header, function() return -opt.y end) end
+end
+Jump(L["Menü & Größe"], function() return #options * 30 end)
 end
 
 local blizzBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")

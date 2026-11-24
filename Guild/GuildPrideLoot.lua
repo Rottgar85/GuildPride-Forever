@@ -1,5 +1,6 @@
 -- GuildPride: Loot-Verlauf – wer hat in Instanzen was bekommen (ab selten)
--- Aus den Beutemeldungen im Chat, nur lokal gespeichert, nichts wird verschickt.
+-- Aus den Beutemeldungen im Chat. Beim Öffnen des Fensters fragt man nach Neuerem (LTQ); es antworten
+-- nur Offiziere (LTL: zeit · wer · item · qualität), und nur von ihnen wird etwas angenommen.
 -- GuildTable("loot") = { { t, who, item, q, inst }, … }
 local ADDON, ns = ...
 local L = ns.L
@@ -47,6 +48,47 @@ function Lo.Add(who, id, quality, inst)
     while #db > MAX do table.remove(db, 1) end
     if Lo.Refresh then Lo.Refresh() end
     return true
+end
+
+local function Known(t, who, id)
+    for _, e in ipairs(DB()) do
+        if e.item == id and e.who == who and math.abs(e.t - t) <= 120 then return true end
+    end
+    return false
+end
+local SEP = ns.SEP
+ns.On("LTL", function(payload, sender)
+    if sender == ns.Me() or not ns.IsOfficerName(sender) then return end
+    local t, who, id, q = strsplit(SEP, payload)
+    t, id, q = tonumber(t), tonumber(id), tonumber(q)
+    who = tostring(who or ""):gsub("[%c|]", ""):sub(1, 60)
+    if not t or t > GetServerTime() + 300 or t < GetServerTime() - 400 * 86400 or who == "" then return end
+    if not id or id < 1 or id % 1 ~= 0 or id > 9999999 or not q or q < MIN_QUALITY or q > 5 or q % 1 ~= 0 then return end
+    if Known(t, who, id) then return end
+    local db = DB()
+    db[#db + 1] = { t = t, who = who, item = id, q = q }
+    table.sort(db, function(a, b) return a.t < b.t end)
+    while #db > MAX do table.remove(db, 1) end
+    if Lo.Refresh then Lo.Refresh() end
+end)
+ns.On("LTQ", function(payload, sender)
+    if sender == ns.Me() or not ns.IsOfficerName(ns.Me()) then return end
+    local since = tonumber(payload) or 0
+    C_Timer.After(1 + math.random() * 5, function()
+        local db, sentN = DB(), 0
+        for i = #db, 1, -1 do
+            if db[i].t <= since or sentN >= 40 then break end
+            ns.Queue("LTL", sender, db[i].t, db[i].who, db[i].item, db[i].q)
+            sentN = sentN + 1
+        end
+    end)
+end)
+local lastAsk = -999
+local function AskNewer()
+    if not IsInGuild() or GetTime() - lastAsk < 300 then return end
+    lastAsk = GetTime()
+    local db = DB()
+    ns.Queue("LTQ", nil, db[#db] and db[#db].t or 1)
 end
 
 local function ItemName(id)
@@ -106,7 +148,7 @@ function Lo.Open()
             end)
             row:SetScript("OnLeave", GameTooltip_Hide)
         end
-        win:SetScript("OnShow", function() win.offset = 0; Lo.Refresh() end)
+        win:SetScript("OnShow", function() win.offset = 0; AskNewer(); Lo.Refresh() end)
     end
     win:SetShown(not win:IsShown())
 end
@@ -124,9 +166,4 @@ ev:SetScript("OnEvent", function(_, _, text)
     Lo.Add(who, id, quality, inst)
 end)
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    local cmd = strtrim(arg or ""):lower()
-    if cmd == "loot" or cmd == "beute" then return Lo.Open() end
-    return slash(arg)
-end
+ns.Command({ "loot", "beute" }, function() Lo.Open() end)

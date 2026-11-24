@@ -44,7 +44,13 @@ end
 -- Eigener Status
 ---------------------------------------------------------------------
 -- Trank oder Elixier am Namen erkennen (die Unterarten der Items sind je Client verschieden)
-function R.KindOf(name)
+-- classID/subID: Verbrauchbar (0) mit Trank 1, Elixier 2, Fläschchen 3; andere Unterarten -> Name
+function R.KindOf(name, classID, subID)
+    if type(classID) == "number" and not Secret(classID) then
+        if classID ~= 0 then return nil end
+        if subID == 1 then return "pot" end
+        if subID == 2 or subID == 3 then return "elix" end
+    end
     if type(name) ~= "string" or Secret(name) then return nil end
     local low = name:lower()
     if low:find("^rezept") or low:find("^recipe") or low:find("rezept$") then return nil end
@@ -65,7 +71,10 @@ local function Bags()
             elseif GetContainerItemID then id, count = GetContainerItemID(bag, slot), select(2, GetContainerItemInfo(bag, slot)) end
             if id then
                 local f = (C_Item and C_Item.GetItemInfo) or GetItemInfo
-                local kind = f and R.KindOf((f(id)))
+                local g = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+                local classID, subID
+                if g then classID, subID = select(6, g(id)) end
+                local kind = f and R.KindOf((f(id)), classID, subID)
                 count = tonumber(count) or 1
                 if kind == "pot" then pots = pots + count elseif kind == "elix" then elix = elix + count end
             end
@@ -149,15 +158,20 @@ function R.Ask()
     return true
 end
 
+local function MinPots()
+    return ns.Num(type(GuildPrideDB) == "table" and GuildPrideDB.readyMinPots, 0, 50) or 1
+end
 -- Was fehlt? Gibt Texte zurück
 local function Problems(s)
     local out = {}
     if s.broken > 0 then out[#out + 1] = (L["%d Teile kaputt"]):format(s.broken)
     elseif s.dur < LOW_DUR then out[#out + 1] = (L["Haltbarkeit %d %%"]):format(s.dur) end
     if s.food == false then out[#out + 1] = s.foods > 0 and L["nicht satt (Essen dabei)"] or L["nicht satt, kein Buff-Food"] end
-    if s.pots == 0 then out[#out + 1] = L["keine Tränke"] end
+    if s.pots == 0 and MinPots() > 0 then out[#out + 1] = L["keine Tränke"]
+    elseif s.pots < MinPots() then out[#out + 1] = (L["nur %d Tränke"]):format(s.pots) end
     return out
 end
+R.Problems = Problems
 
 -- Alle in der Gruppe: Probleme zuerst, dann bereit, zuletzt ohne Antwort
 function R.List()
@@ -199,7 +213,7 @@ function R.Refresh()
     win:SetLines(lines)
 end
 
-function R.Open()
+function R.Open(quiet)   -- quiet: nicht selbst fragen (beim Bereitschaftscheck antworten alle von allein)
     if not win then
         win = ns.ListWindow({ name = "GuildPrideReady", title = L["Raid-Bereitschaft"], rows = 16, width = 560,
             empty = L["Du bist in keiner Gruppe."] })
@@ -207,10 +221,24 @@ function R.Open()
         if ns.SkinButton then ns.SkinButton(b) end
         b:SetSize(160, 22); b:SetPoint("TOPLEFT", 14, win.bottomY); b:SetText(L["Gruppe fragen"])
         b:SetScript("OnClick", function() R.Ask() end)
+        -- Mindestmenge Tränke (gilt nur für deine Anzeige)
+        local fs = win:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+        fs:SetPoint("LEFT", b, "RIGHT", 60, 0)
+        local function Paint() fs:SetText((L["mindestens %d Tränke"]):format(MinPots())) end
+        for _, o in ipairs({ { "-", -1, 12 }, { "+", 1, 34 } }) do
+            local x = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+            if ns.SkinButton then ns.SkinButton(x) end
+            x:SetSize(20, 20); x:SetPoint("LEFT", b, "RIGHT", o[3], 0); x:SetText(o[1])
+            x:SetScript("OnClick", function()
+                GuildPrideDB.readyMinPots = math.max(0, math.min(50, MinPots() + o[2]))
+                Paint(); R.Refresh()
+            end)
+        end
+        Paint()
         win:SetScript("OnShow", function() win.offset = 0; R.Refresh() end)
     end
     win:Show()
-    if R.CanAsk() then R.Ask() end
+    if not quiet and R.CanAsk() then R.Ask() end
     R.Refresh()
 end
 
@@ -224,15 +252,11 @@ ev:SetScript("OnEvent", function(_, _, initiator)
         local mine = R.Status()
         mine.t = GetTime()
         R.data[who] = mine
+        if type(GuildPrideDB) == "table" and GuildPrideDB.readyWindow ~= false and IsInGuild() and not InCombatLockdown() then R.Open(true) end
         R.Refresh()
     else
         Answer(who)
     end
 end)
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    local cmd = strtrim(arg or ""):lower()
-    if cmd == "bereit" or cmd == "ready" then return R.Open() end
-    return slash(arg)
-end
+ns.Command({ "bereit", "ready" }, function() R.Open() end)

@@ -46,7 +46,7 @@ ns.On("GQL", function(payload, sender)
 end)
 ns.On("GQQ", function(_, sender)
     if sender == Me() or not Q.Enabled() then return end
-    C_Timer.After(2 + math.random() * 8, function() Q.Share(true) end)
+    ns.AnswerSoon("GQL", function() Q.Share(true) end)
 end)
 
 ---------------------------------------------------------------------
@@ -176,7 +176,7 @@ local ev = CreateFrame("Frame")
 ns.RegisterEvents(ev, "PLAYER_LOGIN", "QUEST_ACCEPTED", "QUEST_REMOVED", "QUEST_TURNED_IN")
 ev:SetScript("OnEvent", function(_, event, a, b)
     if event == "PLAYER_LOGIN" then
-        C_Timer.After(38, function()
+        C_Timer.After(38 + math.random() * 30, function()
             if not IsInGuild() or not Q.Enabled() then return end
             Q.Share(true)
             ns.Queue("GQQ", nil, "1")
@@ -198,9 +198,4 @@ function Q.Changed()
     Q.Refresh()
 end
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    local cmd = strtrim(arg or ""):lower()
-    if cmd == "quests" or cmd == "quest" then return Q.Open() end
-    return slash(arg)
-end
+ns.Command({ "quests", "quest" }, function() Q.Open() end)

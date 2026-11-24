@@ -3,6 +3,7 @@
 -- gewinnt einen Punkt. Die Lösung verlässt seinen Client erst am Ende.
 --   QZQ  id · Sekunden · frage        (nur Offiziere)
 --   QZA  id · antwort                 (per Flüstern an den Fragesteller)
+--   QPQ  1 / QPL  Name=Punkte,…   Rangliste: fragen kann jeder, antworten und gelten nur Offiziere
 --   QZR  id · gewinner ("-" = niemand) · lösung   (nur vom Fragesteller)
 local ADDON, ns = ...
 local L = ns.L
@@ -82,6 +83,31 @@ ns.On("QZR", function(payload, sender)
     end
     if Q.Refresh then Q.Refresh() end
 end)
+ns.On("QPL", function(payload, sender)
+    if sender == Me() or not ns.IsOfficerName(sender) then return end
+    for name, n in tostring(payload):gmatch("([^,=]+)=(%d+)") do
+        n = tonumber(n)
+        if ns.IsGuildMember(name) and n <= 100000 and n > Q.Points(name) then DB()[name] = n end
+    end
+    if Q.Refresh then Q.Refresh() end
+end)
+ns.On("QPQ", function(_, sender)
+    if sender == Me() or not ns.IsOfficerName(Me()) then return end
+    C_Timer.After(1 + math.random() * 5, function()
+        local list, out = {}, {}
+        for name, n in pairs(DB()) do list[#list + 1] = { name, n } end
+        table.sort(list, function(a, b) if a[2] ~= b[2] then return a[2] > b[2] end return a[1] < b[1] end)
+        for i = 1, math.min(8, #list) do out[i] = list[i][1] .. "=" .. list[i][2] end
+        if #out > 0 then ns.Queue("QPL", sender, table.concat(out, ",")) end
+    end)
+end)
+local lastAsk = -999
+local function AskPoints()
+    if not IsInGuild() or GetTime() - lastAsk < 300 then return end
+    lastAsk = GetTime()
+    ns.Queue("QPQ", nil, "1")
+end
+
 function Q.Answer(text)
     local c = Q.cur
     text = Clean(text, ANSWER_MAX)
@@ -108,7 +134,7 @@ end
 function Q.Open()
     if not win then
         win = ns.ListWindow({ name = "GuildPrideQuiz", title = L["Gildenquiz"], rows = 12, width = 460, extra = 80,
-            sub = L["Rangliste auf diesem PC. Antworten: /gp quiz <Antwort>"], empty = L["Noch keine Punkte."] })
+            sub = L["Rangliste. Antworten: /gp quiz <Antwort>"], empty = L["Noch keine Punkte."] })
         win.officer = {}
         local function Box(w, x, y, max, text)
             local e = CreateFrame("EditBox", nil, win, "InputBoxTemplate")
@@ -130,14 +156,11 @@ function Q.Open()
             else Say(L["Bitte Frage und Lösung eintragen (nur eine Frage gleichzeitig)."]) end
         end)
         win.officer[#win.officer + 1] = b
-        win:SetScript("OnShow", function() win.offset = 0; Q.Refresh() end)
+        win:SetScript("OnShow", function() win.offset = 0; AskPoints(); Q.Refresh() end)
     end
     win:SetShown(not win:IsShown())
 end
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    local cmd, rest = strtrim(arg or ""):match("^(%S*)%s*(.*)$")
-    if cmd:lower() ~= "quiz" then return slash(arg) end
+ns.Command({ "quiz" }, function(rest)
     if rest ~= "" then Q.Answer(rest) else Q.Open() end
-end
+end)

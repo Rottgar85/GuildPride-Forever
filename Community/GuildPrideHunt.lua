@@ -72,7 +72,7 @@ function H.Check()
     c.done[Me()] = true
     ns.Queue("HNF", "@CHANNEL", c.id)
 end
-C_Timer.NewTicker(2, function() if H.cur then H.Check() end end)
+ns.Every(2, function() if H.cur then H.Check() end end)
 
 -- Offiziere
 function H.AddStation(hint)
@@ -103,6 +103,51 @@ function H.Stop()
     return true
 end
 
+-- Fenster (/gp jagd): Stand, für Offiziere Stationen anlegen, starten, beenden
+local win
+function H.Refresh()
+    if not win or not win:IsShown() then return end
+    local lines, c = {}, H.cur
+    if c then
+        if c.at <= c.n then lines[#lines + 1] = (L["Station %d von %d: %s"]):format(c.at, c.n, c.st[c.at] and c.st[c.at].hint or "?")
+        else lines[#lines + 1] = L["Läuft gerade."] end
+        for name in pairs(c.done) do lines[#lines + 1] = "   |cff40ff40" .. Ambiguate(name, "guild") .. "|r" end
+    end
+    if CanManage() then
+        for i, s in ipairs(H.draft) do lines[#lines + 1] = ("|cff999999%d.|r %s"):format(i, s.hint) end
+    end
+    win:SetLines(lines)
+    for _, f in ipairs(win.officer) do f:SetShown(CanManage()) end
+end
+function H.Open()
+    if not win then
+        win = ns.ListWindow({ name = "GuildPrideHunt", title = L["Schnitzeljagd"], rows = 10, width = 460, extra = 80,
+            sub = L["Offiziere: an die Stelle gehen, Hinweis eintippen, Station anlegen. Am Ende starten."], empty = L["Es läuft keine."] })
+        win.officer = {}
+        local e = CreateFrame("EditBox", nil, win, "InputBoxTemplate")
+        e:SetSize(410, 22); e:SetPoint("BOTTOMLEFT", 20, 44); e:SetAutoFocus(false); e:SetMaxLetters(HINT_MAX)
+        if ns.SkinEditBox then ns.SkinEditBox(e) end
+        e:SetScript("OnEscapePressed", e.ClearFocus)
+        win.officer[1] = e
+        local function Button(label, w, x, fn)
+            local b = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+            if ns.SkinButton then ns.SkinButton(b) end
+            b:SetSize(w, 22); b:SetPoint("BOTTOMLEFT", x, 14); b:SetText(label)
+            b:SetScript("OnClick", function() fn(); H.Refresh() end)
+            win.officer[#win.officer + 1] = b
+        end
+        Button(L["Station hier anlegen"], 170, 14, function()
+            if H.AddStation(e:GetText()) then e:SetText("") else Say(L["Hinweis fehlt oder hier gibt es keine Kartenposition."]) end
+        end)
+        Button(L["Start"], 80, 190, function() if not H.Start() then Say(L["Erst Stationen anlegen: /gp jagd neu <Hinweis>"]) end end)
+        Button(L["Beenden"], 90, 276, function() H.Stop() end)
+        Button(L["Leeren"], 80, 372, function() H.draft = {} end)
+        win:SetScript("OnShow", function() win.offset = 0; H.Refresh() end)
+        ns.Every(3, function() if win:IsShown() then H.Refresh() end end)
+    end
+    win:SetShown(not win:IsShown())
+end
+
 local slash = SlashCmdList.GUILDPRIDE
 SlashCmdList.GUILDPRIDE = function(arg)
     local raw = strtrim(arg or "")
@@ -117,6 +162,8 @@ SlashCmdList.GUILDPRIDE = function(arg)
         Say(H.Start() and L["gestartet."] or L["Erst Stationen anlegen: /gp jagd neu <Hinweis>"])
     elseif what == "ende" or what == "stop" then
         Say(H.Stop() and L["beendet."] or L["Es läuft keine."])
-    elseif H.cur and H.cur.at <= H.cur.n then ShowHint()
-    else Say(L["Es läuft keine."] .. " " .. L["Offiziere: /gp jagd neu <Hinweis>, dann /gp jagd start."]) end
+    else
+        if H.cur then ShowHint() end
+        H.Open()
+    end
 end

@@ -846,6 +846,8 @@ require("errors")(test, eq, W, ns)
 require("errorshare")(test, eq, W, ns)
 require("gilde2")(test, eq, W, ns)
 require("gilde3")(test, eq, W, ns)
+require("gilde4")(test, eq, W, ns)
+require("usage")(test, eq, W, ns)
 
 test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", function()
     local match = ns.BrowserDungeonMatch

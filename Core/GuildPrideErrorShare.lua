@@ -51,7 +51,7 @@ local lastAnswer
 local function SendNext()
     local item = outbox[1]
     if not item then sending = false; return end
-    if not item.ack and not Enabled() then   -- inzwischen abgeschaltet
+    if not item.ack and not (item.check or Enabled)() then   -- inzwischen abgeschaltet
         table.remove(outbox, 1)
         return SendNext()
     end
@@ -66,13 +66,24 @@ local function SendNext()
     C_Timer.After(failed and 4 or 1.5, SendNext)
 end
 
-local function Push(to, msg, ack)
-    outbox[#outbox + 1] = { to = to, msg = msg, ack = ack }
+local function Push(to, msg, ack, check)
+    outbox[#outbox + 1] = { to = to, msg = msg, ack = ack, check = check }
 end
 local function Flush()
     if sending or not outbox[1] then return end
     sending = true
     SendNext()
+end
+
+-- Daten in Stücken an den Entwickler (auch GuildPrideUsage.lua); check = darf noch gesendet werden?
+function S.Send(to, kind, id, data, check)
+    local count = math.ceil(#data / CHUNK)
+    if count < 1 or count > CHUNKS_MAX then return false end
+    for i = 1, count do
+        Push(to, kind .. ":" .. table.concat({ id, i, count, data:sub((i - 1) * CHUNK + 1, i * CHUNK) }, SEP), nil, check)
+    end
+    Flush()
+    return true
 end
 
 local function Plain(s, max)
@@ -116,6 +127,7 @@ local function OnAck(id, sender)
     for _, e in ipairs(GuildPrideDB.errors or {}) do
         if ErrorId(e) == id then e.sent = true end
     end
+    if ns.Usage then ns.Usage.OnAck(id) end
 end
 
 -- Behobene Fehler (DVF): wer einen davon gemeldet hat, erfährt es einmal
@@ -204,7 +216,7 @@ local function Collect(data, sender, id)
     return true
 end
 
-local function OnPiece(value, sender)
+local function OnPiece(value, sender, kind)
     if not IsDev() then return end
     local id, i, n, part = value:match("^(%w+)" .. SEP .. "(%d+)" .. SEP .. "(%d+)" .. SEP .. "(.*)$")
     i, n = tonumber(i), tonumber(n)
@@ -213,7 +225,7 @@ local function OnPiece(value, sender)
     for k, b in pairs(buffers) do
         if now - b.t > 300 then buffers[k] = nil else count = count + 1 end
     end
-    local key = sender .. ":" .. id
+    local key = sender .. ":" .. kind .. id
     local buf = buffers[key]
     if not buf then
         if count >= BUFFERS_MAX then return end
@@ -224,7 +236,12 @@ local function OnPiece(value, sender)
     if not buf.parts[i] then buf.parts[i] = part; buf.got = buf.got + 1 end
     if buf.got < n then return end
     buffers[key] = nil
-    if not Collect(table.concat(buf.parts), sender, id) then return end
+    local data = table.concat(buf.parts)
+    if kind == "DVU" then
+        if not (ns.Usage and ns.Usage.Collect(data, Hash("DV" .. sender:lower()))) then return end
+    elseif not Collect(data, sender, id) then
+        return
+    end
     Push(sender, "DVK:" .. id, true)
     Flush()
     if S.Refresh then S.Refresh() end
@@ -234,10 +251,12 @@ end
 function ns.OnErrorShareMessage(message, sender, channel)
     if type(GuildPrideDB) ~= "table" or sender == ns.Me() then return end
     local kind, value = message:match("^(DV%u):(.*)$")
-    if kind == "DVA" then OnHello(value, sender)
+    if kind == "DVA" then
+        OnHello(value, sender)
+        if ns.Usage and value == ns.CLIENT_TAG and ns.IsMarked and ns.IsMarked(sender) then ns.Usage.OnHello(sender) end
     elseif kind == "DVF" then OnFixed(value, sender)
     elseif channel ~= "WHISPER" then return
-    elseif kind == "DVE" then OnPiece(value, sender)
+    elseif kind == "DVE" or kind == "DVU" then OnPiece(value, sender, kind)
     elseif kind == "DVK" then OnAck(value, sender) end
 end
 
@@ -426,6 +445,7 @@ local function BuildWindow()
         if out[1] and ns.ShowCopy then ns.ShowCopy("GuildPride-Fehler", table.concat(out, "\n\n" .. ("-"):rep(40) .. "\n\n")) end
     end)
     Button("Jetzt abfragen", 174, function() S.Hello() end)
+    Button("Nutzung", 494, function() if ns.Usage then ns.Usage.Open() end end)
     Button("Alle erledigt", 334, function()
         for _, g in ipairs(S.List()) do S.Done(g.key) end
         S.Refresh()

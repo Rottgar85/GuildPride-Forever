@@ -85,8 +85,10 @@ ns.On("MGQ", function(payload, sender)
         ns.SyncAnswer("MGO", function() for _, g in pairs(DB()) do SendGoal(g, sender) end end)
     end
     -- eigene Zusagen nach den Zielen, sonst kennt der Fragende die Ziele noch nicht
-    C_Timer.After(20 + math.random() * 10, function()
-        for id, g in pairs(DB()) do if not g.deleted then SendPledge(id, sender) end end
+    C_Timer.After(20, function()
+        ns.AnswerSoon("MGC", function()
+            for id, g in pairs(DB()) do if not g.deleted then SendPledge(id, "@CHANNEL") end end
+        end)
     end)
 end)
 
@@ -116,6 +118,72 @@ function M.Pledge(id, n)
     return true
 end
 
+-- Bestand der Gildenbank (nur auf diesem PC, vom letzten Öffnen): { t, items = { [id] = Anzahl } }
+function M.SetBank(items)
+    local b = ns.GuildTable("bankStock")
+    b.t, b.items = Now(), items
+    Changed()
+end
+local function InBank(id)
+    local b = ns.GuildTable("bankStock")
+    return type(b.items) == "table" and b.items[id] or 0
+end
+function M.ReadBank()
+    if not (GetNumGuildBankTabs and GetGuildBankItemLink and GetGuildBankItemInfo) then return false end
+    local items, any = {}, false
+    for tab = 1, GetNumGuildBankTabs() or 0 do
+        for slot = 1, 98 do
+            local link = GetGuildBankItemLink(tab, slot)
+            local id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
+            if id then
+                local _, count = GetGuildBankItemInfo(tab, slot)
+                items[id] = (items[id] or 0) + (tonumber(count) or 1)
+                any = true
+            end
+        end
+    end
+    -- leere Antwort (Fächer noch nicht geladen) überschreibt nichts
+    if any then M.SetBank(items) end
+    return any
+end
+
+-- Item über Link, ID oder Namen (Taschen, Rezepte, Item-Cache); Teil des Namens reicht
+function M.Resolve(text)
+    text = strtrim(tostring(text or ""))
+    if text == "" then return nil end
+    local id = tonumber(text:match("item:(%d+)")) or tonumber(text:match("^(%d+)$"))
+    if id then return id end
+    local f = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    local _, link = f(text)
+    id = type(link) == "string" and tonumber(link:match("item:(%d+)"))
+    if id then return id end
+    local q, best = text:lower(), nil
+    local seen = {}
+    local function Try(x)
+        x = tonumber(x)
+        if not x or seen[x] then return end
+        seen[x] = true
+        local name = f(x)
+        if type(name) ~= "string" then return end
+        name = name:lower()
+        if name == q then best = x; return true end
+        if not best and name:find(q, 1, true) then best = x end
+    end
+    local C = C_Container
+    for bag = 0, (NUM_BAG_SLOTS or 4) do
+        local n = C and C.GetContainerNumSlots and tonumber(C.GetContainerNumSlots(bag)) or 0
+        for slot = 1, n do
+            local info = C.GetContainerItemInfo(bag, slot)
+            if type(info) == "table" and Try(info.itemID) then return best end
+        end
+    end
+    for made, e in pairs(type(GuildPrideDB.ahCraft) == "table" and GuildPrideDB.ahCraft or {}) do
+        if Try(made) then return best end
+        for _, r in ipairs(type(e) == "table" and e.r or {}) do if Try(r[1]) then return best end end
+    end
+    return best
+end
+
 -- Offene Ziele: was noch fehlt zuerst
 function M.List()
     local list = {}
@@ -130,11 +198,13 @@ function M.List()
             end
             table.sort(who, function(a, b) if a.n ~= b.n then return a.n > b.n end return a.name < b.name end)
             local mine = Pledges()[id] and Pledges()[id][Me()]
-            list[#list + 1] = { id = id, item = g.item, qty = g.qty, sum = sum, who = who, mine = mine and mine.n or 0 }
+            local bank = InBank(g.item)
+            list[#list + 1] = { id = id, item = g.item, qty = g.qty, sum = sum, who = who, mine = mine and mine.n or 0,
+                bank = bank, open = math.max(0, g.qty - sum - bank) }
         end
     end
     table.sort(list, function(a, b)
-        local da, db = a.sum >= a.qty, b.sum >= b.qty
+        local da, db = a.open == 0, b.open == 0
         if da ~= db then return db end
         return a.id < b.id
     end)
@@ -167,7 +237,8 @@ function M.Refresh()
             names[#names + 1] = Ambiguate(w.name, "guild") .. " " .. w.n
         end
         lines[#lines + 1] = ("%s%s|r  %s%d/%d|r  |cff999999%s|r"):format(g.id == win.selected and "|cffffd100" or "|cffe6e0da",
-            ItemName(g.item), g.sum >= g.qty and "|cff40ff40" or "|cffff8060", g.sum, g.qty, table.concat(names, ", "))
+            ItemName(g.item), g.open == 0 and "|cff40ff40" or "|cffff8060", g.sum + g.bank, g.qty,
+            (g.bank > 0 and ((L["Bank %d"]):format(g.bank) .. (#names > 0 and ", " or "")) or "") .. table.concat(names, ", "))
     end
     win:SetLines(lines)
     for _, f in ipairs(win.officer) do f:SetShown(CanManage()) end
@@ -188,8 +259,8 @@ local function Build()
             if not g then return end
             if button == "RightButton" then
                 local T = ns.CraftTrack or (ns.Craft and ns.Craft.Track)
-                if T and T.AddItem and g.qty > g.sum then
-                    T.AddItem(g.item, g.qty - g.sum)
+                if T and T.AddItem and g.open > 0 then
+                    T.AddItem(g.item, g.open)
                     ns.Print((L["%s ist jetzt in deinem Tracker."]):format(ItemName(g.item)))
                 end
                 return
@@ -222,13 +293,12 @@ local function Build()
         local g = Selected()
         if not g or not M.Pledge(g.id, win.amount:GetText()) then ns.Print(L["Bitte eine Zeile wählen und eine Menge eintragen (0 = zurückziehen)."]) end
     end)
-    win.item = Box(230, 20, 14, 200, L["Neues Ziel: Item-Link oder Item-ID"], true)
+    win.item = Box(230, 20, 14, 200, L["Neues Ziel: Name, Item-Link oder ID"], true)
     win.qty = Box(60, 262, 14, 5, L["Menge"], true)
     Button(L["Anlegen"], 90, 330, 14, function()
-        local text = win.item:GetText()
-        local id = text:match("item:(%d+)") or text:match("^%s*(%d+)%s*$")
+        local id = M.Resolve(win.item:GetText())
         if M.Add(id, win.qty:GetText()) then win.item:SetText(""); win.qty:SetText("")
-        else ns.Print(L["Bitte Item-Link (Umschalt-Klick) oder Item-ID und eine Menge eintragen."]) end
+        else ns.Print(L["Gegenstand nicht gefunden oder Menge fehlt. Am sichersten: Umschalt-Klick auf das Item."]) end
     end, true)
     Button(L["Löschen"], 90, 426, 14, function() local g = Selected(); if g then M.Remove(g.id) end end, true)
     win:SetScript("OnShow", function() win.offset = 0; M.Refresh() end)
@@ -248,15 +318,16 @@ end
 
 local ev, asked = CreateFrame("Frame"), false
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
-ev:SetScript("OnEvent", function()
+ns.RegisterEvents(ev, "GUILDBANKBAGSLOTS_CHANGED")
+ev:SetScript("OnEvent", function(_, event)
+    if event == "GUILDBANKBAGSLOTS_CHANGED" then pcall(M.ReadBank) return end
     if asked then return end
     asked = true
-    C_Timer.After(48, function() if IsInGuild() then ns.Queue("MGQ", nil, ns.SyncHash(DB())) end end)
+    C_Timer.After(48 + math.random() * 30, function()
+        if not IsInGuild() then return end
+        ns.PruneDeleted(DB())
+        ns.Queue("MGQ", nil, ns.SyncHash(DB()))
+    end)
 end)
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    local cmd = strtrim(arg or ""):lower()
-    if cmd == "material" or cmd == "mats" then return M.Open() end
-    return slash(arg)
-end
+ns.Command({ "material", "mats" }, function() M.Open() end)

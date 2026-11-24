@@ -101,9 +101,4 @@ function E.Open()
     win:SetShown(not win:IsShown())
 end
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    local cmd = strtrim(arg or ""):lower()
-    if cmd == "auswertung" or cmd == "stats" then return E.Open() end
-    return slash(arg)
-end
+ns.Command({ "auswertung", "stats" }, function() E.Open() end)

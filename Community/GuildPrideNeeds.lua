@@ -86,7 +86,7 @@ ns.On("DND", function(payload, sender)
 end)
 ns.On("DNQ", function(_, sender)
     if sender == Me() or not next(Mine()) then return end
-    C_Timer.After(1 + math.random() * 6, function() Send() end)
+    ns.AnswerSoon("DND", function() Send() end)
 end)
 
 -- Online-Mitglieder: [Name] = { level, class }

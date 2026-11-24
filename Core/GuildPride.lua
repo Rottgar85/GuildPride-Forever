@@ -102,7 +102,7 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    ahTipVendor = true, ahTipCraft = true, ahSellHint = true, ahMailSummary = true, transitUI = true, transitShare = true,
                    flightTimes = true, flightUI = true, showItemID = false,
                    plateColors = true, plateColorBar = false, welcomePack = true,
-                   raidReady = true, guildQuests = true, bossNotes = true, cooldownShare = true,
+                   raidReady = true, readyWindow = true, guildQuests = true, bossNotes = true, cooldownShare = true,
                    albumShot = false, easyRead = false, colorSafe = false,
                    buffFood = true, restReminder = true, mapNotes = true, mapNotesPublic = true, mapNotesMinimap = true, craftCard = true, craftHints = true, craftTooltip = true, craftBank = true, craftNPCMap = true, craftTips = true, craftTrade = true, craftNodes = true, craftFish = true, craftSell = true,
                    whisperWindow = true, whisperCombat = true, whisperKnownOnly = false, whisperOutgoing = true }
@@ -314,6 +314,57 @@ function ns.SyncHash(db)
     for _, e in pairs(db) do n = n + 1; sum = (sum + (tonumber(e.ver) or 0)) % 1000000007 end
     return n .. "." .. sum
 end
+-- Antworten bündeln: viele Anfragen kurz hintereinander -> eine Antwort an alle, höchstens eine je
+-- Minute. Wer später fragt, bekommt sie danach; niemand geht leer aus.
+local answerAt, answerPlanned = {}, {}
+local ANSWER_GAP = 60
+function ns.AnswerSoon(key, fn)
+    if answerPlanned[key] then return false end
+    answerPlanned[key] = true
+    local wait = math.max(2 + math.random() * 8, ANSWER_GAP - (GetTime() - (answerAt[key] or -ANSWER_GAP)))
+    C_Timer.After(wait, function()
+        answerPlanned[key] = nil
+        answerAt[key] = GetTime()
+        fn()
+    end)
+    return true
+end
+-- Gelöschte Einträge (mit „ver“ als Zeit) nach 60 Tagen ganz vergessen
+function ns.PruneDeleted(db)
+    local n, cutoff = 0, GetServerTime() - 60 * 86400
+    for id, e in pairs(db) do
+        if type(e) == "table" and e.deleted and (tonumber(e.ver) or 0) < cutoff then db[id] = nil; n = n + 1 end
+    end
+    return n
+end
+-- Ein gemeinsamer Takt (1 s) für alles, was selten etwas tut: ns.Every(30, fn)
+local jobs, beat = {}, 0
+function ns.Every(seconds, fn)
+    jobs[#jobs + 1] = { every = math.max(1, math.floor(seconds)), fn = fn }
+end
+function ns.Beat()
+    beat = beat + 1
+    for _, j in ipairs(jobs) do
+        if beat % j.every == 0 then
+            local ok, err = pcall(j.fn)
+            if not ok then geterrorhandler()(err) end
+        end
+    end
+end
+C_Timer.NewTicker(1, function() ns.Beat() end)
+-- Befehle: ns.Command({ "loot", "beute" }, fn) – fn bekommt den Rest hinter dem Befehl
+local commands = {}
+function ns.Command(names, fn)
+    for _, n in ipairs(names) do commands[n] = fn end
+end
+function ns.RunCommand(arg)
+    local cmd, rest = strtrim(arg or ""):match("^(%S*)%s*(.*)$")
+    local fn = commands[cmd:lower()]
+    if not fn then return false end
+    fn(rest)
+    return true
+end
+
 local syncHeard = {}   -- [Art] = { [Absender] = GetTime() }
 function ns.SyncHeard(kind, sender)
     syncHeard[kind] = syncHeard[kind] or {}
@@ -778,7 +829,7 @@ local NO_RELAY = { DKP = true, DRW = true, ALT = true, AUS = true, AUSX = true, 
                    AUC = true, AUH = true, AUE = true, CKY = true, DEL = true, JHL = true, LAY = true, RCP = true, APK = true,
                    CRF = true, CRR = true, GOL = true, BRD = true, LFJ = true, LFJA = true, WSH = true, GPS = true,
                    ORD = true, ORA = true, TRS = true, RDQ = true, RDY = true, GQL = true, MGC = true,
-                   CDN = true, PAT = true, QZQ = true, QZA = true, QZR = true, HNT = true, HNX = true, HNF = true }
+                   CDN = true, PAT = true, QZQ = true, QZA = true, QZR = true, HNT = true, HNX = true, HNF = true, LTL = true, QPL = true }
 local recent, recentSweep = {}, 0   -- zuletzt empfangene Nachrichten (gegen Doppelte)
 local forwarded = {}   -- ["Name:id"] = Zeit, gegen doppelte Weiterleitungen
 local MP_MAX = 100
@@ -786,7 +837,7 @@ local MP_MAX = 100
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
 local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, MHO = true, BLQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
-               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true, DNQ = true, RDQ = true, GQQ = true, BOQ = true, MGQ = true, PAQ = true, NMQ = true, GLQ = true, FQQ = true }
+               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true, DNQ = true, RDQ = true, GQQ = true, BOQ = true, MGQ = true, PAQ = true, LTQ = true, QPQ = true, NMQ = true, GLQ = true, FQQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender
@@ -994,7 +1045,7 @@ f:SetScript("OnEvent", function(_, event, ...)
         end
         -- Fehler an den Entwickler (GuildPrideErrorShare.lua prüft Absender und Weg selbst):
         -- auch von Fremden, nie Dispatch
-        if message:match("^DV[AEKF]:") then
+        if message:match("^DV[AEKFU]:") then
             if ns.OnErrorShareMessage then ns.OnErrorShareMessage(message, sender, channel) end
             return
         end
@@ -1074,6 +1125,7 @@ end)
 SLASH_GUILDPRIDE1 = "/gp"
 SLASH_GUILDPRIDE2 = "/guildpride"
 SlashCmdList.GUILDPRIDE = function(arg)
+    if ns.RunCommand(arg) then return end
     local raw = strtrim(arg or "")
     arg = raw:lower()
     local toggles = { sound = "sound", popup = "popup", logo = "useCustomLogo" }
@@ -1116,6 +1168,6 @@ SlashCmdList.GUILDPRIDE = function(arg)
             InterfaceOptionsFrame_OpenToCategory(ns.SettingsPanel)   -- zweimal: alter Blizzard-Fehler
         end
     else
-        Print(L["Befehle: /gp (Fenster) · suche · bereit · quests · boss · material · loot · handwerk · tracker · dkp · zettel · nachrichten · rares · ah · buff · paket · optionen · sicherung · fehler. Alle mit Erklärung: |cffffd100/gp suche|r"])
+        Print(L["Befehle: /gp (Fenster) · suche · bereit · quests · boss · material · loot · handwerk · tracker · dkp · zettel · nachrichten · rares · ah · buff · paket · optionen · sicherung · fehler. Alle mit Erklärung: |cffffd100/gp hilfe|r"])
     end
 end

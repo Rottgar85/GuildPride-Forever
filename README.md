@@ -2,7 +2,7 @@
 
 [English](#english) · [Deutsch](#deutsch) · [Screenshots](#screenshots)
 
-World of Warcraft addon for WoW Forever only · Version 2.42.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
+World of Warcraft addon for WoW Forever only · Version 2.43.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
 
 ---
 
@@ -10,8 +10,9 @@ World of Warcraft addon for WoW Forever only · Version 2.42.0 · Author: Rottga
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting window, raid tools, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-### NEW in 2.42
+### NEW in 2.42 and 2.43
 
+- **2.43:** tools as tiles, `/gp help` with all commands, jump bar in the settings, multi-line boss notes, material list by name with guild bank stock, fewer messages at login.
 - **Tools page** under *Plan*: raid readiness, guild quests, boss notes, material list, loot history, group cooldowns, mentors, quiz, album and event statistics – see *Tools* below.
 - **Search everything** – magnifier at the top of the guild window or `/gp search`: members, events, settings, commands, boss notes and recipes.
 - **Presets** – `/gp preset guild`, `raid` or `all` turns on only what you need. Plus a larger font and colours for colour blindness.
@@ -44,8 +45,8 @@ World of Warcraft addon for WoW Forever only · Version 2.42.0 · Author: Rottga
 - **Raid readiness** (`/gp ready`) – leader and assistants see durability, well fed, potions and elixirs of the group, problems first. On a ready check everyone with GuildPride answers by itself.
 - **Guild quests** (`/gp quests`) – who is online and has the same quest, your zone first; a click invites up to four.
 - **Boss notes** (`/gp boss`) – officers write short tactics per boss; the window opens once when you enter the instance.
-- **Material list** (`/gp mats`) – officers set what is needed, everyone pledges a share; right click puts the rest into your tracker.
-- **Loot history** (`/gp loot`) – who got what in dungeons and raids (rare or better), with a filter; only on your PC.
+- **Material list** (`/gp mats`) – officers set what is needed (by name, link or ID), everyone pledges a share, the guild bank counts too; right click puts the rest into your tracker.
+- **Loot history** (`/gp loot`) – who got what in dungeons and raids (rare or better), with a filter; opening the window fetches newer entries from officers.
 - **Group cooldowns** (`/gp cooldowns`) – Rebirth, Shield Wall and other important spells of guild members in your group.
 - **Event statistics** (`/gp stats`, officers) – reliability, streaks, weekdays and months from the recorded attendance.
 - **Mentors** (`/gp mentor`) – members who like to help new ones; a click whispers them.
@@ -90,6 +91,7 @@ World of Warcraft addon for WoW Forever only · Version 2.42.0 · Author: Rottga
 - **Only with the server-wide group finder switched on:** group finder listings.
 - **Can be turned off:** guild quests share only the numbers of your quests with your guild; raid readiness (durability, well fed, number of potions) goes only to the leader and assistants of your own group who are in your guild; cooldowns share when you used an important spell in a group, only with your guild (Settings › Sharing).
 - **Error reports only with your yes:** if GuildPride runs into a Lua error, you are asked once whether such errors may go to the developer inside the game. Sent are only the error text (may rarely contain a player name), the place in the code, versions, game language and circumstances (combat, instance type, open GuildPride windows) – never chat, notes, gold or your addon list. The developer does not store character names, only a counting code. Without a yes nothing is sent; you can change it at any time under Settings › Sharing.
+- **Usage counters only with your yes:** you are asked once whether the developer may learn which features you use. Counted are only opened tabs, GuildPride windows and /gp commands plus changed switches – never contents, chat, gold or names. At most once a day; only a counting code is stored. Without a yes nothing is counted; you can change it at any time under Settings › Sharing.
 - Everything that arrives is checked and limited – no injected colour or link codes, no flooding. Guild data is stored per guild.
 - **One-click backup** (`/gp backup`): keeps the last 5 states, automatically once a week.
 
@@ -97,7 +99,8 @@ World of Warcraft addon for WoW Forever only · Version 2.42.0 · Author: Rottga
 
 | Command | What it does |
 |---|---|
-| `/gp` | open the window (`/gp help` lists all commands) |
+| `/gp` | open the window |
+| `/gp help` | all commands with explanations, a click runs one |
 | `/gp sound` · `/gp popup` | sounds or pop-ups on/off |
 | `/gp blizzard` | switch between GuildPride and Blizzard's guild window |
 | `/gp invite First Last` | invite a player to the guild |
@@ -147,10 +150,11 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerk-Fenster, Raid-Werkzeuge, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.42.0*
+*Version 2.43.0*
 
-### NEU in 2.42
+### NEU in 2.42 und 2.43
 
+- **2.43:** Werkzeuge als Kacheln, `/gp hilfe` mit allen Befehlen, Sprungleiste in den Einstellungen, mehrzeilige Boss-Notizen, Materialliste nach Namen mit Bestand der Gildenbank, weniger Nachrichten beim Einloggen.
 - **Seite „Werkzeuge“** unter *Planen*: Raid-Bereitschaft, Quests der Gilde, Boss-Notizen, Materialliste, Loot-Verlauf, Abklingzeiten, Paten, Quiz, Album und Event-Auswertung – siehe *Werkzeuge* weiter unten.
 - **Suche über alles** – Lupe oben im Gildenfenster oder `/gp suche`: Mitglieder, Events, Einstellungen, Befehle, Boss-Notizen und Rezepte.
 - **Pakete** – `/gp paket gilde`, `raid` oder `alles` schaltet nur an, was du brauchst. Dazu größere Schrift und Farben für Farbenblinde.
@@ -183,8 +187,8 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 - **Raid-Bereitschaft** (`/gp bereit`) – Leiter und Assistenten sehen Haltbarkeit, „Satt“, Tränke und Elixiere der Gruppe, Probleme zuerst. Beim Bereitschaftscheck antworten alle mit GuildPride von selbst.
 - **Quests der Gilde** (`/gp quests`) – wer online ist und dieselbe Quest hat, deine Zone zuerst; ein Klick lädt bis zu vier ein.
 - **Boss-Notizen** (`/gp boss`) – Offiziere schreiben je Boss eine kurze Taktik; das Fenster geht beim Betreten der Instanz einmal auf.
-- **Materialliste** (`/gp material`) – Offiziere legen fest, was gebraucht wird, jeder sagt seinen Anteil zu; Rechtsklick legt den Rest in deinen Tracker.
-- **Loot-Verlauf** (`/gp loot`) – wer in Dungeons und Raids was bekommen hat (ab selten), mit Filter; nur auf deinem PC.
+- **Materialliste** (`/gp material`) – Offiziere legen fest, was gebraucht wird (Name, Link oder ID), jeder sagt seinen Anteil zu, die Gildenbank zählt mit; Rechtsklick legt den Rest in deinen Tracker.
+- **Loot-Verlauf** (`/gp loot`) – wer in Dungeons und Raids was bekommen hat (ab selten), mit Filter; beim Öffnen kommen neuere Einträge von Offizieren dazu.
 - **Abklingzeiten der Gruppe** (`/gp abklingzeiten`) – Wiedergeburt, Schildwall und andere wichtige Zauber der Gildenmitglieder in deiner Gruppe.
 - **Event-Auswertung** (`/gp auswertung`, Offiziere) – Verlässlichkeit, Serien, Wochentage und Monate aus der erfassten Anwesenheit.
 - **Paten** (`/gp paten`) – Mitglieder, die Neuen gern helfen; ein Klick flüstert sie an.
@@ -229,6 +233,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 - **Nur mit eingeschalteter serverweiter Gruppensuche:** Gruppensuche-Einträge.
 - **Abschaltbar:** „Quests der Gilde“ teilt nur die Nummern deiner Quests mit deiner Gilde; die Raid-Bereitschaft (Haltbarkeit, satt, Zahl der Tränke) geht nur an Leiter und Assistenten deiner eigenen Gruppe, die in deiner Gilde sind; Abklingzeiten melden in einer Gruppe nur der Gilde, wann du einen wichtigen Zauber benutzt hast (Einstellungen › Teilen).
 - **Fehlerberichte nur mit deinem Ja:** Hat GuildPride einen Lua-Fehler, wirst du einmal gefragt, ob solche Fehler im Spiel an den Entwickler gehen dürfen. Gesendet werden nur Fehlertext (kann selten einen Spielernamen enthalten), Stelle im Code, Versionen, Spielsprache und Umstände (Kampf, Instanzart, offene GuildPride-Fenster) – nie Chat, Notizen, Gold oder deine Addon-Liste. Der Entwickler speichert keine Charakternamen, nur einen Zählcode. Ohne Ja wird nichts gesendet; ändern kannst du das jederzeit unter Einstellungen › Teilen.
+- **Nutzungszähler nur mit deinem Ja:** du wirst einmal gefragt, ob der Entwickler erfahren darf, welche Funktionen du benutzt. Gezählt werden nur geöffnete Reiter, GuildPride-Fenster und /gp-Befehle sowie geänderte Schalter – nie Inhalte, Chat, Gold oder Namen. Höchstens einmal am Tag; gespeichert wird nur ein Zählcode. Ohne Ja wird nichts gezählt; ändern kannst du das jederzeit unter Einstellungen › Teilen.
 - Alles, was ankommt, wird geprüft und begrenzt – keine eingeschleusten Farb- oder Link-Codes, kein Fluten. Gildendaten werden je Gilde getrennt gespeichert.
 - **Datensicherung per Knopfdruck** (`/gp sicherung`): die letzten 5 Stände, einmal pro Woche automatisch.
 
@@ -236,7 +241,8 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 | Befehl | Funktion |
 |---|---|
-| `/gp` | Fenster öffnen (`/gp hilfe` zeigt alle Befehle) |
+| `/gp` | Fenster öffnen |
+| `/gp hilfe` | alle Befehle mit Erklärung, ein Klick führt einen aus |
 | `/gp sound` · `/gp popup` | Sounds oder Popups an/aus |
 | `/gp blizzard` | zwischen GuildPride und dem Blizzard-Gildenfenster wechseln |
 | `/gp einladen Vorname Nachname` | Spieler in die Gilde einladen |

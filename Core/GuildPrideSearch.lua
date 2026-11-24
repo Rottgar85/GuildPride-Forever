@@ -19,6 +19,7 @@ local COMMANDS = {
     { "intro", L["Einführung"] }, { "paket guild", L["Paket: nur Gilde"] }, { "paket raid", L["Paket: Gilde und Raid"] },
     { "paket all", L["Paket: alles"] }, { "version", L["Versionen in der Gilde"] },
 }
+S.COMMANDS = COMMANDS   -- auch für die Nutzungs-Statistik
 local KIND = { member = L["Mitglied"], event = L["Event"], setting = L["Einstellung"], command = L["Befehl"], note = L["Boss-Notizen"], recipe = L["Rezept"] }
 
 local function OpenTabKey(key)
@@ -118,6 +119,27 @@ function S.Open(text)
     win.box:SetFocus()
     Refresh()
 end
+
+-- /gp hilfe: alle Befehle mit Erklärung, Klick führt aus
+local help
+function S.Help()
+    if not help then
+        help = ns.ListWindow({ name = "GuildPrideCommands", title = L["Alle Befehle"], rows = 18, width = 460,
+            sub = L["Klick führt den Befehl aus."] })
+        local lines = {}
+        for i, c in ipairs(COMMANDS) do lines[i] = ("|cffffd100/gp %s|r  %s"):format(c[1], c[2]) end
+        for i, row in ipairs(help.rows) do
+            row:EnableMouse(true)
+            row:SetScript("OnMouseUp", function()
+                local c = COMMANDS[i + help.offset]
+                if c then help:Hide(); SlashCmdList.GUILDPRIDE(c[1]) end
+            end)
+        end
+        help:SetScript("OnShow", function() help.offset = 0; help:SetLines(lines) end)
+    end
+    help:SetShown(not help:IsShown())
+end
+ns.Command({ "hilfe", "help", "befehle", "commands" }, function() S.Help() end)
 
 -- Lupe oben im Gildenfenster, links neben Discord- und Community-Knopf
 local parts = ns.UIParts

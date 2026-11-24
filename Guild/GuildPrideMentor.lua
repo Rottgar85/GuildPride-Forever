@@ -42,7 +42,7 @@ ns.On("PAT", function(payload, sender)
 end)
 ns.On("PAQ", function(_, sender)
     if sender == Me() or not M.Is(Me()) then return end
-    C_Timer.After(1 + math.random() * 6, function() Send(sender) end)
+    ns.AnswerSoon("PAT", function() Send("@CHANNEL") end)
 end)
 
 function M.IsNew(name)
@@ -61,6 +61,19 @@ local function OnlineWhere(fn)
     table.sort(out, function(a, b) return a.name < b.name end)
     return out
 end
+
+-- Paten: einmal je Sitzung sagen, dass jemand Neues online ist
+local greeted = {}
+function M.CheckNew()
+    if not M.Is(Me()) then return end
+    for _, e in ipairs(OnlineWhere(M.IsNew)) do
+        if not greeted[e.name] then
+            greeted[e.name] = true
+            ns.Print((L["Neu in der Gilde und online: %s  |cff888888(/gp paten)|r"]):format(Ambiguate(e.name, "guild")))
+        end
+    end
+end
+ns.Every(60, function() if IsInGuild() and not InCombatLockdown() then M.CheckNew() end end)
 
 local win
 function M.Refresh()
@@ -112,7 +125,7 @@ ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:SetScript("OnEvent", function()
     if asked then return end
     asked = true
-    C_Timer.After(52, function()
+    C_Timer.After(52 + math.random() * 30, function()
         if not IsInGuild() then return end
         if DB()[Me()] then Send() end
         ns.Queue("PAQ", nil, "1")
@@ -126,9 +139,4 @@ ev:SetScript("OnEvent", function()
     end)
 end)
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    local cmd = strtrim(arg or ""):lower()
-    if cmd == "paten" or cmd == "pate" or cmd == "mentor" then return M.Open() end
-    return slash(arg)
-end
+ns.Command({ "paten", "pate", "mentor" }, function() M.Open() end)

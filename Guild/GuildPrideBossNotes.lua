@@ -12,7 +12,11 @@ local SEP = ns.SEP
 local B = {}
 ns.BossNotes = B
 local Inst = ns.Instances
-local MAX_NOTES, BOSS_MAX, TEXT_MAX = 120, 40, 400
+local MAX_NOTES, BOSS_MAX, TEXT_MAX = 120, 40, 600
+B.TEMPLATE = L["Tank: \nHeiler: \nSchaden: \nAchtung: "]
+-- Zeilen stehen in den Daten als „ // “
+function B.Show(text) return (tostring(text or ""):gsub(" // ", "\n")) end
+function B.Pack(text) return (tostring(text or ""):gsub("%s*[\r\n]+%s*", " // ")) end
 
 local function DB() return ns.GuildTable("bossnotes") end
 local function Me() return ns.Me() end
@@ -93,7 +97,7 @@ end)
 ---------------------------------------------------------------------
 -- id = nil: neue Notiz. Rückgabe: true oder false
 function B.Save(id, inst, boss, text)
-    boss, text = Clean(boss, BOSS_MAX), Clean(text, TEXT_MAX)
+    boss, text = Clean(boss, BOSS_MAX), Clean(B.Pack(text), TEXT_MAX)
     if not CanManage() or not Find(inst) or boss == "" or text == "" then return false end
     local old = id and DB()[id]
     if not old then id = Me() .. "-" .. Now() .. "-" .. math.random(1000, 9999) end
@@ -139,7 +143,7 @@ function B.Refresh()
     end
     if not cur and win.list[1] then cur = win.list[1]; selected = cur.id; lines[1] = "|cffffd100" .. cur.boss .. "|r  |cff888888" .. cur.text .. "|r" end
     win:SetLines(lines)
-    win.body:SetText(cur and ("|cffffd100" .. cur.boss .. "|r\n" .. cur.text .. "\n|cff888888" .. Ambiguate(cur.author, "guild") .. "|r") or "")
+    win.body:SetText(cur and ("|cffffd100" .. cur.boss .. "|r\n" .. B.Show(cur.text) .. "\n|cff888888" .. Ambiguate(cur.author, "guild") .. "|r") or "")
     local edit = CanManage()
     for _, f in ipairs(win.edit) do f:SetShown(edit) end
     win.del:SetEnabled(cur ~= nil)
@@ -147,12 +151,12 @@ end
 
 local function Fill(e)
     win.boss:SetText(e and e.boss or "")
-    win.text:SetText(e and e.text or "")
+    win.text:SetText(e and B.Show(e.text) or "")
     win.editing = e and e.id or nil
 end
 
 local function Build()
-    win = ns.ListWindow({ name = "GuildPrideBossNotes", title = L["Boss-Notizen"], rows = 8, width = 560, extra = 230,
+    win = ns.ListWindow({ name = "GuildPrideBossNotes", title = L["Boss-Notizen"], rows = 7, width = 560, extra = 330,
         sub = L["Klick auf einen Boss zeigt die ganze Notiz. Offiziere schreiben unten."],
         empty = L["Für diese Instanz gibt es noch keine Notizen."] })
     for i, row in ipairs(win.rows) do
@@ -185,8 +189,21 @@ local function Build()
         win.edit[#win.edit + 1] = e
         return e
     end
-    win.boss = Box(160, 20, 44, BOSS_MAX, L["Boss"])
-    win.text = Box(346, 194, 44, TEXT_MAX, L["Taktik in einem Satz oder zweien"])
+    win.boss = Box(160, 20, 118, BOSS_MAX, L["Boss"])
+    -- Taktik über mehrere Zeilen
+    local holder = CreateFrame("Frame", nil, win, "BackdropTemplate")
+    holder:SetPoint("BOTTOMLEFT", 192, 44); holder:SetSize(350, 98)
+    local hb = holder:CreateTexture(nil, "BACKGROUND")
+    hb:SetAllPoints(); hb:SetColorTexture(0, 0, 0, 0.35)
+    win.text = CreateFrame("EditBox", nil, holder)
+    win.text:SetPoint("TOPLEFT", 6, -6); win.text:SetPoint("BOTTOMRIGHT", -6, 6)
+    win.text:SetMultiLine(true); win.text:SetAutoFocus(false); win.text:SetMaxLetters(TEXT_MAX)
+    win.text:SetFontObject(GPFont_Text)
+    win.text:SetScript("OnEscapePressed", win.text.ClearFocus)
+    holder:EnableMouse(true)
+    holder:SetScript("OnMouseDown", function() win.text:SetFocus() end)
+    win.edit[#win.edit + 1] = holder
+    Button(L["Vorlage"], 110, 20, 88, function() if win.text:GetText() == "" then win.text:SetText(B.TEMPLATE) end; win.text:SetFocus() end)
     Button("<", 30, 14, 14, function() Step(-1) end, true)
     Button(">", 30, 48, 14, function() Step(1) end, true)
     Button(L["Speichern"], 110, 194, 14, function()
@@ -222,14 +239,13 @@ ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ev:SetScript("OnEvent", function()
     if not asked then
         asked = true
-        C_Timer.After(44, function() if IsInGuild() then ns.Queue("BOQ", nil, ns.SyncHash(DB())) end end)
+        C_Timer.After(44 + math.random() * 30, function()
+            if not IsInGuild() then return end
+            ns.PruneDeleted(DB())
+            ns.Queue("BOQ", nil, ns.SyncHash(DB()))
+        end)
     end
     C_Timer.After(5, OnEnter)
 end)
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    local cmd = strtrim(arg or ""):lower()
-    if cmd == "boss" or cmd == "bosse" or cmd == "bosses" then return B.Open() end
-    return slash(arg)
-end
+ns.Command({ "boss", "bosse", "bosses" }, function() B.Open() end)

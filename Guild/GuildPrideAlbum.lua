@@ -52,8 +52,4 @@ ev:SetScript("OnEvent", function(_, _, _, name, _, _, success)
     if GuildPrideDB.albumShot == true and Screenshot then C_Timer.After(1, function() Screenshot() end) end
 end)
 
-local slash = SlashCmdList.GUILDPRIDE
-SlashCmdList.GUILDPRIDE = function(arg)
-    if strtrim(arg or ""):lower() == "album" then return A.Open() end
-    return slash(arg)
-end
+ns.Command({ "album" }, function() A.Open() end)
