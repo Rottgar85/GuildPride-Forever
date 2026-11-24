@@ -1702,6 +1702,10 @@ local enUS = {
     ["Zurzeit: aus"] = "Currently: off",
     ["Notizzettel zeigen"] = "Show notes",
     ["%d eigene Zettel abgerissen."] = "%d of your notes torn off.",
+    ["Erinnerungen abschalten"] = "Turn off reminders",
+    ["Buff-Food-Erinnerung"] = "Buff food reminder",
+    ["Schlafsack-/Lagerfeuer-Erinnerung"] = "Sleeping bag/campfire reminder",
+    ["Abgeschaltet – wieder an in den Einstellungen oder über das Zahnrad (/gp buff)."] = "Turned off – turn it back on in the settings or with the gear (/gp buff).",
     ["Notizzettel: %s · %d bekannt, %d eigene. /gp zettel an|aus|schreiben|weg"] = "Notes: %s · %d known, %d yours. /gp zettel on|off|write|clear",
 }
 

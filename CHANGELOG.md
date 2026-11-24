@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.41.3
+
+**Deutsch**
+- **Buff-Erinnerung abschalten**: oben im Buff-Fenster gibt es jetzt ein **Zahnrad** – dort lassen sich die Buff-Food- und die Schlafsack-/Lagerfeuer-Erinnerung direkt abschalten
+
+**English**
+- **Turn off the buff reminder**: the buff window now has a **gear** at the top – turn the buff food and the sleeping bag/campfire reminder off right there
+
 ## 2.41.2
 
 **Deutsch**

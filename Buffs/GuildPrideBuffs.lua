@@ -453,6 +453,37 @@ local function Build()
         if slots.fire:IsShown() then snoozeFire = now + SNOOZE end
         Check()
     end)
+    -- Zahnrad: Erinnerungen direkt hier abschalten (dieselben Schalter wie in den Einstellungen)
+    local gear = CreateFrame("Button", nil, win)
+    gear:SetSize(16, 16); gear:SetPoint("RIGHT", close, "LEFT", -2, 0)
+    gear:SetNormalTexture("Interface\\Buttons\\UI-OptionsButton")
+    gear:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    gear:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP"); GameTooltip:SetText(L["Erinnerungen abschalten"]); GameTooltip:Show()
+    end)
+    gear:SetScript("OnLeave", GameTooltip_Hide)
+    local menu = CreateFrame("Frame", nil, win, "BackdropTemplate")
+    menu:SetPoint("TOPRIGHT", win, "BOTTOMRIGHT", 0, -2); menu:SetSize(230, 64)
+    if ns.SkinDialog then ns.SkinDialog(menu) end
+    menu:SetFrameStrata("DIALOG"); menu:SetFrameLevel(win:GetFrameLevel() + 10)
+    menu:EnableMouse(true); menu:Hide()
+    local function Toggle(y, key, text)
+        local cb = CreateFrame("CheckButton", nil, menu, "UICheckButtonTemplate")
+        cb:SetSize(22, 22); cb:SetPoint("TOPLEFT", 8, y)
+        local fs = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        fs:SetPoint("LEFT", cb, "RIGHT", 2, 0); fs:SetText(text)
+        cb:SetScript("OnShow", function(self) self:SetChecked(Opt(key)) end)
+        cb:SetScript("OnClick", function(self)
+            if type(GuildPrideDB) ~= "table" then return end
+            GuildPrideDB[key] = self:GetChecked() and true or false
+            if not GuildPrideDB[key] then ns.Print(L["Abgeschaltet – wieder an in den Einstellungen oder über das Zahnrad (/gp buff)."]) end
+            Check()
+        end)
+    end
+    Toggle(-8, "buffFood", L["Buff-Food-Erinnerung"])
+    Toggle(-34, "restReminder", L["Schlafsack-/Lagerfeuer-Erinnerung"])
+    gear:SetScript("OnClick", function() menu:SetShown(not menu:IsShown()) end)
+    win:HookScript("OnHide", function() menu:Hide() end)
     slots = { food = MakeSlot(1, L["Buff-Food"]), bag = MakeSlot(2, L["Schlafsack"]), fire = MakeSlot(3, L["Lagerfeuer"]) }
     -- Der Knopf hört auf Drücken und Loslassen, benutzt wird nur bei einem von
     -- beiden (Spiel-Einstellung „Aktion beim Drücken“). Erst danach umbauen,
