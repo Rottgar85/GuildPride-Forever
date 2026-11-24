@@ -22,6 +22,9 @@ Für Wago zusätzlich: `## X-Wago-ID: abcdef12` in die `.toc` und das Secret `WA
 ## Neue Version veröffentlichen
 
 1. In `GuildPrideForever.toc` die `## Version:` erhöhen und in `CHANGELOG.md` eintragen, was neu ist.
+   Version auch in `README.md` (zweimal) und `README.txt`, dann `python .github/build-news.py` und
+   `python .github/build-curseforge.py`. Den Text aus `docs/CURSEFORGE.md` auf der CurseForge- und
+   Wago-Seite von Hand einfügen.
 2. Änderungen hochladen (commit und push). GitHub prüft dabei den Lua-Code (Check).
 3. Einen Tag mit der Version setzen und hochladen, zum Beispiel:
    `git tag v2.0.1` und dann `git push origin v2.0.1`

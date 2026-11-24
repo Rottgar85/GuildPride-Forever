@@ -1,18 +1,19 @@
 # GuildPride Forever
 
-**Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting directory, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
+**Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting window, raid tools, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Version 2.39.0 · Deutsche Beschreibung weiter unten.*
+*Version 2.42.0 · Deutsche Beschreibung weiter unten.*
 
 ---
 
 ## 🇬🇧 English
 
-### NEW in 2.26
+### NEW in 2.42
 
-- **Dungeons and raids for guild events** – the **New event** window has a button each for **dungeon** and **raid**: every WoW Forever dungeon and raid with level and player count, the name becomes the title. The event list gets its own column (e.g. *Raid · 40*), the lineup follows the group size, and Discord gets the choice so the bot builds the matching group.
-- **Sharing without exception** – ship and zeppelin times, rares and auction house prices are always shared with everyone using GuildPride, even with the server-wide group finder off.
-- **Departures** – times confirmed by several players (*confirmed 3×*), a reminder 1 minute before departure and last week's time as a guess after the reset.
+- **Tools page** under *Plan*: raid readiness, guild quests, boss notes, material list, loot history, group cooldowns, mentors, quiz, album and event statistics – see *Tools* below.
+- **Search everything** – magnifier at the top of the guild window or `/gp search`: members, events, settings, commands, boss notes and recipes.
+- **Presets** – `/gp preset guild`, `raid` or `all` turns on only what you need. Plus a larger font and colours for colour blindness.
+- **Error reports only with your yes**, an error report that only counts GuildPride errors, and much less memory for auction prices.
 
 ### Guild window
 
@@ -36,16 +37,34 @@
 - **Polls** – up to 6 answers and an optional duration.
 - **Wishlist** – mark items as normal, high or BiS; the item tooltip shows who in the guild wants it (with DKP), and an epic drop shows who in the group wants it.
 
+### Tools (under *Plan*)
+
+- **Raid readiness** (`/gp ready`) – leader and assistants see durability, well fed, potions and elixirs of the group, problems first. On a ready check everyone with GuildPride answers by itself.
+- **Guild quests** (`/gp quests`) – who is online and has the same quest, your zone first; a click invites up to four.
+- **Boss notes** (`/gp boss`) – officers write short tactics per boss; the window opens once when you enter the instance.
+- **Material list** (`/gp mats`) – officers set what is needed, everyone pledges a share; right click puts the rest into your tracker.
+- **Loot history** (`/gp loot`) – who got what in dungeons and raids (rare or better), with a filter; only on your PC.
+- **Group cooldowns** (`/gp cooldowns`) – Rebirth, Shield Wall and other important spells of guild members in your group.
+- **Event statistics** (`/gp stats`, officers) – reliability, streaks, weekdays and months from the recorded attendance.
+- **Mentors** (`/gp mentor`) – members who like to help new ones; a click whispers them.
+- **Guild quiz** (`/gp quiz`) and **treasure hunt** (`/gp hunt`) – officers ask questions or hide stations, with a leaderboard.
+- **Guild album** (`/gp album`) – your first boss kills with date, with a screenshot if you like. **Anniversaries** show on the overview.
+
 ### Crafting & auction house
 
-- **Crafting directory** (*Professions* tab) – who has which profession at which skill and which recipes, searchable by name, profession or recipe.
+- **Crafting window** (`/gp handwerk`, own **Crafting** entry in the guild window) – levelling path from 1 to 300 for every profession with "Next up", reagents, stock and cost to your goal. Under **"More …"**: recipes, profit, guild & alts, tracker and compact view.
+- **Tracker** (`/gp tracker`) – counts what you gather, buys what is missing at a vendor or searches it at the auction house, and crafts tracked recipes one click at a time (intermediates first).
+- **Recipe card, trainers on the map, gathering spots, fishing bar** with one key for fishing, **sell advisor** in the tooltip – everything can be turned off one by one under "Crafting".
+- **Crafting directory** (*Crafting* entry) – who has which profession at which skill and which recipes, searchable by name, profession or recipe.
 - **Guild orders** – post an item and a quantity; crafters accept or give back, the requester gets a notice. New and accepted orders also go to Discord.
 - **Auction house** – optional GuildPride window with search by category, buy view with all offers, **price history** of 7 days and who in the guild can craft the item, selling with a price suggestion (cheapest current offer), **My auctions**, favourites, **shopping lists** (quantity, stock, price alert, export/import incl. Auctionator lists, temporary list for one shopping trip, *Buy list*) and *Orders*. Prices show in the item tooltip.
 - **Prices for everyone** – prices are shared server-wide (own faction, goblin auction houses separate) and only count as confirmed when at least two players report them. Works alongside Auctionator.
 - **Profession window** – *AH: Reagents* searches only the reagents of a recipe, *To shopping list*, and shows reagent cost, sale value and profit.
 
-### Travel & rares
+### Travel, notes, buffs & rares
 
+- **Notes on the map** (`/gp zettel`) – pin a note where you stand, for the guild or for everyone; it opens when someone comes close.
+- **Buff reminder** – best buff food from your bags, sleeping bag and campfire while levelling; the **gear** at the top of the window turns the reminders off.
 - **Departures** – stand at a dock (ship, zeppelin, airship) or a Deeprun Tram platform and a small window shows a countdown per connection: whether it is **at the dock and when it leaves**, when the next one arrives and the one after. Times are measured when someone rides along and are **shared with everyone using GuildPride**.
 - **Your own time first** – your own measurement wins; otherwise the time most players measured themselves (*confirmed 3×*). A single differing report does not replace it. Since Blizzard's hotfix of 2026-11-20 layers can no longer be detected, so no layer numbers are shown.
 - **Reminder** – click the clock icon on a connection: raid warning and sound 1 minute before departure, even when you have left the dock.
@@ -85,6 +104,12 @@
 | `/gp ah` | auction house (`on`/`off`, `status`, `scan`, `window`) |
 | `/gp dkp` | DKP window with log |
 | `/gp wish` | wishlist |
+| `/gp search [text]` | search members, events, settings, commands, boss notes and recipes |
+| `/gp preset guild` · `raid` · `all` | turn on only what you need |
+| `/gp ready` · `/gp cooldowns` | raid readiness · group cooldowns |
+| `/gp quests` · `/gp boss` · `/gp mats` | guild quests · boss notes · material list |
+| `/gp loot` · `/gp stats` | loot history · event statistics (officers) |
+| `/gp mentor` · `/gp quiz` · `/gp hunt` · `/gp album` | mentors · guild quiz · treasure hunt · guild album |
 | `/gp board` | show the notice board |
 | `/gp discord` | Discord link (`info`, `test`, `linked`) |
 | `/gp server` | server-wide group finder on/off (`status`, `unblock`) |
@@ -95,15 +120,18 @@
 | `/gp channel` | guild channel status (officers: `/gp channel new`) |
 | `/gp id` | your player ID code (never your BattleTag) |
 | `/gp news` · `/gp changelog` | what's new |
-| `/gp report` · `/gp errors` | bug report to copy |
-| `/gp diag` | diagnostics to copy (realm, guild, Dungeon Finder, community) |
+| `/gp report` · `/gp errors` · `/gp errortest` | bug report to copy · throw a harmless test error |
+| `/gp diag` | diagnostics to copy (realm, guild, Dungeon Finder, community, memory and CPU) |
 | `/gp note <name> <text>` | your own note on a player, shown in their tooltip (only for you; without text: delete) |
 | `/gp blocklist` · `/gp block <name> [reason]` · `/gp unblock <name>` | block list: these players are not invited to the guild (officers change it; names with spaces in quotes) |
 | `/gp bank` | guild bank log: who deposited or withdrew what, name filter and weekly totals (read when you open the guild bank) |
 | `/gp welcome` | welcome window with message of the day, guild info, Discord and community link, question to the officers |
 | `/gp export` · `/gp import` | copy your GuildPride settings as text and paste them on another PC or character |
-| `/gp buff` · `/gp rest` | buff food window (best food for your class from your bags) · sleeping bag and campfire window while levelling |
+| `/gp buff` · `/gp rest` | buff food window (best food for your class from your bags) · sleeping bag and campfire window while levelling; the gear in the window turns the reminders off |
 | `/gp messages [name]` · `/gp message <name> <text>` | messenger: messages to guild members with GuildPride, even when they are offline; whispers open the window too, like WIM (other members keep them until delivery; to the main, so all their characters get it) |
+| `/gp handwerk` · `/gp handwerk mini` | crafting window (levelling guide, recipes, profit, guild & alts) · compact view |
+| `/gp tracker` | gathering and crafting tracker |
+| `/gp zettel` | notes on the map (`write`, `on`/`off`, `clear`) |
 | `/gp price <item> <price>` | price alert without the auction house window (`off` removes it, without arguments: list) |
 | `/gp options` | GuildPride page in the WoW options |
 
@@ -115,15 +143,14 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 ## 🇩🇪 Deutsch
 
-**Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerker-Verzeichnis, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
+**Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerk-Fenster, Raid-Werkzeuge, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.39.0*
+### NEU in 2.42
 
-### NEU in 2.26
-
-- **Dungeons und Raids bei Gildenevents** – im Fenster **Neues Event** je ein Knopf für **Dungeon** und **Raid**: alle Dungeons und Raids von WoW Forever mit Stufe und Spielerzahl, der Name wird als Titel übernommen. Die Event-Liste bekommt eine eigene Spalte (z. B. *Raid · 40*), die Aufstellung richtet sich nach der Gruppengröße, und Discord bekommt die Auswahl mit, damit der Bot die passende Gruppe anlegt.
-- **Teilen ohne Ausnahme** – Schiffs- und Zeppelinzeiten, Rares und Auktionshauspreise werden immer mit allen GuildPride-Spielern geteilt, auch wenn die serverweite Gruppensuche aus ist.
-- **Abfahrten** – von mehreren Spielern bestätigte Zeiten (*3× bestätigt*), Erinnerung 1 Minute vor der Abfahrt und nach dem Reset die Zeit der letzten Woche als Vermutung.
+- **Seite „Werkzeuge“** unter *Planen*: Raid-Bereitschaft, Quests der Gilde, Boss-Notizen, Materialliste, Loot-Verlauf, Abklingzeiten, Paten, Quiz, Album und Event-Auswertung – siehe *Werkzeuge* weiter unten.
+- **Suche über alles** – Lupe oben im Gildenfenster oder `/gp suche`: Mitglieder, Events, Einstellungen, Befehle, Boss-Notizen und Rezepte.
+- **Pakete** – `/gp paket gilde`, `raid` oder `alles` schaltet nur an, was du brauchst. Dazu größere Schrift und Farben für Farbenblinde.
+- **Fehlerberichte nur mit deinem Ja**, ein Fehlerbericht, der nur noch GuildPride-Fehler zählt, und viel weniger Speicher für Auktionspreise.
 
 ### Gildenfenster
 
@@ -147,16 +174,34 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 - **Umfragen** – bis zu 6 Antworten und wahlweise Laufzeit.
 - **Wunschliste** – Items als normal, hoch oder BiS markieren; im Item-Tooltip steht, wer in der Gilde es sucht (mit DKP), bei einem epischen Drop, wer in der Gruppe es sich wünscht.
 
-### Berufe & Auktionshaus
+### Werkzeuge (unter *Planen*)
 
-- **Handwerker-Verzeichnis** (Reiter *Berufe*) – wer welchen Beruf auf welcher Stufe hat und welche Rezepte er kann, durchsuchbar nach Name, Beruf oder Rezept.
+- **Raid-Bereitschaft** (`/gp bereit`) – Leiter und Assistenten sehen Haltbarkeit, „Satt“, Tränke und Elixiere der Gruppe, Probleme zuerst. Beim Bereitschaftscheck antworten alle mit GuildPride von selbst.
+- **Quests der Gilde** (`/gp quests`) – wer online ist und dieselbe Quest hat, deine Zone zuerst; ein Klick lädt bis zu vier ein.
+- **Boss-Notizen** (`/gp boss`) – Offiziere schreiben je Boss eine kurze Taktik; das Fenster geht beim Betreten der Instanz einmal auf.
+- **Materialliste** (`/gp material`) – Offiziere legen fest, was gebraucht wird, jeder sagt seinen Anteil zu; Rechtsklick legt den Rest in deinen Tracker.
+- **Loot-Verlauf** (`/gp loot`) – wer in Dungeons und Raids was bekommen hat (ab selten), mit Filter; nur auf deinem PC.
+- **Abklingzeiten der Gruppe** (`/gp abklingzeiten`) – Wiedergeburt, Schildwall und andere wichtige Zauber der Gildenmitglieder in deiner Gruppe.
+- **Event-Auswertung** (`/gp auswertung`, Offiziere) – Verlässlichkeit, Serien, Wochentage und Monate aus der erfassten Anwesenheit.
+- **Paten** (`/gp paten`) – Mitglieder, die Neuen gern helfen; ein Klick flüstert sie an.
+- **Gildenquiz** (`/gp quiz`) und **Schnitzeljagd** (`/gp jagd`) – Offiziere stellen Fragen oder verstecken Stationen, mit Rangliste.
+- **Gildenalbum** (`/gp album`) – eure ersten Bosskills mit Datum, auf Wunsch mit Screenshot. **Jubiläen** stehen in der Übersicht.
+
+### Handwerk & Auktionshaus
+
+- **Handwerk-Fenster** (`/gp handwerk`, eigener Eintrag **Handwerk** im Gildenfenster) – Weg von 1 bis 300 für jeden Beruf mit „Als Nächstes“, Zutaten, Bestand und Kosten bis zum Ziel. Unter **„Mehr …“**: Rezepte, Gewinn, Gilde & Twinks, Tracker und Kompaktansicht.
+- **Tracker** (`/gp tracker`) – zählt, was du sammelst, kauft Fehlendes beim Händler oder sucht es im Auktionshaus und stellt getrackte Rezepte Klick für Klick her (Zwischenprodukte zuerst).
+- **Rezeptkarte, Lehrer auf der Karte, Sammel-Fundorte, Angel-Leiste** mit einer Taste fürs Angeln, **Verkaufs-Berater** im Tooltip – alles einzeln abschaltbar unter „Handwerk“.
+- **Handwerker-Verzeichnis** (Eintrag *Handwerk*) – wer welchen Beruf auf welcher Stufe hat und welche Rezepte er kann, durchsuchbar nach Name, Beruf oder Rezept.
 - **Gildenaufträge** – Item und Menge einstellen; Hersteller nehmen an oder geben ab, der Auftraggeber bekommt einen Hinweis. Neue und angenommene Aufträge gehen auch an Discord.
 - **Auktionshaus** – wahlweise GuildPride-Fenster mit Suche nach Kategorien, Kaufansicht mit allen Angeboten, **Preisverlauf** über 7 Tage und wer in der Gilde das Item herstellen kann, Verkaufen mit Preisvorschlag (günstigstes aktuelles Angebot), **Meine Auktionen**, Favoriten, **Einkaufslisten** (Menge, Bestand, Preisalarm, Export/Import auch von Auctionator-Listen, temporäre Liste für einen Einkauf, *Liste kaufen*) und *Aufträge*. Preise stehen im Item-Tooltip.
 - **Preise für alle** – Preise werden serverweit geteilt (eigene Fraktion, Goblin-Auktionshäuser getrennt) und gelten erst als bestätigt, wenn mindestens zwei Spieler sie melden. Läuft auch zusammen mit Auctionator.
 - **Berufsfenster** – *AH: Zutaten* sucht nur die Zutaten eines Rezepts, *Zur Einkaufsliste*, dazu Kosten der Zutaten, Verkaufswert und Gewinn.
 
-### Reisen & Rares
+### Reisen, Zettel, Buffs & Rares
 
+- **Notizzettel auf der Karte** (`/gp zettel`) – Zettel dort aufhängen, wo du stehst, für die Gilde oder für alle; er geht auf, wenn jemand nahe kommt.
+- **Buff-Erinnerung** – bestes Buff-Food aus den Taschen, beim Leveln Schlafsack und Lagerfeuer; über das **Zahnrad** oben im Fenster lassen sich die Erinnerungen abschalten.
 - **Abfahrten** – stehst du an einem Anleger (Schiff, Zeppelin, Luftschiff) oder am Bahnsteig der Tiefenbahn, zeigt ein kleines Fenster je Verbindung einen Countdown: ob es **am Steg liegt und wann es ablegt**, wann das nächste kommt und das danach. Gemessen wird, wenn jemand mitfährt – und **mit allen GuildPride-Spielern geteilt**.
 - **Deine Zeit zuerst** – deine eigene Messung gilt; sonst die Zeit, die die meisten selbst gemessen haben (*3× bestätigt*). Eine einzelne abweichende Meldung verdrängt sie nicht. Seit Blizzards Hotfix vom 20.11.2026 lassen sich Layer nicht mehr erkennen, darum gibt es keine Layer-Nummern.
 - **Erinnerung** – Uhr-Symbol an einer Verbindung anklicken: Raid-Warnung und Ton 1 Minute vor der Abfahrt, auch wenn du nicht mehr am Anleger bist.
@@ -196,6 +241,12 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 | `/gp ah` | Auktionshaus (`an`/`aus`, `status`, `scan`, `fenster`) |
 | `/gp dkp` | DKP-Fenster mit Protokoll |
 | `/gp wunsch` | Wunschliste |
+| `/gp suche [Text]` | Mitglieder, Events, Einstellungen, Befehle, Boss-Notizen und Rezepte suchen |
+| `/gp paket gilde` · `raid` · `alles` | nur anschalten, was du brauchst |
+| `/gp bereit` · `/gp abklingzeiten` | Raid-Bereitschaft · Abklingzeiten der Gruppe |
+| `/gp quests` · `/gp boss` · `/gp material` | Quests der Gilde · Boss-Notizen · Materialliste |
+| `/gp loot` · `/gp auswertung` | Loot-Verlauf · Event-Auswertung (Offiziere) |
+| `/gp paten` · `/gp quiz` · `/gp jagd` · `/gp album` | Paten · Gildenquiz · Schnitzeljagd · Gildenalbum |
 | `/gp brett` | Schwarzes Brett zeigen |
 | `/gp discord` | Discord-Anbindung (`info`, `test`, `verknuepft`) |
 | `/gp server` | serverweite Gruppensuche an/aus (`status`, `entsperren`) |
@@ -206,15 +257,18 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 | `/gp kanal` | Stand des Gildenkanals (Offiziere: `/gp kanal neu`) |
 | `/gp ausweis` | deinen Ausweis-Code zeigen (nie den BattleTag) |
 | `/gp neu` · `/gp changelog` | Neuerungen anzeigen |
-| `/gp melden` · `/gp fehler` | Fehlerbericht zum Kopieren |
-| `/gp diag` | Diagnose zum Kopieren (Realm, Gilde, Dungeonbrowser, Community) |
+| `/gp melden` · `/gp fehler` · `/gp fehlertest` | Fehlerbericht zum Kopieren · harmlosen Testfehler auslösen |
+| `/gp diag` | Diagnose zum Kopieren (Realm, Gilde, Dungeonbrowser, Community, Speicher und CPU) |
 | `/gp notiz <Name> <Text>` | eigene Notiz zu einem Spieler, steht in seinem Tooltip (nur für dich; ohne Text: löschen) |
 | `/gp blockliste` · `/gp block <Name> [Grund]` · `/gp unblock <Name>` | Blockliste: diese Spieler werden nicht in die Gilde eingeladen (ändern nur Offiziere; Namen mit Leerzeichen in Anführungszeichen) |
 | `/gp bank` | Gildenbank-Verlauf: wer was eingezahlt oder genommen hat, mit Namensfilter und Wochensumme (gelesen beim Öffnen der Gildenbank) |
 | `/gp willkommen` | Willkommensfenster mit Nachricht des Tages, Gildeninfo, Discord- und Community-Link und Frage an die Offiziere |
 | `/gp export` · `/gp import` | GuildPride-Einstellungen als Text kopieren und auf einem anderen PC oder Charakter einfügen |
-| `/gp buff` · `/gp rast` | Buff-Food-Fenster (bestes Essen für deine Klasse aus den Taschen) · Schlafsack- und Lagerfeuer-Fenster beim Leveln |
+| `/gp buff` · `/gp rast` | Buff-Food-Fenster (bestes Essen für deine Klasse aus den Taschen) · Schlafsack- und Lagerfeuer-Fenster beim Leveln; das Zahnrad im Fenster schaltet die Erinnerungen ab |
 | `/gp nachrichten [Name]` · `/gp nachricht <Name> <Text>` | Messenger: Nachrichten an Gildenmitglieder mit GuildPride, auch wenn sie offline sind; auch Flüstern öffnet das Fenster, wie bei WIM (andere Mitglieder heben sie bis zur Zustellung auf; an den Main, also an alle seine Charaktere) |
+| `/gp handwerk` · `/gp handwerk mini` | Handwerk-Fenster (Leveln, Rezepte, Gewinn, Gilde & Twinks) · Kompaktansicht |
+| `/gp tracker` | Sammel- und Herstell-Tracker |
+| `/gp zettel` | Notizzettel auf der Karte (`schreiben`, `an`/`aus`, `weg`) |
 | `/gp preis <Gegenstand> <Preis>` | Preisalarm ohne Auktionshaus-Fenster (`aus` entfernt ihn, ohne Angaben: Liste) |
 | `/gp optionen` | GuildPride-Seite in den WoW-Optionen |
 

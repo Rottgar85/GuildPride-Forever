@@ -2,12 +2,12 @@
 -- Die letzte Seite fragt nach der Discord-Anbindung (GuildPrideDiscord.lua).
 local ADDON, ns = ...
 local L = ns.L
-local INTRO_VERSION = 4   -- 3: Einrichtung (welches Gildenfenster, Aussehen), 4: Messenger bis Fehler melden
+local INTRO_VERSION = 5   -- 3: Einrichtung (welches Gildenfenster, Aussehen), 4: Messenger bis Fehler melden, 5: Werkzeuge
 
 -- Seiten mit "since" sind Neuerungen: Wer die Tour schon kennt, sieht nur diese
 local ALL_PAGES = {
     { title = L["Willkommen bei GuildPride!"],
-      text = L["GuildPride ist der Treffpunkt deiner Gilde: Gildenfenster, Chat, Events, Gruppensuche, DKP und Discord-Anbindung an einem Ort.\n\nDiese kurze Tour zeigt dir in fünf Schritten das Wichtigste. Du kannst sie jederzeit mit /gp intro wieder öffnen."] },
+      text = L["GuildPride ist der Treffpunkt deiner Gilde: Gildenfenster, Chat, Events, Gruppensuche, Raid-Werkzeuge, Handwerk, DKP und Discord-Anbindung an einem Ort.\n\nDiese kurze Tour zeigt dir das Wichtigste. Du kannst sie jederzeit mit /gp intro wieder öffnen."] },
     { setup = true, since = 3, title = L["Einrichtung: dein Gildenfenster"],
       text = L["GuildPride bringt ein eigenes Gildenfenster mit: Chat, Events, Gruppensuche, Berufe, DKP und mehr.\n\nWas soll die Taste J öffnen? Erreichbar bleiben beide: GuildPride über den Minimap-Knopf oder /gp, Blizzards Fenster über die Einstellungen.\n\nDu kannst das jederzeit wieder ändern: Einstellungen > „Einrichtung …“."] },
     { preset = true, title = L["Was möchtest du nutzen?"],
@@ -21,7 +21,7 @@ local ALL_PAGES = {
     { discord = true, title = L["Discord-Anbindung"],
       text = L["GuildPride kann Events, Anmeldungen, DKP und Meilensteine über Blizzards Discord-Verknüpfung an den Discord deiner Gilde schicken. Dort trägt der Bot GameBot alles ein.\n\nDafür muss die Gildenleitung die Gilde mit einem Discord-Kanal verknüpfen und GameBot einladen (gamerbot.duckdns.org). Beides kannst du später jederzeit in den GuildPride-Einstellungen ändern."] },
     { since = 2, title = L["Neu: schlankeres Menü"],
-      text = L["Das Gildenfenster hat ein schlankeres Menü:\n\n• Übersicht – oben umschalten zu Meilensteine\n• Planen – Events, Wünsche und Umfragen\n• Handwerk – Berufe der Gilde und deine Leveling-Guides\n• Gruppensuche, Gilde & Chat, Gildeninfo, Einstellungen wie gewohnt\n\nDie Einstellungen sind in Abschnitte geteilt und haben oben eine Suche. Lieber das alte Menü? Einstellungen > Allgemein > „Kompaktes Menü“ ausschalten."] },
+      text = L["Das Gildenfenster hat ein schlankeres Menü:\n\n• Übersicht – oben umschalten zu Meilensteine\n• Planen – Events, Wünsche, Umfragen, offene Dungeons und Werkzeuge\n• Handwerk – Berufe der Gilde und deine Leveling-Guides\n• Gruppensuche, Gilde & Chat, Gildeninfo, Einstellungen wie gewohnt\n\nDie Einstellungen sind in Abschnitte geteilt und haben oben eine Suche. Lieber das alte Menü? Einstellungen > Allgemein > „Kompaktes Menü“ ausschalten."] },
     { since = 2, title = L["Neu: Twinks automatisch erkennen"],
       text = L["Alle Charaktere eines Spielers erscheinen jetzt als eine Zeile in der Mitgliederliste, Twinks klappst du mit „+3“ auf.\n\nDein BattleTag bleibt dabei privat: Er verlässt nie deinen PC, die Gilde sieht nur einen daraus berechneten Code.\n\nRechtsklick auf einen eigenen Charakter: „Als Main festlegen“."] },
     { since = 2, title = L["Neu: Sicherung und Protokoll"],
@@ -32,6 +32,8 @@ local ALL_PAGES = {
       text = L["• Auktionshaus: Preise im Tooltip, Einkaufslisten, Preisalarm und Aufträge der Gilde. Das eigene Fenster öffnest du im Auktionshaus mit „GuildPride“.\n\n• Handwerk: Weg von 1 bis 300 für jeden Beruf, Tracker für Zutaten, Lehrer auf der Karte, Angeln mit einer Taste (/gp handwerk)."] },
     { since = 4, title = L["Neu: Reisen, Buffs und Fehler melden"],
       text = L["• Reisen: Abfahrten von Schiffen, Zeppelinen und der Tiefenbahn, Flugzeiten am Flugmeister.\n\n• Buffs: Erinnerung an Buff-Food, Schlafsack und Lagerfeuer – ein Klick benutzt es.\n\n• Fehler: Hat GuildPride einen Fehler, wirst du einmal gefragt, ob er automatisch an den Entwickler gehen darf. Ohne dein Ja wird nichts gesendet."] },
+    { since = 5, title = L["Neu: Werkzeuge, Suche und Pakete"],
+      text = L["• Werkzeuge (unter „Planen“): Raid-Bereitschaft, Quests der Gilde, Boss-Notizen, Materialliste, Loot-Verlauf, Paten, Quiz und mehr.\n\n• Suche über alles: die Lupe oben im Gildenfenster oder /gp suche.\n\n• Pakete: /gp paket gilde, raid oder alles schaltet nur an, was du brauchst.\n\n• Besser lesbar: größere Schrift und Farben für Farbenblinde unter Einstellungen > Allgemein."] },
 }
 local PAGES = ALL_PAGES
 

@@ -1116,6 +1116,6 @@ SlashCmdList.GUILDPRIDE = function(arg)
             InterfaceOptionsFrame_OpenToCategory(ns.SettingsPanel)   -- zweimal: alter Blizzard-Fehler
         end
     else
-        Print(L["Befehle: /gp (Fenster) · sound · popup · blizzard · einladen <Name> · werben · optionen · badge <Level> · version · kanal · server · ausweis · sicherung · fehler · bewerbungen"])
+        Print(L["Befehle: /gp (Fenster) · suche · bereit · quests · boss · material · loot · handwerk · tracker · dkp · zettel · nachrichten · rares · ah · buff · paket · optionen · sicherung · fehler. Alle mit Erklärung: |cffffd100/gp suche|r"])
     end
 end
