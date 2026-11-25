@@ -3,6 +3,29 @@
 local HANDLER = "[Interface/AddOns/GuildPrideForever/Core/GuildPrideErrors.lua]:56: in function <...e/AddOns/GuildPrideForever/Core/GuildPrideErrors.lua:55>\n"
 
 return function(test, eq, W, ns)
+    test("Fehlerbericht: abgefangene eigene Fehler gehen weiter, stehen aber im Bericht", function()
+        local oldTry, oldErrors, oldPrint = ns.Try, GuildPrideDB.errors, ns.Print
+        local oldSet, oldGet, oldShare = seterrorhandler, geterrorhandler, ns.ErrorShare
+        GuildPrideDB.errors = {}
+        ns.Print, ns.ErrorShare = function() end, nil
+        local oldStack = rawget(_G, "debugstack")
+        debugstack = function() return "" end
+        seterrorhandler, geterrorhandler = function() end, function() return function() end end
+        W.Load("GuildPrideErrors.lua"); W.Fire("ADDON_LOADED", "GuildPrideForever")
+        local ok, err = pcall(function()
+            local a, b, c = ns.Try(function(x, y) return x + y, nil, "z" end, 2, 3)
+            eq(a, true); eq(b, 5); eq(c, nil)
+            local okT = ns.Try(function() error("GuildPrideForever/Guild/GuildPrideX.lua:7: kaputt", 0) end)
+            eq(okT, false); eq(#GuildPrideDB.errors, 1); eq(GuildPrideDB.errors[1].msg:find("kaputt", 1, true) ~= nil, true)
+            for _ = 1, 5 do ns.Try(function() error("GuildPrideForever/Guild/GuildPrideX.lua:7: kaputt", 0) end) end
+            eq(#GuildPrideDB.errors, 1); eq(GuildPrideDB.errors[1].n, 6, "gleicher Fehler nur gezählt")
+        end)
+        ns.Try, GuildPrideDB.errors, ns.Print = oldTry, oldErrors, oldPrint
+        debugstack = oldStack
+        seterrorhandler, geterrorhandler, ns.ErrorShare = oldSet, oldGet, oldShare
+        if not ok then error(err, 0) end
+    end)
+
     local handler, forwarded, stack
     -- Spielstart nachstellen: Datei laden, Fehler vor ADDON_LOADED, gespeicherte Fehler
     local function Start(saved, early)

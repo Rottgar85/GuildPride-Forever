@@ -104,12 +104,6 @@ function AH.TooltipCraft(link)
     return "|cffaaaaaa" .. text .. "|r"
 end
 
--- Kopfzeile des eigenen Abschnitts
-function AH.TooltipHeader()
-    local icon = GP.IconString and GP.IconString(14) or ""
-    return icon .. " |cffd4af37GuildPride|r"
-end
-
 local function Show()
     if not AH.Opt("ahTooltip") then return false end
     return not AH.AuctionatorLoaded() or AH.Opt("ahTooltipWithAuctionator")
@@ -123,102 +117,34 @@ function AH.TooltipText(link, count, now, shift)
     return nil
 end
 
--- done[tooltip] = true (schon behandelt) oder Nummer der eigenen Zeile
-local done = {}
-local function LineText(link, count)
-    local ok, text = pcall(AH.TooltipText, link, count, GetServerTime(), IsShiftKeyDown())
-    if not ok then geterrorhandler()(text); return nil end
-    return text
-end
-local function AddLine(tooltip, link, count)
-    if not link or done[tooltip] or not Show() then return end
-    if issecretvalue and issecretvalue(link) then return end
-    done[tooltip] = true
-    local text = LineText(link, count)
+-- Zeilen für den gemeinsamen Block (Core/GuildPrideTooltip.lua). Steht die Empfehlung schon da
+-- (ctx.advice), nennt sie Händler- und Auktionspreis: dann sind beide hier nur noch Einzelheiten.
+function AH.TooltipBlock(ctx)
+    if not Show() then return nil end
+    local out, link = {}, ctx.link
+    local text = AH.TooltipText(link, ctx.count, GetServerTime(), IsShiftKeyDown())
     if text then
-        tooltip:AddLine(" ")
-        tooltip:AddLine(AH.TooltipHeader())
-        tooltip:AddLine(text)
-        done[tooltip] = tooltip:NumLines()
-        local ok, extra = pcall(AH.TooltipExtra, link)
-        if ok and extra then tooltip:AddLine(extra) end
-        for _, fn in ipairs({ AH.TooltipHistory, AH.TooltipVendor, AH.TooltipCraft, AH.TooltipSell }) do
-            local okX, line = pcall(fn, link, count)
-            if okX and line then tooltip:AddLine(line) end
+        out[1] = { text, more = ctx.advice or nil }
+        local function Line(fn, main)
+            local line = fn(link, ctx.count)
+            if line then out[#out + 1] = { line, more = not main or nil } end
         end
-        tooltip:Show()
+        Line(AH.TooltipSell, true)
+        Line(AH.TooltipExtra)
+        Line(AH.TooltipHistory)
+        if not ctx.advice then Line(AH.TooltipVendor, true) end
+        Line(AH.TooltipCraft)
     end
     -- Kein oder alter Preis: beim Server nachfragen (gebremst in AH.Ask)
     local key = AH.KeyFromLink(link)
     local _, t = AH.PriceFor(key)
     if key and (not t or GetServerTime() - t > ASK_AFTER) and AH.Tradeable(link) then AH.Ask(key) end
+    return out
 end
-
-local TOOLTIPS = { GameTooltip, ItemRefTooltip }
-local function FromTooltip(tooltip) local _, link = tooltip:GetItem(); AddLine(tooltip, link) end
+GP.Tip.Add(20, function(ctx) return AH.TooltipBlock(ctx) end)
 
 -- Antwort vom Server eingetroffen: offenen Tooltip mit demselben Item neu aufbauen
 function AH.OnPrice(key)
-    if not GameTooltip or not GameTooltip.IsShown or not GameTooltip:IsShown() then return end
-    local _, link = GameTooltip:GetItem()
-    if not link or AH.KeyFromLink(link) ~= key or not Show() then return end
-    local idx = done[GameTooltip]
-    local text = LineText(link)
-    if not text then return end
-    if type(idx) == "number" then
-        -- vorhandene eigene Zeile ersetzen statt eine zweite anzuhängen
-        local fs = _G[GameTooltip:GetName() .. "TextLeft" .. idx]
-        if fs then fs:SetText(text) end
-    else
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(AH.TooltipHeader())
-        GameTooltip:AddLine(text)
-        done[GameTooltip] = GameTooltip:NumLines()
-    end
-    GameTooltip:Show()
-end
-
-if GameTooltip and GameTooltip.HookScript then
-    for _, tt in ipairs(TOOLTIPS) do
-        if tt:HasScript("OnTooltipCleared") then tt:HookScript("OnTooltipCleared", function(self) done[self] = nil end) end
-        tt:HookScript("OnHide", function(self) done[self] = nil end)
-        if tt:HasScript("OnTooltipSetItem") then tt:HookScript("OnTooltipSetItem", FromTooltip) end
-    end
-    -- Taschen: mit Stapelgröße (Umschalt zeigt Gesamtpreis)
-    if GameTooltip.SetBagItem then
-        hooksecurefunc(GameTooltip, "SetBagItem", function(self, bag, slot)
-            local count = 1
-            if C_Container and C_Container.GetContainerItemInfo then
-                local info = C_Container.GetContainerItemInfo(bag, slot)
-                count = info and info.stackCount or 1
-            elseif GetContainerItemInfo then
-                count = select(2, GetContainerItemInfo(bag, slot)) or 1
-            end
-            local _, link = self:GetItem()
-            -- OnTooltipSetItem hat die Zeile evtl. schon gesetzt: dann nur mit Stapelgröße neu schreiben
-            local idx = done[self]
-            if type(idx) == "number" then
-                local text = count > 1 and LineText(link, count)
-                local fs = text and _G[self:GetName() .. "TextLeft" .. idx]
-                if fs then fs:SetText(text); self:Show() end
-            elseif not idx then
-                AddLine(self, link, count)
-            end
-        end)
-    end
-    for _, method in ipairs({ "SetAuctionItem", "SetAuctionSellItem", "SetBuybackItem", "SetHyperlink",
-        "SetInboxItem", "SetInventoryItem", "SetItemByID", "SetLootItem", "SetLootRollItem", "SetMerchantItem",
-        "SetQuestItem", "SetQuestLogItem", "SetSendMailItem", "SetTradePlayerItem", "SetTradeTargetItem",
-        "SetTradeSkillItem" }) do
-        if GameTooltip[method] then hooksecurefunc(GameTooltip, method, FromTooltip) end
-    end
-    if ItemRefTooltip and ItemRefTooltip.SetHyperlink then hooksecurefunc(ItemRefTooltip, "SetHyperlink", FromTooltip) end
-end
--- Neuere Clients (wie WoW Forever): Tooltip-Daten kommen über TooltipDataProcessor
-if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-        if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end
-        local _, link = tooltip:GetItem()
-        AddLine(tooltip, link or (data and data.hyperlink))
-    end)
+    if not Show() then return end
+    GP.Tip.Refresh(function(link) return AH.KeyFromLink(link) == key end)
 end

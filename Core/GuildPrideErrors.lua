@@ -125,6 +125,17 @@ local function Record(msg, rawStack, count)
     end
 end
 
+-- Eigenen Code absichern, ohne Fehler zu verschlucken: wie pcall, aber ein Fehler steht danach im
+-- Bericht und geht (mit Zustimmung) an den Entwickler. Für Blizzard-Funktionen, die scheitern dürfen,
+-- weiter pcall benutzen.
+function ns.Try(fn, ...)
+    local n, args = select("#", ...), { ... }
+    return xpcall(function() return fn(unpack(args, 1, n)) end, function(err)
+        pcall(Record, err, debugstack and debugstack(2) or "")
+        return err
+    end)
+end
+
 if seterrorhandler and geterrorhandler then
     local previous = geterrorhandler()
     seterrorhandler(function(msg, ...)

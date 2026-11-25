@@ -165,7 +165,7 @@ function M.Send(to, text, opts)
         Store(id, db.outbox[id])
     end
     -- Offizier antwortet einem Mitglied: dessen offene Fragen gelten als beantwortet
-    if not q and ns.Questions and ns.Questions.AfterSend then pcall(ns.Questions.AfterSend, main) end
+    if not q and ns.Questions and ns.Questions.AfterSend then ns.Try(ns.Questions.AfterSend, main) end
     Changed()
     return id
 end
@@ -211,7 +211,7 @@ function M.Receive(id, author, to, t, text, via, q)
     q = ValidId(q) and q or nil
     AddToConv(from, { id = id, out = false, text = text, t = t, author = author, via = via, q = q })
     if not (M.IsOpenOn and M.IsOpenOn(from)) then db.unread[from] = (db.unread[from] or 0) + 1 end
-    if q and ns.Questions and ns.Questions.Record then pcall(ns.Questions.Record, q, author, text, t) end
+    if q and ns.Questions and ns.Questions.Record then ns.Try(ns.Questions.Record, q, author, text, t) end
     Notify(from, text, via, q)
     Changed()
     return true

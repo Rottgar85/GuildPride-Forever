@@ -148,8 +148,8 @@ local GUILD_BANKER = Enum and Enum.PlayerInteractionType and Enum.PlayerInteract
 local function ReadAll()
     if not Bank.Available() or not IsInGuild() then return end
     local now = GetServerTime()
-    for tab = 1, (GetNumGuildBankTabs and GetNumGuildBankTabs() or 0) do pcall(Bank.ReadTab, tab, now) end
-    pcall(Bank.ReadMoney, now)
+    for tab = 1, (GetNumGuildBankTabs and GetNumGuildBankTabs() or 0) do ns.Try(Bank.ReadTab, tab, now) end
+    ns.Try(Bank.ReadMoney, now)
     if Bank.Refresh then Bank.Refresh() end
 end
 local function Query()

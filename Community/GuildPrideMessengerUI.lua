@@ -178,7 +178,11 @@ local function Build()
     local function DoSend()
         if not current then return end
         if IsWhisper(current) then
-            if Wh() and Wh().Send(WhisperName(current), box:GetText()) then box:SetText("") end
+            if Wh() then
+                -- zu lang: der Rest bleibt stehen und geht mit dem nächsten Enter raus
+                local ok, rest = Wh().Send(WhisperName(current), box:GetText())
+                if ok then box:SetText(rest or "") end
+            end
             return
         end
         local id, why = M.Send(current, box:GetText())

@@ -297,43 +297,28 @@ end
 ---------------------------------------------------------------------
 -- Item-Tooltip: "Gesucht in der Gilde"
 ---------------------------------------------------------------------
-local function AddTooltipLines(tip, id)
-    if not GuildPrideDB or not IsInGuild() or GuildPrideDB.wishTooltip == false then return end
+function Wish.TooltipLines(id)
+    local out = {}
+    if not GuildPrideDB or not IsInGuild() or GuildPrideDB.wishTooltip == false then return out end
     local who = Wish.Who(id)
-    if #who == 0 then return end
+    if #who == 0 then return out end
     local mine = Mine().i[id]
     local others = {}
     for _, w in ipairs(who) do if w.name ~= Me() then others[#others + 1] = w end end
-    if mine then
-        tip:AddLine(("|cffffd100GuildPride:|r " .. L["auf deiner Wunschliste (%s)"]):format(PrioName(mine)), 1, 1, 1)
-    end
-    if #others == 0 then return end
-    tip:AddLine(("|cffffd100GuildPride:|r " .. L["gesucht von %d in der Gilde"]):format(#others), 1, 1, 1)
+    if mine then out[#out + 1] = { (L["auf deiner Wunschliste (%s)"]):format(PrioName(mine)) } end
+    if #others == 0 then return out end
+    out[#out + 1] = { (L["gesucht von %d in der Gilde"]):format(#others) }
     for i, w in ipairs(others) do
         if i > 5 then
-            tip:AddLine(("   " .. L["… und %d weitere"]):format(#others - 5), 0.7, 0.7, 0.7)
+            out[#out + 1] = { "   " .. (L["… und %d weitere"]):format(#others - 5), more = true }
             break
         end
-        tip:AddDoubleLine("   " .. PRIO_COLOR[w.prio] .. Ambiguate(w.name, "guild") .. "|r",
-            PrioName(w.prio) .. (w.dkp and ("  ·  " .. w.dkp .. " DKP") or ""), 1, 1, 1, 0.8, 0.8, 0.8)
+        out[#out + 1] = { "   " .. PRIO_COLOR[w.prio] .. Ambiguate(w.name, "guild") .. "|r",
+            PrioName(w.prio) .. (w.dkp and ("  ·  " .. w.dkp .. " DKP") or ""), more = true }
     end
+    return out
 end
-Wish.AddTooltipLines = AddTooltipLines
-
-local function OnItemTooltip(tip, data)
-    if tip ~= GameTooltip and tip ~= ItemRefTooltip then return end
-    local id = data and type(data.id) == "number" and data.id
-    if not id and tip.GetItem then
-        local ok, _, link = pcall(tip.GetItem, tip)
-        if ok then id = ItemID(link) end
-    end
-    if id then pcall(AddTooltipLines, tip, id) end
-end
-if TooltipDataProcessor and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Item then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, OnItemTooltip)
-elseif GameTooltip and GameTooltip.HookScript then
-    pcall(GameTooltip.HookScript, GameTooltip, "OnTooltipSetItem", function(tip) OnItemTooltip(tip) end)
-end
+ns.Tip.Add(40, function(ctx) return Wish.TooltipLines(ctx.id) end)
 
 ---------------------------------------------------------------------
 -- Ereignisse: eigene Liste nach dem Einloggen melden (bei Änderung oder alle 3 Tage)
@@ -396,7 +381,7 @@ local function AddButton(text, prio, anchor, x)
         Wish.Set(id, prio)
         input:SetText(""); input:ClearFocus()
     end)
-    if ns.SkinButton then pcall(ns.SkinButton, b) end
+    if ns.SkinButton then ns.Try(ns.SkinButton, b) end
     return b
 end
 local b1 = AddButton(L["normal"], 1, input, 10)

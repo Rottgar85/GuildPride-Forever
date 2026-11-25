@@ -485,7 +485,7 @@ local function LearnAll()
     if not ok or type(ids) ~= "table" then return end
     for i, id in ipairs(ids) do
         if i > 600 then break end   -- Schutz bei riesigen Listen
-        pcall(AH.LearnRecipe, id)
+        GP.Try(AH.LearnRecipe, id)
     end
 end
 local function LearnSoon()

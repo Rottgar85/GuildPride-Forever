@@ -102,7 +102,7 @@ local function SendPendingWelcome()
     welcomed[w.short] = GetTime()
     ns.Queue("WEL", nil, w.short)
     local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-    pcall(SendChat, w.text, "GUILD")
+    pcall(SendChat, ns.CutMessage and (ns.CutMessage(w.text)) or w.text, "GUILD")   -- zu lange nimmt das Spiel nicht an
 end
 
 -- Tastatur nur abhören, solange eine Begrüßung wartet und kein Kampf ist

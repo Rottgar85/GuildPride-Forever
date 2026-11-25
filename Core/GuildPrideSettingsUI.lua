@@ -61,6 +61,7 @@ local options = {
     { header = L["Allgemein"] },
     { key = "replaceGuildFrame", label = L["Dieses Fenster statt Blizzard-Gildenfenster (J)"],
       changed = function() if ns.GuildWindowChoiceChanged then ns.GuildWindowChoiceChanged() end end },
+    { key = "tipDetails",    label = L["Item-Tooltip: alle Einzelheiten zeigen (sonst mit Umschalt)"] },
     { key = "showItemID",    label = L["Item-ID im Item-Tooltip zeigen"] },
     { key = "easyRead",      label = L["Besser lesbar: größere Schrift und hellere graue Texte"],
       changed = function() if ns.ApplyReadable then ns.ApplyReadable() end end },
@@ -108,6 +109,8 @@ local options = {
     { key = "ahTipHistory",  label = L["Tooltip: Preisverlauf (bis 30 Tage)"] },
     { key = "ahTipVendor",   label = L["Tooltip: Händlerpreis"] },
     { key = "ahTipCraft",    label = L["Tooltip: Herstellkosten und Gewinn"] },
+    { key = "bagMarks",      label = L["Farbmarke in den Taschen: grün Auktionshaus, gelb Händler, orange behalten, blau nachsehen"],
+      changed = function() if ns.Scales and ns.Scales.Bags and ns.Scales.Bags.QueueFullRefresh then ns.Scales.Bags.QueueFullRefresh() end end },
     { key = "ahSellHint",    label = L["Verkaufs-Hinweis: Münze in den Taschen, wenn ein Preis gerade hoch ist"] },
     { key = "ahMailSummary", label = L["Briefkasten: Auktionsbriefe zusammenfassen"] },
     { header = L["Handwerk"] },
@@ -167,33 +170,61 @@ for i = #options, 1, -1 do
     if (options[i].public and not ns.HAS_PUBLIC_LFG) or (options[i].forever and not ns.IS_FOREVER) then table.remove(options, i) end
 end
 ns.SettingOptions = options   -- für Suche und Pakete (GuildPrideSearch.lua)
+
+-- Kurzansicht: je Abschnitt nur das, was die meisten brauchen, und alles, was eigene Daten teilt.
+-- Der Rest steht hinter „… weitere“ am Abschnitt oder „Alle Einstellungen zeigen“.
+local TOP = {}
+for key in ([[replaceGuildFrame easyRead minimap popup helpAlerts shareMilestones raidReady cooldownShare guildQuests
+    usageShare errorShare mapShow mapShare publicLFG ahTooltip bagMarks craftCard craftSell transitUI mapNotes buffFood restReminder
+    plateColors whisperWindow discordBridge ausweisAuto]]):gmatch("%a+") do TOP[key] = true end
+-- → sichtbare Zeilen in Reihenfolge, verborgene je Überschrift, verborgene insgesamt
+function ns.SettingsRows(list, all, open)
+    local rows, more, hidden, head = {}, {}, 0, nil
+    for _, o in ipairs(list) do
+        if o.header then
+            head = o
+            rows[#rows + 1] = o
+        elseif all or TOP[o.key] or (head and open[head]) then
+            rows[#rows + 1] = o
+        else
+            hidden = hidden + 1
+            if head then more[head] = (more[head] or 0) + 1 end
+        end
+    end
+    return rows, more, hidden
+end
+local view = { open = {} }   -- aufgeklappte Abschnitte (nur bis zum Neuladen), query = Suchtext, footY, footH
 local function SetOption(opt, on)
     GuildPrideDB[opt.key] = on and true or false
     if opt.changed then opt.changed() end
 end
 local checks = {}
-for i, opt in ipairs(options) do
+for _, opt in ipairs(options) do
   if opt.header then
     -- Abschnitts-Überschrift statt Haken
     local h = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
-    h:SetPoint("TOPLEFT", 4, OPT_Y - (i - 1) * 30 - 8)
     h:SetText(opt.header)
-    opt.fs, opt.y = h, OPT_Y - (i - 1) * 30
+    opt.fs = h
+    local b = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+    b:SetSize(110, 20)
+    b:SetPoint("LEFT", h, "RIGHT", 12, 0)
+    b:SetScript("OnClick", function() view.open[opt] = not view.open[opt] or nil; view.Layout() end)
+    opt.moreBtn = b
   else
     local cb = CreateFrame("CheckButton", nil, settings, "UICheckButtonTemplate")
-    cb:SetPoint("TOPLEFT", 0, OPT_Y - (i - 1) * 30)
     local label = settings:CreateFontString(nil, "OVERLAY", "GPFont_Text")
     label:SetPoint("LEFT", cb, "RIGHT", 4, 0)
     label:SetText(opt.label)
     cb:SetScript("OnClick", function(self) SetOption(opt, self:GetChecked()) end)
     checks[opt.key] = cb
-    opt.fs, opt.cb, opt.y = label, cb, OPT_Y - (i - 1) * 30
+    opt.fs, opt.cb = label, cb
     -- Knopf zum Testen der Discord-Anbindung direkt neben dem Schalter
     if opt.key == "plateColors" then
         local pb = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
         pb:SetSize(110, 20)
         pb:SetPoint("LEFT", label, "RIGHT", 10, 0)
         pb:SetText(L["Farben …"])
+        opt.extra = pb
         pb:SetScript("OnClick", function() if ns.Plates then ns.Plates.Toggle() end end)
     end
     if opt.key == "discordBridge" then
@@ -201,9 +232,70 @@ for i, opt in ipairs(options) do
         test:SetSize(130, 20)
         test:SetPoint("LEFT", label, "RIGHT", 10, 0)
         test:SetText(L["Discord testen"])
+        opt.extra = test
         test:SetScript("OnClick", function() if ns.Discord and ns.Discord.Test then ns.Discord.Test() end end)
     end
   end
+end
+
+-- Alles unter den Schaltern sitzt in einem Rahmen, der mit der Länge der Liste wandert
+local foot = CreateFrame("Frame", nil, settings)
+foot:SetSize(640, 1)
+local FOOT = -38   -- oben in diesem Rahmen: der Knopf „Alle Einstellungen zeigen“
+view.allBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
+view.allBtn:SetSize(300, 26)
+view.allBtn:SetPoint("TOPLEFT", 4, -8)
+view.allBtn:SetScript("OnClick", function() ns.SettingsShowAll(not GuildPrideDB.settingsAll) end)
+
+function view.Layout()
+    local all = type(GuildPrideDB) == "table" and GuildPrideDB.settingsAll == true
+    local rows, more, hidden = ns.SettingsRows(options, all or (view.query or "") ~= "", view.open)
+    local shown = {}
+    for i, opt in ipairs(rows) do
+        local y = OPT_Y - (i - 1) * 30
+        shown[opt], opt.y = true, y
+        local w = opt.cb or opt.fs
+        w:ClearAllPoints()
+        w:SetPoint("TOPLEFT", opt.cb and 0 or 4, opt.cb and y or y - 8)
+    end
+    for _, opt in ipairs(options) do
+        local on = shown[opt] or false
+        opt.fs:SetShown(on)
+        if opt.cb then opt.cb:SetShown(on) end
+        if opt.extra then opt.extra:SetShown(on) end
+        if opt.moreBtn then
+            local n = more[opt]
+            local open = not all and view.open[opt]
+            opt.moreBtn:SetShown((n or open) and true or false)
+            opt.moreBtn:SetText(n and (L["%d weitere …"]):format(n) or L["weniger"])
+        end
+    end
+    view.footY = OPT_Y - #rows * 30
+    foot:ClearAllPoints()
+    foot:SetPoint("TOPLEFT", 0, view.footY)
+    settings:SetHeight(-view.footY + (view.footH or 0))
+    if settingsScroll.UpdateScrollChildRect then settingsScroll:UpdateScrollChildRect() end
+    view.allBtn:SetText(all and L["Nur die wichtigsten zeigen"] or (L["Alle Einstellungen zeigen (%d weitere)"]):format(hidden))
+end
+function ns.SettingsShowAll(on)
+    GuildPrideDB.settingsAll = on and true or nil
+    if not on then view.open = {} end
+    view.Layout()
+end
+function view.ScrollTo(y)
+    local range = settingsScroll:GetVerticalScrollRange() or 0
+    settingsScroll:SetVerticalScroll(math.min(range, math.max(0, y)))
+end
+-- Einen Schalter zeigen (Suche über alles): sein Abschnitt klappt auf
+function ns.ShowSetting(opt)
+    local head
+    for _, o in ipairs(options) do
+        if o.header then head = o end
+        if o == opt then break end
+    end
+    if head then view.open[head] = true end
+    view.Layout()
+    if opt.y then view.ScrollTo(-opt.y - 40) end
 end
 
 do
@@ -221,6 +313,7 @@ settingsSearch:SetScript("OnEnterPressed", settingsSearch.ClearFocus)
 settingsSearch:SetScript("OnTextChanged", function(self)
     local q = strtrim(self:GetText() or ""):lower()
     settingsSearchHint:SetShown(q == "")
+    if view.query ~= q then view.query = q; view.Layout() end   -- beim Suchen sind alle Schalter da
     local first
     for _, opt in ipairs(options) do
         if opt.fs then
@@ -237,10 +330,7 @@ settingsSearch:SetScript("OnTextChanged", function(self)
             end
         end
     end
-    if first then
-        local range = settingsScroll:GetVerticalScrollRange() or 0
-        settingsScroll:SetVerticalScroll(math.min(range, math.max(0, -first.y - 40)))
-    end
+    if first then view.ScrollTo(-first.y - 40) end
 end)
 end
 
@@ -255,33 +345,30 @@ local function Jump(label, y)
     b:SetText(label)
     local fs = b:GetFontString()
     if fs then fs:SetWidth(96); fs:SetWordWrap(false) end
-    b:SetScript("OnClick", function()
-        local range = settingsScroll:GetVerticalScrollRange() or 0
-        settingsScroll:SetVerticalScroll(math.min(range, math.max(0, y())))
-    end)
+    b:SetScript("OnClick", function() view.ScrollTo(y()) end)
     n = n + 1
 end
 for _, opt in ipairs(options) do
     if opt.header and n < 11 then Jump(opt.header, function() return -opt.y end) end
 end
-Jump(L["Menü & Größe"], function() return #options * 30 end)
+Jump(L["Menü & Größe"], function() return -view.footY end)
 end
 
-local blizzBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+local blizzBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
 blizzBtn:SetSize(220, 26)
-blizzBtn:SetPoint("TOPLEFT", 4, OPT_Y - (#options * 30) - 8)
+blizzBtn:SetPoint("TOPLEFT", 4, FOOT - 8)
 blizzBtn:SetText(L["Blizzard-Gildenfenster öffnen"])
 blizzBtn:SetScript("OnClick", function() ns.OpenBlizzardGuild() end)
 
 do
-local backupBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+local backupBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
 backupBtn:SetSize(180, 26)
 backupBtn:SetPoint("LEFT", blizzBtn, "RIGHT", 10, 0)
 backupBtn:SetText(L["Datensicherung …"])
 backupBtn:SetScript("OnClick", function() if ns.ToggleBackupWindow then ns.ToggleBackupWindow() end end)
 
 -- Einrichtung erneut öffnen: welches Gildenfenster, welches Aussehen
-local setupBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+local setupBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
 setupBtn:SetSize(150, 26)
 setupBtn:SetPoint("LEFT", backupBtn, "RIGHT", 10, 0)
 setupBtn:SetText(L["Einrichtung …"])
@@ -289,15 +376,15 @@ setupBtn:SetScript("OnClick", function() if ns.ShowSetup then ns.ShowSetup() end
 end
 
 -- Begrüßungstext (GuildPrideMembers.lua), {name} = neues Mitglied
-local welcomeY = OPT_Y - (#options * 30) - 46
-local welcomeLabel = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
+local welcomeY = FOOT - 46
+local welcomeLabel = foot:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
 welcomeLabel:SetPoint("TOPLEFT", 4, welcomeY)
 welcomeLabel:SetText(L["Begrüßungstext ({name} = neues Mitglied, {discord} und {community} = Links der Gilde)"])
 -- Fehler melden: fertiger Bericht zum Kopieren (GuildPrideErrors.lua)
 do
-    local bugBtn = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+    local bugBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
     bugBtn:SetSize(150, 24)
-    bugBtn:SetPoint("TOPRIGHT", settings, "TOPRIGHT", -8, welcomeY + 4)
+    bugBtn:SetPoint("TOPRIGHT", foot, "TOPRIGHT", -8, welcomeY + 4)
     bugBtn:SetText(L["Fehler melden …"])
     bugBtn:SetScript("OnClick", function() if ns.BugReport then ns.BugReport() end end)
     bugBtn:SetScript("OnEnter", function(self)
@@ -308,7 +395,7 @@ do
     end)
     bugBtn:SetScript("OnLeave", GameTooltip_Hide)
 end
-local welcomeBox = CreateFrame("EditBox", nil, settings, "InputBoxTemplate")
+local welcomeBox = CreateFrame("EditBox", nil, foot, "InputBoxTemplate")
 welcomeBox:SetSize(470, 22); welcomeBox:SetPoint("TOPLEFT", 10, welcomeY - 18)
 welcomeBox:SetAutoFocus(false); welcomeBox:SetMaxLetters(200)
 welcomeBox:SetScript("OnTextChanged", function(self, user)
@@ -324,13 +411,13 @@ local function ApplyLook()
 end
 local steppers = {}
 local function Stepper(label, y, key, step, min, max, fmt, apply)
-    local l = settings:CreateFontString(nil, "OVERLAY", "GPFont_Text")
+    local l = foot:CreateFontString(nil, "OVERLAY", "GPFont_Text")
     l:SetPoint("TOPLEFT", 8, y); l:SetWidth(170); l:SetText(label)
-    local minus = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+    local minus = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
     minus:SetSize(26, 22); minus:SetPoint("LEFT", l, "RIGHT", 4, 0); minus:SetText("-")
-    local value = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
+    local value = foot:CreateFontString(nil, "OVERLAY", "GPFont_TextBold")
     value:SetPoint("LEFT", minus, "RIGHT", 6, 0); value:SetWidth(60)
-    local plus = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+    local plus = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
     plus:SetSize(26, 22); plus:SetPoint("LEFT", value, "RIGHT", 6, 0); plus:SetText("+")
     local s = { value = value }
     function s.Show() value:SetText(fmt(GuildPrideDB[key])) end
@@ -422,8 +509,8 @@ local baseY = lookY - 124
 -- Reiter nach dieser Datei anlegen.
 local MENU_ROWS = 10
 local menuY = baseY
-Section(settings, L["Menü anpassen"], nil, menuY)
-local menuHint = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+Section(foot, L["Menü anpassen"], nil, menuY)
+local menuHint = foot:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
 menuHint:SetPoint("TOPLEFT", 4, menuY - 26)
 menuHint:SetWidth(620); menuHint:SetJustifyH("LEFT")
 menuHint:SetText(L["Haken = sichtbar, Name ändern, Pfeile = Reihenfolge, Start = beim Öffnen gezeigt. „Einstellungen“ bleibt immer da."])
@@ -459,7 +546,7 @@ end
 local function BuildMenuRow(i)
     local y = menuY - 48 - (i - 1) * 30
     local row = {}
-    row.show = CreateFrame("CheckButton", nil, settings, "UICheckButtonTemplate")
+    row.show = CreateFrame("CheckButton", nil, foot, "UICheckButtonTemplate")
     row.show:SetSize(26, 26); row.show:SetPoint("TOPLEFT", 4, y)
     row.show:SetScript("OnClick", function(self)
         local tab = row.tab
@@ -468,7 +555,7 @@ local function BuildMenuRow(i)
         ns.MenuChanged()
         RefreshMenuRows()
     end)
-    row.name = CreateFrame("EditBox", nil, settings, "InputBoxTemplate")
+    row.name = CreateFrame("EditBox", nil, foot, "InputBoxTemplate")
     row.name:SetSize(200, 22); row.name:SetPoint("TOPLEFT", 42, y - 2)
     row.name:SetAutoFocus(false); row.name:SetMaxLetters(24)
     row.name:SetScript("OnTextChanged", function(self, user)
@@ -483,17 +570,17 @@ local function BuildMenuRow(i)
     row.name:SetScript("OnEditFocusLost", function(self)
         if row.tab then self:SetText(row.tab.label) end
     end)
-    row.orig = settings:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
+    row.orig = foot:CreateFontString(nil, "OVERLAY", "GPFont_TextSmall")
     row.orig:SetPoint("LEFT", row.name, "RIGHT", 10, 0)
     row.orig:SetWidth(150); row.orig:SetJustifyH("LEFT")
     row.orig:SetTextColor(0.6, 0.58, 0.55)
-    row.up = ArrowButton(settings, true)
+    row.up = ArrowButton(foot, true)
     row.up:SetPoint("LEFT", row.name, "RIGHT", 168, 0)
     row.up:SetScript("OnClick", function() MoveTab(row.index, -1) end)
-    row.down = ArrowButton(settings, false)
+    row.down = ArrowButton(foot, false)
     row.down:SetPoint("LEFT", row.up, "RIGHT", 2, 0)
     row.down:SetScript("OnClick", function() MoveTab(row.index, 1) end)
-    row.start = CreateFrame("CheckButton", nil, settings, "UIRadioButtonTemplate")
+    row.start = CreateFrame("CheckButton", nil, foot, "UIRadioButtonTemplate")
     row.start:SetPoint("LEFT", row.down, "RIGHT", 16, 0)
     row.start:SetScript("OnClick", function()
         -- Nochmal klicken: kein fester Start mehr (zuletzt offener Reiter)
@@ -502,7 +589,7 @@ local function BuildMenuRow(i)
         end
         RefreshMenuRows()
     end)
-    row.startText = settings:CreateFontString(nil, "OVERLAY", "GPFont_Text")
+    row.startText = foot:CreateFontString(nil, "OVERLAY", "GPFont_Text")
     row.startText:SetPoint("LEFT", row.start, "RIGHT", 4, 0)
     row.startText:SetText(L["Start"])
     row.widgets = { row.show, row.name, row.orig, row.up, row.down, row.start, row.startText }
@@ -510,7 +597,7 @@ local function BuildMenuRow(i)
     return row
 end
 
-local menuReset = CreateFrame("Button", nil, settings, "UIPanelButtonTemplate")
+local menuReset = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
 menuReset:SetSize(200, 24)
 menuReset:SetText(L["Menü zurücksetzen"])
 menuReset:SetScript("OnClick", function()
@@ -544,9 +631,12 @@ function RefreshMenuRows()
     menuReset:SetPoint("TOPLEFT", 10, menuY - 56 - math.min(#list, MENU_ROWS) * 30)
 end
 
-settings:SetHeight(-(menuY - 56 - MENU_ROWS * 30 - 60))
+view.footH = -(menuY - 56 - MENU_ROWS * 30 - 60)
+foot:SetHeight(view.footH)
+view.Layout()
 
 function settingsPage:Refresh()
+    view.Layout()
     RefreshMenuRows()
     MarkStyle()
     for key, cb in pairs(checks) do cb:SetChecked(GuildPrideDB[key]) end

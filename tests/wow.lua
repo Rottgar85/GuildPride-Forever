@@ -137,13 +137,27 @@ function CanSendAuctionQuery() return W.canQuery, W.canGetAll end
 C_AddOns = { IsAddOnLoaded = function(name) return W.addons[name] and true or false end }
 -- Items: W.itemInfo[id] = { quality, bindType, classID, sellPrice }
 W.itemInfo = {}
-function GetItemInfoInstant(id) return tonumber(id) end
-function GetItemInfo(link)
+local function ItemInfoInstant(id) return tonumber(id) end
+local function ItemInfo(link)
     local id = tonumber(tostring(link):match("item:(%d+)") or link)
     local i = W.itemInfo[id] or { quality = 1, bindType = 0, classID = 7, sellPrice = 5 }
     return "Item" .. tostring(id), link, i.quality, 1, 1, "", "", 20, "", 0, i.sellPrice, i.classID, 0, i.bindType
 end
-function GetCoinTextureString(p) return p .. "c" end
+C_Item = { GetItemInfo = ItemInfo, GetItemInfoInstant = ItemInfoInstant }
+W.baseItem, W.baseCurrency = C_Item, nil
+C_CurrencyInfo = { GetCoinTextureString = function(p) return p .. "c" end }
+W.baseCurrency = C_CurrencyInfo
+-- Ersatz-Tabelle für Tests: eigene Funktionen, der Rest wie im Grundgerüst
+function W.Item(t) return setmetatable(t, { __index = W.baseItem }) end
+
+-- Was es in WoW Forever nicht mehr gibt (abgeglichen mit Blizzards Forever-Code am 25.11.2026):
+-- im Test auch nicht da, sonst bleibt ein Aufruf davon unbemerkt. Ersatz: C_Item, C_Spell, C_AddOns, C_Container …
+local GONE = {}
+for n in ("GetItemInfo GetItemInfoInstant GetItemIcon GetItemCount GetItemQualityColor GetSpellInfo GetSpellTexture GetSpellLink "
+    .. "IsAddOnLoaded LoadAddOn GetAddOnMetadata GetNumAddOns GetAddOnInfo UnitBuff UnitAura UnitDebuff GetMerchantItemInfo "
+    .. "GetContainerItemInfo GetContainerItemLink UseContainerItem PickupContainerItem GetCoinTextureString GetQuestLogTitle "
+    .. "SendAddonMessage GetNumTradeSkills GetTradeSkillInfo IsUsableSpell GetSpellCooldown GetItemCooldown IsEquippedItem "
+    .. "GetCurrencyInfo GuildRoster InviteUnit GetNumFriends GetTrackingTexture GetFactionInfo GetWatchedFactionInfo"):gmatch("%a+") do GONE[n] = true end
 
 -- Diese Globalen gibt es im Test nicht (nil statt Alles-Objekt): sonst wären
 -- z. B. alle Werte "geheim" oder Tabellen würden für Zahlen gehalten
@@ -151,11 +165,11 @@ local NILS = { GuildPrideDB = true, GuildPrideBackupDB = true, issecretvalue = t
     C_RestrictedActions = true, GetNumGuildEvents = true, GetGuildEventInfo = true,
     QueryGuildEventLog = true, C_DateAndTime = true, Settings = true, C_MythicPlus = true,
     JoinTemporaryChannel = true, C_Club = true, C_ChallengeMode = true,
-    GuildPrideAHDB = true, Auctionator = true, C_AuctionHouse = true, IsUsingLegacyAuctionClient = true, C_Item = true,
+    GuildPrideAHDB = true, Auctionator = true, C_AuctionHouse = true, IsUsingLegacyAuctionClient = true,
     AuctionCategories = true, BugGrabber = true }
 
 -- Rest: Alles-Objekt
-setmetatable(_G, { __index = function(_, k) if NILS[k] then return nil end return magic end })
+setmetatable(_G, { __index = function(_, k) if NILS[k] or GONE[k] then return nil end return magic end })
 
 -- Addon laden: wie WoW mit (Name, Namensraum)
 W.ns = { L = setmetatable({}, { __index = function(_, k) return k end }) }
@@ -171,6 +185,16 @@ function W.Load(file)
     local chunk = assert(loadfile(PATHS[file] or file))
     chunk("GuildPrideForever", W.ns)
 end
+-- Vor dem Laden von GuildPrideErrors.lua: abgefangene eigene Fehler sammeln statt verschlucken
+W.swallowed = {}
+function W.ns.Try(fn, ...)
+    local n, args = select("#", ...), { ... }
+    return xpcall(function() return fn(unpack(args, 1, n)) end, function(e)
+        W.swallowed[#W.swallowed + 1] = debug.traceback(tostring(e), 2)
+        return e
+    end)
+end
+W.Try = W.ns.Try
 function W.Start()
     W.ns.Queue = function(kind, target, ...)
         local parts = { ... }

@@ -85,7 +85,7 @@ local function BuildBidWin()
         local left = math.max(0, cur.ends - GetServerTime())
         self.time:SetText(("%d s"):format(left))
     end)
-    if ns.SkinWindow then pcall(ns.SkinWindow, bidWin) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, bidWin) end
 end
 
 local function ShowBidWin()

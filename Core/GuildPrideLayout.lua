@@ -122,7 +122,7 @@ local evInfo = LPText("GPFont_Muted", "LEFT", LPAGE - 130)
 evDay.gpNoInk, evTime.gpNoInk = true, true   -- hell auf dem roten Siegel
 local evBtn = CreateFrame("Button", nil, lp, "UIPanelButtonTemplate")
 evBtn:SetSize(140, 24); evBtn:SetText(L["Zum Event"])
-if ns.SkinButton then pcall(ns.SkinButton, evBtn) end
+if ns.SkinButton then ns.Try(ns.SkinButton, evBtn) end
 -- Chronik
 local chHead = LPText("GPFont_Large")
 local chText = LPText("GPFont_TextSmall", "LEFT", LPAGE - 56)
@@ -566,7 +566,7 @@ for i, l in ipairs(LAYOUTS) do
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
         ns.ApplyLayout(l.key)
     end)
-    if ns.SkinButton then pcall(ns.SkinButton, b) end
+    if ns.SkinButton then ns.Try(ns.SkinButton, b) end
     b.key = l.key
     b:Hide()
     buttons[i] = b

@@ -50,11 +50,7 @@ end
 
 -- Was ein Stück Fang dir bringt: Händler-Verkaufspreis oder AH-Preis nach 5 % Gebühr, je nachdem was mehr ist
 function F.ItemValue(id)
-    local best = 0
-    if GetItemInfo then
-        local sell = select(11, GetItemInfo(id))
-        best = tonumber(sell) or 0
-    end
+    local best = tonumber((select(11, ns.ItemInfo(id)))) or 0
     local AH = ns.AH
     local ah = AH and AH.PriceFor and AH.Key and tonumber((AH.PriceFor(AH.Key(id))))
     if ah and ah * 0.95 > best then best = ah * 0.95 end

@@ -3,7 +3,7 @@
 ## Notes: Guild window, events, raid tools, crafting, auction house, departures and rares for your guild
 ## Notes-deDE: Gildenfenster, Events, Raid-Werkzeuge, Handwerk, Auktionshaus, Abfahrten und Rares für deine Gilde
 ## Author: Rottgar85
-## Version: 2.43.0
+## Version: 2.43.1
 ## SavedVariables: GuildPrideDB, GuildPrideBackupDB, GuildPrideRaresDB, ScalesDB, GuildPrideAHDB
 ## SavedVariablesPerCharacter: ScalesCharDB
 ## OptionalDeps: EllesmereUIBags, BagBrother, Bagnon, Bagnonium, Combuctor, ElvUI, Baganator, AdiBags, BetterBags
@@ -17,6 +17,7 @@ Core\GuildPrideErrors.lua
 Core\GuildPrideTheme.lua
 Core\GuildPrideReadable.lua
 Core\GuildPride.lua
+Core\GuildPrideTooltip.lua
 Guild\GuildPrideMarks.lua
 Community\GuildPrideMapPins.lua
 Community\GuildPrideMapPins.xml
@@ -24,11 +25,14 @@ Core\GuildPrideInk.lua
 Core\GuildPrideItemID.lua
 Guild\GuildPrideInvite.lua
 Core\GuildPrideUI.lua
+Core\GuildPrideMilestonesUI.lua
 Core\GuildPrideSettingsUI.lua
 Core\GuildPrideCopy.lua
 Guild\GuildPrideInstances.lua
 Guild\GuildPrideBank.lua
 Guild\GuildPrideGuildLinks.lua
+Guild\GuildPrideChannel.lua
+Guild\GuildPrideChannelWatch.lua
 Guild\GuildPrideEvents.lua
 Guild\GuildPrideEventDialog.lua
 Guild\GuildPrideRoster.lua
@@ -44,6 +48,7 @@ Core\GuildPrideIntro.lua
 Guild\GuildPrideMembers.lua
 Guild\GuildPrideRules.lua
 Guild\GuildPrideKeys.lua
+Community\GuildPrideHelpData.lua
 Community\GuildPrideHelp.lua
 Community\GuildPrideHelpBrowser.lua
 Community\GuildPrideNeeds.lua
@@ -66,10 +71,12 @@ Community\GuildPrideNotes.lua
 Core\GuildPrideDiag.lua
 Core\GuildPrideErrorShare.lua
 Core\GuildPrideUsage.lua
+Core\GuildPrideDevTest.lua
 Core\GuildPrideSettingsIO.lua
 Guild\GuildPrideMilestone.lua
 Core\GuildPrideMinimap.lua
 Guild\GuildPrideCrafts.lua
+Guild\GuildPrideCraftLink.lua
 Guild\GuildPrideGoals.lua
 Guild\GuildPrideBoard.lua
 Guild\GuildPrideAbsence.lua
@@ -114,6 +121,7 @@ AuctionHouse\GuildPrideAHTooltip.lua
 AuctionHouse\GuildPrideAHSell.lua
 AuctionHouse\GuildPrideAHUI.lua
 AuctionHouse\GuildPrideAHModernUI.lua
+AuctionHouse\GuildPrideAHModernTabs.lua
 Crafting\GuildPrideCraftGuides.lua
 Crafting\GuildPrideCraftCore.lua
 Crafting\GuildPrideCraftMats.lua
@@ -130,6 +138,8 @@ Crafting\GuildPrideCraftGather.lua
 Crafting\GuildPrideCraftFish.lua
 Crafting\GuildPrideCraftSell.lua
 Crafting\GuildPrideCraftWindow.lua
+Crafting\GuildPrideCraftCatalog.lua
+Crafting\GuildPrideCraftGaps.lua
 Travel\GuildPrideTransitData.lua
 Travel\GuildPrideTransit.lua
 Travel\GuildPrideTransitUI.lua

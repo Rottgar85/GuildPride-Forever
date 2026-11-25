@@ -237,7 +237,7 @@ if BROWSER then
     watch:RegisterEvent("LFG_LIST_SEARCH_RESULT_UPDATED")
     watch:RegisterEvent("LFG_LIST_SEARCH_FAILED")
     watch:SetScript("OnEvent", function(_, event)
-        if event == "LFG_LIST_SEARCH_RESULTS_RECEIVED" then pcall(CheckAlerts) end
+        if event == "LFG_LIST_SEARCH_RESULTS_RECEIVED" then ns.Try(CheckAlerts) end
         if event ~= "LFG_LIST_SEARCH_RESULT_UPDATED" then
             if asked then
                 asked = false

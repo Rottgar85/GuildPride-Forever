@@ -126,7 +126,7 @@ end
 
 local alerted = {}
 local function CheckCooldowns()
-    pcall(Mini.ReadCooldowns)
+    ns.Try(Mini.ReadCooldowns)
     for _, c in ipairs(Mini.CooldownList()) do
         local k = c.name .. c.what
         if c.ready and not alerted[k] then
@@ -264,7 +264,7 @@ ev:SetScript("OnEvent", function(_, event)
             if type(GuildPrideDB) == "table" and GuildPrideDB.craftMiniShown then Mini.Toggle(true) end
         end)
     elseif event == "SPELL_UPDATE_COOLDOWN" or event == "TRADE_SKILL_ITEM_CRAFTED_RESULT" then
-        pcall(Mini.ReadCooldowns)
+        ns.Try(Mini.ReadCooldowns)
     else
         Mini.Refresh()
     end

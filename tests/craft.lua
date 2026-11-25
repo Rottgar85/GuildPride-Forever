@@ -9,10 +9,8 @@ return function(test, eq, W, ns)
 
     -- Spiel-Funktionen für die Tests: feste Bestände, Namen
     local stock = {}
-    local oldCount = GetItemCount
-    GetItemCount = function(id) return stock[id] or 0 end
     local oldCItem = C_Item
-    C_Item = nil
+    C_Item = W.Item({ GetItemCount = function(id) return stock[id] or 0 end })
     local oldSpell = C_Spell
     C_Spell = { GetSpellName = function(id) return "Rezept" .. id end }
 
@@ -553,6 +551,14 @@ return function(test, eq, W, ns)
         local oldAH = ns.AH
         ns.AH = { Key = function(id) return id end,
             PriceFor = function(id) return ({ [90002] = 5000, [90003] = 110, [90004] = 5000, [90007] = 900 })[id] end }
+        ns.AH.Money = function(c)
+            local g, s, k = math.floor(c / 10000), math.floor(c / 100) % 100, c % 100
+            local o = {}
+            if g > 0 then o[#o + 1] = g .. "g" end
+            if s > 0 then o[#o + 1] = s .. "s" end
+            if k > 0 or #o == 0 then o[#o + 1] = k .. "c" end
+            return table.concat(o, " ")
+        end
         W.itemInfo[90001] = { quality = 0, bindType = 0, classID = 15, sellPrice = 30 }   -- grau
         W.itemInfo[90002] = { quality = 1, bindType = 0, classID = 7, sellPrice = 100 }   -- AH viel besser
         W.itemInfo[90003] = { quality = 1, bindType = 0, classID = 7, sellPrice = 100 }   -- AH kaum besser
@@ -575,8 +581,37 @@ return function(test, eq, W, ns)
         local b = Sell.Advice(90007, 10)
         eq(b.keep, 3); eq(b.sell, 7); eq(b.verdict, "ah", "Überschuss ins AH")
         eq(b.ah, math.floor(900 * 0.95 * 7 + 0.5))
-        eq(Sell.TooltipText(90006):find("Behalten", 1, true) ~= nil, true)
+        -- Tooltip: eine klare Empfehlung in Großbuchstaben, darunter Preise und Unterschied
         Track.Clear()
+        local function Lines(id, bound, link) local h, d = Sell.TooltipLines(id, bound, link); return h or "", d or "" end
+        local h, d = Lines(90006); eq(h:find("BEHALTEN", 1, true) ~= nil, true); eq(d:find("Quest", 1, true) ~= nil, true)
+        h = Lines(90001); eq(h:find("HÄNDLER", 1, true) ~= nil, true); eq(h:find("AUKTIONSHAUS", 1, true), nil)
+        h, d = Lines(90002); eq(h:find("AUKTIONSHAUS", 1, true) ~= nil, true); eq(h:find("HÄNDLER", 1, true), nil)
+        eq(d:find("+46s 50c", 1, true) ~= nil, true, "Unterschied nach Gebühr: " .. d)
+        h, d = Lines(90003); eq(h:find("HÄNDLER", 1, true) ~= nil, true); eq(d:find("nur +4c", 1, true) ~= nil, true, "AH bringt kaum mehr: " .. d)
+        h = Lines(90005); eq(h:find("NACHSEHEN", 1, true) ~= nil, true)
+        h, d = Lines(90005, true); eq(h:find("HÄNDLER", 1, true) ~= nil, true, "gebunden"); eq(d:find("Auktionshaus", 1, true), nil)
+        -- Farbmarke in den Taschen: nur mit Schalter, gleiche Empfehlung wie im Tooltip
+        GuildPrideDB.bagMarks = nil; eq(Sell.BagMark("item:90001:"), nil)
+        GuildPrideDB.bagMarks = true
+        eq(Sell.BagMark("item:90001:"), "vendor"); eq(Sell.BagMark("item:90002:"), "ah"); eq(Sell.BagMark("item:90006:"), "keep"); eq(Sell.BagMark("item:90005:"), "check")
+        eq(Sell.BagMark(nil), nil); eq(Sell.BagMark("spell:1"), nil)
+        W.itemInfo[90001].quality = 2; eq(Sell.BagMark("item:90001:"), "vendor", "kurz gemerkt")
+        W.itemInfo[90001].quality = 0
+        GuildPrideDB.bagMarks = nil
+        -- ohne jeden Wert (Ruhestein): behalten; angelegt: behalten; besser als dein Teil: behalten
+        W.itemInfo[90008] = { quality = 1, bindType = 1, classID = 15, sellPrice = 0 }
+        h, d = Lines(90008); eq(h:find("BEHALTEN", 1, true) ~= nil, true); eq(d:find("kein Verkaufswert", 1, true) ~= nil, true)
+        local oldItem, oldScales = C_Item, ns.Scales
+        C_Item = setmetatable({ IsEquippedItem = function(id) return id == 90004 end }, { __index = oldItem })
+        h, d = Lines(90004); eq(h:find("BEHALTEN", 1, true) ~= nil, true); eq(d:find("angelegt", 1, true) ~= nil, true)
+        C_Item = oldItem
+        ns.Scales = { Compare = { Verdict = function() return "up" end } }
+        h, d = Lines(90005, false, "item:90005"); eq(h:find("BEHALTEN", 1, true) ~= nil, true); eq(d:find("besser", 1, true) ~= nil, true)
+        ns.Scales = oldScales
+        W.itemInfo[90008] = nil
+        eq(GetItemInfo, nil, "wie in Forever: kein globales GetItemInfo")
+        eq(ns.CraftFish.ItemValue(90001), 30)
         for id = 90001, 90007 do W.itemInfo[id] = nil end
         ns.AH = oldAH
     end)
@@ -611,6 +646,6 @@ return function(test, eq, W, ns)
         ns.AH = oldAH
     end)
 
-    GetItemCount, C_Item, C_Spell = oldCount, oldCItem, oldSpell
+    C_Item, C_Spell = oldCItem, oldSpell
     GuildPrideDB.craftChars, GuildPrideDB.craftReagents, GuildPrideDB.craftTrack = nil, nil, nil
 end

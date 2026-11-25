@@ -67,13 +67,41 @@ function Wh.Add(raw, text, out, t)
     return key
 end
 
--- Antworten: normales Flüstern (aus einem Klick oder Enter – also vom Spieler ausgelöst)
+-- Das Spiel nimmt höchstens 255 Byte je Nachricht und wirft sonst einen Fehler. Getrennt wird an
+-- einem Leerzeichen, nie mitten in einem Zeichen (UTF-8) oder in einem Link.
+local MAX_BYTES = 255
+local function Cut(text)
+    if #text <= MAX_BYTES then return text, nil end
+    local pos = MAX_BYTES
+    while pos > 1 do
+        local nextByte = text:byte(pos + 1)
+        if not nextByte or nextByte < 128 or nextByte >= 192 then break end
+        pos = pos - 1
+    end
+    local head = text:sub(1, pos)
+    local open = head:match(".*()|c%x%x%x%x%x%x%x%x")
+    if open and open > 1 and not head:find("|r", open, true) then
+        pos = open - 1
+    else
+        local space = head:match(".*() ")
+        if space and space > 1 then pos = space end
+    end
+    return strtrim(text:sub(1, pos)), strtrim(text:sub(pos + 1))
+end
+ns.CutMessage = Cut   -- auch für Gildenchat und Begrüßung
+
+-- Antworten: normales Flüstern (aus einem Klick oder Enter – also vom Spieler ausgelöst).
+-- Gibt true zurück und, wenn der Text zu lang war, den Rest fürs nächste Enter.
 function Wh.Send(key, text)
     text = strtrim(tostring(text or ""))
     if text == "" then return false end
     local target = DB().target[key] or key
-    SendChat(text, "WHISPER", nil, target)
-    return true   -- die eigene Zeile kommt über CHAT_MSG_WHISPER_INFORM
+    local head, rest = Cut(text)
+    if not pcall(SendChat, head, "WHISPER", nil, target) then
+        ns.Print(L["Das Spiel hat die Nachricht gerade abgelehnt. Warte kurz und schick sie noch einmal."])
+        return false
+    end
+    return true, rest   -- die eigene Zeile kommt über CHAT_MSG_WHISPER_INFORM
 end
 
 function Wh.UnreadTotal()
@@ -172,13 +200,13 @@ Wh._FromEditBox = FromEditBox   -- für Tests
 
 if hooksecurefunc then
     if type(ChatEdit_UpdateHeader) == "function" then
-        hooksecurefunc("ChatEdit_UpdateHeader", function(editBox) pcall(FromEditBox, editBox) end)
+        hooksecurefunc("ChatEdit_UpdateHeader", function(editBox) ns.Try(FromEditBox, editBox) end)
     end
     if type(ChatFrame_SendTell) == "function" then
-        hooksecurefunc("ChatFrame_SendTell", function(name) pcall(Wh.StartOutgoing, name) end)
+        hooksecurefunc("ChatFrame_SendTell", function(name) ns.Try(Wh.StartOutgoing, name) end)
     end
     if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.SendTell) == "function" then
-        hooksecurefunc(ChatFrameUtil, "SendTell", function(name) pcall(Wh.StartOutgoing, name) end)
+        hooksecurefunc(ChatFrameUtil, "SendTell", function(name) ns.Try(Wh.StartOutgoing, name) end)
     end
 end
 

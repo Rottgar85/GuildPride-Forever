@@ -91,7 +91,7 @@ local function BuildWin()
     ok:SetSize(120, 24); ok:SetPoint("BOTTOM", 0, 12); ok:SetText(L["Gelesen"])
     ok:SetScript("OnClick", function() win:Hide() end)
     win:SetScript("OnHide", function() MarkSeen(Current()) end)
-    if ns.SkinWindow then pcall(ns.SkinWindow, win) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, win) end
 end
 
 function Board.Show()

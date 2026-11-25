@@ -223,6 +223,7 @@ function Craft.ReadOpenProfession()
     if not (t and line and t.GetAllRecipeIDs) then return end
     if t.IsTradeSkillLinked and t.IsTradeSkillLinked() then return end      -- Fenster eines anderen
     if t.IsTradeSkillGuild and t.IsTradeSkillGuild() then return end
+    if t.IsTradeSkillGuildMember and t.IsTradeSkillGuildMember() then return end
     local ok, ids = pcall(t.GetAllRecipeIDs)
     if not ok or type(ids) ~= "table" then return end
     local e = MyEntry()
@@ -241,7 +242,7 @@ function Craft.ReadOpenProfession()
     if next(all) then Saved("craftAll")[line] = all end
     -- Zutaten der Guide-Rezepte merken, auch wenn du sie noch nicht kannst (Einkaufsliste)
     for _, s in ipairs(G.STEPS[line] or {}) do
-        if not Reagents()[s[3]] then pcall(Craft.Reagents, s[3]) end
+        if not Reagents()[s[3]] then ns.Try(Craft.Reagents, s[3]) end
     end
     Craft.ReadProfessions()
     if Craft.Changed then Craft.Changed() end
@@ -683,22 +684,22 @@ local readPending, scanPending = false, false
 local function ReadSoon()
     if readPending then return end
     readPending = true
-    C_Timer.After(1.5, function() readPending = false; pcall(Craft.ReadOpenProfession) end)
+    C_Timer.After(1.5, function() readPending = false; ns.Try(Craft.ReadOpenProfession) end)
 end
 local function ScanSoon()
     if scanPending then return end
     scanPending = true
     C_Timer.After(2, function()
         scanPending = false
-        pcall(ScanItems)
+        ns.Try(ScanItems)
         if Craft.Changed then Craft.Changed() end
     end)
 end
 ev:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then
-        C_Timer.After(5, function() pcall(Craft.ReadProfessions); ScanSoon() end)
+        C_Timer.After(5, function() ns.Try(Craft.ReadProfessions); ScanSoon() end)
     elseif event == "SKILL_LINES_CHANGED" then
-        pcall(Craft.ReadProfessions)
+        ns.Try(Craft.ReadProfessions)
         if Craft.Changed then Craft.Changed() end
     elseif event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE" then
         ReadSoon()
@@ -715,5 +716,5 @@ end)
 local listeners = {}
 function Craft.OnChanged(fn) listeners[#listeners + 1] = fn end
 function Craft.Changed()
-    for _, fn in ipairs(listeners) do pcall(fn) end
+    for _, fn in ipairs(listeners) do ns.Try(fn) end
 end

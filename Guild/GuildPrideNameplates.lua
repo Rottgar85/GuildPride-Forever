@@ -22,9 +22,13 @@ local function On() return GuildPrideDB and GuildPrideDB.plateColors ~= false en
 
 -- Gleiche Namensform wie ns.Me() (Forever: Vor- und Nachname)
 local function UnitKey(unit)
-    if not unit or not UnitIsPlayer(unit) then return nil end
+    -- geschützte Werte (Instanzen) zuerst prüfen: schon ein Vergleich damit wirft einen Fehler
+    local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+    if Secret(unit) or not unit then return nil end
+    local player = UnitIsPlayer(unit)
+    if Secret(player) or not player then return nil end
     local name, realm = UnitFullName(unit)
-    if not name or name == "" then return nil end
+    if Secret(name) or Secret(realm) or not name or name == "" then return nil end
     return ns.Normalize((realm and realm ~= "") and (name .. "-" .. realm) or name)
 end
 Plates.UnitKey = UnitKey
@@ -254,7 +258,7 @@ local function Build()
     win.empty = win:CreateFontString(nil, "OVERLAY", "GPFont_MutedSmall")
     win.empty:SetPoint("TOPLEFT", 20, -186); win.empty:SetWidth(400); win.empty:SetJustifyH("LEFT")
     win.empty:SetText(L["Noch keine eigenen Farben. Nimm einen Spieler ins Ziel oder such oben ein Gildenmitglied."])
-    if ns.SkinWindow then pcall(ns.SkinWindow, win) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, win) end
 end
 
 function Plates.RefreshWindow()

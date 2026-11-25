@@ -71,6 +71,7 @@ local function ReadOpenRecipes()
     local T = C_TradeSkillUI
     if not (T and T.GetAllRecipeIDs and T.GetRecipeInfo) then return end
     if (T.IsTradeSkillLinked and T.IsTradeSkillLinked()) or (T.IsTradeSkillGuild and T.IsTradeSkillGuild())
+       or (T.IsTradeSkillGuildMember and T.IsTradeSkillGuildMember())
        or (T.IsNPCCrafting and T.IsNPCCrafting()) then return end
     local prof
     local info = T.GetBaseProfessionInfo and T.GetBaseProfessionInfo()
@@ -91,6 +92,8 @@ local function ReadOpenRecipes()
     local link = T.GetTradeSkillListLink and LinkData(T.GetTradeSkillListLink())
     return Clean(prof, 30), ids, link
 end
+
+Crafts.ReadOpenRecipes = ReadOpenRecipes
 
 ---------------------------------------------------------------------
 -- Senden
@@ -439,7 +442,7 @@ end
 function Crafts.ReadGuild()
     if reading or not (GetNumGuildTradeSkill and GetGuildTradeSkillInfo) then return false end
     reading, lastRead = true, GetTime()
-    local ok, found = pcall(ScanGuildProfs)
+    local ok, found = ns.Try(ScanGuildProfs)
     reading = false
     if not ok or not found then return false end
     local db = GuildProfs()
@@ -513,7 +516,7 @@ ev:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_ENTERING_WORLD" then
         if started then return end
         started = true
-        C_Timer.After(50, function() pcall(UpdateMine) end)
+        C_Timer.After(50, function() ns.Try(UpdateMine) end)
         C_Timer.After(60, function() Crafts.ReadGuildSoon() end)
     elseif event == "GUILD_TRADESKILL_UPDATE" then
         -- nur bei offenem Reiter neu lesen (unser Auf-/Zuklappen löst das Ereignis selbst aus)
@@ -522,15 +525,15 @@ ev:SetScript("OnEvent", function(_, event)
     elseif event == "SKILL_LINES_CHANGED" then
         if not started or pending then return end
         pending = true
-        C_Timer.After(10, function() pending = false; pcall(UpdateMine) end)
+        C_Timer.After(10, function() pending = false; ns.Try(UpdateMine) end)
     else
         -- Berufsfenster: kurz warten, bis die Liste vollständig ist. Gerade
         -- das Fenster eines anderen angefragt? Dann nichts als eigenes melden.
         if event == "TRADE_SKILL_SHOW" then Crafts.GotTradeWindow() end
         if GetTime() - otherAt < 15 then return end
         C_Timer.After(1, function()
-            local ok, prof, ids, link = pcall(ReadOpenRecipes)
-            if ok and prof then pcall(UpdateMine, prof, ids, link) end
+            local ok, prof, ids, link = ns.Try(ReadOpenRecipes)
+            if ok and prof then ns.Try(UpdateMine, prof, ids, link) end
         end)
     end
 end)
@@ -553,10 +556,15 @@ info:SetText(L["Klick auf einen Namen zeigt die Berufe. Mit GuildPride: Klick au
 -- Eigenes Handwerk-Fenster: deine Berufe, Leveling-Guides, Twinks, Tracker
 do
     local open = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
-    open:SetSize(130, 22); open:SetPoint("TOPRIGHT", -8, -6)
+    open:SetSize(130, 18); open:SetPoint("TOPRIGHT", -8, 0)
     open:SetText(L["Handwerk & Guides"])
     if ns.SkinButton then ns.SkinButton(open) end
     open:SetScript("OnClick", function() if ns.CraftWindow then ns.CraftWindow.Show() end end)
+    local gaps = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+    gaps:SetSize(130, 18); gaps:SetPoint("TOP", open, "BOTTOM", 0, 1)
+    gaps:SetText(L["Rezept-Lücken"])
+    if ns.SkinButton then ns.SkinButton(gaps) end
+    gaps:SetScript("OnClick", function() if ns.CraftGaps then ns.CraftGaps.Open() end end)
 end
 
 local holder = CreateFrame("Frame", nil, page)
@@ -657,7 +665,8 @@ function page:Refresh()
                 -- aus – Klick öffnet ein Flüstern mit der Bitte, den Beruf zu verlinken.
                 local countText = p.count > 0 and (L["%d Rezepte"]):format(p.count)
                     or (c.roster and L["ohne GuildPride"] or L["Rezepte unbekannt"])
-                local action = (p.link and not Crafts.linksBroken) and L["Berufsfenster öffnen"] or (p.count > 0 and L["Rezepte zeigen"]) or L["Anfragen"]
+                local function CanOpen() return p.link and ns.CraftLink and not ns.CraftLink.IsBroken(p.link) end
+                local action = CanOpen() and L["Berufsfenster öffnen"] or (p.count > 0 and L["Rezepte zeigen"]) or L["Anfragen"]
                 prow.right:SetText("|cffffd100" .. action .. "|r  ·  " .. countText)
                 local function Ask()
                     local short = Ambiguate(c.name, "none"):gsub(" ", "-")
@@ -665,15 +674,15 @@ function page:Refresh()
                     if ChatFrame_OpenChat then ChatFrame_OpenChat("/w " .. short .. " " .. msg) end
                 end
                 prow:SetScript("OnMouseUp", function(_, button)
-                    if button ~= "RightButton" and p.link and not Crafts.linksBroken and Crafts.OpenProfession(p.link, p.n) then
-                        -- Öffnet das Spiel das fremde Berufsfenster nicht (Forevers Server liefert
-                        -- fremde Berufe nicht aus), die geteilten Rezepte hier aufklappen
-                        C_Timer.After(1.5, function()
-                            if Crafts.ProfessionShown() then return end
-                            Crafts.linksBroken = true
+                    if button ~= "RightButton" and CanOpen() then
+                        -- Öffnet das Spiel das fremde Berufsfenster nicht (siehe GuildPrideCraftLink.lua),
+                        -- die geteilten Rezepte hier aufklappen. Gilt nur für diesen Spieler.
+                        ns.CraftLink.Watch(p.link, function(ok)
+                            if ok then return end
                             ns.Print(L["Das Spiel öffnet fremde Berufsfenster hier nicht – GuildPride zeigt die geteilten Rezepte in der Liste."])
                             if p.count > 0 then openProf[key] = true; page:Refresh() else Ask() end
                         end)
+                        Crafts.OpenProfession(p.link, p.n)
                         return
                     end
                     if p.count == 0 then Ask() return end
@@ -683,7 +692,7 @@ function page:Refresh()
                 prow:SetScript("OnEnter", function(self)
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                     GameTooltip:SetText(("%s – %s"):format(Ambiguate(c.name, "guild"), p.n))
-                    if p.link and not Crafts.linksBroken then
+                    if CanOpen() then
                         GameTooltip:AddLine(L["Klick: sein Berufsfenster mit allen Rezepten öffnen"], 1, 1, 1, true)
                         if p.count > 0 then GameTooltip:AddLine(L["Rechtsklick: Rezeptliste hier aufklappen"], 0.7, 0.7, 0.7, true) end
                     elseif p.count > 0 then

@@ -8,18 +8,10 @@ return function(test, eq, W, ns)
         eq(ns.ItemIDFromLink("kein Link"), nil)
         eq(ns.ItemIDFromLink(nil), nil)
         local old = GuildPrideDB.showItemID
-        local lines, shown = {}, 0
-        local tt = { AddLine = function(_, t) lines[#lines + 1] = t end, Show = function() shown = shown + 1 end }
         GuildPrideDB.showItemID = false
-        ns._ItemIDAdd(tt, "item:2589")
-        eq(#lines, 0, "Schalter aus: keine Zeile")
+        eq(ns.ItemIDText("item:2589"), nil, "Schalter aus: keine Zeile")
         GuildPrideDB.showItemID = true
-        ns._ItemIDAdd(tt, "item:2589")
-        ns._ItemIDAdd(tt, "item:2589")   -- zweiter Aufruf für denselben Tooltip: nicht doppelt
-        eq(#lines, 1); eq(lines[1]:find("2589") ~= nil, true)
-        ns._ItemIDClear(tt)
-        ns._ItemIDAdd(tt, "item:4306")
-        eq(#lines, 2, "nach dem Leeren wieder eine Zeile")
+        eq(ns.ItemIDText("item:2589"):find("2589") ~= nil, true)
         GuildPrideDB.showItemID = old
     end)
 end

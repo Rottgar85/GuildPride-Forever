@@ -152,7 +152,7 @@ local function Overlay()
     overlay:SetAttribute("useOnKeyDown", false)
     overlay:SetAttribute("type", "click")
     overlay:SetScript("PreClick", function(self)
-        if self.before then pcall(self.before) end
+        if self.before then ns.Try(self.before) end
     end)
     overlay:SetScript("PostClick", function(self)
         local after = self.after
@@ -298,7 +298,7 @@ function ns.GuildInviteDialog(rawName)
         dialog.cancel:SetText(L["Abbrechen"])
         dialog.cancel:SetScript("OnClick", function() dialog:Hide() end)
         tinsert(UISpecialFrames, "GuildPrideInviteDialog") -- ESC schließt
-        if ns.SkinWindow then pcall(ns.SkinWindow, dialog) end   -- Goldrahmen
+        if ns.SkinWindow then ns.Try(ns.SkinWindow, dialog) end   -- Goldrahmen
     end
     dialog.name = name
     dialog.text:SetText((L["|cffffd100%s|r in die Gilde einladen?"]):format(name))

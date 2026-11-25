@@ -107,7 +107,7 @@ local pending = false
 local function Soon()
     if pending then return end
     pending = true
-    C_Timer.After(0.5, function() pending = false; pcall(ScanVignettes) end)
+    C_Timer.After(0.5, function() pending = false; GP.Try(ScanVignettes) end)
 end
 ns.Listen("VIGNETTES_UPDATED", Soon)
 ns.Listen("VIGNETTE_MINIMAP_UPDATED", Soon)

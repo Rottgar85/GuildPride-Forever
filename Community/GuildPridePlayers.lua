@@ -90,7 +90,8 @@ end
 
 -- Gilde und Server fragen (Liste öffnen / Aktualisieren)
 local lastAsk, lastVerAsk = -999, -999
-function P.Ask()
+function P.Ask(force)
+    if force then lastAsk, lastVerAsk = -999, -999 end
     if IsInGuild() and ns.VERSION and ns.Queue and GetTime() - lastVerAsk > 120 then
         lastVerAsk = GetTime()
         ns.Queue("VER", nil, ns.VERSION, "")

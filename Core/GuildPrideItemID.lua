@@ -17,35 +17,7 @@ function ns.ItemIDText(link)
     return "|cff9d9d9d" .. (L["Item-ID: %d"]):format(id) .. "|r"
 end
 
--- je Tooltip nur einmal anhängen, bis er geleert oder versteckt wird
-local done = {}
-local function AddID(tooltip, link)
-    if not tooltip or done[tooltip] then return end
-    if issecretvalue and issecretvalue(link) then return end
-    local text = ns.ItemIDText(link)
-    if not text then return end
-    done[tooltip] = true
-    tooltip:AddLine(text)
-    tooltip:Show()
-end
-ns._ItemIDAdd = AddID   -- für Tests
-function ns._ItemIDClear(tooltip) done[tooltip] = nil end
-
-local TOOLTIPS = { GameTooltip, ItemRefTooltip }
-if GameTooltip and GameTooltip.HookScript then
-    for _, tt in ipairs(TOOLTIPS) do
-        if tt:HasScript("OnTooltipCleared") then tt:HookScript("OnTooltipCleared", function(self) done[self] = nil end) end
-        tt:HookScript("OnHide", function(self) done[self] = nil end)
-        if tt:HasScript("OnTooltipSetItem") then
-            tt:HookScript("OnTooltipSetItem", function(self) local _, link = self:GetItem(); AddID(self, link) end)
-        end
-    end
-end
--- Neuere Clients (wie WoW Forever): Tooltip-Daten kommen über TooltipDataProcessor
-if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-        if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end
-        local _, link = tooltip:GetItem()
-        AddID(tooltip, link or (data and (data.hyperlink or data.id)))
-    end)
-end
+ns.Tip.Add(90, function(ctx)
+    local text = ns.ItemIDText(ctx.link)
+    return text and { { text } } or nil
+end)

@@ -344,17 +344,79 @@ return function(test, eq, W, ns)
         UnitInParty, UnitInRaid = oldParty, oldRaid
         GuildPrideDB.whisperKnownOnly = false
         -- antworten: normales Flüstern an den gespeicherten Namen
-        local sent
+        local sent, refuse
         local oldSend = C_ChatInfo.SendChatMessage
-        C_ChatInfo.SendChatMessage = function(text, kind, _, to) sent = { text, kind, to } end
+        C_ChatInfo.SendChatMessage = function(text, kind, _, to)
+            if refuse then error("Chat message limits exceeded", 0) end
+            sent = { text, kind, to }
+        end
         W.Load("GuildPrideWhisper.lua")   -- holt die neue Sendefunktion
         eq(ns.Whisper.Send(key, "  bis gleich "), true)
         eq(sent[1], "bis gleich"); eq(sent[2], "WHISPER"); eq(sent[3], "Zufall-Realm")
         eq(ns.Whisper.Send(key, "   "), false, "leer: nichts")
+        -- zu lang fürs Spiel (255 Byte): der Rest bleibt fürs nächste Enter stehen, nichts geht verloren
+        local long = ("Größe "):rep(60)
+        local okLong, rest = ns.Whisper.Send(key, long)
+        eq(okLong, true); eq(type(rest), "string")
+        eq(#sent[1] <= 255, true, #sent[1]); eq(sent[1]:match("Größe$") ~= nil, true, "an einem Wort getrennt")
+        eq(sent[1] .. " " .. rest, strtrim(long))
+        eq(select(2, ns.Whisper.Send(key, "kurz")), nil)
+        -- nie mitten in einem Zeichen oder Link trennen
+        local _, r2 = ns.Whisper.Send(key, ("ä"):rep(200)); eq(#sent[1] % 2, 0); eq(sent[1] .. r2, ("ä"):rep(200))
+        local link = "|cffffffff|Hitem:2589::::::::|h[Leinenstoff]|h|r"
+        local _, r3 = ns.Whisper.Send(key, ("x"):rep(230) .. " " .. link); eq(sent[1], ("x"):rep(230)); eq(r3, link)
+        -- lehnt das Spiel ab (Grenze erreicht), gibt es keinen Lua-Fehler und der Text bleibt
+        refuse = true
+        eq(ns.Whisper.Send(key, "noch einer"), false)
+        refuse = nil
         C_ChatInfo.SendChatMessage = oldSend
         ns.Whisper.Delete(key)
         eq(#ns.Whisper.Conv(key), 0)
         M.ShowIncoming = oldShow
+    end)
+
+    test("Namensplaketten: geschützte Einheiten und Namen (Instanzen) werfen keinen Fehler", function()
+        local old = { UnitIsPlayer, UnitFullName, issecretvalue, ns.Plates }
+        local SECRET = setmetatable({}, { __eq = function() error("Vergleich mit geschütztem Wert", 0) end })
+        issecretvalue = function(v) return rawequal(v, SECRET) end
+        UnitIsPlayer = function(u) if rawequal(u, SECRET) then error("Secret values are only allowed during untainted execution", 0) end return true end
+        UnitFullName = function() return SECRET, SECRET end
+        W.Load("GuildPrideNameplates.lua")
+        local ok, err = pcall(function()
+            eq(ns.Plates.UnitKey(SECRET), nil); eq(ns.Plates.UnitKey("nameplate1"), nil)
+            UnitFullName = function() return "Anna", "" end
+            eq(ns.Plates.UnitKey("nameplate1"), ns.Normalize("Anna"))
+        end)
+        UnitIsPlayer, UnitFullName, issecretvalue, ns.Plates = unpack(old, 1, 4)
+        if not ok then error(err, 0) end
+    end)
+
+    test("Nachrichten kürzen: gemeinsame Regel für Gildenchat, Begrüßung und Flüstern", function()
+        local head, rest = ns.CutMessage(("ü"):rep(200))
+        eq(#head <= 255, true); eq(head .. rest, ("ü"):rep(200))
+        head, rest = ns.CutMessage("kurz"); eq(head, "kurz"); eq(rest, nil)
+    end)
+
+    test("Spieler-Notiz im Tooltip: geschützte Einheiten (Instanzen) werfen keinen Fehler", function()
+        local old = { TooltipDataProcessor, Enum, GameTooltip, UnitIsPlayer, UnitName, issecretvalue }
+        local SECRET, post, lines = "geheim", nil, {}
+        TooltipDataProcessor = { AddTooltipPostCall = function(_, f) post = f end }
+        Enum = { TooltipDataType = { Unit = 2 } }
+        local unit
+        GameTooltip = { GetUnit = function() return "x", unit end, AddLine = function(_, t) lines[#lines + 1] = t end }
+        issecretvalue = function(v) return v == SECRET end
+        UnitIsPlayer = function(u) if u == SECRET then error("Secret values are only allowed during untainted execution", 0) end return true end
+        UnitName = function(u) return u == "geheimername" and SECRET or "Notizmann" end
+        W.Load("GuildPrideNotes.lua")
+        ns.SetPlayerNote("Notizmann", "guter Tank")
+        local ok, err = pcall(function()
+            unit = SECRET; post(GameTooltip); eq(#lines, 0)
+            unit = "geheimername"; post(GameTooltip); eq(#lines, 0)
+            unit = "mouseover"; post(GameTooltip); eq(#lines, 1)
+        end)
+        ns.SetPlayerNote("Notizmann", "")
+        TooltipDataProcessor, Enum, GameTooltip, UnitIsPlayer, UnitName, issecretvalue = unpack(old, 1, 6)
+        if not ok then error(err, 0) end
     end)
 
     test("Flüstern: selbst flüstern öffnet den Messenger, ohne Blizzards Chat anzufassen", function()

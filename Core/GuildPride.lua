@@ -82,6 +82,11 @@ function ns.WeekStart()
     if left and not (issecretvalue and issecretvalue(left)) then return now + left - 7 * 86400 end
     return now - 7 * 86400
 end
+-- Item-Daten: in WoW Forever gibt es nur noch C_Item.GetItemInfo, das globale GetItemInfo ist weg
+function ns.ItemInfo(item)
+    local f = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    if f and item then return f(item) end
+end
 local PREFIX = "GuildPride"          -- max. 16 Zeichen
 local MILESTONES = { [10]=true, [20]=true, [30]=true, [40]=true, [50]=true,
                      [60]=true, [70]=true, [80]=true, [90]=true }
@@ -100,11 +105,11 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    ahTab = true, ahTooltip = true, ahShare = true, ahReadAuctionator = true,
                    ahTooltipWithAuctionator = true, ahTipSenders = true, ahTipTrend = true, ahTipHistory = true,
                    ahTipVendor = true, ahTipCraft = true, ahSellHint = true, ahMailSummary = true, transitUI = true, transitShare = true,
-                   flightTimes = true, flightUI = true, showItemID = false,
+                   flightTimes = true, flightUI = true, showItemID = false, tipDetails = false, bagMarks = false,
                    plateColors = true, plateColorBar = false, welcomePack = true,
                    raidReady = true, readyWindow = true, guildQuests = true, bossNotes = true, cooldownShare = true,
                    albumShot = false, easyRead = false, colorSafe = false,
-                   buffFood = true, restReminder = true, mapNotes = true, mapNotesPublic = true, mapNotesMinimap = true, craftCard = true, craftHints = true, craftTooltip = true, craftBank = true, craftNPCMap = true, craftTips = true, craftTrade = true, craftNodes = true, craftFish = true, craftSell = true,
+                   buffFood = false, restReminder = false, mapNotes = true, mapNotesPublic = true, mapNotesMinimap = true, craftCard = true, craftHints = true, craftTooltip = true, craftBank = true, craftNPCMap = true, craftTips = true, craftTrade = true, craftNodes = true, craftFish = true, craftSell = true,
                    whisperWindow = true, whisperCombat = true, whisperKnownOnly = false, whisperOutgoing = true }
 ns.DEFAULTS = defaults   -- für /gp export und /gp import
 

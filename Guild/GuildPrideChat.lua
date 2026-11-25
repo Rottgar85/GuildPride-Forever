@@ -812,7 +812,15 @@ local function Send()
             return
         end
     else
-        SendChat(text, channel.kind)
+        -- 255 Zeichen sind mit Umlauten mehr als 255 Byte: der Rest geht mit dem nächsten Enter raus
+        local head, rest = text, nil
+        if ns.CutMessage then head, rest = ns.CutMessage(text) end
+        if not pcall(SendChat, head, channel.kind) then
+            ns.Print(L["Das Spiel hat die Nachricht gerade abgelehnt. Warte kurz und schick sie noch einmal."])
+            return
+        end
+        input:SetText(rest or "")
+        return
     end
     input:SetText("")
 end

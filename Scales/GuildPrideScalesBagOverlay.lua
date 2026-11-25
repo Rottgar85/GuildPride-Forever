@@ -52,13 +52,26 @@ local function SellHint(link)
   local ok, hint = pcall(AH.SellHint, link)
   return ok and hint or false
 end
+-- Farbmarke der Verkaufs-Empfehlung (Schalter bagMarks) oder die Münze: t wird passend gefärbt
+local function Mark(link)
+  local S = GP.CraftSell
+  local verdict
+  if S and S.BagMark then
+    local ok, v = GP.Try(S.BagMark, link)
+    verdict = ok and v or nil
+  end
+  if verdict then return S.MARK[verdict] end
+  return SellHint(link) and true or nil
+end
+local function PaintMark(t, mark)
+  if type(mark) == "table" then t:SetSize(8, 8); t:SetColorTexture(mark[1], mark[2], mark[3], 0.95)
+  else t:SetSize(12, 12); t:SetTexture(COIN) end
+end
 local function PaintCoin(coins, button, host, link)
-  local hint = SellHint(link)
+  local hint = Mark(link)
   local t = coins[button]
   if hint and not t then
     t = host:CreateTexture(nil, "OVERLAY", nil, 7)
-    t:SetSize(12, 12)
-    t:SetTexture(COIN)
     coins[button] = t
   end
   if t then
@@ -67,6 +80,7 @@ local function PaintCoin(coins, button, host, link)
       t:ClearAllPoints()
       t:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", 2, 2)
     end
+    if hint then PaintMark(t, hint) end
     t:SetShown(hint and true or false)
   end
 end
@@ -261,7 +275,9 @@ local function InitBaganator()
   pcall(api.RegisterCornerWidget, "GuildPride", "guildpride_sell",
     function(corner, details)
       local link = details and details.itemLink
-      return SellHint(link) and true or false
+      local mark = Mark(link)
+      if mark then PaintMark(corner, mark) end
+      return mark and true or false
     end,
     function(itemButton)
       local t = itemButton:CreateTexture(nil, "OVERLAY", nil, 7)

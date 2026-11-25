@@ -78,7 +78,7 @@ function Card.Lines(id, crafts, line)
     -- Kosten und Gewinn (GuildPride-Preise)
     local AH = ns.AH
     if AH and AH.RecipeValue and AH.RecipeValueText then
-        local ok, v = pcall(AH.RecipeValue, id)
+        local ok, v = ns.Try(AH.RecipeValue, id)
         if ok and v and (v.cost > 0 or v.sell) then
             Add(" ")
             Add(AH.RecipeValueText(v))

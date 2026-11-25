@@ -208,32 +208,13 @@ function X.TooltipLines(itemID)
     return out
 end
 
-local done = {}
-local function AddTooltip(tt, link)
-    if not Opt("craftTooltip") or done[tt] or type(link) ~= "string" then return end
-    local id = tonumber(link:match("item:(%d+)"))
-    if not id then return end
-    local lines = X.TooltipLines(id)
-    if #lines == 0 then return end
-    done[tt] = true
-    for _, l in ipairs(lines) do tt:AddDoubleLine("|cffffd100GuildPride|r " .. l[1], l[2], 1, 1, 1, 0.8, 0.9, 1) end
-    tt:Show()
-end
-if GameTooltip and GameTooltip.HookScript then
-    for _, tt in ipairs({ GameTooltip, ItemRefTooltip }) do
-        if tt:HasScript("OnTooltipCleared") then tt:HookScript("OnTooltipCleared", function(self) done[self] = nil end) end
-        tt:HookScript("OnHide", function(self) done[self] = nil end)
-    end
-end
-if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-        if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end
-        local _, link = tooltip:GetItem()
-        pcall(AddTooltip, tooltip, link or (data and data.hyperlink))
-    end)
-elseif GameTooltip and GameTooltip.HookScript and GameTooltip:HasScript("OnTooltipSetItem") then
-    GameTooltip:HookScript("OnTooltipSetItem", function(self) local _, link = self:GetItem(); pcall(AddTooltip, self, link) end)
-end
+ns.Tip.Add(30, function(ctx)
+    if not Opt("craftTooltip") then return nil end
+    local lines = X.TooltipLines(ctx.id)
+    -- Herkunft ist eine Einzelheit, Bestand und Bedarf stehen immer da
+    for _, l in ipairs(lines) do if l[1] == L["Herkunft:"] then l.more = true end end
+    return lines
+end)
 
 ---------------------------------------------------------------------
 -- Ereignisse

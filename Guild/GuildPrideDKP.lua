@@ -209,7 +209,7 @@ end
 local function OnUnitTooltip(tip)
     if not GuildPrideDB or not IsInGuild() then return end
     local ok, _, unit = pcall(tip.GetUnit, tip)
-    if not ok or not unit or Secret(unit) or not UnitIsPlayer(unit) then return end
+    if not ok or Secret(unit) or not unit or not UnitIsPlayer(unit) then return end
     local n, s = UnitFullName(unit)
     if not n or Secret(n) or Secret(s) then return end
     local pts = DKP.Of(ns.Normalize((s and s ~= "") and (n .. "-" .. s) or n))
@@ -229,7 +229,7 @@ local function Drops() return ns.GuildTable("drops") end   -- Liste { id, link, 
 
 local function LinkQuality(link)
     local q = link and C_Item and C_Item.GetItemQualityByID and select(1, C_Item.GetItemQualityByID(link))
-    if not q and link and GetItemInfo then q = select(3, GetItemInfo(link)) end
+    if not q and link then q = select(3, ns.ItemInfo(link)) end
     if not q and link then
         -- Farbe im Link: ff a335ee = episch, ff ff8000 = legendär
         local c = link:match("|c(%x%x%x%x%x%x%x%x)")
@@ -244,7 +244,7 @@ local function AddDrop(id, link, t)
     table.insert(list, 1, { id = id, link = link, t = t })
     while #list > 40 do table.remove(list) end
     -- Wer in der Gruppe wünscht sich das Item? (GuildPrideWishlist.lua)
-    if ns.WishDrop then pcall(ns.WishDrop, link) end
+    if ns.WishDrop then ns.Try(ns.WishDrop, link) end
     if DKP.Refresh then DKP.Refresh() end
 end
 
@@ -314,7 +314,7 @@ local function Button(parent, text, w, onClick)
     b:SetSize(w, 22)
     b:SetText(text)
     b:SetScript("OnClick", onClick)
-    if ns.SkinButton then pcall(ns.SkinButton, b) end
+    if ns.SkinButton then ns.Try(ns.SkinButton, b) end
     return b
 end
 local function Edit(parent, w, text)
@@ -322,7 +322,7 @@ local function Edit(parent, w, text)
     e:SetSize(w, 20)
     e:SetAutoFocus(false)
     e:SetText(text or "")
-    if ns.SkinEditBox then pcall(ns.SkinEditBox, e) end
+    if ns.SkinEditBox then ns.Try(ns.SkinEditBox, e) end
     return e
 end
 
@@ -430,7 +430,7 @@ local function Build()
         if link and win.reason:HasFocus() then win.reason:Insert(link) end
     end)
 
-    if ns.SkinWindow then pcall(ns.SkinWindow, win) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, win) end
 end
 
 function DKP.Refresh()
@@ -561,7 +561,7 @@ local function BuildLog()
     logWin.content:SetSize(560, 10)
     scroll:SetScrollChild(logWin.content)
     logWin.rows = {}
-    if ns.SkinWindow then pcall(ns.SkinWindow, logWin) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, logWin) end
 end
 
 local function LogRow(i)

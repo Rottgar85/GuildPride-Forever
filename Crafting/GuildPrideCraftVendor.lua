@@ -151,7 +151,7 @@ ev:SetScript("OnEvent", function(_, event)
     if event == "MERCHANT_SHOW" then
         V.open = true
         C_Timer.After(0.3, function()
-            pcall(V.Remember)
+            ns.Try(V.Remember)
             local T = ns.CraftTrack
             if T and not T.IsEmpty() and #V.Buyable() > 0 then T.Show() end
             if T then T.Refresh() end

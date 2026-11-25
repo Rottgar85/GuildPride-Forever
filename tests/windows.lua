@@ -121,6 +121,12 @@ local NONE = { GuildPrideRaresDB = true, ScalesDB = true, ScalesCharDB = true, L
     MerchantFrame = true, MailFrame = true, BankFrame = true, LFGBrowseFrame = true, LFGParentFrame = true, TaxiFrame = true, FlightMapFrame = true, ElvUI = true, Bagnon = true,
     Baganator = true, WorldMapFrame = true, BattlefieldMapFrame = true, CommunitiesFrame = true, GuildFrame = true, FriendsFrame = true, CUSTOM_CLASS_COLORS = true,
     C_AddOnProfiler = true, ChatFrameUtil = true, TooltipDataProcessor = true, GetColoredName = true }
+-- gibt es in WoW Forever nicht mehr (siehe tests/wow.lua)
+for n in ("GetItemInfo GetItemInfoInstant GetItemIcon GetItemCount GetItemQualityColor GetSpellInfo GetSpellTexture GetSpellLink "
+    .. "IsAddOnLoaded LoadAddOn GetAddOnMetadata GetNumAddOns GetAddOnInfo UnitBuff UnitAura UnitDebuff GetMerchantItemInfo "
+    .. "GetContainerItemInfo GetContainerItemLink UseContainerItem PickupContainerItem GetCoinTextureString GetQuestLogTitle "
+    .. "SendAddonMessage GetNumTradeSkills GetTradeSkillInfo IsUsableSpell GetSpellCooldown GetItemCooldown IsEquippedItem "
+    .. "GetCurrencyInfo GuildRoster InviteUnit GetNumFriends GetTrackingTexture GetFactionInfo GetWatchedFactionInfo"):gmatch("%a+") do NONE[n] = true; rawset(_G, n, nil) end
 setmetatable(_G, { __index = function(t, k)
     if NONE[k] or (type(k) == "string" and k:find("^ContainerFrame")) then return nil end
     if type(k) == "string" and k:match("^%u[%u%d_]+$") then
@@ -229,6 +235,50 @@ local function call(name, ...)
 end
 
 call("ToggleUI")
+guard("Einstellungen: das Wichtige zuerst, Rest auf Wunsch, jeder Abschnitt vertreten", function()
+    local list = ns.SettingOptions
+    local function Count(rows) local n = 0; for _, o in ipairs(rows) do if o.key then n = n + 1 end end return n end
+    local total = Count(list)
+    local rows, more, hidden = ns.SettingsRows(list, false, {})
+    assert(Count(rows) + hidden == total, "nichts geht verloren")
+    assert(Count(rows) >= 15 and Count(rows) <= total / 2, "Kurzansicht: " .. Count(rows) .. " von " .. total)
+    local heads, sum = 0, 0
+    for i, o in ipairs(rows) do
+        if o.header then
+            heads = heads + 1
+            assert(rows[i + 1] and rows[i + 1].key, "leerer Abschnitt " .. o.header)
+            sum = sum + (more[o] or 0)
+        end
+    end
+    local all = 0
+    for _, o in ipairs(list) do if o.header then all = all + 1 end end
+    assert(heads == all and sum == hidden, "Abschnitte und Zähler")
+    -- Was eigene Daten teilt, ist immer sichtbar
+    local vis = {}
+    for _, o in ipairs(rows) do if o.key then vis[o.key] = true end end
+    for _, k in ipairs({ "shareMilestones", "raidReady", "cooldownShare", "guildQuests", "usageShare", "errorShare", "mapShare", "discordBridge", "ausweisAuto" }) do
+        assert(vis[k], k .. " muss sichtbar sein")
+    end
+    -- Ein Abschnitt aufgeklappt, alles aufgeklappt
+    local head
+    for _, o in ipairs(list) do if o.header and (more[o] or 0) > 0 then head = o; break end end
+    local open, openMore, openHidden = ns.SettingsRows(list, false, { [head] = true })
+    assert(Count(open) == Count(rows) + more[head] and openHidden == hidden - more[head] and not openMore[head], "ein Abschnitt")
+    local full, _, none = ns.SettingsRows(list, true, {})
+    assert(#full == #list and none == 0, "alles")
+    for i, o in ipairs(full) do assert(o == list[i], "Reihenfolge") end
+    -- Fenster: verborgene Schalter sind weg, die Suche findet sie trotzdem
+    GuildPrideDB.settingsAll = nil
+    ns.OpenTab(ns.SettingsPage)
+    local lost
+    for _, o in ipairs(list) do if o.key and not vis[o.key] then lost = o; break end end
+    assert(lost and not lost.cb:IsShown() and not lost.fs:IsShown(), "verborgen")
+    ns.ShowSetting(lost)
+    assert(lost.cb:IsShown() and lost.fs:IsShown(), "über die Suche sichtbar")
+    ns.SettingsShowAll(true); assert(GuildPrideDB.settingsAll == true)
+    for _, o in ipairs(list) do assert(o.fs:IsShown(), "alle sichtbar") end
+    ns.SettingsShowAll(false); assert(not GuildPrideDB.settingsAll and not lost.cb:IsShown(), "wieder kurz")
+end)
 local tabs, seen = 0, {}
 for id = 1, 40 do
     guard("Reiter " .. id, function()
@@ -250,6 +300,8 @@ call("Loot.Open"); call("Album.Open"); call("Cooldowns.Open"); call("Mentor.Open
 for _, p in ipairs({ "guild", "raid", "all" }) do call("ApplyPreset", p) end
 call("ApplyReadable")
 call("Search.Help"); call("Usage.Open"); call("Usage.Choose", true); call("Usage.HookWindows"); call("Hunt.Open"); call("ShowCreateDialog")
+call("CraftGaps.Open"); call("CraftGaps.Refresh"); ns.IsDev = function() return true end
+call("DevTest.Open"); call("DevTest.Refresh"); call("ErrorShare.Toggle")
 call("DiagReport")
 
 for _, cmd in ipairs({ "", "dkp", "bank", "spieler", "hilfe", "zettel", "zettel schreiben", "handwerk", "handwerk mini", "tracker",

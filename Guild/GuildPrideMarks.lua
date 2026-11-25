@@ -142,7 +142,7 @@ end)
 
 local function OnUnitTooltip(tip)
     local ok, _, unit = pcall(tip.GetUnit, tip)
-    if not ok or not unit or Secret(unit) or not UnitIsPlayer(unit) then return end
+    if not ok or Secret(unit) or not unit or not UnitIsPlayer(unit) then return end
     local n, s = UnitFullName(unit)
     if not n or Secret(n) or Secret(s) then return end
     if ns.IsMarked((s and s ~= "") and (n .. "-" .. s) or n) then

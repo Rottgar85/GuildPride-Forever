@@ -434,4 +434,4 @@ end
 
 local ev = CreateFrame("Frame")
 ns.RegisterEvents(ev, "MERCHANT_SHOW")
-ev:SetScript("OnEvent", function() C_Timer.After(0.5, function() pcall(N.Learn) end) end)
+ev:SetScript("OnEvent", function() C_Timer.After(0.5, function() ns.Try(N.Learn) end) end)

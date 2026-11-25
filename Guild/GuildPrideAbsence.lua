@@ -314,7 +314,7 @@ local function BuildMine()
     Label(mine, L["Meine Abmeldungen"], 18, -132, "GPFont_Text")
     mine.list = RowList(mine, 16, -152, 404, 140, 22, Absence.Remove)
     mine.empty = Label(mine, L["Keine Abmeldungen."], 22, -158)
-    if ns.SkinWindow then pcall(ns.SkinWindow, mine) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, mine) end
 end
 
 local function RefreshMine()
@@ -349,7 +349,7 @@ local function BuildAll()
     all.past:SetScript("OnClick", function() Absence.RefreshWindows() end)
     all.list = RowList(all, 16, -56, 584, 340, 22, Absence.Remove)
     all.empty = Label(all, L["Niemand hat sich abgemeldet."], 22, -62)
-    if ns.SkinWindow then pcall(ns.SkinWindow, all) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, all) end
 end
 
 local function RefreshAll()

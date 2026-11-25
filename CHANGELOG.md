@@ -1,5 +1,39 @@
 # GuildPride Changelog
 
+## 2.43.1
+
+**Deutsch**
+- **Rezept-Lücken** (`/gp luecken`, Werkzeuge und Reiter Handwerk): welche Rezepte eines Berufs niemand in der Gilde kann und wer den Beruf hat
+- **Buff-Food- und Schlafsack-Fenster** sind für neue Spieler aus; wer sie schon nutzt, behält sie (Einstellungen › Buffs & Erholung)
+- **Auktionspreise** brauchen rund ein Drittel weniger Platz; zufällig verzauberte Gegenstände werden nach 14 Tagen vergessen
+- **Handwerk**: Öffnet das Spiel das Berufsfenster eines Mitglieds nicht, gilt das nur noch für diesen Spieler; fremde Berufsfenster zählen nie als eigene
+- **Französisch, Spanisch, Russisch**: viel mehr Wörter und Knöpfe übersetzt
+- **Spielerliste leer?** GuildPride merkt, wenn seine Chat-Kanäle tot sind, und tritt ihnen von selbst neu bei
+- Behoben: Lua-Fehler in Instanzen beim Überfahren von Spielern (Notizen im Tooltip)
+- Behoben: zu lange Flüsternachrichten im Messenger gaben einen Fehler; der Rest bleibt jetzt stehen und geht mit dem nächsten Enter raus
+- **Verkaufs-Berater im Tooltip** geht wieder und ist klarer: BEHALTEN, HÄNDLER oder AUKTIONSHAUS, darunter Preise und Unterschied nach Gebühr
+- **Item-Tooltip aufgeräumt**: ein Block „GuildPride“ mit der Empfehlung rechts oben; Einzelheiten mit Umschalt (Einstellungen › Allgemein: immer alles zeigen)
+- **Farbmarken in den Taschen** für die Empfehlung: grün Auktionshaus, gelb Händler, orange behalten, blau nachsehen; ab Werk aus (Einstellungen › Auktionshaus)
+- **Einstellungen kürzer**: je Abschnitt zuerst das Wichtige, der Rest mit einem Klick; die Suche findet weiterhin alles
+- **Eigene Fehler gehen nicht mehr still verloren**, sie stehen im Fehlerbericht (`/gp fehler`)
+- Behoben: Baupläne im Tooltip, Alt-Klick auf Links und der Wert beim Angeln gingen in Forever nicht
+
+**English**
+- **Recipe gaps** (`/gp gaps`, tools and Crafting tab): which recipes of a profession nobody in the guild knows and who has the profession
+- **Buff food and sleeping bag windows** are off for new players; if you already use them, they stay on (Settings › Buffs)
+- **Auction prices** need about a third less space; randomly enchanted items are forgotten after 14 days
+- **Crafting**: if the game does not open a member's profession window, this now only applies to that player; other players' profession windows never count as yours
+- **French, Spanish, Russian**: many more words and buttons translated
+- **Player list empty?** GuildPride notices when its chat channels are dead and rejoins them by itself
+- Fixed: Lua error in instances when hovering players (notes in the tooltip)
+- Fixed: whispers that were too long caused an error in the messenger; the rest now stays and goes out with the next Enter
+- **Sell advisor in the tooltip** works again and is clearer: KEEP, VENDOR or AUCTION HOUSE, below it prices and the difference after the fee
+- **Item tooltip tidied up**: one “GuildPride” block with the advice at the top right; details with Shift (Settings › General: always show everything)
+- **Colour marks in the bags** for the advice: green auction house, yellow vendor, orange keep, blue check; off by default (Settings › Auction house)
+- **Shorter settings**: the important ones first in each section, the rest with one click; the search still finds everything
+- **Own errors no longer get lost silently**, they appear in the error report (`/gp fehler`)
+- Fixed: recipes in the tooltip, Alt-click on links and the fishing value did not work in Forever
+
 ## 2.43.0
 
 **Deutsch**

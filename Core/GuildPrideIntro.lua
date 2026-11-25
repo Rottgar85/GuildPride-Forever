@@ -206,7 +206,7 @@ local function Build()
     win.next:SetSize(100, 24); win.next:SetPoint("BOTTOMRIGHT", -16, 10)
     win.next:SetScript("OnClick", function() if page < #PAGES then Show(page + 1) else Close() end end)
 
-    if ns.SkinWindow then pcall(ns.SkinWindow, win) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, win) end
 end
 
 -- onlyNew: nur die Neuerungen seit der zuletzt gesehenen Tour

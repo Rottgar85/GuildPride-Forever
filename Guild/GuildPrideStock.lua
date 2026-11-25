@@ -320,7 +320,7 @@ local ev, asked = CreateFrame("Frame"), false
 ev:RegisterEvent("PLAYER_ENTERING_WORLD")
 ns.RegisterEvents(ev, "GUILDBANKBAGSLOTS_CHANGED")
 ev:SetScript("OnEvent", function(_, event)
-    if event == "GUILDBANKBAGSLOTS_CHANGED" then pcall(M.ReadBank) return end
+    if event == "GUILDBANKBAGSLOTS_CHANGED" then ns.Try(M.ReadBank) return end
     if asked then return end
     asked = true
     C_Timer.After(48 + math.random() * 30, function()

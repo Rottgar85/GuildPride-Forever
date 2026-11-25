@@ -94,7 +94,7 @@ end
 function T.LootAdvice(itemID)
     local classID = ItemInfo(itemID)
     if classID ~= 2 and classID ~= 4 then return nil end
-    local _, _, quality, _, _, _, _, _, _, _, sell = GetItemInfo(itemID)
+    local _, _, quality, _, _, _, _, _, _, _, sell = ns.ItemInfo(itemID)
     if not quality or quality < 2 or quality > 3 then return nil end
     local vendor = tonumber(sell) or 0
     local AH = ns.AH
@@ -111,65 +111,42 @@ end
 ---------------------------------------------------------------------
 -- Tooltip
 ---------------------------------------------------------------------
-local done = {}
-local function AddTooltip(tt, link)
-    if not Opt("craftTips") or done[tt] or type(link) ~= "string" then return end
-    local id = tonumber(link:match("item:(%d+)"))
-    if not id then return end
+ns.Tip.Add(10, function(ctx)
+    if not Opt("craftTips") then return nil end
+    local id, out = ctx.id, {}
     local classID, subID = ItemInfo(id)
-    local added = false
     if classID == 9 and RECIPE_SUB[subID] then
         local line = RECIPE_SUB[subID]
-        local recipe = T.FindRecipe(line, T.RecipeNameOf(GetItemInfo(id)))
-        local lines = T.PatternLines(line, recipe, RequiredSkill(tt, line))
+        local recipe = T.FindRecipe(line, T.RecipeNameOf((ns.ItemInfo(id))))
+        local lines = T.PatternLines(line, recipe, ctx.tip and RequiredSkill(ctx.tip, line) or nil)
         if #lines > 0 then
-            tt:AddLine(" ")
-            tt:AddLine("|cffffd100GuildPride|r " .. G.Name(line), 1, 1, 1)
-            for _, l in ipairs(lines) do tt:AddDoubleLine("  " .. l[1], l[2], 1, 1, 1) end
-            added = true
+            out[1] = { "|cffffd100" .. G.Name(line) .. "|r" }
+            for _, l in ipairs(lines) do out[#out + 1] = { "  " .. l[1], l[2] } end
         end
         -- was das Ergebnis wert ist
         local X = ns.CraftExtras
         local v = recipe and X and X.RecipeProfit(recipe)
         if v and v.profit and ns.AH then
-            tt:AddDoubleLine("  " .. L["Gewinn je Herstellung"], (v.profit >= 0 and "|cff40ff40" or "|cffff6060") .. ns.AH.Money(math.abs(v.profit)) .. "|r", 1, 1, 1)
-            added = true
+            out[#out + 1] = { "  " .. L["Gewinn je Herstellung"], (v.profit >= 0 and "|cff40ff40" or "|cffff6060") .. ns.AH.Money(math.abs(v.profit)) .. "|r" }
         end
-    else
-        local S = ns.CraftSell
-        local sellText = S and S.Opt() and S.TooltipText(id)
-        local vendor, ah, de, best
-        if not sellText then vendor, ah, de, best = T.LootAdvice(id) end
-        if sellText then
-            tt:AddDoubleLine("|cffffd100GuildPride|r " .. L["Verkaufen:"], sellText, 1, 1, 1, 1, 1, 1)
-            added = true
-        elseif vendor then
-            local money = ns.AH and ns.AH.Money or tostring
-            local parts = {}
-            parts[#parts + 1] = (best == "vendor" and "|cff40ff40" or "|cffaaaaaa") .. L["Händler"] .. " " .. money(vendor) .. "|r"
-            if ah then parts[#parts + 1] = (best == "ah" and "|cff40ff40" or "|cffaaaaaa") .. L["AH"] .. " " .. money(ah) .. "|r" end
-            if de then parts[#parts + 1] = (best == "de" and "|cff40ff40" or "|cffaaaaaa") .. (L["Entzaubern: %s"]):format(de) .. "|r" end
-            tt:AddDoubleLine("|cffffd100GuildPride|r " .. L["Beute:"], table.concat(parts, " · "), 1, 1, 1)
-            added = true
+        return out
+    end
+    local S = ns.CraftSell
+    if S and S.Opt() then
+        local head, detail = S.TooltipLines(id, ctx.bound, ctx.link)
+        if head then
+            ctx.head, ctx.advice = head, true
+            return detail and { { detail } } or nil
         end
     end
-    if added then done[tt] = true; tt:Show() end
-end
-T.AddTooltip = AddTooltip
-
-if GameTooltip and GameTooltip.HookScript then
-    for _, tt in ipairs({ GameTooltip, ItemRefTooltip }) do
-        if tt:HasScript("OnTooltipCleared") then tt:HookScript("OnTooltipCleared", function(self) done[self] = nil end) end
-        tt:HookScript("OnHide", function(self) done[self] = nil end)
-    end
-end
-if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and Enum.TooltipDataType then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tooltip, data)
-        if tooltip ~= GameTooltip and tooltip ~= ItemRefTooltip then return end
-        local _, link = tooltip:GetItem()
-        pcall(AddTooltip, tooltip, link or (data and data.hyperlink))
-    end)
-end
+    local vendor, ah, de, best = T.LootAdvice(id)
+    if not vendor then return nil end
+    local money = ns.AH and ns.AH.Money or tostring
+    local parts = { (best == "vendor" and "|cff40ff40" or "|cffaaaaaa") .. L["Händler"] .. " " .. money(vendor) .. "|r" }
+    if ah then parts[#parts + 1] = (best == "ah" and "|cff40ff40" or "|cffaaaaaa") .. L["AH"] .. " " .. money(ah) .. "|r" end
+    if de then parts[#parts + 1] = (best == "de" and "|cff40ff40" or "|cffaaaaaa") .. (L["Entzaubern: %s"]):format(de) .. "|r" end
+    return { { L["Beute:"], table.concat(parts, " · ") } }
+end)
 
 ---------------------------------------------------------------------
 -- Alt-Klick auf Links im Chat → Tracker
@@ -189,7 +166,7 @@ function T.TrackLink(link)
     if not recipe and item then
         local classID, subID = ItemInfo(item)
         if classID == 9 and RECIPE_SUB[subID] then
-            recipe = T.FindRecipe(RECIPE_SUB[subID], T.RecipeNameOf(GetItemInfo(item)))
+            recipe = T.FindRecipe(RECIPE_SUB[subID], T.RecipeNameOf((ns.ItemInfo(item))))
         else
             recipe = T.RecipeForItem(item)
         end
@@ -202,7 +179,7 @@ end
 
 if hooksecurefunc and SetItemRef then
     hooksecurefunc("SetItemRef", function(link)
-        if Opt("craftTips") and IsAltKeyDown and IsAltKeyDown() then pcall(T.TrackLink, link) end
+        if Opt("craftTips") and IsAltKeyDown and IsAltKeyDown() then ns.Try(T.TrackLink, link) end
     end)
 end
 
@@ -257,5 +234,5 @@ ns.RegisterEvents(ev, "CHAT_MSG_CHANNEL")
 ev:SetScript("OnEvent", function(_, _, ...)
     local text, sender = ...
     if ns.IsSecret and (ns.IsSecret(text) or ns.IsSecret(sender)) then return end
-    pcall(OnChannel, ...)
+    ns.Try(OnChannel, ...)
 end)

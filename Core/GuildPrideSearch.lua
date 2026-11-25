@@ -9,7 +9,7 @@ local MAX = 40
 
 -- Befehle mit kurzer Erklärung (auch die Übersicht, wenn man nach „gp“ sucht)
 local COMMANDS = {
-    { "handwerk", L["Handwerk & Guides"] }, { "tracker", L["Tracker"] }, { "dkp", "DKP" }, { "bank", L["Gildenbank-Verlauf"] },
+    { "handwerk", L["Handwerk & Guides"] }, { "tracker", L["Tracker"] }, { "luecken", L["Rezept-Lücken der Gilde"] }, { "dkp", "DKP" }, { "bank", L["Gildenbank-Verlauf"] },
     { "bereit", L["Raid-Bereitschaft"] }, { "quests", L["Quests der Gilde"] }, { "boss", L["Boss-Notizen"] },
     { "material", L["Materialliste der Gilde"] }, { "auswertung", L["Event-Auswertung"] }, { "loot", L["Loot-Verlauf"] },
     { "abklingzeiten", L["Abklingzeiten der Gruppe"] }, { "paten", L["Paten für Neue"] }, { "quiz", L["Gildenquiz"] },
@@ -60,7 +60,10 @@ function S.Find(text)
     end
     for _, o in ipairs(ns.SettingOptions or {}) do
         if o.label and Hit(o.label) then
-            Add("setting", o.label, function() if ns.SettingsPage then ns.OpenTab(ns.SettingsPage) end end)
+            Add("setting", o.label, function()
+                if ns.SettingsPage then ns.OpenTab(ns.SettingsPage) end
+                if ns.ShowSetting then ns.ShowSetting(o) end
+            end)
         end
     end
     for _, n in pairs(ns.GuildTable("bossnotes")) do
@@ -69,7 +72,7 @@ function S.Find(text)
         end
     end
     if #q >= 3 and ns.Crafts and ns.Crafts.Search then
-        local ok, rows = pcall(ns.Crafts.Search, q)
+        local ok, rows = ns.Try(ns.Crafts.Search, q)
         for _, r in ipairs(ok and type(rows) == "table" and rows or {}) do
             if r.recipe then
                 Add("recipe", r.recipe .. "  |cff888888" .. Ambiguate(r.name, "guild") .. "|r", function() OpenTabKey("55") end)
@@ -178,7 +181,7 @@ function ns.ApplyPreset(key)
     for k, v in pairs(want) do
         if GuildPrideDB[k] ~= v then
             GuildPrideDB[k] = v
-            if changed[k] then pcall(changed[k]) end
+            if changed[k] then ns.Try(changed[k]) end
         end
     end
     GuildPrideDB.preset = key

@@ -446,6 +446,10 @@ local function BuildWindow()
     end)
     Button("Jetzt abfragen", 174, function() S.Hello() end)
     Button("Nutzung", 494, function() if ns.Usage then ns.Usage.Open() end end)
+    local tests = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    if ns.SkinButton then ns.SkinButton(tests) end
+    tests:SetSize(110, 22); tests:SetPoint("TOPRIGHT", -44, -10); tests:SetText("Testliste")
+    tests:SetScript("OnClick", function() if ns.DevTest then ns.DevTest.Open() end end)
     Button("Alle erledigt", 334, function()
         for _, g in ipairs(S.List()) do S.Done(g.key) end
         S.Refresh()

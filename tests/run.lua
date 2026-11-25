@@ -20,6 +20,7 @@ W.Load("GuildPrideDKP.lua")
 W.Load("GuildPrideHistory.lua")
 W.Load("GuildPrideRoster.lua")
 W.Load("GuildPrideRecruit.lua")
+W.Load("GuildPrideTooltip.lua")
 W.Load("GuildPrideCrafts.lua")
 W.Load("GuildPrideGoals.lua")
 W.Load("GuildPrideBoard.lua")
@@ -421,7 +422,7 @@ test("Berufe: auch Mitglieder ohne GuildPride aus der Gildenliste", function()
     eq(byName["Dora"].profs[1].count, 0)
     eq(#ns.Crafts.Tree("schmiede"), 2, "Suche findet Mitglieder ohne Addon")
 
-    GetNumGuildTradeSkill, GetGuildTradeSkillInfo = nil, nil
+    GetNumGuildTradeSkill, GetGuildTradeSkillInfo = false, false
     ExpandGuildTradeSkillHeader, CollapseGuildTradeSkillHeader, SetGuildRosterShowOffline = nil, nil, nil
     GetGuildRosterShowOffline = function() return true end
     eq(ns.Crafts.ReadGuild(), false, "ohne Spielfunktion nichts")
@@ -541,15 +542,10 @@ test("Wunschliste: nur die eigene Liste, direkt und von Mitgliedern", function()
 end)
 
 test("Wunschliste: Tooltip und Drop-Hinweis", function()
-    local lines = {}
-    local tip = { AddLine = function(_, t) lines[#lines + 1] = t end,
-                  AddDoubleLine = function(_, a, b) lines[#lines + 1] = a .. "|" .. b end }
-    ns.Wish.AddTooltipLines(tip, 19019)
+    local lines = ns.Wish.TooltipLines(19019)
     eq(#lines, 3, "Kopfzeile + zwei Namen")
-    eq(lines[2]:find("Anna", 1, true) ~= nil, true)
-    lines = {}
-    ns.Wish.AddTooltipLines(tip, 4711)
-    eq(#lines, 0, "niemand sucht es")
+    eq(lines[2][1]:find("Anna", 1, true) ~= nil, true); eq(lines[1].more, nil); eq(lines[2].more, true, "Namen nur mit Umschalt")
+    eq(#ns.Wish.TooltipLines(4711), 0, "niemand sucht es")
     -- Drop: nur wer in der Gruppe ist
     local old = ns.DKP.GroupNames
     ns.DKP.GroupNames = function() return { "Bert" } end
@@ -842,12 +838,17 @@ require("more")(test, eq, W, ns)
 require("buffs")(test, eq, W, ns)
 require("zettel")(test, eq, W, ns)
 require("craft")(test, eq, W, ns)
-require("errors")(test, eq, W, ns)
-require("errorshare")(test, eq, W, ns)
-require("gilde2")(test, eq, W, ns)
-require("gilde3")(test, eq, W, ns)
+require("errors")(test, eq, W, ns); ns.Try = W.Try
+require("errorshare")(test, eq, W, ns); ns.Try = W.Try
+require("gilde2")(test, eq, W, ns); ns.Try = W.Try
+require("gilde3")(test, eq, W, ns); ns.Try = W.Try
 require("gilde4")(test, eq, W, ns)
-require("usage")(test, eq, W, ns)
+require("craftlink")(test, eq, W, ns)
+require("craftgaps")(test, eq, W, ns)
+require("devtest")(test, eq, W, ns)
+require("tooltip")(test, eq, W, ns)
+require("channelwatch")(test, eq, W, ns)
+require("usage")(test, eq, W, ns); ns.Try = W.Try
 
 test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", function()
     local match = ns.BrowserDungeonMatch
@@ -1129,6 +1130,30 @@ test("Hotfix 20.11.2026: ohne Realm-Namen bleiben die Gildendaten beim alten Rea
     eq(ns.RealmName(), "CAMWOW EU4 Realm 7 PvE"); eq(ns.RealmName(true), "CAMWOWEU4Realm7PvE")
     GetGuildInfo, GetRealmName, GetNormalizedRealmName = oldGI, oldRN, oldNRN
     GuildPrideDB.realmName, GuildPrideDB.realmNorm, GuildPrideDB.guilds = oldName, oldNorm, oldGuilds
+end)
+
+test("Abgefangene Fehler: in keinem Test hat eigener Code still versagt", function()
+    eq(#W.swallowed, 0, (W.swallowed[1] or ""):sub(1, 700))
+end)
+
+test("Forever: kein ungeschütztes globales GetItemInfo (gibt es dort nicht mehr)", function()
+    local bad = {}
+    for line in io.lines("GuildPrideForever.toc") do
+        local path = line:gsub("\r", ""):gsub("\\", "/")
+        if path:match("%.lua$") and not path:find("^#") then
+            local n = 0
+            for code in io.lines(path) do
+                n = n + 1
+                code = code:gsub("%-%-.*", "")
+                if (" " .. code):find("[^%.%w_:]GetItemInfo%(") and not code:find("C_Item", 1, true) and not code:find("local function", 1, true) then
+                    bad[#bad + 1] = path .. ":" .. n
+                end
+            end
+        end
+    end
+    -- Wishlist und Scales haben vorher schon C_Item geprüft
+    for i = #bad, 1, -1 do if bad[i]:find("Wishlist", 1, true) or bad[i]:find("Scales", 1, true) then table.remove(bad, i) end end
+    eq(table.concat(bad, ", "), "")
 end)
 
 print(("\n%d bestanden, %d fehlgeschlagen"):format(passed, failed))

@@ -177,6 +177,6 @@ end
 local ev = CreateFrame("Frame")
 ns.RegisterEvents(ev, "LOOT_OPENED", "ZONE_CHANGED_NEW_AREA", "PLAYER_LOGIN")
 ev:SetScript("OnEvent", function(_, event)
-    if event == "LOOT_OPENED" then pcall(OnLoot)
-    else C_Timer.After(15, function() pcall(CheckTracking) end) end
+    if event == "LOOT_OPENED" then ns.Try(OnLoot)
+    else C_Timer.After(15, function() ns.Try(CheckTracking) end) end
 end)

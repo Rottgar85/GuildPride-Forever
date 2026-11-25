@@ -2,7 +2,7 @@
 
 [English](#english) · [Deutsch](#deutsch) · [Screenshots](#screenshots)
 
-World of Warcraft addon for WoW Forever only · Version 2.43.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
+World of Warcraft addon for WoW Forever only · Version 2.43.1 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
 
 ---
 
@@ -59,15 +59,16 @@ World of Warcraft addon for WoW Forever only · Version 2.43.0 · Author: Rottga
 - **Tracker** (`/gp tracker`) – counts what you gather, buys what is missing at a vendor or searches it at the auction house, and crafts tracked recipes one click at a time (intermediates first).
 - **Recipe card, trainers on the map, gathering spots, fishing bar** with one key for fishing, **sell advisor** in the tooltip – everything can be turned off one by one under "Crafting".
 - **Crafting directory** (*Crafting* entry) – who has which profession at which skill and which recipes, searchable by name, profession or recipe.
+- **Recipe gaps** (`/gp gaps`) – which recipes of a profession nobody in the guild knows, and who has the profession.
 - **Guild orders** – post an item and a quantity; crafters accept or give back, the requester gets a notice. New and accepted orders also go to Discord.
-- **Auction house** – optional GuildPride window with search by category, buy view with all offers, **price history** of 7 days and who in the guild can craft the item, selling with a price suggestion (cheapest current offer), **My auctions**, favourites, **shopping lists** (quantity, stock, price alert, export/import incl. Auctionator lists, temporary list for one shopping trip, *Buy list*) and *Orders*. Prices show in the item tooltip.
+- **Auction house** – optional GuildPride window with search by category, buy view with all offers, **price history** of 30 days and who in the guild can craft the item, selling with a price suggestion (cheapest current offer), **My auctions**, favourites, **shopping lists** (quantity, stock, price alert, export/import incl. Auctionator lists, temporary list for one shopping trip, *Buy list*) and *Orders*. Prices show in the item tooltip.
 - **Prices for everyone** – prices are shared server-wide (own faction, goblin auction houses separate) and only count as confirmed when at least two players report them. Works alongside Auctionator.
 - **Profession window** – *AH: Reagents* searches only the reagents of a recipe, *To shopping list*, and shows reagent cost, sale value and profit.
 
 ### Travel, notes, buffs & rares
 
 - **Notes on the map** (`/gp zettel`) – pin a note where you stand, for the guild or for everyone; it opens when someone comes close.
-- **Buff reminder** – best buff food from your bags, sleeping bag and campfire while levelling; the **gear** at the top of the window turns the reminders off.
+- **Buff reminder** – best buff food from your bags, sleeping bag and campfire while levelling; off by default, turn them on under Settings › Buffs.
 - **Departures** – stand at a dock (ship, zeppelin, airship) or a Deeprun Tram platform and a small window shows a countdown per connection: whether it is **at the dock and when it leaves**, when the next one arrives and the one after. Times are measured when someone rides along and are **shared with everyone using GuildPride**.
 - **Your own time first** – your own measurement wins; otherwise the time most players measured themselves (*confirmed 3×*). A single differing report does not replace it. Since Blizzard's hotfix of 2026-11-20 layers can no longer be detected, so no layer numbers are shown.
 - **Reminder** – click the clock icon on a connection: raid warning and sound 1 minute before departure, even when you have left the dock.
@@ -136,6 +137,7 @@ World of Warcraft addon for WoW Forever only · Version 2.43.0 · Author: Rottga
 | `/gp messages [name]` · `/gp message <name> <text>` | messenger: messages to guild members with GuildPride, even when they are offline; whispers open the window too, like WIM (other members keep them until delivery; to the main, so all their characters get it) |
 | `/gp handwerk` · `/gp handwerk mini` | crafting window (levelling guide, recipes, profit, guild & alts) · compact view |
 | `/gp tracker` | gathering and crafting tracker |
+| `/gp gaps` | recipes nobody in the guild knows |
 | `/gp zettel` | notes on the map (`write`, `on`/`off`, `clear`) |
 | `/gp price <item> <price>` | price alert without the auction house window (`off` removes it, without arguments: list) |
 | `/gp options` | GuildPride page in the WoW options |
@@ -150,7 +152,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerk-Fenster, Raid-Werkzeuge, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.43.0*
+*Version 2.43.1*
 
 ### NEU in 2.42 und 2.43
 
@@ -201,15 +203,16 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 - **Tracker** (`/gp tracker`) – zählt, was du sammelst, kauft Fehlendes beim Händler oder sucht es im Auktionshaus und stellt getrackte Rezepte Klick für Klick her (Zwischenprodukte zuerst).
 - **Rezeptkarte, Lehrer auf der Karte, Sammel-Fundorte, Angel-Leiste** mit einer Taste fürs Angeln, **Verkaufs-Berater** im Tooltip – alles einzeln abschaltbar unter „Handwerk“.
 - **Handwerker-Verzeichnis** (Eintrag *Handwerk*) – wer welchen Beruf auf welcher Stufe hat und welche Rezepte er kann, durchsuchbar nach Name, Beruf oder Rezept.
+- **Rezept-Lücken** (`/gp luecken`) – welche Rezepte eines Berufs niemand in der Gilde kann und wer den Beruf hat.
 - **Gildenaufträge** – Item und Menge einstellen; Hersteller nehmen an oder geben ab, der Auftraggeber bekommt einen Hinweis. Neue und angenommene Aufträge gehen auch an Discord.
-- **Auktionshaus** – wahlweise GuildPride-Fenster mit Suche nach Kategorien, Kaufansicht mit allen Angeboten, **Preisverlauf** über 7 Tage und wer in der Gilde das Item herstellen kann, Verkaufen mit Preisvorschlag (günstigstes aktuelles Angebot), **Meine Auktionen**, Favoriten, **Einkaufslisten** (Menge, Bestand, Preisalarm, Export/Import auch von Auctionator-Listen, temporäre Liste für einen Einkauf, *Liste kaufen*) und *Aufträge*. Preise stehen im Item-Tooltip.
+- **Auktionshaus** – wahlweise GuildPride-Fenster mit Suche nach Kategorien, Kaufansicht mit allen Angeboten, **Preisverlauf** über 30 Tage und wer in der Gilde das Item herstellen kann, Verkaufen mit Preisvorschlag (günstigstes aktuelles Angebot), **Meine Auktionen**, Favoriten, **Einkaufslisten** (Menge, Bestand, Preisalarm, Export/Import auch von Auctionator-Listen, temporäre Liste für einen Einkauf, *Liste kaufen*) und *Aufträge*. Preise stehen im Item-Tooltip.
 - **Preise für alle** – Preise werden serverweit geteilt (eigene Fraktion, Goblin-Auktionshäuser getrennt) und gelten erst als bestätigt, wenn mindestens zwei Spieler sie melden. Läuft auch zusammen mit Auctionator.
 - **Berufsfenster** – *AH: Zutaten* sucht nur die Zutaten eines Rezepts, *Zur Einkaufsliste*, dazu Kosten der Zutaten, Verkaufswert und Gewinn.
 
 ### Reisen, Zettel, Buffs & Rares
 
 - **Notizzettel auf der Karte** (`/gp zettel`) – Zettel dort aufhängen, wo du stehst, für die Gilde oder für alle; er geht auf, wenn jemand nahe kommt.
-- **Buff-Erinnerung** – bestes Buff-Food aus den Taschen, beim Leveln Schlafsack und Lagerfeuer; über das **Zahnrad** oben im Fenster lassen sich die Erinnerungen abschalten.
+- **Buff-Erinnerung** – bestes Buff-Food aus den Taschen, beim Leveln Schlafsack und Lagerfeuer; ab Werk aus, einschalten unter Einstellungen › Buffs & Erholung.
 - **Abfahrten** – stehst du an einem Anleger (Schiff, Zeppelin, Luftschiff) oder am Bahnsteig der Tiefenbahn, zeigt ein kleines Fenster je Verbindung einen Countdown: ob es **am Steg liegt und wann es ablegt**, wann das nächste kommt und das danach. Gemessen wird, wenn jemand mitfährt – und **mit allen GuildPride-Spielern geteilt**.
 - **Deine Zeit zuerst** – deine eigene Messung gilt; sonst die Zeit, die die meisten selbst gemessen haben (*3× bestätigt*). Eine einzelne abweichende Meldung verdrängt sie nicht. Seit Blizzards Hotfix vom 20.11.2026 lassen sich Layer nicht mehr erkennen, darum gibt es keine Layer-Nummern.
 - **Erinnerung** – Uhr-Symbol an einer Verbindung anklicken: Raid-Warnung und Ton 1 Minute vor der Abfahrt, auch wenn du nicht mehr am Anleger bist.
@@ -278,6 +281,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 | `/gp nachrichten [Name]` · `/gp nachricht <Name> <Text>` | Messenger: Nachrichten an Gildenmitglieder mit GuildPride, auch wenn sie offline sind; auch Flüstern öffnet das Fenster, wie bei WIM (andere Mitglieder heben sie bis zur Zustellung auf; an den Main, also an alle seine Charaktere) |
 | `/gp handwerk` · `/gp handwerk mini` | Handwerk-Fenster (Leveln, Rezepte, Gewinn, Gilde & Twinks) · Kompaktansicht |
 | `/gp tracker` | Sammel- und Herstell-Tracker |
+| `/gp luecken` | Rezepte, die niemand in der Gilde kann |
 | `/gp zettel` | Notizzettel auf der Karte (`schreiben`, `an`/`aus`, `weg`) |
 | `/gp preis <Gegenstand> <Preis>` | Preisalarm ohne Auktionshaus-Fenster (`aus` entfernt ihn, ohne Angaben: Liste) |
 | `/gp optionen` | GuildPride-Seite in den WoW-Optionen |

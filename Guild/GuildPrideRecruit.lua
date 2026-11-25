@@ -340,7 +340,7 @@ local function Build()
     win.content:SetSize(560, 10)
     scroll:SetScrollChild(win.content)
     win.rows = {}
-    if ns.SkinWindow then pcall(ns.SkinWindow, win) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, win) end
 end
 
 local function Row(i)

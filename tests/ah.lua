@@ -460,7 +460,7 @@ return function(test, eq, W, ns)
         info = AH.SellInfo("LOC"); eq(info.commodity, false); eq(info.max, 1)
         eq(AH.PostModern(info, 700, 5, 3), true)
         eq(posted.i[2], 3); eq(posted.i[3], 1); eq(posted.i[4], nil); eq(posted.i[5], 700)
-        C_Item = nil
+        C_Item = W.baseItem
         Modern(false)
     end)
 
@@ -515,7 +515,7 @@ return function(test, eq, W, ns)
         eq(AH.TooltipText(L(30050), 1, W.server, false), "|cff808080Auktionshaus: noch kein Preis bekannt|r")
         AH.RecordOwn("30051", 77, 1, W.server)
         eq(AH.TooltipText(L(30051), 1, W.server, false), "|cffffd100Auktionshaus: 77c (gerade eben)|r")
-        eq(AH.TooltipHeader():find("GuildPride", 1, true) ~= nil, true, "eigener Abschnitt mit Kopfzeile")
+        eq(ns.Tip.Header():find("GuildPride", 1, true) ~= nil, true, "eigener Abschnitt mit Kopfzeile")
         W.itemInfo[30052] = { quality = 0, bindType = 0, classID = 7, sellPrice = 1 }   -- grau: nichts
         eq(AH.TooltipText(L(30052), 1, W.server, false), nil)
     end)
@@ -776,7 +776,7 @@ return function(test, eq, W, ns)
         local l = AH.NewList("Calc")
         AH.AddReagents(l, { { 2840, 12 }, { 2880, 2 }, { 2589, 1 } }, 1)
         AH.AddItems(l, "765")
-        C_Item = { GetItemCount = function(id) return ({ [2840] = 5, [2589] = 3 })[id] or 0 end }
+        C_Item = W.Item({ GetItemCount = function(id) return ({ [2840] = 5, [2589] = 3 })[id] or 0 end })
         local old = AH.PriceFor
         AH.PriceFor = function(k) return ({ ["2840"] = 100, ["2589"] = 7, ["765"] = 9 })[k] end
         eq(AH.ItemCount(2840), 5)
@@ -784,7 +784,7 @@ return function(test, eq, W, ns)
         local total, unknown = AH.ListCost(l)
         eq(total, 700); eq(unknown, 1, "2880 ohne Preis")
         AH.PriceFor = old
-        C_Item = nil
+        C_Item = W.baseItem
         GuildPrideDB.ahLists = nil
     end)
     test("AH: Einkaufslisten exportieren und importieren", function()
@@ -884,7 +884,7 @@ return function(test, eq, W, ns)
         AH.onMultiUpdate = oldCb
         Modern(false)
     end)
-    W.Load("GuildPrideAHModernUI.lua")
+    W.Load("GuildPrideAHModernUI.lua"); W.Load("GuildPrideAHModernTabs.lua")
     test("AH-Forever: GuildPride ersetzt Blizzards Auktionshaus, Knöpfe schalten um", function()
         Modern(true)
         GuildPrideDB.ahGuildPride = nil
@@ -1381,25 +1381,22 @@ return function(test, eq, W, ns)
         Modern(false)
     end)
     test("AH-Forever: Geldanzeige ohne globales GetCoinTextureString", function()
-        local old = GetCoinTextureString
-        GetCoinTextureString = nil
         C_CurrencyInfo = { GetCoinTextureString = function(c) return "cc" .. c end }
         eq(AH.Money(5), "cc5")
-        C_CurrencyInfo = nil
+        C_CurrencyInfo = {}
         local s = AH.Money(10203)
-        GetCoinTextureString = old
+        C_CurrencyInfo = W.baseCurrency
         eq(type(s), "string"); eq(s:find("UI%-GoldIcon") ~= nil, true); eq(s:find("^1") ~= nil, true)
     end)
     test("AH-Forever: ohne globales GetItemInfo (nur C_Item) kein Fehler", function()
-        local oldInfo, oldIcon, oldInstant, oldItem = GetItemInfo, GetItemIcon, GetItemInfoInstant, C_Item
-        C_Item = { GetItemInfo = oldInfo, GetItemInfoInstant = oldInstant, GetItemIconByID = function() return 123 end }
-        GetItemInfo, GetItemIcon, GetItemInfoInstant = nil, nil, nil
+        local oldItem = C_Item
+        C_Item = W.Item({ GetItemIconByID = function() return 123 end })
         local ok, err = pcall(function()
             eq(AH.Tradeable(L(30020)), true)
             eq(AH.ItemIcon(30020), 123)
             eq(AH.ItemName(30020), "Item30020")
         end)
-        GetItemInfo, GetItemIcon, GetItemInfoInstant, C_Item = oldInfo, oldIcon, oldInstant, oldItem
+        C_Item = oldItem
         assert(ok, err)
     end)
     test("AH-Forever: Taschen-Liste – nur handelbare Items, zusammengefasst", function()
@@ -1453,6 +1450,45 @@ return function(test, eq, W, ns)
         AH.RecordOwn("501", 90, 1, now + 1); eq(AH.PriceFor("501"), 90)
         AH.PackAll()
         eq(AH.MergeHistory("501", { { d = math.floor(now / 86400) - 1, p = 77 } }), 1); eq(#AH.History("501"), 3)
+    end)
+
+    test("AH-Speicher: kürzere Fassung – alte Einträge lesbar, ein einzelner Tagespreis steht nur einmal da", function()
+        local now, st = math.floor(W.server), AH.Store()
+        for k in pairs(st) do st[k] = nil end
+        local day = math.floor(now / 86400)
+        local old = ("1|o 22698 11 %d|s 27585 5 %d|f Anna Berg=24900@%d;Bert=27585@-|h %d:27400 %d:22698"):format(now, now - 60, now - 90, day - 4, day)
+        st["801"] = old
+        local function Values()
+            local e = AH.Entry("801")
+            return table.concat({ e.own.p, e.own.q, e.own.t, e.srv.p, e.srv.q, e.srv.t, e.srv.from["Anna Berg"], e.srv.seen["Anna Berg"],
+                e.srv.from.Bert, tostring(e.srv.seen.Bert), #e.hist, e.hist[1].d, e.hist[1].p, e.hist[2].d, e.hist[2].p }, " ")
+        end
+        local before = Values()
+        AH.PackAll()
+        eq(st["801"]:sub(1, 2), "2|"); eq(#st["801"] < #old * 0.8, true, "kürzer: " .. #st["801"] .. " statt " .. #old)
+        eq(Values(), before, "nichts verloren")
+        -- nur ein Tag, gleich dem eigenen Preis: steht nicht doppelt da
+        AH.RecordOwn("802.14314", 6800, 2, now); AH.PackAll()
+        eq(st["802.14314"]:find("|h", 1, true), nil)
+        eq(#AH.Entry("802.14314").hist, 1); eq(AH.Entry("802.14314").hist[1].d, day); eq(AH.Entry("802.14314").hist[1].p, 6800)
+        -- krumme und riesige Werte überstehen es auch
+        st["803"] = { own = { p = 12.5, q = 0, t = now }, hist = { { d = day, p = 3 } } }
+        st["804"] = { own = { p = 4294967295, q = 999999, t = 1600000000 } }
+        st["805"] = { hist = { { d = day - 1, p = 5 } } }
+        AH.PackAll()
+        eq(AH.Entry("803").own.p, 12.5); eq(AH.Entry("803").hist[1].p, 3)
+        eq(AH.Entry("804").own.p, 4294967295); eq(AH.Entry("804").own.t, 1600000000); eq(AH.Entry("804").hist, nil, "nichts erfunden")
+        eq(AH.Entry("805").own, nil); eq(AH.Entry("805").hist[1].p, 5)
+    end)
+
+    test("AH-Speicher: zufällig verzauberte Gegenstände werden früher vergessen", function()
+        local now, st = math.floor(W.server), AH.Store()
+        for k in pairs(st) do st[k] = nil end
+        AH.RecordOwn("9792.14314", 6800, 1, now - 15 * 86400)
+        AH.RecordOwn("9792", 6800, 1, now - 15 * 86400)
+        AH.RecordOwn("9793.14314", 6800, 1, now - 13 * 86400)
+        AH.PackAll(); AH.Prune(now)
+        eq(st["9792.14314"], nil); eq(st["9792"] ~= nil, true); eq(st["9793.14314"] ~= nil, true)
     end)
 
     test("AH-Speicher: Beim Ausloggen gepackt, beschädigte Einträge stören nicht, alte Tabellen bleiben lesbar", function()

@@ -217,7 +217,7 @@ local levelLabel = Label(452, L["Stufe"])
 local levelBox = Box(40, 454, 3, true)
 local bCreate = CreateFrame("Button", nil, form, "UIPanelButtonTemplate")
 bCreate:SetSize(100, 22); bCreate:SetPoint("TOPLEFT", 504, -24); bCreate:SetText(L["Anlegen"])
-if ns.SkinButton then pcall(ns.SkinButton, kindBtn); pcall(ns.SkinButton, bCreate) end
+if ns.SkinButton then ns.Try(ns.SkinButton, kindBtn); ns.Try(ns.SkinButton, bCreate) end
 
 local function ShowKind()
     kindBtn:SetText(KIND_LABEL[newKind])
@@ -271,7 +271,7 @@ local function Row(i)
     local function B(label, w)
         local b = CreateFrame("Button", nil, r, "UIPanelButtonTemplate")
         b:SetSize(w, 20); b:SetText(label)
-        if ns.SkinButton then pcall(ns.SkinButton, b) end
+        if ns.SkinButton then ns.Try(ns.SkinButton, b) end
         return b
     end
     r.del = B(L["Löschen"], 70); r.del:SetPoint("RIGHT", -6, 0)

@@ -64,7 +64,7 @@ local function Create()
     win:SetScript("OnHide", function()
         if GuildPrideDB then GuildPrideDB.newsSeen = ns.VERSION end
     end)
-    if ns.SkinWindow then pcall(ns.SkinWindow, win) end
+    if ns.SkinWindow then ns.Try(ns.SkinWindow, win) end
 end
 
 function ns.ShowNews()

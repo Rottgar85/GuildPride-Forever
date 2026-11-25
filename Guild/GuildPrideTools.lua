@@ -20,6 +20,7 @@ local TOOLS = {
     { key = "jagd", icon = "INV_Misc_Map_01", label = L["Schnitzeljagd"], text = L["Stationen suchen; Offiziere legen sie an."], open = function() ns.Hunt.Open() end },
     { key = "inv_misc_spyglass_02", icon = "INV_Misc_Spyglass_02", label = L["Gildenalbum"], text = L["Eure ersten Bosskills mit Datum, auf Wunsch mit Screenshot."], open = function() ns.Album.Open() end },
     { key = "inv_misc_spyglass_03", icon = "INV_Misc_Spyglass_03", label = L["Suche über alles"], text = L["Mitglieder, Events, Einstellungen, Befehle und Rezepte finden (/gp suche)."], open = function() ns.Search.Open() end },
+    { key = "luecken", icon = "INV_Scroll_03", label = L["Rezept-Lücken"], text = L["Welche Rezepte niemand in der Gilde kann und wer den Beruf hat."], open = function() ns.CraftGaps.Open() end },
     { key = "inv_misc_note_01", icon = "INV_Misc_Note_01", label = L["Event-Auswertung"], text = L["Verlässlichkeit, Wochentage und Verlauf aus der Anwesenheit."], officer = true,
       open = function() ns.EventStats.Open() end },
 }
@@ -29,7 +30,7 @@ local function Hidden()
     GuildPrideDB.toolsHidden = type(GuildPrideDB.toolsHidden) == "table" and GuildPrideDB.toolsHidden or {}
     return GuildPrideDB.toolsHidden
 end
-local W, H, GAP = 306, 58, 8
+local W, H, GAP = 306, 52, 6
 local showAll = false
 local tiles = {}
 for i, t in ipairs(TOOLS) do

@@ -129,6 +129,7 @@ return function(test, eq, W, ns)
         GuildPrideDB.chatFont = 15
         eq(ns.ApplyPreset("guild"), true)
         eq(GuildPrideDB.craftCard, false); eq(GuildPrideDB.ahTooltip, false); eq(GuildPrideDB.memberAlerts, true); eq(GuildPrideDB.raidReady, false)
+        eq(ns.DEFAULTS.buffFood, false, "stört die meisten: ab Werk aus"); eq(ns.DEFAULTS.restReminder, false)
         eq(ns.ApplyPreset("raid"), true); eq(GuildPrideDB.raidReady, true); eq(GuildPrideDB.buffFood, true); eq(GuildPrideDB.craftCard, false)
         eq(ns.ApplyPreset("all"), true); eq(GuildPrideDB.craftCard, true); eq(GuildPrideDB.raidReady, true)
         eq(GuildPrideDB.chatFont, 15, "Schrift bleibt"); eq(GuildPrideDB.errorShare, keep.errorShare, "Zustimmung bleibt")

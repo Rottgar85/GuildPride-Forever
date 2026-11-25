@@ -96,7 +96,7 @@ local function Changed()
     pending = true
     C_Timer.After(0.5, function()
         pending = false
-        for _, fn in ipairs(changedCallbacks) do pcall(fn) end
+        for _, fn in ipairs(changedCallbacks) do ns.Try(fn) end
         if ns.RefreshUI then ns.RefreshUI() end
     end)
 end

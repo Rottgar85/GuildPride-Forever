@@ -66,9 +66,13 @@ if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip)
         if tooltip ~= GameTooltip or not tooltip.GetUnit then return end
         local ok, _, unit = pcall(tooltip.GetUnit, tooltip)
-        if not ok or not unit or not UnitIsPlayer(unit) then return end
+        -- in Instanzen ist die Einheit geschützt: schon die Abfrage damit wirft einen Fehler
+        local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+        if not ok or Secret(unit) or not unit then return end
+        local okP, player = pcall(UnitIsPlayer, unit)
+        if not okP or Secret(player) or not player then return end
         local name, realm = UnitName(unit)
-        if not name or (issecretvalue and issecretvalue(name)) then return end
+        if Secret(name) or Secret(realm) or not name then return end
         local note = ns.PlayerNote(realm and realm ~= "" and (name .. "-" .. realm) or name)
         if note then tooltip:AddLine(L["Notiz: "] .. note, 1, 0.82, 0.4, true) end
     end)

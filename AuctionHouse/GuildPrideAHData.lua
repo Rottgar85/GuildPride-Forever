@@ -5,7 +5,9 @@
 --   hist = { { d, p }, … }                Tagesminimum je Tag, höchstens 30 (eigene Scans; Tage ohne
 --                                         eigenen Scan auch von anderen GuildPride-Spielern, AH.MergeHistory)
 -- Seit 2.42 liegt ein Eintrag gepackt als Text da (spart Speicher und Ladezeit), zum Beispiel
---   "1|o 100 7 1800000000|s 110 4 1800000000|f Anna=110@1800000000;Bert=112@1800000000|h 20774:120 20776:100"
+--   "2|o 2s 7 1njchs|s 32 4 1njchs|f Anna=32@1njchs|h g12:3c 2:2s"   (Zahlen zur Basis 36, Zeiten ab T0,
+--   Tage als Abstand zum vorigen; ein einziger Tag, der dem eigenen Preis gleicht, steht nicht extra da)
+-- Einträge der ersten Fassung ("1|…", bis 2.43) bleiben lesbar.
 -- Beim ersten Zugriff (AH.Entry) wird er wieder zur Tabelle, beim Ausloggen und nach dem
 -- Einloggen (in Häppchen) gepackt. Tabellen aus älteren Versionen bleiben lesbar.
 local ADDON, GP = ...
@@ -16,6 +18,7 @@ local DAY = 86400
 local OWN_FRESH = 3600          -- eigener Preis gilt als frisch für den Vorschlag
 local SRV_MAX_AGE = 7 * DAY
 local OWN_MAX_AGE = 30 * DAY
+local SUFFIX_MAX_AGE = 14 * DAY   -- zufällig verzauberte Gegenstände ("ID.Suffix"): selten zweimal gleich
 local MAX_FROM = 5
 local MAX_HIST = 30   -- bis 2.37: 7
 local SPREAD = 1.25             -- Serverpreise höchstens 25 % auseinander
@@ -56,50 +59,85 @@ end
 AH.Realm = Realm
 
 -- Packen und Auspacken
-local function Num(v) return v and ("%.14g"):format(v) or "-" end
+local T0 = 1700000000
+local DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz"
+local function Num(v)
+    if not v then return "-" end
+    if v < 0 or v ~= math.floor(v) or v > 2 ^ 52 then return "~" .. ("%.14g"):format(v) end
+    if v == 0 then return "0" end
+    local out = ""
+    while v > 0 do
+        local r = v % 36
+        out = DIGITS:sub(r + 1, r + 1) .. out
+        v = (v - r) / 36
+    end
+    return out
+end
+local function Read(x)
+    if x:sub(1, 1) == "~" then return tonumber(x:sub(2)) end
+    return tonumber(x, 36)
+end
+local function Time(t) return t and Num(t - T0) or "-" end
+local function ReadTime(x)
+    local v = Read(x)
+    return v and v + T0
+end
+local function OwnDay(o) return math.floor(o.t / DAY) end
 local function Pack(e)
-    local out = { "1" }
-    local o, s = e.own, e.srv
-    if o then out[#out + 1] = "o " .. Num(o.p) .. " " .. Num(o.q) .. " " .. Num(o.t) end
+    local out = { "2" }
+    local o, s, hist = e.own, e.srv, e.hist
+    if o then out[#out + 1] = "o " .. Num(o.p) .. " " .. Num(o.q) .. " " .. Time(o.t) end
     if s then
-        out[#out + 1] = "s " .. Num(s.p) .. " " .. Num(s.q) .. " " .. Num(s.t)
+        out[#out + 1] = "s " .. Num(s.p) .. " " .. Num(s.q) .. " " .. Time(s.t)
         local f = {}
         for name, p in pairs(s.from or {}) do
-            f[#f + 1] = name:gsub("[|;=@%c]", "") .. "=" .. Num(p) .. "@" .. Num(s.seen and s.seen[name])
+            f[#f + 1] = name:gsub("[|;=@%c]", "") .. "=" .. Num(p) .. "@" .. Time(s.seen and s.seen[name])
         end
         if #f > 0 then out[#out + 1] = "f " .. table.concat(f, ";") end
     end
-    if e.hist and #e.hist > 0 then
-        local h = {}
-        for i, d in ipairs(e.hist) do h[i] = Num(d.d) .. ":" .. Num(d.p) end
-        out[#out + 1] = "h " .. table.concat(h, " ")
+    if hist and #hist > 0 then
+        local same = o and #hist == 1 and hist[1].d == OwnDay(o) and hist[1].p == o.p
+        if not same then
+            local h, last = {}, 0
+            for i, d in ipairs(hist) do h[i] = Num(d.d - last) .. ":" .. Num(d.p); last = d.d end
+            out[#out + 1] = "h " .. table.concat(h, " ")
+        end
+    elseif o then
+        out[#out + 1] = "n x"      -- eigener Preis ohne Tagesverlauf
     end
     return table.concat(out, "|")
 end
-local function Values(body)
-    local p, q, t = body:match("^(%S+) (%S+) (%S+)$")
-    return tonumber(p), tonumber(q), tonumber(t)
-end
 local function Unpack(text)
-    local e = {}
-    if text:sub(1, 2) ~= "1|" then return e end
+    local e, v = {}, text:sub(1, 2)
+    if v ~= "1|" and v ~= "2|" then return e end
+    local n, t = tonumber, tonumber
+    if v == "2|" then n, t = Read, ReadTime end
+    local bare = v == "1|"
     for kind, body in text:gmatch("|(%a) ([^|]*)") do
-        if kind == "o" then
-            local p, q, t = Values(body)
-            if p and t then e.own = { p = p, q = q or 0, t = t } end
-        elseif kind == "s" then
-            local p, q, t = Values(body)
-            if t then e.srv = { p = p, q = q or 0, t = t, from = {}, seen = {} } end
+        if kind == "o" or kind == "s" then
+            local p, q, at = body:match("^(%S+) (%S+) (%S+)$")
+            if p then p, q, at = n(p), n(q), t(at) end
+            if kind == "o" and p and at then e.own = { p = p, q = q or 0, t = at }
+            elseif kind == "s" and at then e.srv = { p = p, q = q or 0, t = at, from = {}, seen = {} } end
         elseif kind == "f" and e.srv then
             for name, p, seen in body:gmatch("([^;=]+)=([^;@]+)@([^;]+)") do
-                e.srv.from[name], e.srv.seen[name] = tonumber(p), tonumber(seen)
+                e.srv.from[name], e.srv.seen[name] = n(p), t(seen)
             end
         elseif kind == "h" then
-            local h = {}
-            for d, p in body:gmatch("(%d+):(%d+)") do h[#h + 1] = { d = tonumber(d), p = tonumber(p) } end
+            local h, last = {}, 0
+            for d, p in body:gmatch("([%w~]+):(%S+)") do
+                d, p = n(d), n(p)
+                if d and p then
+                    if v == "2|" then d = d + last; last = d end
+                    h[#h + 1] = { d = d, p = p }
+                end
+            end
             if #h > 0 then e.hist = h end
+        elseif kind == "n" then
+            bare = true
         end
     end
+    if not bare and not e.hist and e.own then e.hist = { { d = OwnDay(e.own), p = e.own.p } } end
     return e
 end
 local function UnpackSides(realm)
@@ -293,10 +331,11 @@ local function PruneEntry(items, key, now, pack)
     if packed then e = Unpack(e) end
     if type(e) ~= "table" then items[key] = nil; return end
     if e.srv and now - (e.srv.t or 0) > SRV_MAX_AGE then e.srv = nil end
-    if e.own and now - (e.own.t or 0) > OWN_MAX_AGE then e.own = nil end
+    local maxAge = tostring(key):find(".", 1, true) and SUFFIX_MAX_AGE or OWN_MAX_AGE
+    if e.own and now - (e.own.t or 0) > maxAge then e.own = nil end
     if e.hist then
         for i = #e.hist, 1, -1 do
-            if now - e.hist[i].d * DAY > OWN_MAX_AGE then table.remove(e.hist, i) end
+            if now - e.hist[i].d * DAY > maxAge then table.remove(e.hist, i) end
         end
         if #e.hist == 0 then e.hist = nil end
     end

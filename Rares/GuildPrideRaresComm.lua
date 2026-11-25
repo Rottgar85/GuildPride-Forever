@@ -22,6 +22,7 @@ local function ChannelId()
     return id and id > 0 and id or nil
 end
 ns.ChannelId = ChannelId
+ns.CHANNEL = CHANNEL
 
 local function Join()
     if ChannelId() or not JoinTemporaryChannel then return end
@@ -33,6 +34,7 @@ local function Join()
     end)
 end
 
+ns.Join = Join
 -- Spät beitreten, damit Allgemein/Handel ihre gewohnten Nummern behalten
 ns.Listen("PLAYER_ENTERING_WORLD", function()
     C_Timer.After(20, Join)
