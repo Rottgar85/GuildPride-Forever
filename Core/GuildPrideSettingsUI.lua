@@ -92,6 +92,9 @@ local options = {
     { key = "usageShare",    label = L["Dem Entwickler mitteilen, welche Funktionen ich benutze (nur Zähler, keine Inhalte)"],
       changed = function() if ns.Usage then ns.Usage.Changed() end end },
     { key = "errorShare",    label = L["GuildPride-Fehler automatisch an den Entwickler senden (Fehlertext, Versionen, Sprache, Umstände)"] },
+    { key = "testFeatures",  label = L["Tester: neue Funktionen vor allen anderen sehen (meldet dem Entwickler, dass du mittestest)"],
+      show = function() return type(GuildPrideDB) == "table" and GuildPrideDB.testerId ~= nil end,
+      changed = function() if ns.Tester then ns.Tester.SwitchChanged() end end },
     { key = "mapShow",       label = L["Gildenmitglieder mit GuildPride auf der Weltkarte zeigen"],
       changed = function() if ns.MapShowChanged then ns.MapShowChanged() end end },
     { key = "mapShare",      label = L["Eigene Position auf der Weltkarte mit der Gilde teilen"],
@@ -175,18 +178,19 @@ ns.SettingOptions = options   -- für Suche und Pakete (GuildPrideSearch.lua)
 -- Der Rest steht hinter „… weitere“ am Abschnitt oder „Alle Einstellungen zeigen“.
 local TOP = {}
 for key in ([[replaceGuildFrame easyRead minimap popup helpAlerts shareMilestones raidReady cooldownShare guildQuests
-    usageShare errorShare mapShow mapShare publicLFG ahTooltip bagMarks craftCard craftSell transitUI mapNotes buffFood restReminder
+    usageShare errorShare testFeatures mapShow mapShare publicLFG ahTooltip bagMarks craftCard craftSell transitUI mapNotes buffFood restReminder
     plateColors whisperWindow discordBridge ausweisAuto]]):gmatch("%a+") do TOP[key] = true end
 -- → sichtbare Zeilen in Reihenfolge, verborgene je Überschrift, verborgene insgesamt
 function ns.SettingsRows(list, all, open)
     local rows, more, hidden, head = {}, {}, 0, nil
     for _, o in ipairs(list) do
+        local on = not o.show or o.show()   -- gerade nicht zutreffend: weder Zeile noch Zähler
         if o.header then
             head = o
             rows[#rows + 1] = o
-        elseif all or TOP[o.key] or (head and open[head]) then
+        elseif on and (all or TOP[o.key] or (head and open[head])) then
             rows[#rows + 1] = o
-        else
+        elseif on then
             hidden = hidden + 1
             if head then more[head] = (more[head] or 0) + 1 end
         end
@@ -667,7 +671,10 @@ if (Settings and Settings.RegisterCanvasLayoutCategory) or InterfaceOptions_AddC
     panel.scroll:SetScrollChild(panel.body)
     panel.scroll:SetScript("OnSizeChanged", function(self, w) if w and w > 0 then panel.body:SetWidth(w) end end)
     local panelChecks = {}
-    for i, opt in ipairs(options) do
+    -- Schalter mit show gibt es nur im GuildPride-Fenster
+    local always = {}
+    for _, opt in ipairs(options) do if not opt.show then always[#always + 1] = opt end end
+    for i, opt in ipairs(always) do
       if opt.header then
         local h = panel.body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         h:SetPoint("TOPLEFT", 20, -4 - (i - 1) * 32 - 8)

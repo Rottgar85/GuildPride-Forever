@@ -75,6 +75,12 @@ local function Flush()
     SendNext()
 end
 
+-- Kurze Nachricht auf demselben Weg (GuildPrideTester.lua)
+function S.Whisper(to, msg)
+    Push(to, msg, true)
+    Flush()
+end
+
 -- Daten in Stücken an den Entwickler (auch GuildPrideUsage.lua); check = darf noch gesendet werden?
 function S.Send(to, kind, id, data, check)
     local count = math.ceil(#data / CHUNK)
@@ -254,6 +260,9 @@ function ns.OnErrorShareMessage(message, sender, channel)
     if kind == "DVA" then
         OnHello(value, sender)
         if ns.Usage and value == ns.CLIENT_TAG and ns.IsMarked and ns.IsMarked(sender) then ns.Usage.OnHello(sender) end
+        if ns.Tester then ns.Tester.OnMessage(kind, value, sender, channel) end
+    elseif kind == "DVT" or kind == "DVR" then
+        if ns.Tester then ns.Tester.OnMessage(kind, value, sender, channel) end
     elseif kind == "DVF" then OnFixed(value, sender)
     elseif channel ~= "WHISPER" then return
     elseif kind == "DVE" or kind == "DVU" then OnPiece(value, sender, kind)
@@ -450,6 +459,10 @@ local function BuildWindow()
     if ns.SkinButton then ns.SkinButton(tests) end
     tests:SetSize(110, 22); tests:SetPoint("TOPRIGHT", -44, -10); tests:SetText("Testliste")
     tests:SetScript("OnClick", function() if ns.DevTest then ns.DevTest.Open() end end)
+    local testers = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    if ns.SkinButton then ns.SkinButton(testers) end
+    testers:SetSize(110, 22); testers:SetPoint("RIGHT", tests, "LEFT", -6, 0); testers:SetText("Tester")
+    testers:SetScript("OnClick", function() if ns.Tester then ns.Tester.Open() end end)
     Button("Alle erledigt", 334, function()
         for _, g in ipairs(S.List()) do S.Done(g.key) end
         S.Refresh()

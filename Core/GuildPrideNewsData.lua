@@ -2,6 +2,9 @@
 -- ERZEUGT aus CHANGELOG.md mit: python .github/build-news.py (bei jeder Version neu erzeugen)
 local ADDON, ns = ...
 ns.NEWS = {
+    { version = "2.45.0",
+      de = { "|cffffd100Tester|r: Der Entwickler kann einzelne Spieler einladen, neue Funktionen vor allen anderen zu testen. Nur mit deinem Ja, jederzeit abschaltbar (|cffe6e0da/gp tester aus|r oder Einstellungen › Teilen)" },
+      en = { "|cffffd100Testers|r: the developer can invite individual players to try new features before everyone else. Only with your yes, can be turned off at any time (|cffe6e0da/gp tester off|r or Settings › Sharing)" } },
     { version = "2.44.0",
       de = { "|cffffd100„Heute“ auf der Übersicht|r: Events der nächsten 24 Stunden mit deiner Antwort, deine Auktionen (verkauft, laufen ab), Post, fertige Abklingzeiten deiner Twinks, offene Gildenaufträge; Offiziere sehen offene Fragen und Bewerbungen", "|cffffd100Rezept-Lücken: „Das lerne ich“|r (Rechtsklick): alle in der Gilde sehen, wer ein fehlendes Rezept übernimmt; gelernt verschwindet es von selbst", "|cffffd100Auktions-Tipps|r (GuildPride-Auktionshaus › Verkaufen › „Tipps“): was in Taschen und Bank gerade klar über dem Schnitt liegt", "|cffffd100Schneller|r: die Gildenliste wird bei Änderungen nur noch einmal gelesen und höchstens einmal je Sekunde", "|cffffd100Weniger Speicher|r: keine englischen Texte auf deutschen Clients, Rezepte gepackt, Datensicherung kleiner (neu Lernbares bleibt draußen und geht beim Zurückspielen nicht verloren)", "Behoben: „\\n“ im Fenster beim Abbrechen einer Auktion" },
       en = { "|cffffd100“Today” on the overview|r: events of the next 24 hours with your answer, your auctions (sold, expiring), mail, ready cooldowns of your alts, open guild orders; officers see open questions and applications", "|cffffd100Recipe gaps: “I will learn this”|r (right click): everyone in the guild sees who takes on a missing recipe; once learned it disappears by itself", "|cffffd100Auction tips|r (GuildPride auction house › Sell › “Tips”): what in your bags and bank is clearly above average right now", "|cffffd100Faster|r: the guild list is read only once per change and at most once per second", "|cffffd100Less memory|r: no English texts on German clients, packed recipes, smaller backups (what can be relearned stays out and is kept when restoring)", "Fixed: “\\n” in the window when cancelling an auction" } },
@@ -17,7 +20,4 @@ ns.NEWS = {
     { version = "2.41.3",
       de = { "|cffffd100Buff-Erinnerung abschalten|r: oben im Buff-Fenster gibt es jetzt ein |cffffd100Zahnrad|r – dort lassen sich die Buff-Food- und die Schlafsack-/Lagerfeuer-Erinnerung direkt abschalten" },
       en = { "|cffffd100Turn off the buff reminder|r: the buff window now has a |cffffd100gear|r at the top – turn the buff food and the sleeping bag/campfire reminder off right there" } },
-    { version = "2.41.2",
-      de = { "|cffffd100Handwerk im Hauptmenü|r: das Gildenfenster hat jetzt einen eigenen Eintrag „Handwerk“ (Berufe der Gilde, Knopf „Handwerk & Guides“). „Planen“ zeigt nur noch Events, Wünsche und Umfragen" },
-      en = { "|cffffd100Crafting in the main menu|r: the guild window now has its own \"Crafting\" entry (guild professions, \"Crafting & guides\" button). \"Plan\" only shows events, wishes and polls" } },
 }

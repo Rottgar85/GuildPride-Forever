@@ -237,6 +237,9 @@ end
 call("ToggleUI")
 guard("Einstellungen: das Wichtige zuerst, Rest auf Wunsch, jeder Abschnitt vertreten", function()
     local list = ns.SettingOptions
+    local all0 = list
+    list = {}
+    for _, o in ipairs(all0) do if not o.show or o.show() then list[#list + 1] = o end end   -- gerade zutreffende
     local function Count(rows) local n = 0; for _, o in ipairs(rows) do if o.key then n = n + 1 end end return n end
     local total = Count(list)
     local rows, more, hidden = ns.SettingsRows(list, false, {})
@@ -277,6 +280,9 @@ guard("Einstellungen: das Wichtige zuerst, Rest auf Wunsch, jeder Abschnitt vert
     assert(lost.cb:IsShown() and lost.fs:IsShown(), "über die Suche sichtbar")
     ns.SettingsShowAll(true); assert(GuildPrideDB.settingsAll == true)
     for _, o in ipairs(list) do assert(o.fs:IsShown(), "alle sichtbar") end
+    GuildPrideDB.testerId = "g1"; ns.SettingsShowAll(false)
+    for _, o in ipairs(all0) do if o.key == "testFeatures" then assert(o.cb:IsShown(), "Tester sehen ihren Schalter") end end
+    GuildPrideDB.testerId = nil
     ns.SettingsShowAll(false); assert(not GuildPrideDB.settingsAll and not lost.cb:IsShown(), "wieder kurz")
 end)
 local tabs, seen = 0, {}
@@ -301,7 +307,7 @@ for _, p in ipairs({ "guild", "raid", "all" }) do call("ApplyPreset", p) end
 call("ApplyReadable")
 call("Search.Help"); call("Usage.Open"); call("Usage.Choose", true); call("Usage.HookWindows"); call("Hunt.Open"); call("ShowCreateDialog")
 call("CraftGaps.Open"); call("CraftGaps.Refresh"); ns.IsDev = function() return true end
-call("DevTest.Open"); call("DevTest.Refresh"); call("ErrorShare.Toggle")
+call("Tester.Open"); call("Tester.Refresh"); call("DevTest.Open"); call("DevTest.Refresh"); call("ErrorShare.Toggle")
 call("DiagReport")
 
 for _, cmd in ipairs({ "", "dkp", "bank", "spieler", "hilfe", "zettel", "zettel schreiben", "handwerk", "handwerk mini", "tracker",

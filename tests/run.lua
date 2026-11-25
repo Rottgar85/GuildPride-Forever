@@ -850,6 +850,7 @@ require("devtest")(test, eq, W, ns)
 require("tooltip")(test, eq, W, ns)
 require("cleanup")(test, eq, W, ns)
 require("today")(test, eq, W, ns)
+require("tester")(test, eq, W, ns); ns.Try = W.Try
 require("channelwatch")(test, eq, W, ns)
 require("usage")(test, eq, W, ns); ns.Try = W.Try
 

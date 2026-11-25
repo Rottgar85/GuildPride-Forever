@@ -58,6 +58,7 @@ T.ITEMS = {
     { "karte", "Unterwegs", "Karte und Minimap: Gildenmitglieder und Zettel in der Nähe", "2.41.0" },
     { "schiff", "Unterwegs", "Anleger und Tiefenbahn: Zeiten und Erinnerung", "2.39.0" },
     { "rares", "Unterwegs", "/gp rares: Rare gesehen, Meldung kommt beim zweiten Spieler an", "2.41.0" },
+    { "tester", "Entwickler", "/gp dev › Tester: Haken vor einen Namen, er sagt Ja, sieht die Probe-Zeile unter Heute; Haken weg kommt an", "2.45.0" },
     { "fehler", "Entwickler", "Mit Haupt einloggen: Fehler und Nutzung von Spielern kommen an", "2.43.0" },
 }
 

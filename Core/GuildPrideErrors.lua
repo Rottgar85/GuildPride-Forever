@@ -96,8 +96,9 @@ local function Context()
         if type(f) == "table" and #wins < 3 and f:IsShown() then wins[#wins + 1] = name end
     end
     if ns.GuildFrame and ns.GuildFrame:IsShown() and ns.CurrentTabKey then wins[#wins + 1] = "tab" .. tostring(ns.CurrentTabKey()) end
-    return ("combat=%s inst=%s win=%s"):format(InCombatLockdown() and "yes" or "no",
-        type(kind) == "string" and kind or "none", #wins > 0 and table.concat(wins, ",") or "none"):sub(1, 120)
+    local test = ns.TesterMark and ns.TesterMark() or ""
+    return ("combat=%s inst=%s%s win=%s"):format(InCombatLockdown() and "yes" or "no",
+        type(kind) == "string" and kind or "none", test, #wins > 0 and table.concat(wins, ",") or "none"):sub(1, 120)
 end
 
 -- rawStack und count nur von BugGrabber (PollBugGrabber); sonst eigener Aufrufstapel, einmal

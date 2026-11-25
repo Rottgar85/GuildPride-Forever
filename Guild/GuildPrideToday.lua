@@ -123,10 +123,14 @@ local function Officers(add)
     if n > 0 then add((L["Neue Bewerbungen: %d"]):format(n)) end
 end
 
+local function Probe(add)
+    if ns.Feature and ns.Feature("probe") then add("|cff66ccff" .. L["Test: Du siehst neue Funktionen vor allen anderen (/gp tester)."] .. "|r") end
+end
+
 function T.Lines()
     local out, now = {}, GetServerTime()
     local function add(text) out[#out + 1] = text end
-    for _, fn in ipairs({ Events, Auctions, Mail, Cooldowns, Orders, Officers }) do ns.Try(fn, add, now) end
+    for _, fn in ipairs({ Events, Auctions, Mail, Cooldowns, Orders, Officers, Probe }) do ns.Try(fn, add, now) end
     return out
 end
 

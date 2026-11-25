@@ -59,7 +59,7 @@ function S.Find(text)
         end
     end
     for _, o in ipairs(ns.SettingOptions or {}) do
-        if o.label and Hit(o.label) then
+        if o.label and Hit(o.label) and (not o.show or o.show()) then
             Add("setting", o.label, function()
                 if ns.SettingsPage then ns.OpenTab(ns.SettingsPage) end
                 if ns.ShowSetting then ns.ShowSetting(o) end

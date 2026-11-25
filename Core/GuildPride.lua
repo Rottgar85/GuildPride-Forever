@@ -1086,7 +1086,7 @@ f:SetScript("OnEvent", function(_, event, ...)
         end
         -- Fehler an den Entwickler (GuildPrideErrorShare.lua prüft Absender und Weg selbst):
         -- auch von Fremden, nie Dispatch
-        if message:match("^DV[AEKFU]:") then
+        if message:match("^DV[AEKFURT]:") then
             if ns.OnErrorShareMessage then ns.OnErrorShareMessage(message, sender, channel) end
             return
         end

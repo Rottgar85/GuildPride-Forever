@@ -2,7 +2,7 @@
 
 [English](#english) · [Deutsch](#deutsch) · [Screenshots](#screenshots)
 
-World of Warcraft addon for WoW Forever only · Version 2.44.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
+World of Warcraft addon for WoW Forever only · Version 2.45.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
 
 ---
 
@@ -92,6 +92,7 @@ World of Warcraft addon for WoW Forever only · Version 2.44.0 · Author: Rottga
 - **Only with the server-wide group finder switched on:** group finder listings.
 - **Can be turned off:** guild quests share only the numbers of your quests with your guild; raid readiness (durability, well fed, number of potions) goes only to the leader and assistants of your own group who are in your guild; cooldowns share when you used an important spell in a group, only with your guild (Settings › Sharing).
 - **Error reports only with your yes:** if GuildPride runs into a Lua error, you are asked once whether such errors may go to the developer inside the game. Sent are only the error text (may rarely contain a player name), the place in the code, versions, game language and circumstances (combat, instance type, open GuildPride windows) – never chat, notes, gold or your addon list. The developer does not store character names, only a counting code. Without a yes nothing is sent; you can change it at any time under Settings › Sharing.
+- **Testers only with their yes:** the developer can invite players to see new features earlier. After your yes your GuildPride tells the developer, when they are online, that you are testing, your version and the name of the character you are playing; only the invited name is stored, and your error reports (if allowed) are marked “tester”. `/gp tester off` or Settings › Sharing ends it.
 - **Usage counters only with your yes:** you are asked once whether the developer may learn which features you use. Counted are only opened tabs, GuildPride windows and /gp commands plus changed switches – never contents, chat, gold or names. At most once a day; only a counting code is stored. Without a yes nothing is counted; you can change it at any time under Settings › Sharing.
 - Everything that arrives is checked and limited – no injected colour or link codes, no flooding. Guild data is stored per guild.
 - **One-click backup** (`/gp backup`): keeps the last 5 states, automatically once a week.
@@ -152,7 +153,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerk-Fenster, Raid-Werkzeuge, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.44.0*
+*Version 2.45.0*
 
 ### NEU in 2.42 und 2.43
 
@@ -236,6 +237,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 - **Nur mit eingeschalteter serverweiter Gruppensuche:** Gruppensuche-Einträge.
 - **Abschaltbar:** „Quests der Gilde“ teilt nur die Nummern deiner Quests mit deiner Gilde; die Raid-Bereitschaft (Haltbarkeit, satt, Zahl der Tränke) geht nur an Leiter und Assistenten deiner eigenen Gruppe, die in deiner Gilde sind; Abklingzeiten melden in einer Gruppe nur der Gilde, wann du einen wichtigen Zauber benutzt hast (Einstellungen › Teilen).
 - **Fehlerberichte nur mit deinem Ja:** Hat GuildPride einen Lua-Fehler, wirst du einmal gefragt, ob solche Fehler im Spiel an den Entwickler gehen dürfen. Gesendet werden nur Fehlertext (kann selten einen Spielernamen enthalten), Stelle im Code, Versionen, Spielsprache und Umstände (Kampf, Instanzart, offene GuildPride-Fenster) – nie Chat, Notizen, Gold oder deine Addon-Liste. Der Entwickler speichert keine Charakternamen, nur einen Zählcode. Ohne Ja wird nichts gesendet; ändern kannst du das jederzeit unter Einstellungen › Teilen.
+- **Tester nur mit ihrem Ja:** Der Entwickler kann Spieler einladen, neue Funktionen früher zu sehen. Nach deinem Ja meldet dein GuildPride dem Entwickler, wenn er online ist, dass du mittestest, deine Version und den Namen des Charakters, der gerade spielt; gespeichert wird nur der eingeladene Name, und deine Fehlerberichte (falls erlaubt) bekommen den Vermerk „Tester“. `/gp tester aus` oder Einstellungen › Teilen beendet es.
 - **Nutzungszähler nur mit deinem Ja:** du wirst einmal gefragt, ob der Entwickler erfahren darf, welche Funktionen du benutzt. Gezählt werden nur geöffnete Reiter, GuildPride-Fenster und /gp-Befehle sowie geänderte Schalter – nie Inhalte, Chat, Gold oder Namen. Höchstens einmal am Tag; gespeichert wird nur ein Zählcode. Ohne Ja wird nichts gezählt; ändern kannst du das jederzeit unter Einstellungen › Teilen.
 - Alles, was ankommt, wird geprüft und begrenzt – keine eingeschleusten Farb- oder Link-Codes, kein Fluten. Gildendaten werden je Gilde getrennt gespeichert.
 - **Datensicherung per Knopfdruck** (`/gp sicherung`): die letzten 5 Stände, einmal pro Woche automatisch.

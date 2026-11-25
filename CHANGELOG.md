@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.45.0
+
+**Deutsch**
+- **Tester**: Der Entwickler kann einzelne Spieler einladen, neue Funktionen vor allen anderen zu testen. Nur mit deinem Ja, jederzeit abschaltbar (`/gp tester aus` oder Einstellungen › Teilen)
+
+**English**
+- **Testers**: the developer can invite individual players to try new features before everyone else. Only with your yes, can be turned off at any time (`/gp tester off` or Settings › Sharing)
+
 ## 2.44.0
 
 **Deutsch**
