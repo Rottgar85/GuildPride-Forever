@@ -203,16 +203,16 @@ local function LogTimes(now)
     return times, oldest
 end
 
-local function TrackRanks()
+local ranksAt = -60
+local function TrackRanks(list)
     if not GuildPrideDB or not IsInGuild() then return end
     local store = GuildStore("rankSince")
-    local n = GetNumGuildMembers()
-    if not store or n == 0 then return end
+    if not store or #list == 0 then return end
     local now = GetServerTime()
     local times, oldest = LogTimes(now)
-    for i = 1, n do
-        local name, rank = GetGuildRosterInfo(i)
-        if name and rank then
+    for _, m in ipairs(list) do
+        local name, rank = m.name, m.rank
+        if rank then
             local full = ns.FullName and ns.FullName(name) or name
             local e = store[full]
             if e and e.r ~= rank then
@@ -254,10 +254,14 @@ function ns.QueryRankLog()
 end
 
 local tracker = CreateFrame("Frame")
-tracker:RegisterEvent("GUILD_ROSTER_UPDATE")
 tracker:RegisterEvent("PLAYER_ENTERING_WORLD")
 pcall(tracker.RegisterEvent, tracker, "GUILD_EVENT_LOG_UPDATE")
 tracker:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_ENTERING_WORLD" then C_Timer.After(5, ns.QueryRankLog) return end
-    TrackRanks()
+    TrackRanks(ns.RosterList())   -- das Protokoll ist da: genauere Zeiten
+end)
+ns.OnRoster(function(list)
+    if GetTime() - ranksAt < 30 then return end
+    ranksAt = GetTime()
+    TrackRanks(list)
 end)

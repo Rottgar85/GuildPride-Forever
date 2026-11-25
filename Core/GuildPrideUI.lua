@@ -728,7 +728,13 @@ Tile(1, L["MITGLIEDER ONLINE"])
 Tile(2, L["NÄCHSTES EVENT"])
 Tile(3, L["MEILENSTEINE DIESE WOCHE"])
 
-local motdLabel = Section(overview, L["Nachricht des Tages"], nil, -92)
+-- Heute (GuildPrideToday.lua): Felder statt Locals wegen der 200er-Grenze
+overview.todayLabel = Section(overview, L["Heute"], nil, -92)
+overview.today = overview:CreateFontString(nil, "OVERLAY", "GPFont_Text")
+overview.today:SetPoint("TOPLEFT", overview.todayLabel, "BOTTOMLEFT", 0, -10)
+overview.today:SetWidth(620); overview.today:SetJustifyH("LEFT"); overview.today:SetSpacing(4)
+
+local motdLabel = Section(overview, L["Nachricht des Tages"], overview.today, -22)
 -- Abmelden (für alle Mitglieder): rechts neben der Überschrift
 local bAway = CreateFrame("Button", nil, overview, "UIPanelButtonTemplate")
 bAway:SetSize(170, 22); bAway:SetPoint("TOPRIGHT", -4, -88); bAway:SetText(L["Abwesenheit melden …"])
@@ -800,6 +806,9 @@ function overview:Refresh()
     local week, cutoff = 0, ns.WeekStart()
     for _, e in ipairs(ns.GuildLog()) do if e.t >= cutoff then week = week + 1 end end
     tiles[3].value:SetText(week)
+    local todayText, todayLines = "", 0
+    if ns.Today then todayText, todayLines = ns.Today.Text() end
+    overview.today:SetText(todayText)
 
     local text = ns.GuildMOTD()
     text = text ~= "" and text or L["|cff888888Keine Nachricht gesetzt.|r"]
@@ -828,7 +837,8 @@ function overview:Refresh()
     weekText:SetText(WeekSummary() .. onTheRoad .. (jubilee and ("\n" .. jubilee) or ""))
     local lines = {}
     local log = ns.GuildLog()
-    for i = 1, math.min(5, #log) do
+    -- steht heute viel an, dafür weniger Meilensteine: die Seite scrollt nicht
+    for i = 1, math.min(math.max(2, 6 - todayLines), 5, #log) do
         local e = log[i]
         local icon = (e.kind == "LEVEL" and ns.BadgeFor) and ("|T%s:18|t"):format(ns.BadgeFor(e.kind, e.value)) or "|cffff8c40•|r"
         lines[#lines + 1] = ("%s |cfff0c88c%s|r %s  |cff777777%s|r"):format(icon, e.who, ns.LogText(e), ns.FormatDay(e.t))

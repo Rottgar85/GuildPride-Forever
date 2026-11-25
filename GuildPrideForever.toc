@@ -3,7 +3,7 @@
 ## Notes: Guild window, events, raid tools, crafting, auction house, departures and rares for your guild
 ## Notes-deDE: Gildenfenster, Events, Raid-Werkzeuge, Handwerk, Auktionshaus, Abfahrten und Rares für deine Gilde
 ## Author: Rottgar85
-## Version: 2.43.1
+## Version: 2.44.0
 ## SavedVariables: GuildPrideDB, GuildPrideBackupDB, GuildPrideRaresDB, ScalesDB, GuildPrideAHDB
 ## SavedVariablesPerCharacter: ScalesCharDB
 ## OptionalDeps: EllesmereUIBags, BagBrother, Bagnon, Bagnonium, Combuctor, ElvUI, Baganator, AdiBags, BetterBags
@@ -17,6 +17,7 @@ Core\GuildPrideErrors.lua
 Core\GuildPrideTheme.lua
 Core\GuildPrideReadable.lua
 Core\GuildPride.lua
+Core\GuildPrideCleanup.lua
 Core\GuildPrideTooltip.lua
 Guild\GuildPrideMarks.lua
 Community\GuildPrideMapPins.lua
@@ -88,6 +89,7 @@ Guild\GuildPrideWishlist.lua
 Guild\GuildPrideReady.lua
 Guild\GuildPrideBossNotes.lua
 Guild\GuildPrideJubilee.lua
+Guild\GuildPrideToday.lua
 Guild\GuildPrideEventStats.lua
 Guild\GuildPrideStock.lua
 Guild\GuildPrideLoot.lua

@@ -1,4 +1,4 @@
-GuildPride Forever 2.43.1 (nur WoW Forever / WoW Forever only) - Autor / author: Rottgar85
+GuildPride Forever 2.44.0 (nur WoW Forever / WoW Forever only) - Autor / author: Rottgar85
 CurseForge: Projekt / project 1788777
 
 DEUTSCH

@@ -260,15 +260,54 @@ function ns.Stamp(v) return ns.Num(v, 0, GetServerTime() + 300) or 0 end
 -- Gildenliste
 ---------------------------------------------------------------------
 local rosterAt = 0
+local function ReadMember(i)
+    local name, rank, rankIndex, level, _, _, _, _, online = GetGuildRosterInfo(i)
+    if type(name) ~= "string" or (issecretvalue and issecretvalue(name)) then return nil end
+    return name, rank, rankIndex, level, online
+end
 local function RefreshRoster()
     rosterAt = GetTime()
     wipe(guildMembers)
     if not IsInGuild() then return end
     for i = 1, GetNumGuildMembers() do
-        local name, _, rankIndex = GetGuildRosterInfo(i)
+        local name, _, rankIndex = ReadMember(i)
         -- Wert = Rang + 1 (immer wahr), für die Empfangsstatistik je Rang
         if name then guildMembers[Normalize(name)] = (rankIndex or 0) + 1 end
     end
+end
+
+-- Änderungen der Gildenliste: einmal lesen, höchstens jede Sekunde, und allen dieselbe Liste geben:
+-- ns.OnRoster(function(list) … end), list = { { name, full, rank, rankIndex, level, online } }.
+-- Die Einträge werden wiederverwendet: nicht behalten, sondern kopieren.
+local rosterHooks, rosterList, rosterPool = {}, {}, {}
+local rosterRun, rosterWait = -10, false
+function ns.OnRoster(fn) rosterHooks[#rosterHooks + 1] = fn end
+function ns.RosterList() return rosterList end
+local function RunRoster()
+    rosterRun, rosterAt = GetTime(), GetTime()
+    wipe(guildMembers)
+    wipe(rosterList)
+    if IsInGuild() then
+        for i = 1, GetNumGuildMembers() do
+            local name, rank, rankIndex, level, online = ReadMember(i)
+            if name then
+                local n = #rosterList + 1
+                local m = rosterPool[n] or {}
+                rosterPool[n], rosterList[n] = m, m
+                m.name, m.full, m.rank, m.rankIndex, m.level, m.online = name, Normalize(name), rank, rankIndex, level, online
+                guildMembers[m.full] = (rankIndex or 0) + 1
+            end
+        end
+    end
+    for _, fn in ipairs(rosterHooks) do ns.Try(fn, rosterList) end
+    if ns.RefreshUI then ns.RefreshUI() end
+end
+local function RosterChanged()
+    if rosterWait then return end
+    local wait = rosterRun + 1 - GetTime()
+    if wait <= 0 then return RunRoster() end
+    rosterWait = true
+    C_Timer.After(wait, function() rosterWait = false; RunRoster() end)
 end
 
 -- Gehört der Name zur Gilde? Bei Unbekannten die Liste neu lesen (höchstens
@@ -673,16 +712,15 @@ end
 -- Mitglieder ohne GuildPride. Aufstiege, die während man offline war passiert
 -- sind, kommen nach dem Login nur still in den Verlauf (kein Popup-Schwall).
 local rosterSeen = false
-local function CheckRosterLevels()
-    if not IsInGuild() or not ns.GuildId() or GetNumGuildMembers() == 0 then return end
+ns.OnRoster(function(list)
+    if not IsInGuild() or not ns.GuildId() or #list == 0 then return end
     local known = ns.GuildTable("levels")
     local silent = not rosterSeen
     local inGuild = {}
-    for i = 1, GetNumGuildMembers() do
-        local name, _, _, level = GetGuildRosterInfo(i)
-        if name then inGuild[Normalize(name)] = true end
-        if name and level and level > 0 then
-            local full = Normalize(name)
+    for _, m in ipairs(list) do
+        local full, level = m.full, m.level
+        inGuild[full] = true
+        if level and level > 0 then
             local before = known[full]
             if before and level > before then
                 for lv = before + 1, level do
@@ -699,7 +737,7 @@ local function CheckRosterLevels()
         end
     end
     rosterSeen = true
-end
+end)
 
 -- Abgleich: beim Login fragt man nach Einträgen, die neuer sind als der eigene
 -- neueste. Ein zufälliger anderer Spieler antwortet für alle sichtbar; wer die
@@ -834,7 +872,7 @@ local NO_RELAY = { DKP = true, DRW = true, ALT = true, AUS = true, AUSX = true, 
                    AUC = true, AUH = true, AUE = true, CKY = true, DEL = true, JHL = true, LAY = true, RCP = true, APK = true,
                    CRF = true, CRR = true, GOL = true, BRD = true, LFJ = true, LFJA = true, WSH = true, GPS = true,
                    ORD = true, ORA = true, TRS = true, RDQ = true, RDY = true, GQL = true, MGC = true,
-                   CDN = true, PAT = true, QZQ = true, QZA = true, QZR = true, HNT = true, HNX = true, HNF = true, LTL = true, QPL = true }
+                   CDN = true, PAT = true, QZQ = true, QZA = true, QZR = true, HNT = true, HNX = true, HNF = true, LTL = true, QPL = true, RLN = true }
 local recent, recentSweep = {}, 0   -- zuletzt empfangene Nachrichten (gegen Doppelte)
 local forwarded = {}   -- ["Name:id"] = Zeit, gegen doppelte Weiterleitungen
 local MP_MAX = 100
@@ -842,7 +880,7 @@ local MP_MAX = 100
 -- Anfragen, auf die alle antworten: pro Absender höchstens eine alle 10 s,
 -- sonst könnte einer mit Dauer-Anfragen die Addon-Nachrichten der Gilde lahmlegen
 local ASKS = { REQ = true, EVQ = true, PLQ = true, LFGQ = true, KEYQ = true, MSQ = true, MHQ = true, MHO = true, BLQ = true, CKQ = true, AUSQ = true, JHQ = true, RCPQ = true,
-               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true, DNQ = true, RDQ = true, GQQ = true, BOQ = true, MGQ = true, PAQ = true, LTQ = true, QPQ = true, NMQ = true, GLQ = true, FQQ = true }
+               CRQ = true, CRRQ = true, GOQ = true, BRQ = true, WSQ = true, LYGQ = true, ORQ = true, TRQ = true, DNQ = true, RDQ = true, GQQ = true, BOQ = true, MGQ = true, PAQ = true, LTQ = true, QPQ = true, NMQ = true, GLQ = true, FQQ = true, RLQ = true }
 local askedAt, askSweep = {}, 0
 local function TooManyAsks(kind, sender)
     local now, key = GetTime(), kind .. ":" .. sender
@@ -1022,9 +1060,7 @@ f:SetScript("OnEvent", function(_, event, ...)
         C_Timer.After(22, RequestHistory)
 
     elseif event == "GUILD_ROSTER_UPDATE" then
-        RefreshRoster()
-        CheckRosterLevels()
-        if ns.RefreshUI then ns.RefreshUI() end
+        RosterChanged()
 
     elseif event == "PLAYER_LEVEL_UP" then
         local level = ...

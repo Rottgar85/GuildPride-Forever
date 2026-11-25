@@ -29,6 +29,34 @@ return function(test, eq, W, ns)
         W.itemInfo[41001] = nil
     end)
 
+    test("Auktions-Tipps: was gerade über dem Schnitt liegt, aus Taschen und Bank, der größte Gewinn zuerst", function()
+        local now = math.floor(W.server)
+        for _, e in ipairs({ { "41011", 200 }, { "41012", 1000 }, { "41013", 101 } }) do
+            for d = 1, 3 do AH.RecordOwn(e[1], 100, 1, now - (5 - d) * 86400) end
+            AH.RecordOwn(e[1], e[2], 1, now)
+            W.itemInfo[tonumber(e[1])] = { quality = 1, bindType = 0, classID = 7, sellPrice = 5 }
+        end
+        W.itemInfo[41014] = { quality = 1, bindType = 0, classID = 7, sellPrice = 5 }   -- ohne Preis
+        local oldBags, oldCraft = AH.BagItems, ns.Craft
+        AH.BagItems = function() return { { key = "41011", link = "|Hitem:41011:0:0:0:0:0:0:0|h", itemID = 41011, count = 20 },
+            { key = "41013", link = "|Hitem:41013:0:0:0:0:0:0:0|h", itemID = 41013, count = 5 },
+            { key = "41014", link = "|Hitem:41014:0:0:0:0:0:0:0|h", itemID = 41014, count = 5 } } end
+        ns.Craft = { MyEntry = function() return { items = { [41012] = 3, [41011] = 25, [41013] = 1 } } end,
+            Count = function(id) if id == 41011 then return 20, 5 elseif id == 41012 then return 0, 3 end return 1, 0 end }
+        GuildPrideDB.ahSellHint = false   -- die Liste hängt nicht am Hinweis in den Taschen
+        local ok, err = pcall(function()
+            local l = AH.SellTips()
+            eq(#l, 2)
+            eq(l[1].itemID, 41012); eq(l[1].bags, 0); eq(l[1].bank, 3); eq(l[1].price, 1000); eq(l[1].pct > 25, true)
+            eq(l[2].itemID, 41011); eq(l[2].bags, 20); eq(l[2].bank, 5); eq(l[2].pct, 60); eq(l[2].gain > 0, true)
+            ns.Craft = nil
+            eq(#AH.SellTips(), 1, "ohne Handwerk nur die Taschen")
+        end)
+        AH.BagItems, ns.Craft, GuildPrideDB.ahSellHint = oldBags, oldCraft, true
+        for id = 41011, 41014 do W.itemInfo[id] = nil end
+        if not ok then error(err, 0) end
+    end)
+
     test("Briefkasten: Verkäufe, Gold und abgelaufene Auktionen gezählt", function()
         AUCTION_EXPIRED_MAIL_SUBJECT = "Auktion abgelaufen: %s"
         AUCTION_REMOVED_MAIL_SUBJECT = "Auktion abgebrochen: %s"
@@ -480,6 +508,37 @@ return function(test, eq, W, ns)
         W.Receive("Bert", "GLQ:1")
         local a = has(W.sent, "GLK")
         eq(a and a.target, ns.Normalize("Bert"), "wer die Links hat, antwortet")
+    end)
+
+    test("Gildenliste: je Änderung einmal gelesen, alle bekommen dieselbe Liste, Salven gebremst", function()
+        local oldRoster, oldInfo, oldAfter, oldSecret = W.roster, GetGuildRosterInfo, C_Timer.After, issecretvalue
+        local reads, seen, later = 0, 0, {}
+        W.roster = { { "Tester", 3 }, { "Gm", 0 }, { "Anna", 2, 33, false }, { "Geheim", 3 } }
+        GetGuildRosterInfo = function(i) reads = reads + 1; return oldInfo(i) end
+        issecretvalue = function(v) return v == "Geheim" end
+        local last
+        ns.OnRoster(function(list)
+            seen = seen + 1
+            last = {}
+            for _, m in ipairs(list) do last[m.full] = { m.name, m.rankIndex, m.level, m.online } end
+        end)
+        W.Advance(100)
+        reads = 0
+        W.Fire("GUILD_ROSTER_UPDATE")
+        eq(seen, 1); eq(ns.IsGuildMember("Anna"), true)
+        local a = last[ns.Normalize("Anna")]
+        eq(a[1], "Anna"); eq(a[2], 2); eq(a[3], 33); eq(a[4], false)
+        eq(last[ns.Normalize("Geheim")], nil, "geschützte Namen bleiben draußen")
+        -- Salve: erst nach der Pause noch einmal, und dann nur einmal
+        C_Timer.After = function(_, fn) later[#later + 1] = fn end
+        reads = 0
+        for _ = 1, 10 do W.Fire("GUILD_ROSTER_UPDATE") end
+        eq(seen, 1); eq(#later, 1); eq(reads, 0, "während der Pause nichts gelesen")
+        table.remove(W.roster, 3)
+        later[1](); eq(seen, 2); eq(last[ns.Normalize("Anna")], nil)
+        eq(reads, #W.roster, "einmal je Mitglied")
+        GetGuildRosterInfo, W.roster, C_Timer.After, issecretvalue = oldInfo, oldRoster, oldAfter, oldSecret
+        W.Advance(10); W.Fire("GUILD_ROSTER_UPDATE")
     end)
 
     test("Fragen an die Offiziere: über den Messenger, beantwortet für alle", function()

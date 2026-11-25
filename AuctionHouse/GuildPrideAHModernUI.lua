@@ -1239,6 +1239,15 @@ local function MakeBagList(p)
         GameTooltip:Show()
     end)
     p.returnBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    p.tipsBtn = Button(p, L["Tipps"], 60); p.tipsBtn:SetPoint("RIGHT", p.returnBtn, "LEFT", -6, 0)
+    p.tipsBtn:SetScript("OnClick", function() ShowMode("tips") end)
+    p.tipsBtn:SetScript("OnEnter", function(b)
+        GameTooltip:SetOwner(b, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(L["Gute Zeitpunkte zum Verkaufen"])
+        GameTooltip:AddLine(L["Was in Taschen und Bank gerade mindestens 25 % über dem Schnitt der letzten Tage liegt."], 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    p.tipsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     p.bagRows = {}
     for i = 1, BAG_ROWS do
         local row = CreateFrame("Button", nil, p)
@@ -1365,6 +1374,7 @@ ShowMode = function(m)
     panel.sell:SetShown(m == "sell")
     panel.scan:SetShown(m == "scan")
     panel.own:SetShown(m == "own")
+    panel.tips:SetShown(m == "tips")
     panel.modeOwn:SetEnabled(m ~= "own")
     panel.modeSearch:SetEnabled(m ~= "search")
     panel.modeSell:SetEnabled(m ~= "sell")
@@ -1372,9 +1382,12 @@ ShowMode = function(m)
     Status("")
     if m == "search" then RefreshCategories(); RefreshList() elseif m == "scan" then U.RefreshScan() elseif m == "sell" then RefreshBags()
     elseif m == "list" then RefreshShop()
+    elseif m == "tips" then U.RefreshTips()
     elseif m == "orders" then AH.RequestOrders(); U.RefreshOrders()
     elseif m == "own" then U.RefreshOwn(); if AH.QueryOwned() then Status(L["Lade deine Auktionen …"]) end end
 end
+
+U.ShowMode = ShowMode
 
 -- Blizzards Fenster unsichtbar machen statt schließen (Schließen beendet die Sitzung)
 local hidden, saved, switching = false, nil, false
@@ -1512,6 +1525,7 @@ local function Build()
     panel.sell = MakeSellPane()
     panel.scan = U.MakeScanPane()
     panel.own = U.MakeOwnPane()
+    panel.tips = U.MakeTipsPane()
     panel.lists = MakeShopPane()
     panel.orders = U.MakeOrdersPane()
     ClearSell()
@@ -1659,6 +1673,7 @@ AH.Listen("AUCTION_CANCELED", function()
 end)
 AH.Listen("BAG_UPDATE_DELAYED", function()
     if panel and panel:IsShown() and mode == "sell" then RefreshBags() end
+    if panel and panel:IsShown() and mode == "tips" then U.RefreshTips() end
 end)
 
 AH.Listen("AUCTION_HOUSE_POST_WARNING", function()

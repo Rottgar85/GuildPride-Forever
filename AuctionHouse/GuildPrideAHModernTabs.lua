@@ -247,7 +247,7 @@ local function AskCancel(a)
     if not AH.CanCancel(a) then return end
     local cost = AH.CancelCost(a)
     local text = (L["Auktion abbrechen: %s (%d Stück)?"]):format(a.link or a.name or "?", a.qty)
-    if cost and cost > 0 then text = text .. "\\n" .. (L["Kosten: %s"]):format(Money(cost)) end
+    if cost and cost > 0 then text = text .. "\n" .. (L["Kosten: %s"]):format(Money(cost)) end
     own.confirm = function()
         if AH.CancelOwned(a) then Status(L["Auktion wird abgebrochen …"]) end
     end
@@ -295,6 +295,78 @@ function U.MakeOwnPane()
     p:SetScript("OnMouseWheel", function(_, d)
         own.offset = math.max(0, math.min(own.offset - d * 3, math.max(0, #own.list - OWN_ROWS)))
         U.RefreshOwn()
+    end)
+    return p
+end
+
+---------------------------------------------------------------------
+-- Auktions-Tipps (Knopf „Tipps“ beim Verkaufen): was gerade über dem Schnitt liegt
+---------------------------------------------------------------------
+local tips = { list = {}, offset = 0 }
+
+function U.RefreshTips()
+    local p = U.panel and U.panel.tips
+    if not p or not p:IsShown() then return end
+    tips.list = AH.SellTips()
+    local list, sum = tips.list, 0
+    for _, e in ipairs(list) do sum = sum + e.gain end
+    tips.offset = math.max(0, math.min(tips.offset, #list - OWN_ROWS))
+    p.total:SetText(#list > 0 and (L["Gerade mehr wert als üblich: %s nach Gebühr"]):format(Money(sum)) or L["Gute Zeitpunkte zum Verkaufen"])
+    p.empty:SetText(#list == 0 and L["Nichts in Taschen und Bank liegt gerade 25 % über dem Schnitt. Je öfter du suchst oder scannst, desto genauer wird das."] or "")
+    for i, row in ipairs(p.rows) do
+        local e = list[tips.offset + i]
+        row.tip = e
+        if not e then row:Hide() else
+            row:Show()
+            row.icon:SetTexture(e.icon or AH.ItemIcon(e.itemID))
+            row.name:SetText(AH.ItemName(e.link) or ("#" .. e.itemID))
+            row.qty:SetText(e.bank > 0 and (L["%d + %d Bank"]):format(e.bags, e.bank) or tostring(e.bags))
+            row.unit:SetText(Money(e.price))
+            row.total:SetText("|cff999999" .. Money(math.floor(e.avg)) .. "|r")
+            row.time:SetText("|cff40ff40+" .. e.pct .. " %|r")
+        end
+    end
+end
+
+function U.MakeTipsPane()
+    local p = Pane()
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -2 }, { "BOTTOMRIGHT", "TOPRIGHT", -10, -28 })
+    Section(p, { "TOPLEFT", "TOPLEFT", 8, -32 }, { "BOTTOMRIGHT", "BOTTOMRIGHT", -10, 8 }, 18)
+    p.total = Label(p, "", "GameFontHighlight"); p.total:SetPoint("TOPLEFT", 20, -10)
+    p.back = Button(p, L["Zurück"], 100); p.back:SetPoint("TOPRIGHT", -16, -4)
+    p.back:SetScript("OnClick", function() U.ShowMode("sell") end)
+    for _, c in ipairs({ { L["Item"], 44 }, { L["Menge"], 350 }, { L["Preis"], 510 }, { L["Schnitt"], 660 }, { L["Darüber"], 770 } }) do
+        local h = Label(p, c[1], "GameFontNormalSmall"); h:SetPoint("TOPLEFT", c[2], -36)
+    end
+    p.empty = Label(p, "", "GameFontDisableSmall"); p.empty:SetPoint("TOPLEFT", 20, -58)
+    p.rows = {}
+    for i = 1, OWN_ROWS do
+        local row = CreateFrame("Button", nil, p)
+        row:SetHeight(OWN_H)
+        row:SetPoint("TOPLEFT", 16, -54 - (i - 1) * OWN_H); row:SetPoint("RIGHT", p, "RIGHT", -16, 0)
+        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        row.icon = row:CreateTexture(nil, "ARTWORK"); row.icon:SetSize(18, 18); row.icon:SetPoint("LEFT", 4, 0)
+        row.name = Label(row, "", "GameFontHighlightSmall"); row.name:SetPoint("LEFT", 28, 0); row.name:SetWidth(300)
+        row.qty = Label(row, "", "GameFontHighlightSmall"); row.qty:SetPoint("LEFT", 334, 0); row.qty:SetWidth(120)
+        row.unit = Label(row, "", "GameFontHighlightSmall"); row.unit:SetPoint("LEFT", 400, 0); row.unit:SetWidth(150)
+        row.unit:SetJustifyH("RIGHT")
+        row.total = Label(row, "", "GameFontHighlightSmall"); row.total:SetPoint("LEFT", 550, 0); row.total:SetWidth(150)
+        row.total:SetJustifyH("RIGHT")
+        row.time = Label(row, "", "GameFontHighlightSmall"); row.time:SetPoint("LEFT", 754, 0); row.time:SetWidth(90)
+        row.search = Button(row, L["Suchen"], 80); row.search:SetPoint("RIGHT", -4, 0)
+        row.search:SetScript("OnClick", function() if row.tip then U.SearchItem(row.tip.itemID) end end)
+        row:SetScript("OnEnter", function()
+            if not row.tip then return end
+            GameTooltip:SetOwner(row, "ANCHOR_RIGHT"); GameTooltip:SetItemByID(row.tip.itemID); GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row:Hide()
+        p.rows[i] = row
+    end
+    p:EnableMouseWheel(true)
+    p:SetScript("OnMouseWheel", function(_, d)
+        tips.offset = math.max(0, math.min(tips.offset - d * 3, math.max(0, #tips.list - OWN_ROWS)))
+        U.RefreshTips()
     end)
     return p
 end

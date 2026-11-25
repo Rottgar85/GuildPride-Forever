@@ -377,6 +377,16 @@ return function(test, eq, W, ns)
             assert(loadfile("Core/GuildPrideLocale.lua"))("GuildPrideForever", L2)
             assert(loadfile("Core/GuildPrideLocaleMore.lua"))("GuildPrideForever", L2)
         end)
+        -- Deutsche Clients behalten keine fremden Texte im Speicher, englische keine weiteren Sprachen
+        local DE, EN = {}, {}
+        GetLocale = function() return "deDE" end
+        assert(loadfile("Core/GuildPrideLocale.lua"))("GuildPrideForever", DE)
+        assert(loadfile("Core/GuildPrideLocaleMore.lua"))("GuildPrideForever", DE)
+        eq(DE.HasEnglish("offline"), false); eq(DE.L["Gildeninfo"], "Gildeninfo"); eq(next(DE.MORE_LOCALES), nil)
+        GetLocale = function() return "enUS" end
+        assert(loadfile("Core/GuildPrideLocale.lua"))("GuildPrideForever", EN)
+        assert(loadfile("Core/GuildPrideLocaleMore.lua"))("GuildPrideForever", EN)
+        eq(EN.L["vor < 1 Std."], "< 1 hr ago"); eq(next(EN.MORE_LOCALES), nil)
         GetLocale = oldLocale
         eq(ok, true, tostring(err))
         local function holders(s) local out = {}; for p in s:gsub("%%%%", ""):gmatch("%%[%d%.]*[a-z]") do out[#out + 1] = p end; return table.concat(out, " ") end

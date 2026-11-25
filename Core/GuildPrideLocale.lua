@@ -7,7 +7,8 @@ local LOCALE = GetLocale()
 ns.LOCALE = LOCALE
 ns.IS_GERMAN = (LOCALE == "deDE")
 
-local enUS = {
+-- Auf deutschen Clients wird die Liste gar nicht erst angelegt (rund 350 KB)
+local enUS = not ns.IS_GERMAN and {
     ["Alle (inkl. offline)"] = "All (incl. offline)",
     ["offline"] = "offline",
     ["%d online · %d offline"] = "%d online · %d offline",
@@ -1063,6 +1064,34 @@ local enUS = {
     ["weniger"] = "less",
     ["Nur die wichtigsten zeigen"] = "Show only the most important",
     ["Alle Einstellungen zeigen (%d weitere)"] = "Show all settings (%d more)",
+    ["Heute"] = "Today",
+    ["morgen"] = "tomorrow",
+    ["du bist dabei"] = "you are in",
+    ["du hast „vielleicht“ gesagt"] = "you said “maybe”",
+    ["du hast abgesagt"] = "you declined",
+    ["noch keine Antwort von dir"] = "no answer from you yet",
+    ["Wieder bereit: "] = "Ready again: ",
+    ["Neue Post im Briefkasten"] = "New mail in the mailbox",
+    ["%d verkauft"] = "%d sold",
+    ["%d laufen in 24 Stunden ab"] = "%d expire within 24 hours",
+    ["Deine Auktionen: "] = "Your auctions: ",
+    ["Offene Gildenaufträge: %d (Auktionshaus › Gildenaufträge)"] = "Open guild orders: %d (auction house › guild orders)",
+    ["Offene Fragen an die Offiziere: %d"] = "Open questions to the officers: %d",
+    ["Neue Bewerbungen: %d"] = "New applications: %d",
+    ["Heute steht nichts an."] = "Nothing to do today.",
+    ["du lernst das"] = "you are learning this",
+    ["%s lernt das"] = "%s is learning this",
+    ["Rechtsklick: Das lerne ich"] = "Right click: I will learn this",
+    ["Rechtsklick: doch nicht lernen"] = "Right click: not learning it after all",
+    ["Höchstens %d Rezepte auf einmal."] = "At most %d recipes at a time.",
+    ["Gerade mehr wert als üblich: %s nach Gebühr"] = "Worth more than usual right now: %s after the fee",
+    ["Gute Zeitpunkte zum Verkaufen"] = "Good times to sell",
+    ["Nichts in Taschen und Bank liegt gerade 25 % über dem Schnitt. Je öfter du suchst oder scannst, desto genauer wird das."] = "Nothing in your bags and bank is 25 % above average right now. The more you search or scan, the more accurate this gets.",
+    ["%d + %d Bank"] = "%d + %d bank",
+    ["Schnitt"] = "Average",
+    ["Darüber"] = "Above",
+    ["Tipps"] = "Tips",
+    ["Was in Taschen und Bank gerade mindestens 25 % über dem Schnitt der letzten Tage liegt."] = "What is at least 25 % above the average of the last days in your bags and bank.",
     ["Ø %s"] = "avg %s",
     ["legt ab"] = "leaves",
     ["kommt an"] = "arrives",
@@ -1905,7 +1934,7 @@ local enUS = {
     ["Schlafsack-/Lagerfeuer-Erinnerung"] = "Sleeping bag/campfire reminder",
     ["Abgeschaltet – wieder an in den Einstellungen oder über das Zahnrad (/gp buff)."] = "Turned off – turn it back on in the settings or with the gear (/gp buff).",
     ["Notizzettel: %s · %d bekannt, %d eigene. /gp zettel an|aus|schreiben|weg"] = "Notes: %s · %d known, %d yours. /gp zettel on|off|write|clear",
-}
+} or {}
 
 -- Weitere Sprachen (GuildPrideLocaleMore.lua) -> Englisch -> deutscher Text als Rückfall
 ns.L = setmetatable({}, { __index = function(_, key)

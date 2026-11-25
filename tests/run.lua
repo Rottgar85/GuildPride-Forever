@@ -15,6 +15,7 @@ W.roster = {
 }
 
 W.Load("GuildPride.lua")
+W.Load("GuildPrideCleanup.lua")
 W.Load("GuildPrideAusweis.lua")
 W.Load("GuildPrideDKP.lua")
 W.Load("GuildPrideHistory.lua")
@@ -847,6 +848,8 @@ require("craftlink")(test, eq, W, ns)
 require("craftgaps")(test, eq, W, ns)
 require("devtest")(test, eq, W, ns)
 require("tooltip")(test, eq, W, ns)
+require("cleanup")(test, eq, W, ns)
+require("today")(test, eq, W, ns)
 require("channelwatch")(test, eq, W, ns)
 require("usage")(test, eq, W, ns); ns.Try = W.Try
 

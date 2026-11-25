@@ -32,6 +32,39 @@ function AH.SellHint(link)
     return AH.Tradeable(link) and true or false
 end
 
+-- Auktions-Tipps: alles in Taschen und Bank, was gerade mindestens 25 % über dem Schnitt liegt.
+-- { { key, itemID, link, icon, price, avg, pct, bags, bank, gain (mehr als üblich, nach Gebühr) } }, größter Gewinn zuerst
+function AH.SellTips()
+    local out, byKey = {}, {}
+    local function Add(key, link, id, icon, field, n)
+        local e = byKey[key]
+        if e then e[field] = e[field] + n; return end
+        local p = AH.PriceFor(key)
+        local avg = p and AH.HistoryAverage(key)
+        if not avg or p < avg * SELL_FACTOR or not AH.Tradeable(link) then return end
+        e = { key = key, itemID = id, link = link, icon = icon, price = p, avg = avg, bags = 0, bank = 0,
+              pct = math.floor((p / avg - 1) * 100 + 0.5) }
+        e[field] = n
+        byKey[key] = e
+        out[#out + 1] = e
+    end
+    for _, b in ipairs(AH.BagItems and AH.BagItems() or {}) do Add(b.key, b.link, b.itemID, b.icon, "bags", b.count) end
+    -- Bank: was GuildPride beim letzten Besuch gesehen hat; Zahlen liefert das Spiel
+    local Craft = GP.Craft
+    for id in pairs(Craft and Craft.MyEntry and Craft.Count and Craft.MyEntry().items or {}) do
+        local _, bank = Craft.Count(id)
+        if (bank or 0) > 0 then
+            Add(AH.Key(id), ("|Hitem:%d:0:0:0:0:0:0:0|h"):format(id), id, nil, "bank", bank)
+        end
+    end
+    for _, e in ipairs(out) do e.gain = math.floor((e.price - e.avg) * (e.bags + e.bank) * 0.95) end
+    table.sort(out, function(a, b)
+        if a.gain ~= b.gain then return a.gain > b.gain end
+        return a.key < b.key
+    end)
+    return out
+end
+
 -- Tooltip-Zeile zum Hinweis
 function AH.TooltipSell(link)
     if not AH.SellHint(link) then return nil end

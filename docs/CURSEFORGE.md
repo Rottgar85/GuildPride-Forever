@@ -2,7 +2,7 @@
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting window, raid tools, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Version 2.43.1 · Deutsche Beschreibung weiter unten.*
+*Version 2.44.0 · Deutsche Beschreibung weiter unten.*
 
 ---
 

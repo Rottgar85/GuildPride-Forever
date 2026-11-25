@@ -455,7 +455,7 @@ end)
 
 ---------------------------------------------------------------------
 -- Herstellkosten im Item-Tooltip: beim Öffnen eines Berufsfensters merkt sich GuildPride die
--- Rezepte (GuildPrideDB.ahCraft[Ergebnis-ItemID] = { made, r = { { itemID, Menge }, … } }).
+-- Rezepte (GuildPrideDB.ahCraft[Ergebnis-ItemID] = Text, siehe Core/GuildPrideCleanup.lua).
 -- Der Tooltip rechnet dann mit den bekannten Preisen (AH.CraftInfo), auch ohne Berufsfenster.
 ---------------------------------------------------------------------
 local function CraftDB()
@@ -472,7 +472,8 @@ function AH.LearnRecipe(recipeID)
     if not out then return false end
     local r = AH.RecipeReagents(recipeID)
     if #r == 0 then return false end
-    CraftDB()[out] = { made = tonumber(sch.quantityMin) or 1, r = r }
+    local e = { made = tonumber(sch.quantityMin) or 1, r = r }
+    CraftDB()[out] = GP.Cleanup.PackRecipe(e) or e
     return true
 end
 
@@ -499,9 +500,10 @@ AH.Listen("TRADE_SKILL_LIST_UPDATE", LearnSoon)
 -- { cost, missing, sell, profit, made } für ein herstellbares Item, sonst nil
 function AH.CraftInfo(itemID)
     local c = CraftDB()[tonumber(itemID) or 0]
-    if type(c) ~= "table" or type(c.r) ~= "table" then return nil end
-    local v = { cost = 0, missing = 0, made = c.made or 1 }
-    for _, r in ipairs(c.r) do
+    local made, list = GP.Cleanup.Recipe(c)
+    if not made then return nil end
+    local v = { cost = 0, missing = 0, made = made }
+    for _, r in ipairs(list) do
         local p = AH.PriceFor(AH.Key(r[1]))
         if p then v.cost = v.cost + p * r[2] else v.missing = v.missing + 1 end
     end

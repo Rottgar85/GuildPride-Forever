@@ -30,6 +30,48 @@ return function(test, eq, W, ns)
         end)
     end
 
+    gaptest("Rezept-Lücken: „Das lerne ich“ – übernehmen, zeigen, zurücknehmen, gelernt fällt von selbst weg", function(t)
+        local SEP, now = "\031", math.floor(W.server)
+        local learn, keep = ns.GuildTable("learn"), {}
+        for k, v in pairs(learn) do keep[k] = v end
+        wipe(learn)
+        local ok, err = pcall(function()
+            GuildPrideDB.craftAll = { [165] = { [101] = true, [102] = true, [103] = true } }
+            W.sent = {}
+            eq(P.Toggle(102), true); eq(P.Who(102)[1], ns.Me())
+            local m = W.sent[#W.sent]; eq(m.kind, "RLN"); eq(m.target, nil)
+            local found
+            for _, l in ipairs(P.Lines(165)) do if l.id == 102 then found = l.text end end
+            eq(found:find(ns.L["du lernst das"], 1, true) ~= nil, true)
+            -- andere: nur für sich selbst, nur Zahlen, neuere Fassung gewinnt
+            W.Receive("Anna", "RLN:" .. table.concat({ now - 10, "102,103,x,-5,99999999999" }, SEP))
+            eq(#P.Who(102), 2); eq(P.Who(103)[1], ns.Normalize("Anna")); eq(#P.Who(0), 0)
+            W.Receive("Anna", "RLN:" .. table.concat({ now - 20, "101" }, SEP)); eq(#P.Who(101), 0, "älter")
+            W.Receive("Fremder", "RLN:" .. table.concat({ now - 10, "101" }, SEP)); eq(#P.Who(101), 0, "nicht in der Gilde")
+            W.Receive("Anna", "RLN:" .. table.concat({ now - 5, "" }, SEP)); eq(#P.Who(103), 0)
+            -- gelernt: eigener Eintrag fällt weg und wird gemeldet
+            GuildPrideDB.craftChars = { Ich = { known = { [165] = { [102] = true } } } }
+            W.sent = {}
+            eq(P.CleanMine(), 1); eq(#P.Who(102), 0); eq(W.sent[1].kind, "RLN")
+            eq(P.CleanMine(), 0)
+            -- zurücknehmen und Grenze
+            GuildPrideDB.craftChars = nil
+            for i = 1, 20 do eq(P.Toggle(1000 + i), true) end
+            eq(P.Toggle(1021), nil, "höchstens 20")
+            eq(P.Toggle(1001), false); eq(#P.Who(1001), 0)
+            -- nach 60 Tagen vergessen
+            learn[ns.Normalize("Anna")] = { ver = GetServerTime() - 61 * 86400, ids = { 103 } }
+            eq(#P.Who(103), 0)
+            -- Anfrage: nur wer etwas hat, antwortet
+            W.sent = {}; C_Timer.After = function(_, f) f() end
+            W.Receive("Bert", "RLQ:1")
+            eq(W.sent[#W.sent].kind, "RLN"); eq(W.sent[#W.sent].target, "@CHANNEL")
+        end)
+        wipe(learn)
+        for k, v in pairs(keep) do learn[k] = v end
+        if not ok then error(err, 0) end
+    end)
+
     gaptest("Rezept-Verzeichnis: sammelt aus allen Quellen, ohne Doppelte und Rang-Zauber", function(t)
         GuildPrideDB.craftAll = { [165] = { [2149] = true, [900001] = true, [2108] = true } }
         GuildPrideDB.craftCatalog = { build = "x", lines = { [165] = { 2149, 900002 } } }

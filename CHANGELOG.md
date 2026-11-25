@@ -1,5 +1,23 @@
 # GuildPride Changelog
 
+## 2.44.0
+
+**Deutsch**
+- **„Heute“ auf der Übersicht**: Events der nächsten 24 Stunden mit deiner Antwort, deine Auktionen (verkauft, laufen ab), Post, fertige Abklingzeiten deiner Twinks, offene Gildenaufträge; Offiziere sehen offene Fragen und Bewerbungen
+- **Rezept-Lücken: „Das lerne ich“** (Rechtsklick): alle in der Gilde sehen, wer ein fehlendes Rezept übernimmt; gelernt verschwindet es von selbst
+- **Auktions-Tipps** (GuildPride-Auktionshaus › Verkaufen › „Tipps“): was in Taschen und Bank gerade klar über dem Schnitt liegt
+- **Schneller**: die Gildenliste wird bei Änderungen nur noch einmal gelesen und höchstens einmal je Sekunde
+- **Weniger Speicher**: keine englischen Texte auf deutschen Clients, Rezepte gepackt, Datensicherung kleiner (neu Lernbares bleibt draußen und geht beim Zurückspielen nicht verloren)
+- Behoben: „\n“ im Fenster beim Abbrechen einer Auktion
+
+**English**
+- **“Today” on the overview**: events of the next 24 hours with your answer, your auctions (sold, expiring), mail, ready cooldowns of your alts, open guild orders; officers see open questions and applications
+- **Recipe gaps: “I will learn this”** (right click): everyone in the guild sees who takes on a missing recipe; once learned it disappears by itself
+- **Auction tips** (GuildPride auction house › Sell › “Tips”): what in your bags and bank is clearly above average right now
+- **Faster**: the guild list is read only once per change and at most once per second
+- **Less memory**: no English texts on German clients, packed recipes, smaller backups (what can be relearned stays out and is kept when restoring)
+- Fixed: “\n” in the window when cancelling an auction
+
 ## 2.43.1
 
 **Deutsch**

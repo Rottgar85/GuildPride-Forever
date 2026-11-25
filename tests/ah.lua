@@ -933,13 +933,24 @@ return function(test, eq, W, ns)
         eq(win.own.total:GetText() ~= "", true)
         local popup
         local oldShow = StaticPopup_Show
-        StaticPopup_Show = function(name) popup = name end
+        local popupText
+        StaticPopup_Show = function(name, text) popup, popupText = name, text end
         win.own.rows[1].cancel.scripts.OnClick(win.own.rows[1].cancel)
-        eq(popup, "GUILDPRIDE_AH_CANCEL")
+        eq(popup, "GUILDPRIDE_AH_CANCEL"); eq(popupText:find("\\", 1, true), nil, "echter Zeilenumbruch")
         StaticPopupDialogs.GUILDPRIDE_AH_CANCEL.OnAccept()
         eq(oc.canceled, 2)
         StaticPopup_Show = oldShow
         W.Fire("AUCTION_CANCELED", 2)
+        -- Tipps: vom Verkaufen aus, Zurück führt dorthin
+        local oldTips = AH.SellTips
+        AH.SellTips = function() return { { key = "1", itemID = 1, link = "x", price = 200, avg = 100, pct = 100, gain = 95, bags = 1, bank = 2 } } end
+        win.modeSell.scripts.OnClick(win.modeSell)
+        win.sell.tipsBtn.scripts.OnClick(win.sell.tipsBtn)
+        eq(win.tips:IsShown(), true); eq(win.sell:IsShown(), false)
+        eq(win.tips.rows[1]:IsShown(), true); eq(win.tips.rows[2]:IsShown(), false)
+        win.tips.back.scripts.OnClick(win.tips.back)
+        eq(win.tips:IsShown(), false); eq(win.sell:IsShown(), true)
+        AH.SellTips = oldTips
         win.modeSearch.scripts.OnClick(win.modeSearch)
         -- zu Blizzard wechseln: Fenster weg, Blizzard wieder sichtbar, Auktionshaus bleibt offen
         win.blizzard.scripts.OnClick(win.blizzard)

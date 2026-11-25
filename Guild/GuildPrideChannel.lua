@@ -650,13 +650,10 @@ end
 -- die der Ersteller verpasst hat, weil er offline war)
 local onlineBefore, onlineHooks = nil, {}
 function ns.OnMemberOnline(fn) onlineHooks[#onlineHooks + 1] = fn end
-local rosterWatch = CreateFrame("Frame")
-rosterWatch:RegisterEvent("GUILD_ROSTER_UPDATE")
-rosterWatch:SetScript("OnEvent", function()
+ns.OnRoster(function(list)
     local now, me = {}, Me()
-    for i = 1, GetNumGuildMembers() do
-        local name, _, _, _, _, _, _, _, online = GetGuildRosterInfo(i)
-        if name and online then now[ns.FullName and ns.FullName(name) or name] = true end
+    for _, m in ipairs(list) do
+        if m.online then now[ns.FullName and ns.FullName(m.name) or m.name] = true end
     end
     if onlineBefore then
         for full in pairs(now) do

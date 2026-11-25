@@ -2,7 +2,7 @@
 
 [English](#english) · [Deutsch](#deutsch) · [Screenshots](#screenshots)
 
-World of Warcraft addon for WoW Forever only · Version 2.43.1 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
+World of Warcraft addon for WoW Forever only · Version 2.44.0 · Author: Rottgar85 · CurseForge project 1788777. For Retail and Classic, use [GuildPride](https://github.com/Rottgar85/GuildPride)
 
 ---
 
@@ -21,7 +21,7 @@ World of Warcraft addon for WoW Forever only · Version 2.43.1 · Author: Rottga
 ### Guild window
 
 - **New guild window** – opens with **J** or the guild button. Guild name and faction logo or guild crest at the top. Pick a look on first start (Guild book, Classic, Icon bar); everything uses the dark **"Guild hall"** design with a gold accent. Window size (60–200 %), opacity and chat font are adjustable, and the sidebar can be hidden, renamed and reordered. Prefer Blizzard's window? `/gp blizzard` switches back.
-- **Overview** – members online, the next event, the message of the day, the latest milestones and a **This week** recap (level-ups, raid kills, achievements, mounts, joins, departures, busiest member).
+- **Overview** – members online, the next event, the message of the day, the latest milestones and a **This week** recap (level-ups, raid kills, achievements, mounts, joins, departures, busiest member). **Today** lists what is coming up: events with your answer, your auctions, mail, ready cooldowns, open guild orders.
 - **Milestones with badges** – animated pop-up when a guildmate reaches level 10, 20, 30 …, plus achievements, first raid boss kills and new mounts. Missed milestones are fetched at login. Joins and departures show a clear notice.
 - **Guild goals** – shared goals with a progress bar (member count, players at a level or your own goals officers count up by hand). Reached goals are celebrated and can be posted to Discord.
 - **Notice board** – officers pin a message; every member sees it once as a window, then on the overview (`/gp board`).
@@ -59,7 +59,7 @@ World of Warcraft addon for WoW Forever only · Version 2.43.1 · Author: Rottga
 - **Tracker** (`/gp tracker`) – counts what you gather, buys what is missing at a vendor or searches it at the auction house, and crafts tracked recipes one click at a time (intermediates first).
 - **Recipe card, trainers on the map, gathering spots, fishing bar** with one key for fishing, **sell advisor** in the tooltip – everything can be turned off one by one under "Crafting".
 - **Crafting directory** (*Crafting* entry) – who has which profession at which skill and which recipes, searchable by name, profession or recipe.
-- **Recipe gaps** (`/gp gaps`) – which recipes of a profession nobody in the guild knows, and who has the profession.
+- **Recipe gaps** (`/gp gaps`) – which recipes of a profession nobody in the guild knows, and who has the profession. Right click: “I will learn this” – the guild sees it.
 - **Guild orders** – post an item and a quantity; crafters accept or give back, the requester gets a notice. New and accepted orders also go to Discord.
 - **Auction house** – optional GuildPride window with search by category, buy view with all offers, **price history** of 30 days and who in the guild can craft the item, selling with a price suggestion (cheapest current offer), **My auctions**, favourites, **shopping lists** (quantity, stock, price alert, export/import incl. Auctionator lists, temporary list for one shopping trip, *Buy list*) and *Orders*. Prices show in the item tooltip.
 - **Prices for everyone** – prices are shared server-wide (own faction, goblin auction houses separate) and only count as confirmed when at least two players report them. Works alongside Auctionator.
@@ -152,7 +152,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerk-Fenster, Raid-Werkzeuge, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
-*Version 2.43.1*
+*Version 2.44.0*
 
 ### NEU in 2.42 und 2.43
 
@@ -203,7 +203,7 @@ Bug reports and ideas are very welcome in the comments or on the GuildPride Disc
 - **Tracker** (`/gp tracker`) – zählt, was du sammelst, kauft Fehlendes beim Händler oder sucht es im Auktionshaus und stellt getrackte Rezepte Klick für Klick her (Zwischenprodukte zuerst).
 - **Rezeptkarte, Lehrer auf der Karte, Sammel-Fundorte, Angel-Leiste** mit einer Taste fürs Angeln, **Verkaufs-Berater** im Tooltip – alles einzeln abschaltbar unter „Handwerk“.
 - **Handwerker-Verzeichnis** (Eintrag *Handwerk*) – wer welchen Beruf auf welcher Stufe hat und welche Rezepte er kann, durchsuchbar nach Name, Beruf oder Rezept.
-- **Rezept-Lücken** (`/gp luecken`) – welche Rezepte eines Berufs niemand in der Gilde kann und wer den Beruf hat.
+- **Rezept-Lücken** (`/gp luecken`) – welche Rezepte eines Berufs niemand in der Gilde kann und wer den Beruf hat. Rechtsklick: „Das lerne ich“, die Gilde sieht es.
 - **Gildenaufträge** – Item und Menge einstellen; Hersteller nehmen an oder geben ab, der Auftraggeber bekommt einen Hinweis. Neue und angenommene Aufträge gehen auch an Discord.
 - **Auktionshaus** – wahlweise GuildPride-Fenster mit Suche nach Kategorien, Kaufansicht mit allen Angeboten, **Preisverlauf** über 30 Tage und wer in der Gilde das Item herstellen kann, Verkaufen mit Preisvorschlag (günstigstes aktuelles Angebot), **Meine Auktionen**, Favoriten, **Einkaufslisten** (Menge, Bestand, Preisalarm, Export/Import auch von Auctionator-Listen, temporäre Liste für einen Einkauf, *Liste kaufen*) und *Aufträge*. Preise stehen im Item-Tooltip.
 - **Preise für alle** – Preise werden serverweit geteilt (eigene Fraktion, Goblin-Auktionshäuser getrennt) und gelten erst als bestätigt, wenn mindestens zwei Spieler sie melden. Läuft auch zusammen mit Auctionator.

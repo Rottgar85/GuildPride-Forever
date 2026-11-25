@@ -40,8 +40,11 @@ end
 function ns.BackupNow(note)
     if not GuildPrideDB then return end
     local snaps = DB().snaps
+    -- ohne das, was sich von selbst neu lernt (Core/GuildPrideCleanup.lua)
+    local data = {}
+    for k, v in pairs(GuildPrideDB) do if not ns.Cleanup.RELEARN[k] then data[k] = Copy(v) end end
     table.insert(snaps, 1, { t = time(), note = note or "Hand", who = ns.Me and ns.Me() or "?",
-                             size = Count(GuildPrideDB), data = Copy(GuildPrideDB) })
+                             size = Count(data), data = data })
     while #snaps > MAX_SNAPSHOTS do table.remove(snaps) end
     DB().last = time()
     if ns.RefreshBackupWindow then ns.RefreshBackupWindow() end
@@ -52,9 +55,11 @@ end
 local function Restore(i)
     local snap = DB().snaps[i]
     if not snap then return end
-    local data = Copy(snap.data)
+    local data, keep = Copy(snap.data), {}
     ns.BackupNow("Vor Wiederherstellung")
+    for k in pairs(ns.Cleanup.RELEARN) do keep[k] = GuildPrideDB[k] end
     wipe(GuildPrideDB)
+    for k, v in pairs(keep) do GuildPrideDB[k] = v end
     for k, v in pairs(data) do GuildPrideDB[k] = v end
     ReloadUI()
 end

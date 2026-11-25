@@ -179,7 +179,8 @@ function M.Resolve(text)
     end
     for made, e in pairs(type(GuildPrideDB.ahCraft) == "table" and GuildPrideDB.ahCraft or {}) do
         if Try(made) then return best end
-        for _, r in ipairs(type(e) == "table" and e.r or {}) do if Try(r[1]) then return best end end
+        local _, parts = ns.Cleanup.Recipe(e)
+        for _, r in ipairs(parts or {}) do if Try(r[1]) then return best end end
     end
     return best
 end

@@ -198,3 +198,7 @@ M.ruRU = {
     ["Normal"] = "Обычный", ["Allein"] = "В одиночку", ["Filter"] = "Фильтр", ["Name …"] = "Имя …", ["PLANEN"] = "ПЛАНЫ", ["OPTION"] = "НАСТРОЙКИ",
     ["Befehl"] = "Команда", ["Rezept"] = "Рецепт", ["Leiter"] = "Лидер", ["Angeln"] = "Рыбная ловля", ["Beute:"] = "Добыча:", ["Mehr …"] = "Ещё …",
 }
+
+-- Deutsch und Englisch brauchen diese Texte nie
+local lang = GetLocale()
+if lang == "deDE" or lang == "enUS" or lang == "enGB" then wipe(M) end
