@@ -144,12 +144,27 @@ function S.Help()
 end
 ns.Command({ "hilfe", "help", "befehle", "commands" }, function() S.Help() end)
 
--- Lupe oben im Gildenfenster, links neben Discord- und Community-Knopf
+-- Lupe oben im Gildenfenster, links neben Nachrichten-, Community- und Discord-Knopf.
+-- Der Nachrichten-Knopf entsteht erst bei PLAYER_LOGIN und der Community-Knopf ist nicht
+-- immer sichtbar: darum hängt die Lupe am äußersten sichtbaren Knopf und wird neu gesetzt.
 local parts = ns.UIParts
 if parts and parts.discord then
     local b = CreateFrame("Button", "GuildPrideSearchButton", parts.frame)
     b:SetSize(22, 22)
-    b:SetPoint("RIGHT", parts.discord, "LEFT", -40, 0)
+    local function Place()
+        local anchor = parts.discord
+        for _, n in ipairs({ "GuildPrideMessengerButton", "GuildPrideCommunityButton" }) do
+            local o = _G[n]
+            if o and o:IsShown() then anchor = o; break end
+        end
+        b:ClearAllPoints()
+        b:SetPoint("RIGHT", anchor, "LEFT", -6, 0)
+    end
+    Place()
+    parts.frame:HookScript("OnShow", function() C_Timer.After(0, function() C_Timer.After(0, Place) end) end)
+    local ev = CreateFrame("Frame")
+    ev:RegisterEvent("PLAYER_LOGIN")
+    ev:SetScript("OnEvent", function() C_Timer.After(0, Place) end)
     b:SetFrameLevel(parts.frame:GetFrameLevel() + 20)
     local t = b:CreateTexture(nil, "ARTWORK")
     t:SetAllPoints(); t:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
