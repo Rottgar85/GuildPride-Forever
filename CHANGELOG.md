@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.45.1
+
+**Deutsch**
+- Behoben: Oben rechts im Gildenfenster lag die Lupe (Suche) über dem Nachrichten-Knopf; jetzt stehen alle Knöpfe sauber nebeneinander
+
+**English**
+- Fixed: at the top right of the guild window the magnifier (search) covered the messages button; all buttons now sit neatly side by side
+
 ## 2.45.0
 
 **Deutsch**
