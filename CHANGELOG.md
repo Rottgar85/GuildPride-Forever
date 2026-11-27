@@ -1,5 +1,13 @@
 # GuildPride Changelog
 
+## 2.47.1
+
+**Deutsch**
+- Behoben: Absturz, wenn man in der Einstellungs-Suche nach einer gerade ausgeblendeten Einstellung suchte
+
+**English**
+- Fixed: crash when searching the settings for an option that was currently hidden
+
 ## 2.47.0
 
 **Deutsch**

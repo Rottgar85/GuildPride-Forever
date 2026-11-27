@@ -359,7 +359,7 @@ settingsSearch:SetScript("OnTextChanged", function(self)
     if view.query ~= q then view.query = q; view.Layout() end   -- beim Suchen sind alle Schalter da
     local first
     for _, opt in ipairs(options) do
-        if opt.fs then
+        if opt.fs and opt.fs:IsShown() then   -- nur sichtbare Zeilen haben ein opt.y (sonst Absturz beim Springen)
             local text = (opt.label or opt.header or ""):lower()
             local hit = q ~= "" and text:find(q, 1, true) ~= nil
             local a = (q == "" or hit) and 1 or 0.3
@@ -373,7 +373,7 @@ settingsSearch:SetScript("OnTextChanged", function(self)
             end
         end
     end
-    if first then view.ScrollTo(-first.y - 40) end
+    if first and first.y then view.ScrollTo(-first.y - 40) end
 end)
 end
 
