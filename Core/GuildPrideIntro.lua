@@ -17,35 +17,46 @@ local ALL_PAGES = {
     { setup = true, since = 3, title = L["Einrichtung: dein Gildenfenster"],
       text = L["GuildPride bringt ein eigenes Gildenfenster mit: Chat, Events, Gruppensuche, Berufe, DKP und mehr.\n\nWas soll die Taste J öffnen? Erreichbar bleiben beide: GuildPride über den Minimap-Knopf oder /gp, Blizzards Fenster über die Einstellungen.\n\nDu kannst das jederzeit wieder ändern: Einstellungen > „Einrichtung …“."] },
     { preset = true, since = 7, title = L["Wie möchtest du GuildPride nutzen?"],
-      text = L["Such dir eine Stufe aus. Was nicht dazugehört, ist aus und verschwindet auch aus den Menüs.\n\n• Light: nur Gilde – Gildenfenster, Chat, Events, Raid-Werkzeuge, Messenger\n• Medium: dazu alles für unterwegs allein – Handwerk, Buffs, Leveln, Reisen, Zettel, Rares, Item-Vergleich\n• Max: alles, dazu Auktionshaus und Verkaufs-Berater\n\nÄndern jederzeit mit /gp stufe."] },
+      text = L["Such dir eine Stufe aus. Was nicht dazugehört, ist aus und verschwindet auch aus den Menüs.\n\n• Light: nur Gilde – Gildenfenster, Chat, Events, Raid-Werkzeuge, Messenger\n• Medium: dazu alles für unterwegs allein – Handwerk, Buffs, Leveln, Reisen, Zettel, Rares, Item-Vergleich\n• Max: alles, dazu Auktionshaus und Verkaufs-Berater\n\nNicht sicher? Nimm Medium – das passt für die meisten. Ändern jederzeit mit /gp stufe."] },
     { title = L["Das Gildenfenster"],
       text = L["Drücke J (oder /gp), um das Gildenfenster zu öffnen.\n\n• Übersicht: wer online ist, nächstes Event, Neuigkeiten der Woche\n• Gilde & Chat: Gilden-, Offiziers- und Community-Chat mit Mitgliederliste\n• Gruppensuche: Hilfe für Quests und Dungeons finden\n• Umfragen, Meilensteine und Gildeninfo\n\nMit /gp blizzard kommst du zurück zum Blizzard-Fenster."] },
+    { title = L["Was GuildPride für dich kann"],
+      text = L["Alles an einem Ort – hol dir, was du brauchst:\n\n• Messenger: schreib Gildenmitgliedern, auch wenn sie gerade offline sind\n• Handwerk: Leveling-Guides für jeden Beruf, Zutaten-Tracker, Angeln mit einer Taste\n• Auktionshaus: Preise im Tooltip, Einkaufslisten und Aufträge der Gilde\n• Reisen & Buffs: Abfahrts- und Flugzeiten, Erinnerung an Buff-Food und Erholung\n• Notizzettel: /gp zettel hängt eine Notiz genau dort auf, wo du stehst\n\nNeu in der Gilde? Mit /gp willkommen siehst du Regeln, Discord und kannst den Offizieren eine Frage stellen.\n\nDu suchst etwas Bestimmtes? Die Lupe oben im Fenster oder /gp suche findet alles."] },
     { title = L["Events und Raids"],
       text = L["Im Reiter Events legen Offiziere Termine an, auf Wunsch jede Woche.\n\nAlle Mitglieder melden sich mit Zusagen, Vielleicht oder Absagen und ihrer Rolle an. 15 Minuten vor Beginn gibt es eine Erinnerung, und Offiziere können alle Zusagen mit einem Klick einladen."] },
     { title = L["DKP"],
       text = L["Mit /gp dkp öffnest du die Punkte-Rangliste.\n\nOffiziere vergeben dort mit einem Klick Punkte an den ganzen Raid (Anwesenheit, Bosskills), ziehen Loot ab und können eine Buchung zurücknehmen.\n\nFahre mit der Maus über einen Spieler: Im Tooltip steht sein DKP-Stand."] },
     { discord = true, title = L["Discord-Anbindung"],
       text = L["GuildPride kann Events, Anmeldungen, DKP und Meilensteine über Blizzards Discord-Verknüpfung an den Discord deiner Gilde schicken. Dort trägt der Bot GameBot alles ein.\n\nDafür muss die Gildenleitung die Gilde mit einem Discord-Kanal verknüpfen und GameBot einladen (gamerbot.duckdns.org). Beides kannst du später jederzeit in den GuildPride-Einstellungen ändern."] },
-    { since = 2, title = L["Neu: schlankeres Menü"],
+    { since = 2, update = true, title = L["Neu: schlankeres Menü"],
       text = L["Das Gildenfenster hat ein schlankeres Menü:\n\n• Übersicht – oben umschalten zu Meilensteine\n• Planen – Events, Wünsche, Umfragen, offene Dungeons und Werkzeuge\n• Handwerk – Berufe der Gilde und deine Leveling-Guides\n• Gruppensuche, Gilde & Chat, Gildeninfo, Einstellungen wie gewohnt\n\nDie Einstellungen sind in Abschnitte geteilt und haben oben eine Suche. Lieber das alte Menü? Einstellungen > Allgemein > „Kompaktes Menü“ ausschalten."] },
-    { since = 2, title = L["Neu: Twinks automatisch erkennen"],
+    { since = 2, update = true, title = L["Neu: Twinks automatisch erkennen"],
       text = L["Alle Charaktere eines Spielers erscheinen jetzt als eine Zeile in der Mitgliederliste, Twinks klappst du mit „+3“ auf.\n\nDein BattleTag bleibt dabei privat: Er verlässt nie deinen PC, die Gilde sieht nur einen daraus berechneten Code.\n\nRechtsklick auf einen eigenen Charakter: „Als Main festlegen“."] },
-    { since = 2, title = L["Neu: Sicherung und Protokoll"],
+    { since = 2, update = true, title = L["Neu: Sicherung und Protokoll"],
       text = L["Einstellungen > „Datensicherung …“ sichert alle GuildPride-Daten mit einem Klick (und einmal pro Woche automatisch).\n\nIm DKP-Fenster zeigt „Protokoll …“ jede Buchung mit Wer, Wann und Warum.\n\nFalls einmal etwas schiefgeht: /gp fehler zeigt einen Fehlerbericht zum Kopieren."] },
-    { since = 4, title = L["Neu: Messenger und Notizzettel"],
+    { since = 4, update = true, title = L["Neu: Messenger und Notizzettel"],
       text = L["• Messenger: Nachrichten an Gildenmitglieder mit GuildPride, auch wenn sie offline sind. Flüstern landet auf Wunsch im selben Fenster.\n\n• Notizzettel: /gp zettel schreiben hängt einen Zettel genau dort auf, wo du stehst – blau für die Gilde, weiß für alle. Kommt jemand vorbei, geht er auf.\n\nAlles einzeln abschaltbar in den Einstellungen."] },
-    { since = 4, title = L["Neu: Auktionshaus und Handwerk"],
+    { since = 4, update = true, title = L["Neu: Auktionshaus und Handwerk"],
       text = L["• Auktionshaus: Preise im Tooltip, Einkaufslisten, Preisalarm und Aufträge der Gilde. Das eigene Fenster öffnest du im Auktionshaus mit „GuildPride“.\n\n• Handwerk: Weg von 1 bis 300 für jeden Beruf, Tracker für Zutaten, Lehrer auf der Karte, Angeln mit einer Taste (/gp handwerk)."] },
-    { since = 4, title = L["Neu: Reisen, Buffs und Fehler melden"],
+    { since = 4, update = true, title = L["Neu: Reisen, Buffs und Fehler melden"],
       text = L["• Reisen: Abfahrten von Schiffen, Zeppelinen und der Tiefenbahn, Flugzeiten am Flugmeister.\n\n• Buffs: Erinnerung an Buff-Food, Schlafsack und Lagerfeuer – ein Klick benutzt es.\n\n• Fehler: Hat GuildPride einen Fehler, wirst du einmal gefragt, ob er automatisch an den Entwickler gehen darf. Ohne dein Ja wird nichts gesendet."] },
-    { since = 5, title = L["Neu: Werkzeuge, Suche und Pakete"],
+    { since = 5, update = true, title = L["Neu: Werkzeuge, Suche und Pakete"],
       text = L["• Werkzeuge (unter „Planen“): Raid-Bereitschaft, Quests der Gilde, Boss-Notizen, Materialliste, Loot-Verlauf, Paten, Quiz und mehr.\n\n• Suche über alles: die Lupe oben im Gildenfenster oder /gp suche.\n\n• Pakete: /gp paket gilde, raid oder alles schaltet nur an, was du brauchst.\n\n• Besser lesbar: größere Schrift und Farben für Farbenblinde unter Einstellungen > Allgemein."] },
-    { since = 6, title = L["Neu: Buff-Food-Erinnerung"],
+    { since = 6, update = true, title = L["Neu: Buff-Food-Erinnerung"],
       text = L["• Vorwarnung: 2 Minuten bevor „Satt“ ausläuft, kommt das Fenster schon.\n\n• Kein Essen dabei? Es zeigt, was du kochen kannst und welche deiner Twinks Buff-Food haben.\n\n• Beim Bereitschaftscheck erinnert es, wenn „Satt“ fehlt oder bald ausläuft.\n\n• Auf Wunsch nur in Instanzen und Gruppen (Zahnrad am Buff-Fenster)."] },
     { consent = true, since = 5, title = L["Hilfst du mit, GuildPride zu verbessern?"],
       text = L["Beides ist freiwillig und lässt sich jederzeit ändern (Einstellungen › Teilen). Ohne Haken wird nichts gesendet.\n\n• Fehler: Fehlertext (kann selten einen Spielernamen enthalten), Stelle im Code, Versionen, Sprache, Umstände (Kampf, Instanzart, offene GuildPride-Fenster).\n\n• Nutzung: nur Zähler, welche Reiter, GuildPride-Fenster und /gp-Befehle du öffnest und welche Schalter du geändert hast. Höchstens einmal am Tag.\n\nNie Chat, Gold oder Notizen. Der Entwickler speichert statt deines Namens nur einen Zählcode."] },
+    { title = L["Startklar – viel Spaß!"],
+      text = L["Fertig eingerichtet. Deine wichtigsten Wege:\n\n• Taste J oder der Knopf an der Minikarte öffnet GuildPride\n• /gp führt zu allem, die Lupe oben sucht quer durch\n• Alles lässt sich in den Einstellungen abschalten, wenn du etwas nicht brauchst\n\nSchön, dass du dabei bist – viel Spaß in deiner Gilde!"] },
 }
 local PAGES = ALL_PAGES
+
+-- Kurze Bestätigung nach der Stufenwahl
+local PRESET_DONE = {
+    light = L["nur die Gilde"],
+    medium = L["Gilde und alles für unterwegs allein"],
+    max = L["alles, auch Auktionshaus und Verkaufs-Berater"],
+}
 
 local win, page = nil, 1
 
@@ -199,9 +210,14 @@ local function Build()
         end)
         presetBtns[i] = { b = b, key = o[1] }
     end
+    win.presetMsg = win.preset:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    win.presetMsg:SetPoint("TOPLEFT", win.preset, "BOTTOMLEFT", 0, -6)
+    win.presetMsg:SetWidth(400); win.presetMsg:SetJustifyH("LEFT")
     function win.PresetRefresh()
         local cur = ns.TierChosen and ns.TierChosen() and ns.Tier() or nil
         for _, p in ipairs(presetBtns) do p.b:SetEnabled(p.key ~= cur) end
+        local name = (ns.TIER_NAMES and ns.TIER_NAMES[cur]) or cur
+        win.presetMsg:SetText(cur and ("|cff6cc04a" .. (L["%s ist aktiv – %s"]):format(name, PRESET_DONE[cur] or "") .. "|r") or "")
     end
 
     win.step = win:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -222,7 +238,9 @@ function ns.IntroPages(onlyNew, seen)
     if seen >= INTRO_VERSION then seen = INTRO_VERSION - 1 end   -- /gp neu: letzte Neuerungen
     local out = {}
     for _, p in ipairs(ALL_PAGES) do
-        if (not onlyNew or (p.since or 1) > seen) and (not p.consent or NeedsConsent()) then out[#out + 1] = p end
+        local want
+        if onlyNew then want = (p.since or 1) > seen else want = not p.update end
+        if want and (not p.consent or NeedsConsent()) then out[#out + 1] = p end
     end
     if #out == 0 then out = ALL_PAGES end
     return out

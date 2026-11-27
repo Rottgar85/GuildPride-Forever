@@ -228,7 +228,7 @@ if BROWSER then
                 end
             end
         end
-        if shown > 0 and PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.READY_CHECK or SOUNDKIT.RAID_WARNING) end
+        if shown > 0 and GuildPrideDB.sound and PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.READY_CHECK or SOUNDKIT.RAID_WARNING) end
     end
     GF.CheckAlerts = CheckAlerts
 

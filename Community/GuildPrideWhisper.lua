@@ -14,6 +14,7 @@ local MAX_CONV, MAX_CONVS = 200, 100
 local function SendChat(text, kind, lang, target) assert(ns.SendChat(text, kind, lang, target, true)) end
 
 local Secret = ns.IsSecret
+local function WhisperOn() return GuildPrideDB.whisperEnabled ~= false end
 
 function Wh.DB()
     GuildPrideDB.whispers = type(GuildPrideDB.whispers) == "table" and GuildPrideDB.whispers or {}
@@ -105,6 +106,7 @@ function Wh.Send(key, text)
 end
 
 function Wh.UnreadTotal()
+    if not WhisperOn() then return 0 end
     local n = 0
     for _, c in pairs(DB().unread) do n = n + c end
     return n
@@ -118,6 +120,7 @@ end
 
 -- { { key = "W:Name", name, last, unread, whisper = true } }
 function Wh.Conversations()
+    if not WhisperOn() then return {} end
     local db, out = DB(), {}
     for name, c in pairs(db.convs) do
         if #c > 0 then
@@ -153,6 +156,7 @@ Wh._Pending = function() return pendingOpen end   -- für Tests
 
 function Wh.OnWhisper(text, sender, guid)
     if Secret(text) or Secret(sender) or type(text) ~= "string" or type(sender) ~= "string" then return end
+    if not WhisperOn() then return end
     local key = Wh.Add(sender, text, false)
     if not key or GuildPrideDB.whisperWindow == false then return end
     if GuildPrideDB.whisperKnownOnly and not Wh.Known(sender, guid) then return end
@@ -160,6 +164,7 @@ function Wh.OnWhisper(text, sender, guid)
 end
 
 function Wh.OnInform(text, target)
+    if not WhisperOn() then return end
     if Secret(text) or Secret(target) or type(text) ~= "string" or type(target) ~= "string" then return end
     Wh.Add(target, text, true)
 end
@@ -178,7 +183,7 @@ end
 ---------------------------------------------------------------------
 local lastOut, lastOutAt = nil, 0
 function Wh.StartOutgoing(target)
-    if GuildPrideDB.whisperOutgoing == false then return false end
+    if not WhisperOn() or GuildPrideDB.whisperOutgoing == false then return false end
     if type(target) ~= "string" or target == "" or Secret(target) then return false end
     local M = ns.Messenger
     if not (M and M.OpenWhisper) then return false end

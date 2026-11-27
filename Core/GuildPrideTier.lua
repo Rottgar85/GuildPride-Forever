@@ -42,7 +42,7 @@ end
 -- Schalter je Stufe
 ---------------------------------------------------------------------
 local GUILD = { "memberAlerts", "popup", "shareMilestones", "welcomePack", "mapShow", "guildQuests",
-    "raidReady", "readyWindow", "bossNotes", "cooldownShare", "wishTooltip", "wishDropHint", "plateColors", "whisperWindow" }
+    "raidReady", "readyWindow", "bossNotes", "cooldownShare", "wishTooltip", "wishDropHint", "plateColors", "whisperWindow", "whisperEnabled" }
 local SOLO = { "buffFood", "buffFoodReady", "restReminder", "levelInfo", "levelBar", "repTrack", "supplyWarn", "bagWarn",
     "hearthInfo", "chatLinks", "mapNotes", "craftCard", "craftHints", "craftTooltip", "craftBank", "craftNPCMap", "craftTips",
     "craftNodes", "craftFish", "transitUI", "flightTimes", "flightUI" }

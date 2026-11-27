@@ -25,7 +25,7 @@ local function Notice(text)
         local plain = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
         UIErrorsFrame:AddMessage(plain, 1, 0.82, 0)
     end
-    if PlaySound and SOUNDKIT and SOUNDKIT.UI_PROFESSIONS_SKILL_UP then pcall(PlaySound, SOUNDKIT.UI_PROFESSIONS_SKILL_UP) end
+    if GuildPrideDB.sound and PlaySound and SOUNDKIT and SOUNDKIT.UI_PROFESSIONS_SKILL_UP then pcall(PlaySound, SOUNDKIT.UI_PROFESSIONS_SKILL_UP) end
 end
 
 -- Was ist zwischen alter und neuer Stufe passiert? Liste von Hinweisen (auch für Tests)

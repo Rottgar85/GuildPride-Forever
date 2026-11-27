@@ -225,7 +225,7 @@ local function OnChannel(text, sender, _, _, _, _, _, _, chanBase)
     local short = Ambiguate and Ambiguate(sender, "none") or sender
     ns.Print((L["Kunde im Handel: %s sucht %s – kann: %s"]):format(
         ("|Hplayer:%s|h[%s]|h"):format(sender, short), Craft.ItemName(id), table.concat(who, ", ")))
-    if PlaySound and SOUNDKIT and SOUNDKIT.TELL_MESSAGE then pcall(PlaySound, SOUNDKIT.TELL_MESSAGE) end
+    if GuildPrideDB.sound and PlaySound and SOUNDKIT and SOUNDKIT.TELL_MESSAGE then pcall(PlaySound, SOUNDKIT.TELL_MESSAGE) end
 end
 T.OnChannel = OnChannel
 

@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.47.0
+
+**Deutsch**
+- **Flüstern ganz abschaltbar**: Neuer Schalter „Flüster-Fenster von GuildPride benutzen" (Einstellungen › Gilde). Aus heißt, GuildPride fasst Flüstern nicht mehr an – alles bleibt in Blizzards Chat. Die bisherigen Flüster-Optionen sind jetzt Unterpunkte davon
+- **Freundlichere Einführung für neue Spieler**: eine kürzere, fokussierte Tour mit der Übersichtsseite „Was GuildPride für dich kann", einer Empfehlung bei der Stufenwahl, einer kurzen Bestätigung nach der Wahl und einem warmen Abschluss. Die „Neu: …"-Seiten erscheinen nur noch Rückkehrern, wenn es wirklich etwas Neues gibt
+- **„Sounds abspielen" schaltet jetzt wirklich alle Töne ab**: Preisalarm, Gruppensuche, Messenger, Blockliste, Gebots-Fenster, neue Bewerbungen, Abfahrts-Warnungen, Notizzettel und Handwerk hielten sich bisher nicht an den Schalter
+
+**English**
+- **Whispers fully optional**: new switch "Use GuildPride's whisper window" (Settings › Guild). Off means GuildPride no longer touches whispers – everything stays in Blizzard's chat. The previous whisper options are now sub-items of it
+- **Friendlier intro for new players**: a shorter, focused tour with the overview page "What GuildPride can do for you", a recommendation at the tier choice, a short confirmation after choosing and a warm closing page. The "New: …" pages now only show to returning players when there is really something new
+- **"Play sounds" now really turns off every sound**: price alerts, group finder, messenger, blocklist, bidding window, new applications, departure warnings, notes and crafting did not respect the switch before
+
 ## 2.46.0
 
 **Deutsch**

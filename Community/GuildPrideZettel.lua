@@ -479,7 +479,7 @@ local function Small(fs, size)
 end
 
 local function PaperSound()
-    if not (PlaySound and SOUNDKIT) then return end
+    if not (GuildPrideDB.sound and PlaySound and SOUNDKIT) then return end
     local id = SOUNDKIT.IG_SPELLBOOK_OPEN or SOUNDKIT.IG_QUEST_LOG_OPEN
     if id then PlaySound(id) end
 end

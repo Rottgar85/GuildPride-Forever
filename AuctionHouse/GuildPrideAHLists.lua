@@ -218,7 +218,7 @@ function AH.CheckAlerts(rows, shared)
             local name = AH.ItemName(r.itemID) or ("#" .. r.itemID)
             AH.Print((L["|cffffd100Preisalarm:|r %s für %s je Stück (dein Alarm: höchstens %s)"]):format(name, AH.Money(r.min), AH.Money(want))
                 .. (shared and (" |cff999999" .. L["(von anderen GuildPride-Spielern gesehen)"] .. "|r") or ""))
-            if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING) end
+            if GuildPrideDB.sound and PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING) end
         end
     end
     return hits

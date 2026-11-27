@@ -251,7 +251,7 @@ local function FilterAlert(sender, e, alreadyShown)
     local f = GF and GF.DungeonFilter and GF.DungeonFilter()
     if not f or GuildPrideDB.lfgAlert == false or not DungeonInFilter(e.dungeon, f) then return end
     if not alreadyShown then Alert(sender, e) end
-    if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.READY_CHECK or SOUNDKIT.RAID_WARNING) end
+    if GuildPrideDB.sound and PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.READY_CHECK or SOUNDKIT.RAID_WARNING) end
 end
 
 ns.On("LFG", function(payload, sender)

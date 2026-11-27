@@ -173,7 +173,7 @@ ns.On("AUC", function(payload, sender)
     if not ends or ends < GetServerTime() then return end
     cur = { id = Clean(p[1], 10), item = ItemName(p[2]), min = ns.Num(p[3], 0, 100000) or 0, ends = ends, by = sender }
     ShowBidWin()
-    if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.RAID_WARNING) end
+    if GuildPrideDB.sound and PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.RAID_WARNING) end
 end)
 ns.On("BID", function(payload, sender)
     local p = { strsplit(SEP, payload) }

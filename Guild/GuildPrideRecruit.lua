@@ -253,7 +253,7 @@ function ns.ReceiveApp(payload, sender, local_)
         apps[id] = { id = id, name = name, t = ns.Stamp(a[3]), via = Clean(a[4], 60), a = answers, status = "new" }
         newApps = newApps + 1
         ns.Print((L["Neue Bewerbung von |cffffd100%s|r – /gp bewerbungen"]):format(Ambiguate(name, "none")))
-        if PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.READY_CHECK) end
+        if GuildPrideDB.sound and PlaySound and SOUNDKIT then PlaySound(SOUNDKIT.READY_CHECK) end
         if ns.RefreshApps then ns.RefreshApps() end
         if ns.AdminPage and ns.AdminPage.Refresh then ns.AdminPage:Refresh() end
     end

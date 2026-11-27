@@ -1259,7 +1259,10 @@ test("Einführung: wer die Tour kennt, bekommt die Stufen-Frage und die Buff-Neu
         return table.concat(t, " | ")
     end
     local fresh = ns.IntroPages(false, 0)
-    eq(Titles(fresh):find("Wie möchtest du GuildPride nutzen?", 1, true) ~= nil, true, "neue Spieler: ganze Tour mit Stufen")
+    eq(Titles(fresh):find("Wie möchtest du GuildPride nutzen?", 1, true) ~= nil, true, "neue Spieler: Stufen dabei")
+    eq(Titles(fresh):find("Was GuildPride für dich kann", 1, true) ~= nil, true, "neue Spieler: kurze Übersicht")
+    eq(Titles(fresh):find("Neu:", 1, true), nil, "neue Spieler: keine Changelog-Seiten")
+    eq(Titles(fresh):find("Startklar", 1, true) ~= nil, true, "neue Spieler: warmer Abschluss")
     local known = Titles(ns.IntroPages(true, 5))
     eq(known:find("Wie möchtest du GuildPride nutzen?", 1, true) ~= nil, true, "bekannte Tour: Stufen-Frage neu dabei")
     eq(known:find("Neu: Buff-Food", 1, true) ~= nil, true)

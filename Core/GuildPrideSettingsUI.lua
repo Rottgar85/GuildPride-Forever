@@ -174,10 +174,12 @@ local options = {
     { key = "bossNotes",     label = L["Boss-Notizen beim Betreten einer Instanz zeigen"] },
     { key = "welcome",       label = L["Neue Mitglieder automatisch im Gildenchat begrüßen"] },
     { key = "welcomePack",   label = L["Willkommensfenster, wenn du einer Gilde beitrittst"] },
-    { key = "whisperWindow", label = L["Messenger-Fenster geht auf, wenn dich jemand anflüstert"] },
-    { key = "whisperCombat", label = L["… auch im Kampf (sonst erst danach)"] },
-    { key = "whisperOutgoing", label = L["Selbst flüstern (/w, R, Namensmenü) im Messenger-Fenster"] },
-    { key = "whisperKnownOnly", label = L["… nur bei Gilde, Freunden und Gruppe"] },
+    { key = "whisperEnabled", label = L["Flüster-Fenster von GuildPride benutzen (aus: Flüstern nur in Blizzards Chat)"],
+      changed = function() if ns.Messenger and ns.Messenger.Refresh then ns.Messenger.Refresh() end if ns.RefreshUI then ns.RefreshUI() end end },
+    { key = "whisperWindow", label = L["Messenger-Fenster geht auf, wenn dich jemand anflüstert"], show = function() return not GuildPrideDB or GuildPrideDB.whisperEnabled ~= false end },
+    { key = "whisperCombat", label = L["… auch im Kampf (sonst erst danach)"], show = function() return not GuildPrideDB or GuildPrideDB.whisperEnabled ~= false end },
+    { key = "whisperOutgoing", label = L["Selbst flüstern (/w, R, Namensmenü) im Messenger-Fenster"], show = function() return not GuildPrideDB or GuildPrideDB.whisperEnabled ~= false end },
+    { key = "whisperKnownOnly", label = L["… nur bei Gilde, Freunden und Gruppe"], show = function() return not GuildPrideDB or GuildPrideDB.whisperEnabled ~= false end },
     { key = "discordBridge", label = L["Discord-Anbindung nutzen (Events, Anmeldungen, DKP an Discord)"] },
     { key = "discordLinked", label = L["Mein Discord ist mit WoW verknüpft (Optionen > Soziales)"] },
     { key = "discordViaGuild", label = L["Discord-Zeilen immer in den Gildenchat (sonst eigener Discord-Kanal der Gilde)"] },
@@ -210,7 +212,7 @@ end
 local TOP = {}
 for key in ([[replaceGuildFrame easyRead minimap popup helpAlerts shareMilestones raidReady cooldownShare guildQuests
     usageShare errorShare testFeatures mapShow mapShare publicLFG ahTooltip bagMarks craftCard craftSell transitUI mapNotes buffFood restReminder levelInfo autoRepair
-    plateColors whisperWindow discordBridge ausweisAuto]]):gmatch("%a+") do TOP[key] = true end
+    plateColors whisperEnabled discordBridge ausweisAuto]]):gmatch("%a+") do TOP[key] = true end
 -- → sichtbare Zeilen in Reihenfolge, verborgene je Überschrift, verborgene insgesamt
 function ns.SettingsRows(list, all, open)
     local rows, more, hidden, head = {}, {}, 0, nil

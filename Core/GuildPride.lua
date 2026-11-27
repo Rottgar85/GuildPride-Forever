@@ -244,7 +244,7 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    autoRepair = false, autoRepairGuild = false,
                    sellJunk = false, autoQuest = false, acceptInvites = false, declineDuels = false, duelAllowKnown = true,
                    hearthInfo = true, chatLinks = true, mapNotes = true, mapNotesPublic = true, mapNotesMinimap = true, craftCard = true, craftHints = true, craftTooltip = true, craftBank = true, craftNPCMap = true, craftTips = true, craftTrade = true, craftNodes = true, craftFish = true, craftSell = true,
-                   whisperWindow = true, whisperCombat = true, whisperKnownOnly = false, whisperOutgoing = true }
+                   whisperEnabled = true, whisperWindow = true, whisperCombat = true, whisperKnownOnly = false, whisperOutgoing = true }
 ns.DEFAULTS = defaults   -- für /gp export und /gp import
 
 -- Weitere Meilensteine neben LEVEL (Wert ist Text bzw. ID)

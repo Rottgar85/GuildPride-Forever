@@ -125,7 +125,7 @@ function Block.Refuse(name)
     if not e then return false end
     ns.Print((L["|cffff4040%s steht auf der Blockliste|r – nicht einladen."]):format(Ambiguate(name, "none"))
         .. (e.reason and (" (" .. e.reason .. ")") or ""))
-    if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING) end
+    if GuildPrideDB.sound and PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING) end
     return true
 end
 
@@ -168,7 +168,7 @@ do
                     if RaidNotice_AddMessage and RaidWarningFrame then
                         RaidNotice_AddMessage(RaidWarningFrame, text, ChatTypeInfo and ChatTypeInfo["RAID_WARNING"] or { r = 1, g = 0.3, b = 0.1 })
                     end
-                    if PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING) end
+                    if GuildPrideDB.sound and PlaySound and SOUNDKIT and SOUNDKIT.RAID_WARNING then PlaySound(SOUNDKIT.RAID_WARNING) end
                 end
             end
             return new

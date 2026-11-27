@@ -185,7 +185,7 @@ local function Notify(fromMain, text, via, q)
     if M.IsOpenOn and M.IsOpenOn(fromMain) then return end
     if GetTime() - notifyAt > 2 then
         notifyAt = GetTime()
-        if PlaySound and SOUNDKIT and SOUNDKIT.TELL_MESSAGE then PlaySound(SOUNDKIT.TELL_MESSAGE) end
+        if GuildPrideDB.sound and PlaySound and SOUNDKIT and SOUNDKIT.TELL_MESSAGE then PlaySound(SOUNDKIT.TELL_MESSAGE) end
     end
     local short = #text > 60 and (text:sub(1, 60) .. " …") or text
     local fmt = q and L["|cffffd100Frage eines Mitglieds von %s:|r %s  |cff888888(/gp nachrichten)|r"]

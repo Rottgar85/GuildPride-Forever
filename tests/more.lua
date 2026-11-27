@@ -371,6 +371,15 @@ return function(test, eq, W, ns)
         eq(#opened, 3, "Gildenmitglied: Fenster")
         UnitInParty, UnitInRaid = oldParty, oldRaid
         GuildPrideDB.whisperKnownOnly = false
+        -- ganz aus: GuildPride fasst Flüstern nicht an (nur Blizzards Chat)
+        GuildPrideDB.whisperEnabled = false
+        local gone = #opened
+        W.Fire("CHAT_MSG_WHISPER", "ganz aus", "Weg-Realm")
+        eq(#opened, gone, "ganz aus: kein Fenster")
+        eq(#Wh.Conv(Wh.Key("Weg-Realm")), 0, "ganz aus: nicht gespeichert")
+        eq(#Wh.Conversations(), 0, "ganz aus: keine Flüster im Fenster")
+        eq(Wh.StartOutgoing("Fremd-Realm"), false, "ganz aus: eigenes /w bleibt im Chat")
+        GuildPrideDB.whisperEnabled = true
         -- antworten: normales Flüstern an den gespeicherten Namen
         local sent, refuse
         local oldSend = C_ChatInfo.SendChatMessage

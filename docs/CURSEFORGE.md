@@ -2,11 +2,17 @@
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting window, raid tools, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Version 2.46.0 · Deutsche Beschreibung weiter unten.*
+*Version 2.47.0 · Deutsche Beschreibung weiter unten.*
 
 ---
 
 ## 🇬🇧 English
+
+### NEW in 2.47
+
+- **Whispers fully optional** – a new switch turns GuildPride's whisper handling off completely; whispers then stay in Blizzard's chat (Settings › Guild).
+- **Friendlier first run** – new players get a short, focused tour with a "what GuildPride can do" overview, a tier recommendation, a confirmation after choosing, and a warm closing page.
+- **"Play sounds" now covers everything** – price alerts, group finder, messenger, blocklist, bidding, applications, travel and crafting sounds respect the setting too.
 
 ### NEW in 2.46
 
@@ -108,6 +114,12 @@
 ## 🇩🇪 Deutsch
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerk-Fenster, Raid-Werkzeuge, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
+
+### NEU in 2.47
+
+- **Flüstern ganz abschaltbar** – ein neuer Schalter legt GuildPrides Flüster-Behandlung komplett still; Flüstern bleibt dann in Blizzards Chat (Einstellungen › Gilde).
+- **Freundlicherer Erststart** – neue Spieler bekommen eine kurze, fokussierte Tour mit „Was GuildPride kann"-Übersicht, Stufen-Empfehlung, Bestätigung nach der Wahl und warmem Abschluss.
+- **„Sounds abspielen" gilt jetzt überall** – Preisalarm, Gruppensuche, Messenger, Blockliste, Gebote, Bewerbungen, Reisen und Handwerk achten jetzt auch auf den Schalter.
 
 ### NEU in 2.46
 
