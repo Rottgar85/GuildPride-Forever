@@ -93,6 +93,14 @@ function ns.ApplyPreset(word)
     return true
 end
 
+-- Brandneu und die Tour ohne Wahl geschlossen: das schlanke Medium (mit Buff-Food und Erholung,
+-- die ab Werk aus sind, aber die meisten selbst einschalten). Umsteiger und wer schon gewählt hat:
+-- nie anfassen. Rückgabe: wurde Medium gesetzt?
+function ns.ApplyDefaultTier(fresh)
+    if not fresh or type(GuildPrideDB) ~= "table" or ns.TierChosen() then return false end
+    return ns.ApplyPreset("medium")
+end
+
 ---------------------------------------------------------------------
 -- /gp-Befehle, die zu einer höheren Stufe gehören
 ---------------------------------------------------------------------

@@ -394,9 +394,9 @@ local function Jump(label, y, opt)
     n = n + 1
 end
 for _, opt in ipairs(options) do
-    if opt.header and n < 11 then Jump(opt.header, function() return -opt.y end, opt) end
+    if opt.header and n < 11 then Jump(opt.header, function() return -(opt.y or 0) end, opt) end   -- y gibt es erst nach dem ersten Anordnen
 end
-Jump(L["Menü & Größe"], function() return -view.footY end)
+Jump(L["Menü & Größe"], function() return -(view.footY or 0) end)
 function view.LayoutJumps()
     local i = 0
     for _, j in ipairs(jumps) do

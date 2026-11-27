@@ -5,7 +5,8 @@
 --   * Empfänger offline: die Nachricht geht an alle GuildPride-Nutzer der Gilde, die online sind (NMR);
 --     sie heben sie auf (höchstens 14 Tage). Loggt der Empfänger ein, fragt er nach (NMQ) und bekommt
 --     sie von einem von ihnen (NMF). Auch der Absender selbst schickt Offenes nach, sobald der
---     Empfänger nachfragt.
+--     Empfänger nachfragt. Loggt der Absender selbst später ein, schickt er Offenes an Empfänger nach,
+--     die dann gerade online sind (M.ResendOpen) – sonst käme es nur an, wenn beide zufällig gleichzeitig da sind.
 --   * Der Empfänger quittiert (NMA, an die Gilde): Aufbewahrer löschen ihre Kopie, der Absender sieht
 --     „zugestellt“.
 -- Adressiert wird der Main (ns.MainOf): schreibst du einem Twink, kommt es bei allen Charakteren an.
@@ -31,6 +32,7 @@ local MAX_CONV = 200            -- Nachrichten je Unterhaltung
 local KEEP = 14 * 86400         -- Aufbewahrung bei anderen und offene Nachrichten
 local RELAY_MAX, RELAY_PER_AUTHOR = 200, 20
 local ACK_WAIT = 20             -- so lange auf die Quittung einer Direktnachricht warten
+local RESEND_MAX = 20           -- höchstens so viele offene Nachrichten je Empfänger auf einmal nachschicken
 
 local function Me() return ns.Me() end
 local function Now() return GetServerTime() end
@@ -172,8 +174,22 @@ end
 
 -- Offene eigene Nachrichten an einen Main direkt nachschicken (er hat sich gerade gemeldet)
 local function Resend(main, char)
+    local n = 0
     for id, o in pairs(DB().outbox) do
-        if o.to == main then ns.Queue("NMS", char, id, o.to, o.t, o.text, o.q or "") end
+        if o.to == main then
+            n = n + 1
+            if n > RESEND_MAX then return end
+            ns.Queue("NMS", char, id, o.to, o.t, o.text, o.q or "")
+        end
+    end
+end
+
+-- Beim Einloggen: noch unquittierte Nachrichten an Empfänger, die jetzt online sind
+function M.ResendOpen()
+    local mains = {}
+    for _, o in pairs(DB().outbox) do mains[o.to] = true end
+    for main in pairs(mains) do
+        for _, char in ipairs(M.OnlineChars(main)) do Resend(main, char) end
     end
 end
 
@@ -332,6 +348,7 @@ ev:SetScript("OnEvent", function()
     C_Timer.After(20, function()
         if not IsInGuild() then return end
         M.Prune()
+        ns.Try(M.ResendOpen)
         ns.Queue("NMQ", nil, "1")
         Changed()
     end)

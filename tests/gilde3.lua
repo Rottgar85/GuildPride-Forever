@@ -149,6 +149,25 @@ return function(test, eq, W, ns)
         for k, v in pairs(keep) do GuildPrideDB[k] = v end
     end)
 
+    test("Neue Spieler: ohne Wahl startet das schlanke Medium, Umsteiger bleiben bei Max", function()
+        local keep = {}
+        for k, v in pairs(GuildPrideDB) do keep[k] = v end
+        local oldScales = ScalesDB
+        ScalesDB = {}
+        GuildPrideDB.preset = nil
+        eq(ns.ApplyDefaultTier(false), false, "Umsteiger: nichts ändern")
+        eq(ns.TierChosen(), false); eq(ns.Tier(), "max", "ohne Wahl gilt weiter Max")
+        eq(ns.ApplyDefaultTier(true), true)
+        eq(ns.Tier(), "medium"); eq(GuildPrideDB.buffFood, true, "Buff-Food an"); eq(GuildPrideDB.restReminder, true, "Erholung an")
+        eq(GuildPrideDB.ahTooltip, false, "Auktionshaus erst bei Max")
+        -- schon gewählt: nie überschreiben
+        ns.ApplyPreset("light")
+        eq(ns.ApplyDefaultTier(true), false); eq(ns.Tier(), "light")
+        ScalesDB = oldScales
+        for k in pairs(GuildPrideDB) do GuildPrideDB[k] = nil end
+        for k, v in pairs(keep) do GuildPrideDB[k] = v end
+    end)
+
     test("Lesbarkeit: Farben nur mit Schalter umsetzen", function()
         GuildPrideDB.colorSafe = nil
         eq(ns.ColorSafe("|cff40ff40ja|r"), "|cff40ff40ja|r")

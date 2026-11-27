@@ -1,7 +1,7 @@
 -- GuildPride: Nutzerzahl für den Entwickler (immer an, anonym)
 --
 -- Ist der Entwickler online, meldet sich sein Client (DVA, GuildPrideErrorShare.lua) in Gilde und
--- offenem Kanal. Jeder GuildPride-Client flüstert ihm darauf höchstens einmal am Tag:
+-- offenem Kanal. Jeder GuildPride-Client flüstert ihm darauf einmal am Tag (bis er es bestätigt, höchstens dreimal):
 --   DVC  Kennung · Version · Stufe
 -- Die Kennung ist eine Zufallszahl je Account (GuildPrideDB.installId), kein Name, kein BattleTag.
 -- Der Entwickler speichert nur Kennung, ersten und letzten Tag, Version und Stufe
@@ -12,7 +12,7 @@ local SEP = ns.SEP or "\031"
 
 local C = {}
 ns.UserCount = C
-local DAY, MAX_IDS = 86400, 5000
+local DAY, MAX_IDS, MAX_TRIES = 86400, 5000, 3
 local TIERS = { light = true, medium = true, max = true, none = true }
 
 local function IsDev() return ns.IsDev and ns.IsDev() or false end
@@ -36,14 +36,25 @@ function C.OnHello(sender)
     if type(GuildPrideDB) ~= "table" or IsDev() then return false end
     if not (ns.IsMarked and ns.IsMarked(sender)) then return false end
     local today = Today()
-    if GuildPrideDB.countDay == today then return false end
-    GuildPrideDB.countDay = today
+    if GuildPrideDB.countDay == today then return false end   -- heute schon bestätigt
+    -- noch nicht bestätigt (Flüstern verloren, Entwickler gerade weg): beim nächsten Mal noch einmal
+    local t = GuildPrideDB.countTry
+    if type(t) ~= "table" or t.d ~= today then t = { d = today, n = 0 }; GuildPrideDB.countTry = t end
+    if t.n >= MAX_TRIES then return false end
+    t.n = t.n + 1
     -- verteilt: nicht alle auf einmal, wenn der Entwickler sich meldet
     C_Timer.After(5 + math.random() * 115, function()
         if ns.ErrorShare and ns.ErrorShare.Whisper then
             ns.ErrorShare.Whisper(sender, "DVC:" .. table.concat({ C.Id(), ns.VERSION or "0.0.0", MyTier() }, SEP))
         end
     end)
+    return true
+end
+
+-- Quittung des Entwicklers (DVK mit unserer Kennung, Absender in ErrorShare schon geprüft): für heute erledigt
+function C.OnAck(id)
+    if type(id) ~= "string" or id ~= GuildPrideDB.installId then return false end
+    GuildPrideDB.countDay = Today()
     return true
 end
 
@@ -75,7 +86,7 @@ function C.Collect(value, sender)
     end
     e.l, e.v, e.t = today, ver, tier
     if C.Refresh then C.Refresh() end
-    return true
+    return true, id
 end
 
 -- Zahlen: heute, 7 und 30 Tage, gesamt; Stufen und Versionen der letzten 30 Tage

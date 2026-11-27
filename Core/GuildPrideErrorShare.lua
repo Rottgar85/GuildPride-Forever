@@ -134,6 +134,7 @@ local function OnAck(id, sender)
         if ErrorId(e) == id then e.sent = true end
     end
     if ns.Usage then ns.Usage.OnAck(id) end
+    if ns.UserCount then ns.UserCount.OnAck(id) end
 end
 
 -- Behobene Fehler (DVF): wer einen davon gemeldet hat, erfährt es einmal
@@ -268,7 +269,10 @@ function ns.OnErrorShareMessage(message, sender, channel)
     elseif kind == "DVF" then OnFixed(value, sender)
     elseif channel ~= "WHISPER" then return
     elseif kind == "DVE" or kind == "DVU" then OnPiece(value, sender, kind)
-    elseif kind == "DVC" then if ns.UserCount then ns.UserCount.Collect(value, sender) end
+    elseif kind == "DVC" then
+        local ok, id
+        if ns.UserCount then ok, id = ns.UserCount.Collect(value, sender) end
+        if ok and id then Push(sender, "DVK:" .. id, true); Flush() end   -- Quittung: der Tag zählt als gemeldet
     elseif kind == "DVK" then OnAck(value, sender) end
 end
 

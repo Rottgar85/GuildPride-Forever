@@ -2,11 +2,16 @@
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting window, raid tools, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Version 2.47.1 · Deutsche Beschreibung weiter unten.*
+*Version 2.48.0 · Deutsche Beschreibung weiter unten.*
 
 ---
 
 ## 🇬🇧 English
+
+### NEW in 2.48
+
+- **Leaner start** – new players who close the intro without picking a tier start on Medium instead of everything.
+- **Messenger** – fewer lost messages: when the sender logs in later, undelivered messages are resent to recipients who are online.
 
 ### NEW in 2.47
 
@@ -114,6 +119,11 @@
 ## 🇩🇪 Deutsch
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerk-Fenster, Raid-Werkzeuge, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
+
+### NEU in 2.48
+
+- **Schlankerer Start** – neue Spieler, die die Einführung ohne Stufenwahl schließen, starten mit Medium statt mit allem.
+- **Messenger** – weniger verlorene Nachrichten: Loggt der Absender später ein, gehen offene Nachrichten an online Empfänger nach.
 
 ### NEU in 2.47
 

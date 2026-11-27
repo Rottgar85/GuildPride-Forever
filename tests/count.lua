@@ -4,17 +4,18 @@ return function(test, eq, W, ns)
     local function counttest(name, fn)
         test(name, function()
             local old = { ns.IsMarked, ns.IsDev, ns.SendAddonMsg, ns.VERSION, GuildPrideDB.installId, GuildPrideDB.countDay,
-                GuildPrideDB.devCount, GuildPrideDB.preset, GuildPrideDB.usageShare }
+                GuildPrideDB.devCount, GuildPrideDB.preset, GuildPrideDB.usageShare, GuildPrideDB.countTry }
             ns.IsMarked = function(n) return n == "Chef" end
             ns.IsDev = function() return dev end
             ns.SendAddonMsg = function(_, m, channel, to) sent[#sent + 1] = { msg = m, channel = channel, to = to }; return 0 end
             ns.VERSION, dev, sent = "9.9.9", false, {}
             GuildPrideDB.installId, GuildPrideDB.countDay, GuildPrideDB.devCount, GuildPrideDB.preset = nil, nil, nil, nil
+            GuildPrideDB.countTry = nil
             GuildPrideDB.usageShare = false
             W.Load("GuildPrideErrorShare.lua"); W.Load("GuildPrideCount.lua")
             local ok, err = pcall(fn, ns.UserCount)
             ns.IsMarked, ns.IsDev, ns.SendAddonMsg, ns.VERSION, GuildPrideDB.installId, GuildPrideDB.countDay,
-                GuildPrideDB.devCount, GuildPrideDB.preset, GuildPrideDB.usageShare = unpack(old, 1, 9)
+                GuildPrideDB.devCount, GuildPrideDB.preset, GuildPrideDB.usageShare, GuildPrideDB.countTry = unpack(old, 1, 10)
             if not ok then error(err, 0) end
         end)
     end
@@ -35,7 +36,14 @@ return function(test, eq, W, ns)
         eq(sent[1].msg:find("Anna", 1, true), nil, "kein Name")
         eq(sent[1].msg:find("medium", 1, true) ~= nil, true); eq(sent[1].msg:find("9.9.9", 1, true) ~= nil, true)
         sent = {}
-        Hello(); eq(#sent, 0, "am selben Tag nicht noch einmal")
+        -- ohne Quittung noch einmal, aber höchstens dreimal am Tag
+        Hello(); eq(#sent, 1, "keine Quittung: neuer Versuch")
+        Hello(); eq(#sent, 2)
+        Hello(); eq(#sent, 2, "höchstens 3 Versuche am Tag")
+        -- Quittung des Entwicklers: für heute erledigt
+        W.Receive("Chef", "DVK:" .. C.Id(), "WHISPER")
+        sent = {}
+        Hello(); eq(#sent, 0, "bestätigt: heute nicht noch einmal")
         W.Advance(86400); Hello(); eq(#sent, 1, "am nächsten Tag wieder")
         sent = {}
         Hello("Fremder"); W.Advance(86400); Hello("Fremder"); eq(#sent, 0, "nur an den echten Entwickler")
@@ -74,6 +82,21 @@ return function(test, eq, W, ns)
         eq(C.Summary().today, 1)
         local text = table.concat(C.Lines(), "\n")
         eq(text:find("Anna", 1, true), nil)
+    end)
+
+    counttest("Nutzerzahl: Entwickler quittiert, nur der echte und nur die eigene Kennung zählt", function(C)
+        Hello(); Deliver("Anna-Realm")
+        local ack
+        for _, m in ipairs(sent) do if m.msg:sub(1, 4) == "DVK:" then ack = m end end
+        eq(ack ~= nil, true, "Entwickler quittiert")
+        eq(ack.msg, "DVK:" .. C.Id()); eq(ack.channel, "WHISPER")
+        GuildPrideDB.countDay = nil
+        W.Receive("Fremder", ack.msg, "WHISPER")
+        eq(GuildPrideDB.countDay, nil, "Quittung von Fremden zählt nicht")
+        W.Receive("Chef", "DVK:abcdefabcdef", "WHISPER")
+        eq(GuildPrideDB.countDay, nil, "fremde Kennung zählt nicht")
+        W.Receive("Chef", ack.msg, "WHISPER")
+        eq(GuildPrideDB.countDay ~= nil, true, "eigene Kennung vom Entwickler: erledigt")
     end)
 
     counttest("Nutzerzahl: kaputte Meldungen werden verworfen", function(C)

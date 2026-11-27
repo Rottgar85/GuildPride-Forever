@@ -263,6 +263,30 @@ return function(test, eq, W, ns)
         eq(select(2, M.Send(ns.Me(), "x")), "selbst")
     end)
 
+    test("Messenger: Absender loggt später ein – offene Nachrichten gehen an den online Empfänger", function()
+        local M = ns.Messenger
+        local gm = ns.Normalize("Gm")
+        local main = ns.MainOf(gm)
+        M.DB().outbox.offen1 = { to = main, text = "noch offen", t = W.server }
+        W.sent = {}
+        M.ResendOpen()
+        local again = has(W.sent, "NMS")
+        eq(again and again.target, gm, "offene Nachricht geht an den Online-Charakter")
+        -- quittiert: nichts mehr nachschicken
+        M.DB().outbox.offen1 = nil
+        W.sent = {}
+        M.ResendOpen()
+        eq(has(W.sent, "NMS"), nil, "nach der Quittung ruhig")
+        -- Grenze: nie mehr als RESEND_MAX auf einmal
+        for i = 1, 30 do M.DB().outbox["viel" .. i] = { to = main, text = "x" .. i, t = W.server } end
+        W.sent = {}
+        M.ResendOpen()
+        local n = 0
+        for _, x in ipairs(W.sent) do if x.kind == "NMS" then n = n + 1 end end
+        eq(n, 20, "höchstens 20 auf einmal")
+        for i = 1, 30 do M.DB().outbox["viel" .. i] = nil end
+    end)
+
     test("Messenger: Empfang, ungelesen, Doppelte, nicht für mich", function()
         local M = ns.Messenger
         local me = ns.MainOf(ns.Me())

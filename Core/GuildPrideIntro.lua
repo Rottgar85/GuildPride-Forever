@@ -68,7 +68,11 @@ local function NeedsConsent()
     return GuildPrideDB.errorShare == nil or GuildPrideDB.usageShare == nil
 end
 local function Close()
+    -- Tour nie gesehen und die Stufen-Seite war dabei: ohne Wahl startet das schlanke Medium
+    local fresh, hadTier = (GuildPrideDB.introSeen or 0) == 0, false
+    for _, p in ipairs(PAGES) do if p.preset then hadTier = true end end
     GuildPrideDB.introSeen = INTRO_VERSION
+    if ns.ApplyDefaultTier then ns.Try(ns.ApplyDefaultTier, fresh and hadTier) end
     -- gesehen und kein Haken gesetzt heißt Nein (dann fragt nichts mehr nach)
     if sawConsent then
         if GuildPrideDB.errorShare == nil then GuildPrideDB.errorShare = false end

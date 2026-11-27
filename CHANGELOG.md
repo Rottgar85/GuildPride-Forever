@@ -1,5 +1,17 @@
 # GuildPride Changelog
 
+## 2.48.0
+
+**Deutsch**
+- **Schlankerer Start für neue Spieler**: Wer die Einführung schließt, ohne eine Stufe zu wählen, startet mit Medium (mit Buff-Food- und Erholungs-Erinnerung) statt mit allem. Wer GuildPride schon nutzt oder eine Stufe gewählt hat, behält seine Einstellungen
+- **Messenger**: Nachrichten gehen seltener verloren. Loggt der Absender später ein, schickt er noch nicht zugestellte Nachrichten an Empfänger nach, die dann gerade online sind (höchstens 20 je Empfänger)
+- Stabiler: Die Sprungleiste in den Einstellungen ist abgesichert
+
+**English**
+- **Leaner start for new players**: closing the intro without choosing a tier now starts you on Medium (with buff food and rest reminders) instead of everything. If you already use GuildPride or have chosen a tier, your settings stay as they are
+- **Messenger**: fewer lost messages. When the sender logs in later, they resend undelivered messages to recipients who are online at that moment (at most 20 per recipient)
+- More stable: the jump bar in the settings is protected
+
 ## 2.47.1
 
 **Deutsch**
