@@ -18,7 +18,7 @@ local TAG = "[GP]"
 local Discord = {}
 ns.Discord = Discord
 
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 local function Clean(s, max) return (tostring(s or ""):gsub("[%c|]", "")):sub(1, max or 200) end
 
 -- Einstellungen: an/aus und "verknüpft" stehen als normale Schalter in den
@@ -201,9 +201,8 @@ local function SendNow(text)
         separatedWarned = true
         ns.Print(L["Achtung: Der Discord-Chat ist vom Gildenchat getrennt, aber „Discord-Zeilen immer in den Gildenchat“ ist an. So kommt nichts in Discord an. Abschalten: Einstellungen › Gilde oder /gp discord auto"])
     end
-    local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
     lastRoute = "guild"
-    if pcall(send, text, "GUILD") then
+    if ns.SendChat(text, "GUILD") then
         -- Offizieren einmal pro Sitzung sagen, wie der Gildenchat frei bleibt
         if not hinted and not ViaGuild() and ns.IsOfficerName and ns.IsOfficerName(ns.Me()) then
             hinted = true
@@ -296,6 +295,8 @@ function Discord.Flush()
         local item = queue[i]
         if (notBefore[item] or 0) > now then
             i = i + 1
+        elseif ViaGuild() and ns.ChatBudget() < 1 then
+            break   -- Chat-Budget aufgebraucht: Rest beim nächsten Tastendruck
         else
             table.remove(queue, i)
             notBefore[item] = nil

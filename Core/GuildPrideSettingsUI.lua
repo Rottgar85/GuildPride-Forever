@@ -102,7 +102,7 @@ local options = {
     { key = "publicLFG",     label = L["Serverweite Gruppensuche (Schiffe, Rares und Auktionshaus teilen immer)"], public = true,
       changed = function() if ns.PublicLFGChanged then ns.PublicLFGChanged() end end },
     { key = "publicAlerts",  label = L["Hinweis auch bei Einträgen vom Server"], public = true },
-    { header = L["Auktionshaus"] },
+    { header = L["Auktionshaus"], tier = "max" },
     { key = "ahTab",         label = L["GuildPride-Auktionshaus nutzen (aus = nur Blizzards Auktionshaus)"],
       changed = function() if ns.AH and ns.AH.SetModernUI then ns.AH.SetModernUI(GuildPrideDB.ahTab) end end },
     { key = "ahTooltip",     label = L["Auktionshauspreis im Item-Tooltip zeigen"] },
@@ -116,7 +116,7 @@ local options = {
       changed = function() if ns.Scales and ns.Scales.Bags and ns.Scales.Bags.QueueFullRefresh then ns.Scales.Bags.QueueFullRefresh() end end },
     { key = "ahSellHint",    label = L["Verkaufs-Hinweis: Münze in den Taschen, wenn ein Preis gerade hoch ist"] },
     { key = "ahMailSummary", label = L["Briefkasten: Auktionsbriefe zusammenfassen"] },
-    { header = L["Handwerk"] },
+    { header = L["Handwerk"], tier = "solo" },
     { key = "craftCard",     label = L["Rezeptkarte am Berufsfenster (Skill-Up, Zutaten, Gewinn, Guide)"],
       changed = function() if ns.CraftCard then ns.CraftCard.SetShown(GuildPrideDB.craftCard) end end },
     { key = "craftHints",    label = L["Hinweise: Guide-Schritt geschafft, Rang-Limit, was du am Lehrer lernen solltest"] },
@@ -131,7 +131,7 @@ local options = {
     { key = "craftFish",     label = L["Angel-Leiste, wenn du eine Angel trägst"],
       changed = function() if ns.CraftFish then ns.CraftFish.Update() end end },
     { key = "craftSell",     label = L["Verkaufs-Berater im Tooltip: Händler, Auktionshaus oder behalten"] },
-    { header = L["Reisen"] },
+    { header = L["Reisen"], tier = "solo" },
     { key = "transitUI",     label = L["Abfahrten an Anlegern und Bahnsteigen zeigen (wann Schiff, Zeppelin oder Bahn kommt)"],
       changed = function() if ns.Transit and ns.Transit.SetWindow then ns.Transit.SetWindow(GuildPrideDB.transitUI) end end },
     { key = "flightTimes",   label = L["Flugzeit am Flugmeister im Tooltip zeigen (lernt echte Zeiten beim Fliegen)"] },
@@ -143,9 +143,28 @@ local options = {
       changed = function() if ns.Zettel then ns.Zettel.Changed() end end },
     { key = "mapNotesMinimap", label = L["… Zettel in der Nähe auf der Minimap zeigen"],
       changed = function() if ns.Zettel then ns.Zettel.Changed() end end },
-    { header = L["Buffs & Erholung"] },
-    { key = "buffFood",      label = L["Buff-Food-Fenster, wenn „Satt“ ausläuft (bestes Essen für deine Klasse)"],
+    { header = L["Komfort"], tier = "solo" },
+    { key = "levelInfo",     label = L["Leveln: EP pro Stunde, Zeit bis zum nächsten Level und Ruhebonus (unter „Heute“, /gp leveln)"] },
+    { key = "levelBar",      label = L["… als Balken anzeigen (verschiebbar, Rechtsklick blendet aus)"],
+      changed = function() if ns.Level then ns.Level.RefreshBar() end end },
+    { key = "repTrack",      label = L["Ruf: Rufleiste springt zur Fraktion, bei der du gerade Ruf bekommst"] },
+    { key = "supplyWarn",    label = L["Vorrat: Hinweis, wenn Reagenzien oder Munition deiner Klasse knapp werden"] },
+    { key = "bagWarn",       label = L["Taschen: Hinweis, wenn nur noch wenige Plätze frei sind, mit Vorschlägen"] },
+    { key = "autoRepair",    label = L["Beim Händler automatisch reparieren"] },
+    { key = "autoRepairGuild", label = L["… aus der Gildenbank, wenn dein Rang das darf"] },
+    { key = "sellJunk",      label = L["Beim Händler Graues automatisch verkaufen"] },
+    { key = "autoQuest",     label = L["Quests automatisch annehmen und abgeben (Umschalt halten: nichts automatisch)"] },
+    { key = "acceptInvites", label = L["Gruppen-Einladungen von Gilde und Freunden automatisch annehmen"] },
+    { key = "declineDuels",  label = L["Duell-Anfragen automatisch ablehnen"] },
+    { key = "duelAllowKnown", label = L["… außer von Gilde und Freunden"] },
+    { key = "hearthInfo",    label = L["Ruhestein: Ort und Abklingzeit unter „Heute“ und im Tooltip"] },
+    { key = "chatLinks",     label = L["Webadressen aus dem Chat merken (/gp links zum Kopieren)"] },
+    { header = L["Buffs & Erholung"], tier = "solo" },
+    { key = "buffFood",      label = L["Buff-Food-Fenster, wenn „Satt“ fehlt oder bald ausläuft (bestes Essen für deine Klasse)"],
       changed = function() if ns.Buffs then ns.Buffs.Check() end end },
+    { key = "buffFoodGroupOnly", label = L["… nur in Instanzen und Gruppen erinnern (nicht beim Questen allein)"],
+      changed = function() if ns.Buffs then ns.Buffs.Check() end end },
+    { key = "buffFoodReady", label = L["… beim Bereitschaftscheck erinnern, wenn „Satt“ fehlt oder unter 5 Min. hat"] },
     { key = "restReminder",  label = L["Schlafsack-/Lagerfeuer-Fenster, wenn „Gut erholt“ oder „Lagervorteile“ fehlt (beim Leveln)"],
       changed = function() if ns.Buffs then ns.Buffs.Check() end end },
     { header = L["Namensplaketten"] },
@@ -172,20 +191,34 @@ local options = {
 for i = #options, 1, -1 do
     if (options[i].public and not ns.HAS_PUBLIC_LFG) or (options[i].forever and not ns.IS_FOREVER) then table.remove(options, i) end
 end
-ns.SettingOptions = options   -- für Suche und Pakete (GuildPrideSearch.lua)
+ns.SettingOptions = options   -- für Suche und Stufen (GuildPrideSearch.lua, GuildPrideTier.lua)
+-- Abschnitte höherer Stufen (Light/Medium/Max) verschwinden samt Überschrift
+do
+    local need
+    for _, o in ipairs(options) do
+        if o.header then need = o.tier end
+        o.tierNeed = need
+    end
+end
+function ns.SettingVisible(o)
+    if o.tierNeed and ns.TierAllows and not ns.TierAllows(o.tierNeed) then return false end
+    return not o.show or o.show() and true or false
+end
 
 -- Kurzansicht: je Abschnitt nur das, was die meisten brauchen, und alles, was eigene Daten teilt.
 -- Der Rest steht hinter „… weitere“ am Abschnitt oder „Alle Einstellungen zeigen“.
 local TOP = {}
 for key in ([[replaceGuildFrame easyRead minimap popup helpAlerts shareMilestones raidReady cooldownShare guildQuests
-    usageShare errorShare testFeatures mapShow mapShare publicLFG ahTooltip bagMarks craftCard craftSell transitUI mapNotes buffFood restReminder
+    usageShare errorShare testFeatures mapShow mapShare publicLFG ahTooltip bagMarks craftCard craftSell transitUI mapNotes buffFood restReminder levelInfo autoRepair
     plateColors whisperWindow discordBridge ausweisAuto]]):gmatch("%a+") do TOP[key] = true end
 -- → sichtbare Zeilen in Reihenfolge, verborgene je Überschrift, verborgene insgesamt
 function ns.SettingsRows(list, all, open)
     local rows, more, hidden, head = {}, {}, 0, nil
     for _, o in ipairs(list) do
-        local on = not o.show or o.show()   -- gerade nicht zutreffend: weder Zeile noch Zähler
-        if o.header then
+        local on = ns.SettingVisible(o)   -- gerade nicht zutreffend (oder höhere Stufe): weder Zeile noch Zähler
+        if o.header and not on then
+            head = nil
+        elseif o.header then
             head = o
             rows[#rows + 1] = o
         elseif on and (all or TOP[o.key] or (head and open[head])) then
@@ -280,6 +313,10 @@ function view.Layout()
     settings:SetHeight(-view.footY + (view.footH or 0))
     if settingsScroll.UpdateScrollChildRect then settingsScroll:UpdateScrollChildRect() end
     view.allBtn:SetText(all and L["Nur die wichtigsten zeigen"] or (L["Alle Einstellungen zeigen (%d weitere)"]):format(hidden))
+    if view.LayoutJumps then view.LayoutJumps() end
+    if view.tierBtn and ns.Tier then
+        view.tierBtn:SetText((L["Stufe: %s …"]):format(ns.TierChosen() and ns.TIER_NAMES[ns.Tier()] or "Max"))
+    end
 end
 function ns.SettingsShowAll(on)
     GuildPrideDB.settingsAll = on and true or nil
@@ -341,21 +378,41 @@ end
 do
 -- Sprungleiste: ein Knopf je Abschnitt, dazu „Menü & Größe“ ganz unten
 local n = 0
-local function Jump(label, y)
+local jumps = {}
+local function Jump(label, y, opt)
     local b = CreateFrame("Button", nil, settingsPage, "UIPanelButtonTemplate")
     if ns.SkinButton then ns.SkinButton(b) end
     b:SetSize(102, 20)
     b:SetPoint("TOPLEFT", 4 + (n % 6) * 106, -30 - math.floor(n / 6) * 23)
     b:SetText(label)
+    jumps[#jumps + 1] = { b = b, opt = opt }
     local fs = b:GetFontString()
     if fs then fs:SetWidth(96); fs:SetWordWrap(false) end
     b:SetScript("OnClick", function() view.ScrollTo(y()) end)
     n = n + 1
 end
 for _, opt in ipairs(options) do
-    if opt.header and n < 11 then Jump(opt.header, function() return -opt.y end) end
+    if opt.header and n < 11 then Jump(opt.header, function() return -opt.y end, opt) end
 end
 Jump(L["Menü & Größe"], function() return -view.footY end)
+function view.LayoutJumps()
+    local i = 0
+    for _, j in ipairs(jumps) do
+        local on = not j.opt or ns.SettingVisible(j.opt)
+        j.b:SetShown(on)
+        if on then
+            j.b:ClearAllPoints()
+            j.b:SetPoint("TOPLEFT", 4 + (i % 6) * 106, -30 - math.floor(i / 6) * 23)
+            i = i + 1
+        end
+    end
+end
+-- Stufe ändern: neben der Suche oben
+view.tierBtn = CreateFrame("Button", nil, settingsPage, "UIPanelButtonTemplate")
+if ns.SkinButton then ns.SkinButton(view.tierBtn) end
+view.tierBtn:SetSize(140, 22); view.tierBtn:SetPoint("TOPLEFT", 240, -2)
+view.tierBtn:SetText("Max")
+view.tierBtn:SetScript("OnClick", function() if ns.ShowTierChoice then ns.ShowTierChoice() end end)
 end
 
 local blizzBtn = CreateFrame("Button", nil, foot, "UIPanelButtonTemplate")
@@ -674,11 +731,13 @@ if (Settings and Settings.RegisterCanvasLayoutCategory) or InterfaceOptions_AddC
     -- Schalter mit show gibt es nur im GuildPride-Fenster
     local always = {}
     for _, opt in ipairs(options) do if not opt.show then always[#always + 1] = opt end end
+    panel.rows = {}
     for i, opt in ipairs(always) do
       if opt.header then
         local h = panel.body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         h:SetPoint("TOPLEFT", 20, -4 - (i - 1) * 32 - 8)
         h:SetText(opt.header)
+        panel.rows[#panel.rows + 1] = { opt = opt, w = h, x = 20, dy = -8 }
       else
         local cb = CreateFrame("CheckButton", nil, panel.body, "UICheckButtonTemplate")
         cb:SetPoint("TOPLEFT", 16, -4 - (i - 1) * 32)
@@ -687,6 +746,7 @@ if (Settings and Settings.RegisterCanvasLayoutCategory) or InterfaceOptions_AddC
         label:SetText(opt.label)
         cb:SetScript("OnClick", function(self) SetOption(opt, self:GetChecked()) end)
         panelChecks[opt.key] = cb
+        panel.rows[#panel.rows + 1] = { opt = opt, w = cb, x = 16, dy = 0, label = label }
       end
     end
     local open = CreateFrame("Button", nil, panel.body, "UIPanelButtonTemplate")
@@ -700,6 +760,17 @@ if (Settings and Settings.RegisterCanvasLayoutCategory) or InterfaceOptions_AddC
     end)
     panel:SetScript("OnShow", function()
         if not GuildPrideDB then return end
+        local i = 0
+        for _, r in ipairs(panel.rows) do
+            local on = ns.SettingVisible(r.opt)
+            r.w:SetShown(on)
+            if r.label then r.label:SetShown(on) end
+            if on then
+                r.w:ClearAllPoints()
+                r.w:SetPoint("TOPLEFT", r.x, -4 - i * 32 + r.dy)
+                i = i + 1
+            end
+        end
         for key, cb in pairs(panelChecks) do cb:SetChecked(GuildPrideDB[key]) end
     end)
     if Settings and Settings.RegisterCanvasLayoutCategory then

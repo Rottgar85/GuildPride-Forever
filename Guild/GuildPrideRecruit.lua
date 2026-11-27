@@ -38,17 +38,16 @@ local DAY = 86400
 
 local function Now() return GetServerTime() end
 local function Clean(s, n) return (tostring(s or ""):gsub("[%c|]", "")):sub(1, n or MAX_ANSWER) end
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 local function CanManage() return CanEditMOTD and CanEditMOTD() end
 local function Profile() local p = ns.GuildTable("recruit"); return p end
 local function Apps() return ns.GuildTable("apps") end          -- nur bei Offizieren gefüllt
 local function Outbox() return ns.GuildTable("appOutbox") end   -- noch nicht bestätigte
 
-local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
 local function Locked() return C_ChatInfo and C_ChatInfo.InChatMessagingLockdown and C_ChatInfo.InChatMessagingLockdown() end
 local function Whisper(to, text)
     if Locked() then return end
-    pcall(SendChat, Clean(text, 250), "WHISPER", nil, to)
+    ns.SendChat(Clean(text, 250), "WHISPER", nil, to, true)   -- Antwort auf eine Nachricht: nie zurückhalten
 end
 
 ---------------------------------------------------------------------

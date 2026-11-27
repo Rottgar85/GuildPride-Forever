@@ -412,7 +412,7 @@ end
 ---------------------------------------------------------------------
 function N.Learn()
     local name = UnitName and UnitName("npc")
-    if not name then return end
+    if not name or ns.IsSecret(name) then return end
     local map = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
     local pos = map and C_Map.GetPlayerMapPosition and C_Map.GetPlayerMapPosition(map, "player")
     if not pos then return end

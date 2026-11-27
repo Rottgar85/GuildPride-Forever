@@ -285,6 +285,45 @@ guard("Einstellungen: das Wichtige zuerst, Rest auf Wunsch, jeder Abschnitt vert
     GuildPrideDB.testerId = nil
     ns.SettingsShowAll(false); assert(not GuildPrideDB.settingsAll and not lost.cb:IsShown(), "wieder kurz")
 end)
+guard("Stufen: bei Light verschwindet alles andere aus Menüs, Einstellungen, Suche und Befehlen", function()
+    local oldPreset = GuildPrideDB.preset
+    local L = ns.L
+    local function eq(a, b, m) assert(a == b, (m or "Stufen") .. ": " .. tostring(a) .. " statt " .. tostring(b)) end
+    local function Headers()
+        local t = {}
+        local rows = ns.SettingsRows(ns.SettingOptions or {}, true, {})
+        for _, o in ipairs(rows) do if o.header then t[o.header] = true elseif o.key then t[o.key] = true end end
+        return t
+    end
+    GuildPrideDB.preset = "light"
+    eq(ns.Tier(), "light"); eq(ns.TierAllows("solo"), false); eq(ns.TierAllows("max"), false); eq(ns.TierAllows(nil), true)
+    eq(ns.TIER_TABS["55"], "solo", "Handwerk-Reiter")
+    eq((ns.TierCommandOK("handwerk")), false); eq((ns.TierCommandOK("ah")), false); eq((ns.TierCommandOK("dkp")), true)
+    local h = Headers()
+    eq(h[L["Handwerk"]], nil); eq(h[L["Auktionshaus"]], nil); eq(h[L["Reisen"]], nil); eq(h[L["Komfort"]], nil)
+    eq(h[L["Buffs & Erholung"]], nil); eq(h.craftCard, nil); eq(h.ahTooltip, nil)
+    eq(h[L["Gilde"]], true, "Gilde bleibt"); eq(h.raidReady, true)
+    local opt
+    for _, o in ipairs(ns.SettingOptions or {}) do if o.key == "craftCard" then opt = o end end
+    eq(ns.SettingVisible(opt), false)
+    local craftTab
+    for _, t in pairs(ns.UIParts.tabs) do if t.key == "55" then craftTab = t end end
+    eq(craftTab ~= nil, true); eq(ns.TabHidden(craftTab), true, "Handwerk-Reiter weg")
+    ns.OpenTab(ns.SettingsPage); ns.SettingsShowAll(true)
+    eq(opt.cb:IsShown(), false, "Schalter im Fenster weg"); ns.SettingsShowAll(false)
+    ns.ShowTierChoice()
+    for _, r in ipairs(ns.Search.Find("handwerk")) do eq(r.kind == "command" and r.text:find("/gp handwerk", 1, true) ~= nil, false, "kein Handwerk in der Suche") end
+    GuildPrideDB.autoRepair = true
+    ns.ApplyPreset("light")
+    eq(GuildPrideDB.autoRepair, false, "Komfort läuft bei Light nicht unsichtbar weiter")
+    GuildPrideDB.preset = "medium"
+    h = Headers()
+    eq(h[L["Handwerk"]], true); eq(h[L["Auktionshaus"]], nil, "Auktionshaus erst bei Max"); eq((ns.TierCommandOK("handwerk")), true)
+    GuildPrideDB.preset = nil
+    eq(ns.Tier(), "max", "ohne Wahl: alles wie bisher"); eq(Headers()[L["Auktionshaus"]], true)
+    eq(ns.TabHidden(craftTab), false, "ohne Wahl wieder da")
+    GuildPrideDB.preset = oldPreset
+end)
 local tabs, seen = 0, {}
 for id = 1, 40 do
     guard("Reiter " .. id, function()
@@ -296,6 +335,7 @@ for id = 1, 40 do
 end
 call("ShowIntro"); call("ShowIntro", true); call("ShowSetup"); call("ShowNews")
 call("ShowCopy", "Titel", "Text")
+call("QoL.ToggleMenu"); call("QoL.ToggleMenu")   -- /gp qol: auf und wieder zu
 call("ToggleBackupWindow"); call("BugReport"); call("ErrorReport")
 call("ErrorShare.Toggle"); call("ErrorShare.Refresh")
 call("ToggleApps"); call("ShowCreateDialog"); call("ShowPollDialog")
@@ -303,7 +343,7 @@ call("Players.Toggle"); call("Transit.UpdateWindow")
 call("Zettel.OpenWriter"); call("Zettel.UpdateMinimap")
 call("Ready.Open"); call("GuildQuests.Open"); call("BossNotes.Open"); call("Stock.Open"); call("EventStats.Open")
 call("Loot.Open"); call("Album.Open"); call("Cooldowns.Open"); call("Mentor.Open"); call("Quiz.Open"); call("Search.Open", "hand")
-for _, p in ipairs({ "guild", "raid", "all" }) do call("ApplyPreset", p) end
+for _, p in ipairs({ "guild", "raid", "all", "light", "medium", "max" }) do call("ApplyPreset", p) end
 call("ApplyReadable")
 call("Search.Help"); call("Usage.Open"); call("Usage.Choose", true); call("Usage.HookWindows"); call("Hunt.Open"); call("ShowCreateDialog")
 call("CraftGaps.Open"); call("CraftGaps.Refresh"); ns.IsDev = function() return true end

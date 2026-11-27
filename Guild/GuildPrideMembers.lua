@@ -95,14 +95,13 @@ end
 local pendingWelcome = {}   -- { short, text, t }
 
 local function SendPendingWelcome()
-    if #pendingWelcome == 0 or InCombatLockdown() or Locked() then return end
+    if #pendingWelcome == 0 or InCombatLockdown() or Locked() or ns.ChatBudget() < 1 then return end
     local w = table.remove(pendingWelcome, 1)
     if not IsInGuild() or GetTime() - w.t > 120 then return end
     if welcomed[w.short] and GetTime() - welcomed[w.short] < 60 then return end
     welcomed[w.short] = GetTime()
     ns.Queue("WEL", nil, w.short)
-    local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
-    pcall(SendChat, ns.CutMessage and (ns.CutMessage(w.text)) or w.text, "GUILD")   -- zu lange nimmt das Spiel nicht an
+    ns.SendChat(ns.CutMessage and (ns.CutMessage(w.text)) or w.text, "GUILD")   -- zu lange nimmt das Spiel nicht an
 end
 
 -- Tastatur nur abhören, solange eine Begrüßung wartet und kein Kampf ist

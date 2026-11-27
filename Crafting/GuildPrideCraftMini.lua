@@ -71,6 +71,10 @@ local function Known(spell)
     return false
 end
 
+-- Im Kampf liefert Forever geschützte Werte: schon ein Vergleich stürzt ab.
+-- nil heißt dann „gerade nicht lesbar“, der alte Wert bleibt.
+local Secret = ns.IsSecret
+
 local function SpellRemaining(spell)
     local start, dur
     if C_Spell and C_Spell.GetSpellCooldown then
@@ -80,6 +84,7 @@ local function SpellRemaining(spell)
         local ok, s, d = pcall(GetSpellCooldown, spell)
         if ok then start, dur = s, d end
     end
+    if Secret(start) or Secret(dur) then return nil end
     if not (start and dur) or dur <= 1.5 or start == 0 then return 0 end
     return math.max(0, start + dur - GetTime())
 end
@@ -88,6 +93,7 @@ local function ItemRemaining(id)
     local f = (C_Container and C_Container.GetItemCooldown) or GetItemCooldown
     if not f then return 0 end
     local ok, start, dur = pcall(f, id)
+    if Secret(start) or Secret(dur) then return nil end
     if not ok or not (start and dur) or dur <= 1.5 or start == 0 then return 0 end
     return math.max(0, start + dur - GetTime())
 end
@@ -95,17 +101,19 @@ end
 -- Eigene Abklingzeiten lesen und merken
 function Mini.ReadCooldowns()
     local e = Craft.MyEntry()
+    local old = type(e.cd) == "table" and e.cd or {}
     e.cd = {}
     for _, c in ipairs(Mini.COOLDOWNS) do
-        local rem
+        local has, rem = false, nil
         if c.item then
-            if Craft.Count(c.item) > 0 then rem = ItemRemaining(c.item) end
+            if Craft.Count(c.item) > 0 then has = true; rem = ItemRemaining(c.item) end
         else
             for _, sp in ipairs(c.spells) do
-                if Known(sp) then rem = SpellRemaining(sp); break end
+                if Known(sp) then has = true; rem = SpellRemaining(sp); break end
             end
         end
-        if rem then e.cd[c.key] = GetServerTime() + math.floor(rem) end
+        if rem then e.cd[c.key] = GetServerTime() + math.floor(rem)
+        elseif has then e.cd[c.key] = old[c.key] end
     end
 end
 
@@ -255,7 +263,12 @@ Craft.OnChanged(function() Mini.Refresh() end)
 C_Timer.NewTicker(30, function() CheckCooldowns(); Mini.Refresh() end)
 
 local ev = CreateFrame("Frame")
-ns.RegisterEvents(ev, "PLAYER_LOGIN", "BAG_UPDATE_DELAYED", "TRADE_SKILL_ITEM_CRAFTED_RESULT", "SPELL_UPDATE_COOLDOWN")
+ns.RegisterEvents(ev, "PLAYER_LOGIN", "BAG_UPDATE_DELAYED", "TRADE_SKILL_ITEM_CRAFTED_RESULT", "SPELL_UPDATE_COOLDOWN",
+    "PLAYER_REGEN_ENABLED")
+-- SPELL_UPDATE_COOLDOWN kommt im Kampf ständig, die Werte sind dort ohnehin geschützt:
+-- im Kampf nur merken, danach einmal lesen; sonst höchstens alle 2 Sek.
+local cdDirty = false
+local function ReadSoon() ns.Debounce("craftMiniCD", 2, function() ns.Try(Mini.ReadCooldowns) end) end
 ev:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_LOGIN" then
         C_Timer.After(10, function()
@@ -263,7 +276,11 @@ ev:SetScript("OnEvent", function(_, event)
             CheckCooldowns()
             if type(GuildPrideDB) == "table" and GuildPrideDB.craftMiniShown then Mini.Toggle(true) end
         end)
-    elseif event == "SPELL_UPDATE_COOLDOWN" or event == "TRADE_SKILL_ITEM_CRAFTED_RESULT" then
+    elseif event == "SPELL_UPDATE_COOLDOWN" then
+        if InCombatLockdown() then cdDirty = true else ReadSoon() end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        if cdDirty then cdDirty = false; ReadSoon() end
+    elseif event == "TRADE_SKILL_ITEM_CRAFTED_RESULT" then
         ns.Try(Mini.ReadCooldowns)
     else
         Mini.Refresh()

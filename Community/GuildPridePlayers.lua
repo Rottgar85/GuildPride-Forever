@@ -19,7 +19,7 @@ local HEARTBEAT = 10 * 60   -- s: so oft meldet man sich von selbst
 local PUBLIC_MAX = 400
 local publicCount = 0
 
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 
 local function MapId()
     local m = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")

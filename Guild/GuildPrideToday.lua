@@ -7,6 +7,8 @@ local L = ns.L
 
 local T = {}
 ns.Today = T
+-- Weitere Zeilen aus anderen Dateien (Leveln, Gold …): function(add, now)
+T.EXTRA = {}
 local DAY = 86400
 
 ---------------------------------------------------------------------
@@ -131,6 +133,7 @@ function T.Lines()
     local out, now = {}, GetServerTime()
     local function add(text) out[#out + 1] = text end
     for _, fn in ipairs({ Events, Auctions, Mail, Cooldowns, Orders, Officers, Probe }) do ns.Try(fn, add, now) end
+    for _, fn in ipairs(T.EXTRA) do ns.Try(fn, add, now) end
     return out
 end
 

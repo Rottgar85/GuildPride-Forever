@@ -54,6 +54,7 @@ end
 -- Angebot merken (für den Tooltip, wo man es bekommt)
 function V.Remember()
     local name = UnitName and UnitName("npc")
+    if ns.IsSecret(name) then name = nil end
     local zone = GetZoneText and GetZoneText() or ""
     local now = GetServerTime()
     for id, o in pairs(V.Offer()) do

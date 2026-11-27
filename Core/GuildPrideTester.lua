@@ -20,6 +20,7 @@ ns.Tester = T
 
 T.LIST = {
     { key = "probe", name = L["Probe: eine Zeile unter „Heute“ auf der Übersicht"], state = "test" },
+    { key = "chatBudget", name = L["Chat-Budget: Zeilen des Addons warten, wenn zu viele auf einmal kämen"], state = "test" },
 }
 
 local function DB() return type(GuildPrideDB) == "table" and GuildPrideDB or {} end

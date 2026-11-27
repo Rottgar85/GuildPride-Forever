@@ -3,6 +3,135 @@
 local ADDON, ns = ...
 local L = ns.L
 
+-- Geschützte Werte (Forever, im Kampf und in Instanzen): schon ein Vergleich stürzt ab.
+-- Gemeinsamer Helfer für alle Dateien: erst prüfen, dann vergleichen.
+-- Datei:Zeile aus einer Stack-Zeile („[…/Buffs/GuildPrideBuffs.lua]:42: in …“ → „GuildPrideBuffs:42“)
+local function Where(level)
+    if type(debugstack) ~= "function" then return "?" end
+    local ok, s = pcall(debugstack, level, 1, 0)
+    if not ok or type(s) ~= "string" then return "?" end
+    local file, line = s:match("([%w_]+)%.lua[^:]*:(%d+)")
+    return file and (file .. ":" .. line) or (s:match("([%w_]+)%.lua") or "?")
+end
+ns.Where = Where
+
+-- Für /gp diag: wo geschützte Werte ankamen (seit dem Laden). Die Stelle wird nur für die
+-- ersten 2000 Treffer ermittelt, danach wird nur noch gezählt (spart Zeit im Kampf).
+local secretHits, secretTotal = {}, 0
+local function Hit()
+    secretTotal = secretTotal + 1
+    if secretTotal <= 2000 then
+        local w = Where(4)   -- 1 Where · 2 Hit · 3 IsSecret/AnySecret · 4 wer gefragt hat
+        secretHits[w] = (secretHits[w] or 0) + 1
+    end
+end
+function ns.SecretHits() return secretHits, secretTotal end
+function ns.ResetSecretHits() secretHits, secretTotal = {}, 0 end
+
+function ns.IsSecret(v)
+    if issecretvalue and issecretvalue(v) then Hit(); return true end
+    return false
+end
+function ns.AnySecret(...)
+    if not issecretvalue then return false end
+    for i = 1, select("#", ...) do if issecretvalue((select(i, ...))) then Hit(); return true end end
+    return false
+end
+
+-- Leistung messen (/gp leistung): Zeit je Teil („Datei: EREIGNIS“, Addon-Nachrichten).
+-- Kostet nur etwas, solange eine Messung läuft.
+local Perf = { on = false, data = {}, since = nil }
+ns.Perf = Perf
+local function PerfAdd(key, ms)
+    local d = Perf.data[key]
+    if not d then d = { n = 0, ms = 0, max = 0 }; Perf.data[key] = d end
+    d.n, d.ms = d.n + 1, d.ms + ms
+    if ms > d.max then d.max = ms end
+end
+local function PerfDone(key, t0, ...)
+    PerfAdd(key, debugprofilestop() - t0)
+    return ...
+end
+function ns.PerfWrap(key, fn)
+    return function(...)
+        if not Perf.on or type(debugprofilestop) ~= "function" then return fn(...) end
+        return PerfDone(key, debugprofilestop(), fn(...))
+    end
+end
+function Perf.Start() Perf.on = true; Perf.since = Perf.since or GetTime() end
+function Perf.Stop() Perf.on = false end
+function Perf.Reset() Perf.data = {}; Perf.since = Perf.on and GetTime() or nil end
+-- Zeilen, größter Verbrauch zuerst
+function Perf.Lines(max)
+    local list = {}
+    for k, d in pairs(Perf.data) do list[#list + 1] = { k = k, d = d } end
+    table.sort(list, function(a, b) return a.d.ms > b.d.ms end)
+    local out = {}
+    for i = 1, math.min(max or 25, #list) do
+        local e = list[i]
+        out[i] = ("%s – %.1f ms gesamt, %d×, je %.3f ms, längster %.2f ms"):format(
+            e.k, e.d.ms, e.d.n, e.d.ms / math.max(1, e.d.n), e.d.max)
+    end
+    return out
+end
+-- Ereignis-Fenster einer Datei messbar machen: OnEvent bekommt die Messung umgelegt
+local function PerfFrame(frame, src)
+    if type(frame) ~= "table" or rawget(frame, "gpPerf") then return end
+    frame.gpPerf = true
+    local orig = frame.SetScript
+    if type(orig) ~= "function" then return end
+    local function Wrap(fn)
+        return function(self, event, ...)
+            if not Perf.on or type(debugprofilestop) ~= "function" then return fn(self, event, ...) end
+            return PerfDone(src .. ": " .. tostring(event), debugprofilestop(), fn(self, event, ...))
+        end
+    end
+    frame.SetScript = function(self, what, fn)
+        if what == "OnEvent" and type(fn) == "function" then fn = Wrap(fn) end
+        return orig(self, what, fn)
+    end
+    local cur = frame.GetScript and frame:GetScript("OnEvent")
+    if type(cur) == "function" then orig(frame, "OnEvent", Wrap(cur)) end
+end
+
+-- Häufige Ereignisse bündeln: fn läuft höchstens einmal je delay Sekunden (nach der ersten
+-- Meldung; weitere Meldungen in der Wartezeit lösen nichts zusätzlich aus).
+local debouncing = {}
+function ns.Debounce(key, delay, fn)
+    if debouncing[key] then return end
+    debouncing[key] = true
+    C_Timer.After(delay, function() debouncing[key] = nil; fn() end)
+end
+
+-- Chat-Zeilen über ein gemeinsames Budget: bis zu 3 auf einmal, danach eine je 1,5 Sek.
+-- Schicken mehrere Funktionen im selben Tastendruck (Discord, Begrüßung, Werbung …),
+-- blockt das Spiel sonst („Chat message limits exceeded“). Wer warten muss, behält
+-- seine Zeile und versucht es beim nächsten Tastendruck. own = selbst getippt: geht
+-- immer, zählt aber mit.
+local CHAT_BURST, CHAT_REFILL = 3, 1.5
+local chatTokens, chatAt = CHAT_BURST, nil
+local function ChatRefill()
+    local now = GetTime()
+    chatTokens = math.min(CHAT_BURST, chatTokens + (now - (chatAt or now)) / CHAT_REFILL)
+    chatAt = now
+end
+-- Zurückgehalten wird erst einmal nur bei Testern (Testfunktion „chatBudget“)
+local function BudgetOn() return ns.Feature ~= nil and ns.Feature("chatBudget") end
+function ns.ChatBudget()
+    ChatRefill()
+    if not BudgetOn() then return math.max(1, math.floor(chatTokens)) end
+    return math.floor(chatTokens)
+end
+function ns.SendChat(text, kind, lang, target, own)
+    ChatRefill()
+    if not own and chatTokens < 1 and BudgetOn() then return false, "wait" end
+    local send = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+    if not send then return false end
+    local ok = pcall(send, text, kind, lang, target)
+    if ok then chatTokens = math.max(0, chatTokens - 1) end
+    return ok
+end
+
 ---------------------------------------------------------------------
 -- Eigene Schriften (DejaVu, siehe Media/Fonts/LICENSE-DejaVu.txt)
 ---------------------------------------------------------------------
@@ -72,6 +201,7 @@ ns.PublicChannelWanted = PublicChannelWanted
 -- Classic-Clients haben außerdem nicht alle Events:
 -- unbekannte Events werfen beim Registrieren einen Fehler, daher abgesichert.
 function ns.RegisterEvents(frame, ...)
+    PerfFrame(frame, (Where(3):gsub(":%d+$", "")))   -- 1 Where · 2 RegisterEvents · 3 die Datei
     for i = 1, select("#", ...) do pcall(frame.RegisterEvent, frame, (select(i, ...))) end
 end
 
@@ -109,7 +239,11 @@ local defaults = { sound = true, popup = true, useCustomLogo = false,
                    plateColors = true, plateColorBar = false, welcomePack = true,
                    raidReady = true, readyWindow = true, guildQuests = true, bossNotes = true, cooldownShare = true,
                    albumShot = false, easyRead = false, colorSafe = false,
-                   buffFood = false, restReminder = false, mapNotes = true, mapNotesPublic = true, mapNotesMinimap = true, craftCard = true, craftHints = true, craftTooltip = true, craftBank = true, craftNPCMap = true, craftTips = true, craftTrade = true, craftNodes = true, craftFish = true, craftSell = true,
+                   buffFood = false, buffFoodGroupOnly = false, buffFoodReady = true, restReminder = false,
+                   levelInfo = true, levelBar = true, repTrack = true, supplyWarn = true, bagWarn = true,
+                   autoRepair = false, autoRepairGuild = false,
+                   sellJunk = false, autoQuest = false, acceptInvites = false, declineDuels = false, duelAllowKnown = true,
+                   hearthInfo = true, chatLinks = true, mapNotes = true, mapNotesPublic = true, mapNotesMinimap = true, craftCard = true, craftHints = true, craftTooltip = true, craftBank = true, craftNPCMap = true, craftTips = true, craftTrade = true, craftNodes = true, craftFish = true, craftSell = true,
                    whisperWindow = true, whisperCombat = true, whisperKnownOnly = false, whisperOutgoing = true }
 ns.DEFAULTS = defaults   -- für /gp export und /gp import
 
@@ -861,7 +995,7 @@ ns.RequestHistory = RequestHistory
 -- Wer hat GuildPride? (jeder, von dem wir eine Addon-Nachricht bekommen haben)
 ns.AddonUsers = {}
 
-local function IsSecret(v) return issecretvalue and issecretvalue(v) or false end
+local IsSecret = ns.IsSecret
 
 ---------------------------------------------------------------------
 -- Addon-Nachrichten verteilen; mehrteilige ("MP") erst zusammensetzen
@@ -959,10 +1093,12 @@ local function Dispatch(message, sender)
     if ns.Handlers[kind] then
         -- Jeden Empfänger einzeln absichern: ein Fehler in einem Modul
         -- darf die Nachricht nicht für alle anderen verschlucken
+        local t0 = Perf.on and type(debugprofilestop) == "function" and debugprofilestop()
         for _, fn in ipairs(ns.Handlers[kind]) do
             local ok, err = pcall(fn, value, sender)
             if not ok then geterrorhandler()(err) end
         end
+        if t0 then PerfAdd("Nachricht " .. kind, debugprofilestop() - t0) end
     elseif kind == "LEVEL" or EXTRA_KINDS[kind] then
         value = SafeMilestoneValue(kind, value)
         if value then ShowMilestone(sender, kind, value) end
@@ -1086,7 +1222,7 @@ f:SetScript("OnEvent", function(_, event, ...)
         end
         -- Fehler an den Entwickler (GuildPrideErrorShare.lua prüft Absender und Weg selbst):
         -- auch von Fremden, nie Dispatch
-        if message:match("^DV[AEKFURT]:") then
+        if message:match("^DV[AEKFURTC]:") then
             if ns.OnErrorShareMessage then ns.OnErrorShareMessage(message, sender, channel) end
             return
         end

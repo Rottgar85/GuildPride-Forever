@@ -217,7 +217,7 @@ end
 ---------------------------------------------------------------------
 local function PublicChannel() return "GPLFG" .. (ns.CLIENT_TAG or "X") end
 ns.PublicChannelName = PublicChannel
-local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+local function SendChat(text, kind, lang, target) return ns.SendChat(text, kind, lang, target, true) end
 -- Für /gp server status: gesendet, letztes Sende-Ergebnis, empfangen
 ns.publicStats = { sent = 0, received = 0, echo = 0 }
 

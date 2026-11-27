@@ -13,7 +13,7 @@ local T_DE, T_EN = { 74, 120, 108, 111, 103, 83, 117, 108, 103, 104, 48, 72, 113
 local function Txt(t) local o = {} for i, b in ipairs(t) do o[i] = string.char(b - 3) end return table.concat(o) end
 local MAX_KNOWN = 40
 
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 
 local M32 = 4294967296
 local function Mix(s, seed, mult)

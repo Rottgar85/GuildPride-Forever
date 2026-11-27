@@ -11,9 +11,9 @@ local L = ns.L
 local Wh = {}
 ns.Whisper = Wh
 local MAX_CONV, MAX_CONVS = 200, 100
-local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+local function SendChat(text, kind, lang, target) assert(ns.SendChat(text, kind, lang, target, true)) end
 
-local function Secret(v) return issecretvalue and issecretvalue(v) end
+local Secret = ns.IsSecret
 
 function Wh.DB()
     GuildPrideDB.whispers = type(GuildPrideDB.whispers) == "table" and GuildPrideDB.whispers or {}

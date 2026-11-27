@@ -2,7 +2,13 @@
 -- Die letzte Seite fragt nach der Discord-Anbindung (GuildPrideDiscord.lua).
 local ADDON, ns = ...
 local L = ns.L
-local INTRO_VERSION = 5   -- 3: Einrichtung (welches Gildenfenster, Aussehen), 4: Messenger bis Fehler melden, 5: Werkzeuge
+local INTRO_VERSION = 7   -- 3: Einrichtung (welches Gildenfenster, Aussehen), 4: Messenger bis Fehler melden, 5: Werkzeuge,
+                          -- 6: Buff-Food-Neuerungen, 7: Stufen-Frage (Light, Medium, Max) für alle
+ns.INTRO_VERSION = INTRO_VERSION
+-- Soll die Tour beim Einloggen kommen? Neue Spieler immer, alle anderen einmal für die Neuerungen
+function ns.IntroDue(seen)
+    return (seen or 0) < INTRO_VERSION
+end
 
 -- Seiten mit "since" sind Neuerungen: Wer die Tour schon kennt, sieht nur diese
 local ALL_PAGES = {
@@ -10,8 +16,8 @@ local ALL_PAGES = {
       text = L["GuildPride ist der Treffpunkt deiner Gilde: Gildenfenster, Chat, Events, Gruppensuche, Raid-Werkzeuge, Handwerk, DKP und Discord-Anbindung an einem Ort.\n\nDiese kurze Tour zeigt dir das Wichtigste. Du kannst sie jederzeit mit /gp intro wieder öffnen."] },
     { setup = true, since = 3, title = L["Einrichtung: dein Gildenfenster"],
       text = L["GuildPride bringt ein eigenes Gildenfenster mit: Chat, Events, Gruppensuche, Berufe, DKP und mehr.\n\nWas soll die Taste J öffnen? Erreichbar bleiben beide: GuildPride über den Minimap-Knopf oder /gp, Blizzards Fenster über die Einstellungen.\n\nDu kannst das jederzeit wieder ändern: Einstellungen > „Einrichtung …“."] },
-    { preset = true, title = L["Was möchtest du nutzen?"],
-      text = L["GuildPride kann sehr viel. Such dir ein Paket aus, dann ist nur das an, was du brauchst.\n\n• Nur Gilde: Gildenfenster, Chat, Events, Hinweise\n• Gilde und Raid: dazu Bereitschaft, Boss-Notizen, Buff-Food, Wünsche\n• Alles: dazu Auktionshaus, Handwerk, Reisen, Zettel und mehr\n\nAlles lässt sich später einzeln ändern (Einstellungen oder /gp paket)."] },
+    { preset = true, since = 7, title = L["Wie möchtest du GuildPride nutzen?"],
+      text = L["Such dir eine Stufe aus. Was nicht dazugehört, ist aus und verschwindet auch aus den Menüs.\n\n• Light: nur Gilde – Gildenfenster, Chat, Events, Raid-Werkzeuge, Messenger\n• Medium: dazu alles für unterwegs allein – Handwerk, Buffs, Leveln, Reisen, Zettel, Rares, Item-Vergleich\n• Max: alles, dazu Auktionshaus und Verkaufs-Berater\n\nÄndern jederzeit mit /gp stufe."] },
     { title = L["Das Gildenfenster"],
       text = L["Drücke J (oder /gp), um das Gildenfenster zu öffnen.\n\n• Übersicht: wer online ist, nächstes Event, Neuigkeiten der Woche\n• Gilde & Chat: Gilden-, Offiziers- und Community-Chat mit Mitgliederliste\n• Gruppensuche: Hilfe für Quests und Dungeons finden\n• Umfragen, Meilensteine und Gildeninfo\n\nMit /gp blizzard kommst du zurück zum Blizzard-Fenster."] },
     { title = L["Events und Raids"],
@@ -34,6 +40,8 @@ local ALL_PAGES = {
       text = L["• Reisen: Abfahrten von Schiffen, Zeppelinen und der Tiefenbahn, Flugzeiten am Flugmeister.\n\n• Buffs: Erinnerung an Buff-Food, Schlafsack und Lagerfeuer – ein Klick benutzt es.\n\n• Fehler: Hat GuildPride einen Fehler, wirst du einmal gefragt, ob er automatisch an den Entwickler gehen darf. Ohne dein Ja wird nichts gesendet."] },
     { since = 5, title = L["Neu: Werkzeuge, Suche und Pakete"],
       text = L["• Werkzeuge (unter „Planen“): Raid-Bereitschaft, Quests der Gilde, Boss-Notizen, Materialliste, Loot-Verlauf, Paten, Quiz und mehr.\n\n• Suche über alles: die Lupe oben im Gildenfenster oder /gp suche.\n\n• Pakete: /gp paket gilde, raid oder alles schaltet nur an, was du brauchst.\n\n• Besser lesbar: größere Schrift und Farben für Farbenblinde unter Einstellungen > Allgemein."] },
+    { since = 6, title = L["Neu: Buff-Food-Erinnerung"],
+      text = L["• Vorwarnung: 2 Minuten bevor „Satt“ ausläuft, kommt das Fenster schon.\n\n• Kein Essen dabei? Es zeigt, was du kochen kannst und welche deiner Twinks Buff-Food haben.\n\n• Beim Bereitschaftscheck erinnert es, wenn „Satt“ fehlt oder bald ausläuft.\n\n• Auf Wunsch nur in Instanzen und Gruppen (Zahnrad am Buff-Fenster)."] },
     { consent = true, since = 5, title = L["Hilfst du mit, GuildPride zu verbessern?"],
       text = L["Beides ist freiwillig und lässt sich jederzeit ändern (Einstellungen › Teilen). Ohne Haken wird nichts gesendet.\n\n• Fehler: Fehlertext (kann selten einen Spielernamen enthalten), Stelle im Code, Versionen, Sprache, Umstände (Kampf, Instanzart, offene GuildPride-Fenster).\n\n• Nutzung: nur Zähler, welche Reiter, GuildPride-Fenster und /gp-Befehle du öffnest und welche Schalter du geändert hast. Höchstens einmal am Tag.\n\nNie Chat, Gold oder Notizen. Der Entwickler speichert statt deines Namens nur einen Zählcode."] },
 }
@@ -182,7 +190,7 @@ local function Build()
     win.preset = CreateFrame("Frame", nil, win)
     win.preset:SetPoint("BOTTOMLEFT", 20, 46); win.preset:SetSize(400, 28)
     local presetBtns = {}
-    for i, o in ipairs({ { "guild", L["Nur Gilde"] }, { "raid", L["Gilde und Raid"] }, { "all", L["Alles"] } }) do
+    for i, o in ipairs({ { "light", "Light" }, { "medium", "Medium" }, { "max", "Max" } }) do
         local b = CreateFrame("Button", nil, win.preset, "UIPanelButtonTemplate")
         b:SetSize(126, 24); b:SetPoint("LEFT", (i - 1) * 134, 0); b:SetText(o[2])
         b:SetScript("OnClick", function()
@@ -192,7 +200,7 @@ local function Build()
         presetBtns[i] = { b = b, key = o[1] }
     end
     function win.PresetRefresh()
-        local cur = GuildPrideDB.preset or "all"
+        local cur = ns.TierChosen and ns.TierChosen() and ns.Tier() or nil
         for _, p in ipairs(presetBtns) do p.b:SetEnabled(p.key ~= cur) end
     end
 
@@ -209,18 +217,32 @@ local function Build()
     if ns.SkinWindow then ns.Try(ns.SkinWindow, win) end
 end
 
+-- Seiten der Tour: alle, oder nur die Neuerungen seit Tour-Stand seen
+function ns.IntroPages(onlyNew, seen)
+    if seen >= INTRO_VERSION then seen = INTRO_VERSION - 1 end   -- /gp neu: letzte Neuerungen
+    local out = {}
+    for _, p in ipairs(ALL_PAGES) do
+        if (not onlyNew or (p.since or 1) > seen) and (not p.consent or NeedsConsent()) then out[#out + 1] = p end
+    end
+    if #out == 0 then out = ALL_PAGES end
+    return out
+end
+
 -- onlyNew: nur die Neuerungen seit der zuletzt gesehenen Tour
 function ns.ShowIntro(onlyNew)
     if not win then Build() end
-    PAGES = {}
-    local seen = GuildPrideDB and GuildPrideDB.introSeen or 0
-    if seen >= INTRO_VERSION then seen = INTRO_VERSION - 1 end   -- /gp neu: letzte Neuerungen
-    for _, p in ipairs(ALL_PAGES) do
-        if (not onlyNew or (p.since or 1) > seen) and (not p.consent or NeedsConsent()) then PAGES[#PAGES + 1] = p end
-    end
-    if #PAGES == 0 then PAGES = ALL_PAGES end
+    PAGES = ns.IntroPages(onlyNew, GuildPrideDB and GuildPrideDB.introSeen or 0)
     hadDiscord, sawConsent = false, false
     for _, p in ipairs(PAGES) do if p.discord then hadDiscord = true end end
+    win:Show()
+    Show(1)
+end
+
+-- Nur die Stufen-Frage (/gp stufe, Einstellungen)
+function ns.ShowTierChoice()
+    if not win then Build() end
+    PAGES, hadDiscord, sawConsent = {}, false, false
+    for _, p in ipairs(ALL_PAGES) do if p.preset then PAGES[#PAGES + 1] = p end end
     win:Show()
     Show(1)
 end
@@ -239,7 +261,7 @@ local f = CreateFrame("Frame")
 f:RegisterEvent("PLAYER_LOGIN")
 f:SetScript("OnEvent", function()
     C_Timer.After(8, function()
-        if GuildPrideDB and (GuildPrideDB.introSeen or 0) < INTRO_VERSION and not InCombatLockdown() then
+        if GuildPrideDB and ns.IntroDue(GuildPrideDB.introSeen) and not InCombatLockdown() then
             -- Wer die Tour schon kannte: nur die Neuerungen zeigen
             ns.ShowIntro((GuildPrideDB.introSeen or 0) > 0)
         end

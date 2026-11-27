@@ -11,7 +11,7 @@ local SEP = ns.SEP or "\031"
 local DKP = {}
 ns.DKP = DKP
 
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 local function Clean(s, max) return (tostring(s or ""):gsub("[%c|,:]", "")):sub(1, max or 60) end
 local function CanManage() return CanEditMOTD and CanEditMOTD() end
 local function Now() return GetServerTime() end

@@ -65,6 +65,34 @@ function C.TrimChat(cache, now)
     return n
 end
 
+-- Daten von Gilden, in denen 180 Tage keiner deiner Charaktere war (alte Gilden), fallen weg.
+-- seen = { ["Gilde@Realm"] = letzter Besuch }; Gilden ohne Zeitstempel bekommen erst einen.
+-- Ohne bekannte aktuelle Gilde (Gildeninfo noch nicht geladen) wird nichts gelöscht.
+local GUILD_DAYS = 180
+function C.TrimGuilds(guilds, seen, current, now)
+    if type(guilds) ~= "table" or type(seen) ~= "table" or not current then return 0 end
+    seen[current] = now
+    local n = 0
+    for id in pairs(guilds) do
+        if id ~= current then
+            if type(seen[id]) ~= "number" then seen[id] = now
+            elseif now - seen[id] > GUILD_DAYS * 86400 then guilds[id] = nil; seen[id] = nil; n = n + 1 end
+        end
+    end
+    for id in pairs(seen) do if guilds[id] == nil and id ~= current then seen[id] = nil end end
+    return n
+end
+
+-- Daten von Funktionen, die es nicht mehr gibt (Gold-Verlauf, 2.46.0 wieder entfernt)
+C.REMOVED = { "goldHistory", "goldNow", "goldLog" }
+function C.DropRemoved(db)
+    local n = 0
+    for _, k in ipairs(C.REMOVED) do
+        if type(db) == "table" and db[k] ~= nil then db[k] = nil; n = n + 1 end
+    end
+    return n
+end
+
 -- Vorhandene Sicherungen schlanker machen
 function C.TrimBackups()
     local n = 0
@@ -84,5 +112,12 @@ ev:SetScript("OnEvent", function()
     C_Timer.After(27, function()
         if type(GuildPrideDB) == "table" then ns.Try(C.TrimChat, GuildPrideDB.clubCache, GetServerTime()) end
         ns.Try(C.TrimBackups)
+        ns.Try(C.DropRemoved, GuildPrideDB)
+    end)
+    -- Gilde ist nach dem Einloggen erst etwas später bekannt
+    C_Timer.After(60, function()
+        if type(GuildPrideDB) ~= "table" or not ns.GuildId then return end
+        GuildPrideDB.guildSeen = GuildPrideDB.guildSeen or {}
+        ns.Try(C.TrimGuilds, GuildPrideDB.guilds, GuildPrideDB.guildSeen, ns.GuildId(), GetServerTime())
     end)
 end)

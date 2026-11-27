@@ -5,7 +5,7 @@ local ADDON, ns = ...
 local L = ns.L
 local MAX_SAVED = 60
 local HISTORY = 150
-local SendChat = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+local function SendChat(text, kind, lang, target) assert(ns.SendChat(text, kind, lang, target, true)) end
 local HAS_CLUB = C_Club and C_Club.GetGuildClubId and C_Club.GetStreams and C_Club.GetMessageRanges
 
 -- Reiter "Gilde & Chat" (GuildPrideUI.lua): Kanal-Leiste oben auf der Seite,
@@ -104,7 +104,7 @@ local TEXT_COLOR = { GUILD = "|cffe6e0da", OFFICER = "|cff40c040", CLUB = "|cff8
 -- Name noch nicht geladen? (Der Server liefert ältere Nachrichten oft ohne
 -- Autorennamen; Blizzard zeigt dann "Unbekannt".)
 -- Geschützte Werte (Midnight) zuerst prüfen: schon ein Vergleich wirft einen Fehler
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 
 -- Kommt mein Name im Text vor (nicht in eigenen Nachrichten)?
 local function MentionsMe(text, who)

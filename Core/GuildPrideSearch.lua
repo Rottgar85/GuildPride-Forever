@@ -16,8 +16,8 @@ local COMMANDS = {
     { "jagd", L["Schnitzeljagd"] }, { "album", L["Gildenalbum"] }, { "nachrichten", L["Messenger"] }, { "rares", L["Rares"] },
     { "zettel", L["Notizzettel"] }, { "brett", L["Schwarzes Brett"] }, { "buff", L["Buff-Food"] }, { "ah", L["Auktionshaus"] },
     { "melden", L["Fehler melden"] }, { "sicherung", L["Datensicherung"] }, { "export", L["Einstellungen sichern"] },
-    { "intro", L["Einführung"] }, { "paket guild", L["Paket: nur Gilde"] }, { "paket raid", L["Paket: Gilde und Raid"] },
-    { "paket all", L["Paket: alles"] }, { "version", L["Versionen in der Gilde"] },
+    { "intro", L["Einführung"] }, { "stufe", L["Stufe wählen: Light, Medium oder Max"] }, { "version", L["Versionen in der Gilde"] },
+    { "qol", L["Komfort-Schalter"] }, { "leveln", L["Leveln"] }, { "links", L["Links aus dem Chat"] },
 }
 S.COMMANDS = COMMANDS   -- auch für die Nutzungs-Statistik
 local KIND = { member = L["Mitglied"], event = L["Event"], setting = L["Einstellung"], command = L["Befehl"], note = L["Boss-Notizen"], recipe = L["Rezept"] }
@@ -38,7 +38,7 @@ function S.Find(text)
         if #out < MAX then out[#out + 1] = { kind = kind, text = label, open = open } end
     end
     for _, c in ipairs(COMMANDS) do
-        if Hit(c[1]) or Hit(c[2]) or Hit("/gp " .. c[1]) then
+        if (Hit(c[1]) or Hit(c[2]) or Hit("/gp " .. c[1])) and (not ns.TierCommandOK or ns.TierCommandOK(c[1]:match("^%S+"))) then
             Add("command", c[2] .. "  |cff888888/gp " .. c[1] .. "|r", function() SlashCmdList.GUILDPRIDE(c[1]) end)
         end
     end
@@ -59,7 +59,7 @@ function S.Find(text)
         end
     end
     for _, o in ipairs(ns.SettingOptions or {}) do
-        if o.label and Hit(o.label) and (not o.show or o.show()) then
+        if o.label and Hit(o.label) and (ns.SettingVisible and ns.SettingVisible(o) or not ns.SettingVisible and (not o.show or o.show())) then
             Add("setting", o.label, function()
                 if ns.SettingsPage then ns.OpenTab(ns.SettingsPage) end
                 if ns.ShowSetting then ns.ShowSetting(o) end
@@ -71,7 +71,7 @@ function S.Find(text)
             Add("note", n.boss .. "  |cff888888" .. tostring(n.text) .. "|r", function() if ns.BossNotes then ns.BossNotes.Open(n.inst) end end)
         end
     end
-    if #q >= 3 and ns.Crafts and ns.Crafts.Search then
+    if #q >= 3 and ns.Crafts and ns.Crafts.Search and (not ns.TierAllows or ns.TierAllows("solo")) then
         local ok, rows = ns.Try(ns.Crafts.Search, q)
         for _, r in ipairs(ok and type(rows) == "table" and rows or {}) do
             if r.recipe then
@@ -175,45 +175,10 @@ if parts and parts.discord then
     b:SetScript("OnLeave", GameTooltip_Hide)
 end
 
----------------------------------------------------------------------
--- Pakete: schalten passende Funktionen gemeinsam an und aus. Nie angefasst werden Zustimmungen
--- (errorShare), Discord, Größen, Schriften und alles, was hier nicht steht.
----------------------------------------------------------------------
-local GUILD = { "memberAlerts", "popup", "shareMilestones", "welcomePack", "mapShow", "guildQuests" }
-local RAID = { "raidReady", "bossNotes", "cooldownShare", "buffFood", "wishTooltip", "wishDropHint" }
-local REST = { "ahTooltip", "ahSellHint", "ahMailSummary", "craftCard", "craftHints", "craftTooltip", "craftBank", "craftNPCMap", "craftTips",
-    "craftTrade", "craftNodes", "craftFish", "craftSell", "transitUI", "flightTimes", "flightUI", "mapNotes", "restReminder", "plateColors", "whisperWindow" }
-local PRESETS = { guild = { GUILD }, raid = { GUILD, RAID }, all = { GUILD, RAID, REST } }
-
-function ns.ApplyPreset(key)
-    local on = PRESETS[key]
-    if not on or type(GuildPrideDB) ~= "table" then return false end
-    local want = {}
-    for _, list in ipairs({ GUILD, RAID, REST }) do for _, k in ipairs(list) do want[k] = false end end
-    for _, list in ipairs(on) do for _, k in ipairs(list) do want[k] = true end end
-    local changed = {}
-    for _, o in ipairs(ns.SettingOptions or {}) do if o.key then changed[o.key] = o.changed end end
-    for k, v in pairs(want) do
-        if GuildPrideDB[k] ~= v then
-            GuildPrideDB[k] = v
-            if changed[k] then ns.Try(changed[k]) end
-        end
-    end
-    GuildPrideDB.preset = key
-    if ns.RefreshUI then ns.RefreshUI() end
-    return true
-end
-
 local slash = SlashCmdList.GUILDPRIDE
 SlashCmdList.GUILDPRIDE = function(arg)
     local cmd, rest = strtrim(arg or ""):match("^(%S*)%s*(.*)$")
     cmd = cmd:lower()
     if cmd == "suche" or cmd == "search" or cmd == "find" then return S.Open(rest) end
-    if cmd == "paket" or cmd == "preset" then
-        local key = ({ gilde = "guild", alles = "all" })[rest:lower()] or rest:lower()
-        if ns.ApplyPreset(key) then ns.Print(L["Paket eingestellt. Alles lässt sich weiter einzeln ändern."])
-        else ns.Print(L["Pakete: /gp paket gilde · raid · alles"]) end
-        return
-    end
     return slash(arg)
 end

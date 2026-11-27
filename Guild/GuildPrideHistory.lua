@@ -22,7 +22,7 @@ local DAY = 86400
 
 local function Store() return ns.GuildTable("history") end
 local function Now() return GetServerTime() end
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 
 local function Entry(name, create)
     local s = Store()

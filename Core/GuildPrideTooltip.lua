@@ -20,7 +20,7 @@ function T.Add(order, fn)
     end)
 end
 
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 local function More()
     return (IsShiftKeyDown and IsShiftKeyDown() == true) or (type(GuildPrideDB) == "table" and GuildPrideDB.tipDetails == true)
 end

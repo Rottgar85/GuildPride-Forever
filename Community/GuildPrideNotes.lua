@@ -67,7 +67,7 @@ if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum and
         if tooltip ~= GameTooltip or not tooltip.GetUnit then return end
         local ok, _, unit = pcall(tooltip.GetUnit, tooltip)
         -- in Instanzen ist die Einheit geschützt: schon die Abfrage damit wirft einen Fehler
-        local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+        local Secret = ns.IsSecret
         if not ok or Secret(unit) or not unit then return end
         local okP, player = pcall(UnitIsPlayer, unit)
         if not okP or Secret(player) or not player then return end

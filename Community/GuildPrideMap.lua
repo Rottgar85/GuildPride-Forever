@@ -19,7 +19,7 @@ local wantedUntil, lastAsk = 0, -999
 local askers = {}       -- [Name] = bis wann er Positionen haben will
 local lastMsg, lastSentAt = nil, -999
 
-local function Secret(v) return issecretvalue and issecretvalue(v) end
+local Secret = ns.IsSecret
 local function Sharing() return GuildPrideDB and GuildPrideDB.mapShare ~= false end
 local function Showing() return GuildPrideDB and GuildPrideDB.mapShow ~= false end
 

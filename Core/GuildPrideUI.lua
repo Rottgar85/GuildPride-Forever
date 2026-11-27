@@ -444,6 +444,8 @@ local function IsFixed(tab) return tab.defaultOrder >= 90 end
 local function OfficerOK(tab) return not tab.officerOnly or (CanEditMOTD and CanEditMOTD()) and true or false end
 local function TabHidden(tab)
     if not OfficerOK(tab) then return true end
+    local need = ns.TIER_TABS and ns.TIER_TABS[tab.key]
+    if need and ns.TierAllows and not ns.TierAllows(need) then return true end
     if IsFixed(tab) then return false end
     local e = MenuEntry(tab)
     return e and e.hide and true or false
@@ -472,7 +474,8 @@ end
 local function MenuTabs()
     local list = {}
     for _, tab in ipairs(tabs) do
-        if not IsFixed(tab) and not IsGuest(tab) and OfficerOK(tab) then
+        local need = ns.TIER_TABS and ns.TIER_TABS[tab.key]
+        if not IsFixed(tab) and not IsGuest(tab) and OfficerOK(tab) and not (need and ns.TierAllows and not ns.TierAllows(need)) then
             local e = MenuEntry(tab)
             tab.order = e and tonumber(e.order) or tab.defaultOrder
             list[#list + 1] = tab

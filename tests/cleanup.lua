@@ -45,6 +45,26 @@ return function(test, eq, W, ns)
         eq(C.TrimChat(nil, now), 0)
     end)
 
+    test("Aufräumen: Daten entfernter Funktionen (Gold-Verlauf) fallen weg", function()
+        local db = { goldHistory = { Ich = {} }, goldNow = { Ich = 5 }, goldLog = true, sound = true }
+        eq(C.DropRemoved(db), 3)
+        eq(db.goldHistory, nil); eq(db.goldNow, nil); eq(db.goldLog, nil); eq(db.sound, true, "Rest bleibt")
+        eq(C.DropRemoved(db), 0)
+    end)
+
+    test("Aufräumen: Daten alter Gilden fallen nach 180 Tagen ohne Besuch weg", function()
+        local now = math.floor(W.server)
+        local guilds = { ["Jetzt@R"] = { log = {} }, ["Alt@R"] = { log = {} }, ["Neu gesehen@R"] = { log = {} } }
+        local seen = { ["Alt@R"] = now - 181 * 86400, ["Weg@R"] = now - 5 }
+        eq(C.TrimGuilds(guilds, seen, "Jetzt@R", now), 1)
+        eq(guilds["Alt@R"], nil, "alte Gilde weg"); eq(seen["Alt@R"], nil)
+        eq(guilds["Jetzt@R"] ~= nil, true, "aktuelle bleibt"); eq(seen["Jetzt@R"], now)
+        eq(guilds["Neu gesehen@R"] ~= nil, true, "ohne Zeitstempel: Uhr startet erst")
+        eq(seen["Neu gesehen@R"], now)
+        eq(seen["Weg@R"], nil, "Zeitstempel ohne Gilde aufgeräumt")
+        eq(C.TrimGuilds(guilds, seen, nil, now), 0, "ohne aktuelle Gilde (noch nicht geladen): nichts löschen")
+    end)
+
     test("Sicherung: neu Lernbares bleibt draußen und überlebt das Zurückspielen", function()
         local oldDB, oldBackup, oldReload = GuildPrideDB, GuildPrideBackupDB, ReloadUI
         local ok, err = pcall(function()

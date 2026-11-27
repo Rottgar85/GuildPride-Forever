@@ -154,6 +154,7 @@ local function HookFilterMenu()
     menuHooked = true
     Menu.ModifyMenu("MENU_WORLD_MAP_TRACKING", function(_, root)
         ns.filterMenuSeen = true
+        if GP.TierAllows and not GP.TierAllows("solo") then return end
         root:CreateDivider()
         root:CreateTitle("GuildPride Rares")
         root:CreateCheckbox("Rare-Scanner", function() return ns.Enabled() end,
@@ -165,7 +166,7 @@ end
 
 -- Eigener Knopf nur, wenn man ihn will (/gpr knopf) oder das Filtermenü fehlt
 local function UpdateToggleShown()
-    if toggle then toggle:SetShown(ns.Opt("mapButton") or not (Menu and Menu.ModifyMenu)) end
+    if toggle then toggle:SetShown((ns.Opt("mapButton") or not (Menu and Menu.ModifyMenu)) and (not GP.TierAllows or GP.TierAllows("solo"))) end
 end
 ns.UpdateToggleShown = UpdateToggleShown
 

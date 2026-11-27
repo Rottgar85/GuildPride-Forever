@@ -13,7 +13,7 @@ local DURATION = 30
 local Raid = {}
 ns.Raid = Raid
 
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 local function CanManage() return CanEditMOTD and CanEditMOTD() end
 local function Short(n) return Ambiguate(n or "", "guild") end
 local function Clean(s, max) return (tostring(s or ""):gsub("[%c|]", "")):sub(1, max or 60) end
@@ -238,7 +238,8 @@ rf:SetScript("OnEvent", function(_, event, ...)
             AddPlayers()
         end
     elseif event == "GROUP_ROSTER_UPDATE" then
-        AddPlayers()
+        -- kommt im Raid sehr oft hintereinander: gebündelt
+        ns.Debounce("raidPlayers", 2, AddPlayers)
     else
         CheckInstance()
         AddPlayers()

@@ -64,7 +64,7 @@ local function FillTooltip(tip, drag)
     end
     -- Abfahrten in der Nähe (Schiffe, Zeppeline, Tiefenbahn), wenn schon gemessen
     local T = ns.Transit
-    local ok, lines = pcall(function() return T and T.NearbyLines and T.NearbyLines(4) or {} end)
+    local ok, lines = pcall(function() return T and T.NearbyLines and (not ns.TierAllows or ns.TierAllows("solo")) and T.NearbyLines(4) or {} end)
     if ok and #lines > 0 then
         tip:AddLine(" ")
         tip:AddLine(L["Abfahrten in der Nähe"], 1, 0.82, 0)

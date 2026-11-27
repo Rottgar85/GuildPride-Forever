@@ -23,7 +23,7 @@ local function On() return GuildPrideDB and GuildPrideDB.plateColors ~= false en
 -- Gleiche Namensform wie ns.Me() (Forever: Vor- und Nachname)
 local function UnitKey(unit)
     -- geschützte Werte (Instanzen) zuerst prüfen: schon ein Vergleich damit wirft einen Fehler
-    local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+    local Secret = ns.IsSecret
     if Secret(unit) or not unit then return nil end
     local player = UnitIsPlayer(unit)
     if Secret(player) or not player then return nil end

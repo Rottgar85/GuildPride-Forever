@@ -6,7 +6,7 @@ return function(test, eq, W, ns)
     W.roster = { { "Tester", 3 }, { "Gm", 0 }, { "Offi", 1 }, { "Anna", 3 }, { "Bert", 3 }, { "Carl", 3 } }
     C_GuildInfo = { GuildRoster = function() end, GuildControlGetRankFlags = function(rankOrder) return { [9] = rankOrder <= 2 } end }
     W.Advance(61); W.Fire("GUILD_ROSTER_UPDATE")
-    for _, f in ipairs({ "Loot", "Album", "Cooldowns", "Mentor", "Quiz", "Hunt", "Search", "Readable" }) do W.Load("GuildPride" .. f .. ".lua") end
+    for _, f in ipairs({ "Loot", "Album", "Cooldowns", "Mentor", "Quiz", "Hunt", "Search", "Tier", "Readable" }) do W.Load("GuildPride" .. f .. ".lua") end
     local function msg(kind, ...) return kind .. ":" .. table.concat({ ... }, SEP) end
 
     test("Loot: eigene und fremde Beute lesen, erst ab selten, Filter nach Name", function()
@@ -127,13 +127,24 @@ return function(test, eq, W, ns)
         local keep = {}
         for k, v in pairs(GuildPrideDB) do keep[k] = v end
         GuildPrideDB.chatFont = 15
-        eq(ns.ApplyPreset("guild"), true)
-        eq(GuildPrideDB.craftCard, false); eq(GuildPrideDB.ahTooltip, false); eq(GuildPrideDB.memberAlerts, true); eq(GuildPrideDB.raidReady, false)
+        local oldScales = ScalesDB
+        ScalesDB = { tooltip = true, bagArrows = true }
+        eq(ns.ApplyPreset("light"), true)
+        eq(GuildPrideDB.preset, "light")
+        eq(GuildPrideDB.craftCard, false); eq(GuildPrideDB.ahTooltip, false); eq(GuildPrideDB.memberAlerts, true)
+        eq(GuildPrideDB.raidReady, true, "Raid-Werkzeuge gehören zur Gilde"); eq(GuildPrideDB.buffFood, false, "Solo erst ab Medium")
+        eq(ScalesDB.tooltip, false, "Item-Vergleich ist solo"); eq(ScalesDB.bagArrows, false)
         eq(ns.DEFAULTS.buffFood, false, "stört die meisten: ab Werk aus"); eq(ns.DEFAULTS.restReminder, false)
-        eq(ns.ApplyPreset("raid"), true); eq(GuildPrideDB.raidReady, true); eq(GuildPrideDB.buffFood, true); eq(GuildPrideDB.craftCard, false)
-        eq(ns.ApplyPreset("all"), true); eq(GuildPrideDB.craftCard, true); eq(GuildPrideDB.raidReady, true)
+        eq(ns.ApplyPreset("medium"), true); eq(GuildPrideDB.raidReady, true); eq(GuildPrideDB.buffFood, true); eq(GuildPrideDB.craftCard, true)
+        eq(GuildPrideDB.ahTooltip, false, "Auktionshaus erst bei Max"); eq(ScalesDB.tooltip, true)
+        eq(ns.ApplyPreset("max"), true); eq(GuildPrideDB.ahTooltip, true); eq(GuildPrideDB.ahTab, true); eq(GuildPrideDB.craftSell, true)
         eq(GuildPrideDB.chatFont, 15, "Schrift bleibt"); eq(GuildPrideDB.errorShare, keep.errorShare, "Zustimmung bleibt")
+        -- alte Namen und deutsche Wörter gehen weiter
+        eq(ns.ApplyPreset("guild"), true); eq(GuildPrideDB.preset, "light")
+        eq(ns.ApplyPreset("all"), true); eq(GuildPrideDB.preset, "max")
+        eq(ns.PresetKey("mittel"), "medium"); eq(ns.PresetKey("raid"), "light"); eq(ns.PresetKey(nil), nil)
         eq(ns.ApplyPreset("quatsch"), false)
+        ScalesDB = oldScales
         for k in pairs(GuildPrideDB) do GuildPrideDB[k] = nil end
         for k, v in pairs(keep) do GuildPrideDB[k] = v end
     end)

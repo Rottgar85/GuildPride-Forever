@@ -1,5 +1,25 @@
 # GuildPride Changelog
 
+## 2.46.0
+
+**Deutsch**
+- **Light, Medium oder Max**: Beim ersten Einloggen nach dem Update fragt GuildPride einmal, wie du es nutzen willst. **Light**: nur die Gilde (Gildenfenster, Chat, Events, Raid-Werkzeuge, Messenger). **Medium**: dazu alles für unterwegs allein (Handwerk, Buffs, Leveln, Komfort, Reisen, Zettel, Rares, Item-Vergleich). **Max**: alles, dazu Auktionshaus und Verkaufs-Berater. Was nicht dazugehört, ist aus und verschwindet auch aus Menü, Einstellungen, Suche und Befehlen. Ändern mit `/gp stufe` oder dem Knopf oben in den Einstellungen; ohne Wahl bleibt alles wie bisher
+- **Komfort** (neuer Abschnitt in den Einstellungen, Übersicht mit `/gp qol`): Leveln mit EP pro Stunde, Zeit bis zum nächsten Level und Ausgeruht (`/gp leveln`, verschiebbarer EP-Balken), Ruf-Balken folgt von selbst, Warnung bei fehlenden Reagenzien oder Munition und vollen Taschen, Ruhestein-Info, Links aus dem Chat sammeln (`/gp links`)
+- **Auf Wunsch, ab Werk aus**: automatisch reparieren (auch aus der Gildenbank), Graues verkaufen, Quests automatisch annehmen und abgeben, Einladungen von Gilde und Freunden annehmen, Duelle ablehnen
+- **Buff-Food**: zählt nur noch „Satt“ und schlägt keine Rezepte mehr vor. Neu: Vorwarnung 2 Minuten vorher, auf Wunsch nur in Instanzen und Gruppen, zeigt, was du kochen kannst und welche Twinks Buff-Food haben, Erinnerung beim Bereitschaftscheck
+- Daten von Gilden, in denen du seit 180 Tagen nicht warst, werden aufgeräumt
+- Behoben: Fehler im kleinen Handwerk-Fenster während des Kampfes (Abklingzeiten)
+- Stabiler bei geschützten Werten in Forever
+
+**English**
+- **Light, Medium or Max**: at the first login after the update GuildPride asks once how you want to use it. **Light**: guild only (guild window, chat, events, raid tools, messenger). **Medium**: plus everything for playing on your own (crafting, buffs, levelling, comfort, travel, notes, rares, item comparison). **Max**: everything, plus auction house and selling advisor. Whatever is not part of it is off and also disappears from the menu, settings, search and commands. Change it with `/gp tier` or the button at the top of the settings; without a choice everything stays as before
+- **Comfort** (new settings section, overview with `/gp qol`): levelling with XP per hour, time to the next level and rested (`/gp leveln`, movable XP bar), reputation bar follows by itself, warning about missing reagents or ammo and full bags, hearthstone info, collect links from chat (`/gp links`)
+- **If you like, off by default**: auto repair (also from the guild bank), sell grey items, accept and turn in quests automatically, accept invites from guild and friends, decline duels
+- **Buff food**: only counts "Well Fed" and no longer suggests recipes. New: early warning 2 minutes before, optionally only in instances and groups, shows what you can cook and which alts have buff food, reminder on ready checks
+- Data of guilds you have not visited for 180 days is cleaned up
+- Fixed: error in the small crafting window during combat (cooldowns)
+- More stable with protected values in Forever
+
 ## 2.45.1
 
 **Deutsch**

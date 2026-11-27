@@ -15,7 +15,7 @@ R.data = {}                 -- [Name] = { Status, t = GetTime() }
 local LOW_DUR = 40          -- darunter ist es ein Problem
 local MAX_AGE = 600
 
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 local function Enabled() return not (type(GuildPrideDB) == "table" and GuildPrideDB.raidReady == false) end
 
 -- Gruppe: { [Name] = { leader, assist } }, dazu die Namen in Reihenfolge

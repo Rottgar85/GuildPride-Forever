@@ -260,12 +260,15 @@ function ns.OnErrorShareMessage(message, sender, channel)
     if kind == "DVA" then
         OnHello(value, sender)
         if ns.Usage and value == ns.CLIENT_TAG and ns.IsMarked and ns.IsMarked(sender) then ns.Usage.OnHello(sender) end
+        -- Nutzerzahl (GuildPrideCount.lua): immer an, anonym
+        if ns.UserCount and value == ns.CLIENT_TAG then ns.UserCount.OnHello(sender) end
         if ns.Tester then ns.Tester.OnMessage(kind, value, sender, channel) end
     elseif kind == "DVT" or kind == "DVR" then
         if ns.Tester then ns.Tester.OnMessage(kind, value, sender, channel) end
     elseif kind == "DVF" then OnFixed(value, sender)
     elseif channel ~= "WHISPER" then return
     elseif kind == "DVE" or kind == "DVU" then OnPiece(value, sender, kind)
+    elseif kind == "DVC" then if ns.UserCount then ns.UserCount.Collect(value, sender) end
     elseif kind == "DVK" then OnAck(value, sender) end
 end
 
@@ -455,6 +458,10 @@ local function BuildWindow()
     end)
     Button("Jetzt abfragen", 174, function() S.Hello() end)
     Button("Nutzung", 494, function() if ns.Usage then ns.Usage.Open() end end)
+    local count = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
+    if ns.SkinButton then ns.SkinButton(count) end
+    count:SetSize(110, 22); count:SetPoint("TOPRIGHT", -280, -10); count:SetText("Nutzerzahl")
+    count:SetScript("OnClick", function() if ns.UserCount then ns.UserCount.Open() end end)
     local tests = CreateFrame("Button", nil, win, "UIPanelButtonTemplate")
     if ns.SkinButton then ns.SkinButton(tests) end
     tests:SetSize(110, 22); tests:SetPoint("TOPRIGHT", -44, -10); tests:SetText("Testliste")

@@ -2,18 +2,24 @@
 
 **Your guild, front and center.** GuildPride replaces the default guild window with a fully styled guild hub – and adds what WoW Forever is missing: ship, zeppelin and Deeprun Tram timers, a rare scanner, a full auction house, a crafting window, raid tools, Discord sync and DKP. Works for any guild and is made **only for WoW Forever**. For Retail and Classic, use the regular GuildPride addon.
 
-*Version 2.45.1 · Deutsche Beschreibung weiter unten.*
+*Version 2.46.0 · Deutsche Beschreibung weiter unten.*
 
 ---
 
 ## 🇬🇧 English
+
+### NEW in 2.46
+
+- **Light, Medium or Max** – on first start GuildPride asks how you want to use it: guild only, plus solo features, or everything. Whatever is not part of it disappears from menus and commands too (`/gp tier`).
+- **Comfort** (`/gp qol`) – XP per hour and time to level, reputation bar, reagent and bag warnings, hearthstone info, chat links; optional auto repair, sell grey, auto quests, accept invites, decline duels.
+- **Buff food** – early warning, instances and groups only if you like, what you can cook and which alts have buff food.
 
 ### NEW in 2.42 and 2.43
 
 - **2.43:** tools as tiles, `/gp help` with all commands, jump bar in the settings, multi-line boss notes, material list by name with guild bank stock, fewer messages at login.
 - **Tools page** under *Plan*: raid readiness, guild quests, boss notes, material list, loot history, group cooldowns, mentors, quiz, album and event statistics – see *Tools* below.
 - **Search everything** – magnifier at the top of the guild window or `/gp search`: members, events, settings, commands, boss notes and recipes.
-- **Presets** – `/gp preset guild`, `raid` or `all` turns on only what you need. Plus a larger font and colours for colour blindness.
+- **Tiers** – `/gp tier light`, `medium` or `max` turns on only what you need. Plus a larger font and colours for colour blindness.
 - **Error reports only with your yes**, an error report that only counts GuildPride errors, and much less memory for auction prices.
 
 ### Guild window
@@ -103,12 +109,18 @@
 
 **Deine Gilde im Mittelpunkt.** GuildPride ersetzt das normale Gildenfenster durch einen komplett gestalteten Gilden-Treffpunkt – und bringt mit, was WoW Forever fehlt: Schiffs-, Zeppelin- und Tiefenbahnzeiten, einen Rare-Scanner, ein vollständiges Auktionshaus, ein Handwerk-Fenster, Raid-Werkzeuge, Discord-Anbindung und DKP. Funktioniert für jede Gilde und ist **nur für WoW Forever** gemacht. Für Retail und Classic gibt es das normale GuildPride.
 
+### NEU in 2.46
+
+- **Light, Medium oder Max** – beim ersten Start fragt GuildPride, wie du es nutzen willst: nur Gilde, dazu Solo-Funktionen oder alles. Was nicht dazugehört, verschwindet auch aus Menüs und Befehlen (`/gp stufe`).
+- **Komfort** (`/gp qol`) – EP pro Stunde und Zeit bis zum Level, Ruf-Balken, Warnungen zu Reagenzien und Taschen, Ruhestein-Info, Chat-Links; auf Wunsch automatisch reparieren, Graues verkaufen, Quests automatisch, Einladungen annehmen, Duelle ablehnen.
+- **Buff-Food** – Vorwarnung, auf Wunsch nur in Instanzen und Gruppen, was du kochen kannst und welche Twinks Buff-Food haben.
+
 ### NEU in 2.42 und 2.43
 
 - **2.43:** Werkzeuge als Kacheln, `/gp hilfe` mit allen Befehlen, Sprungleiste in den Einstellungen, mehrzeilige Boss-Notizen, Materialliste nach Namen mit Bestand der Gildenbank, weniger Nachrichten beim Einloggen.
 - **Seite „Werkzeuge“** unter *Planen*: Raid-Bereitschaft, Quests der Gilde, Boss-Notizen, Materialliste, Loot-Verlauf, Abklingzeiten, Paten, Quiz, Album und Event-Auswertung – siehe *Werkzeuge* weiter unten.
 - **Suche über alles** – Lupe oben im Gildenfenster oder `/gp suche`: Mitglieder, Events, Einstellungen, Befehle, Boss-Notizen und Rezepte.
-- **Pakete** – `/gp paket gilde`, `raid` oder `alles` schaltet nur an, was du brauchst. Dazu größere Schrift und Farben für Farbenblinde.
+- **Stufen** – `/gp stufe light`, `medium` oder `max` schaltet nur an, was du brauchst. Dazu größere Schrift und Farben für Farbenblinde.
 - **Fehlerberichte nur mit deinem Ja**, ein Fehlerbericht, der nur noch GuildPride-Fehler zählt, und viel weniger Speicher für Auktionspreise.
 
 ### Gildenfenster

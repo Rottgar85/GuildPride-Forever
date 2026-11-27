@@ -56,6 +56,8 @@ local function NewFrame()
     function f:Hide() self.shown = false end
     function f:SetShown(v) self.shown = v and true or false end
     function f:IsShown() return self.shown and true or false end
+    function f:GetFrameLevel() return self.level or 1 end
+    function f:SetFrameLevel(l) self.level = l end
     setmetatable(f, { __index = function() return magic end })
     W.frames[#W.frames + 1] = f
     return f

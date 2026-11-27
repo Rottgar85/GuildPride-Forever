@@ -365,6 +365,35 @@ return function(test, eq, W, ns)
         GuildPrideDB.craftChars["Twink"].cd = nil
     end)
 
+    test("Handwerk: Abklingzeiten werden im Kampf nicht gelesen, danach einmal nachgeholt", function()
+        local oldRead, oldCombat, reads = Mini.ReadCooldowns, InCombatLockdown, 0
+        Mini.ReadCooldowns = function() reads = reads + 1 end
+        InCombatLockdown = function() return true end
+        for _ = 1, 20 do W.Fire("SPELL_UPDATE_COOLDOWN") end
+        eq(reads, 0, "im Kampf nichts lesen")
+        InCombatLockdown = function() return false end
+        W.Fire("PLAYER_REGEN_ENABLED")
+        eq(reads, 1, "nach dem Kampf einmal")
+        W.Fire("PLAYER_REGEN_ENABLED")
+        eq(reads, 1, "ohne neues Ereignis nichts")
+        Mini.ReadCooldowns, InCombatLockdown = oldRead, oldCombat
+    end)
+
+    test("Handwerk: geschützte Abklingzeiten (Kampf) stürzen nicht ab und behalten alte Werte", function()
+        local oldSecret, oldCSpell, oldKnown = issecretvalue, C_Spell, IsPlayerSpell
+        local SECRET = setmetatable({}, { __lt = function() error("secret compare") end,
+            __le = function() error("secret compare") end })
+        issecretvalue = function(v) return v == SECRET end
+        IsPlayerSpell = function(id) return id == 18560 end
+        C_Spell = { GetSpellCooldown = function() return { startTime = SECRET, duration = SECRET } end }
+        local e = Craft.MyEntry()
+        e.cd = { mooncloth = 12345 }
+        Mini.ReadCooldowns()
+        eq(e.cd.mooncloth, 12345, "alter Wert bleibt")
+        issecretvalue, C_Spell, IsPlayerSpell = oldSecret, oldCSpell, oldKnown
+        e.cd = nil
+    end)
+
     test("Handwerk: Gilde fragen – Antwort mit eigenem Charakter, gemerkt beim Fragenden", function()
         GuildPrideDB.craftChars[Craft.Me()].known = { [164] = { [2660] = true } }
         local hits = Ask.MyMatches("ezept26")

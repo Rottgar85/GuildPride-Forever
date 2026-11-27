@@ -837,6 +837,7 @@ require("itemid")(test, eq, W, ns)
 require("players")(test, eq, W, ns)
 require("more")(test, eq, W, ns)
 require("buffs")(test, eq, W, ns)
+require("comfort")(test, eq, W, ns)
 require("zettel")(test, eq, W, ns)
 require("craft")(test, eq, W, ns)
 require("errors")(test, eq, W, ns); ns.Try = W.Try
@@ -853,6 +854,7 @@ require("today")(test, eq, W, ns)
 require("tester")(test, eq, W, ns); ns.Try = W.Try
 require("channelwatch")(test, eq, W, ns)
 require("usage")(test, eq, W, ns); ns.Try = W.Try
+require("count")(test, eq, W, ns); ns.Try = W.Try
 
 test("Gruppensuche: Dungeon-Auswahl filtert Gruppen aus dem Dungeonbrowser", function()
     local match = ns.BrowserDungeonMatch
@@ -1157,6 +1159,160 @@ test("Forever: kein ungeschütztes globales GetItemInfo (gibt es dort nicht mehr
     end
     -- Wishlist und Scales haben vorher schon C_Item geprüft
     for i = #bad, 1, -1 do if bad[i]:find("Wishlist", 1, true) or bad[i]:find("Scales", 1, true) then table.remove(bad, i) end end
+    eq(table.concat(bad, ", "), "")
+end)
+
+test("Bündeln: häufige Ereignisse lösen höchstens einen Aufruf je Wartezeit aus", function()
+    local oldAfter, queued, calls = C_Timer.After, {}, 0
+    C_Timer.After = function(_, fn) queued[#queued + 1] = fn end
+    for _ = 1, 5 do ns.Debounce("test", 2, function() calls = calls + 1 end) end
+    eq(#queued, 1, "nur ein Zeitgeber")
+    queued[1]()
+    eq(calls, 1)
+    ns.Debounce("test", 2, function() calls = calls + 1 end)
+    eq(#queued, 2, "danach wieder frei")
+    C_Timer.After = oldAfter
+end)
+
+test("Chat-Budget: nur für Tester; sonst wird nichts zurückgehalten", function()
+    local oldChat, oldFeature = C_ChatInfo, ns.Feature
+    C_ChatInfo = { SendChatMessage = function() end }
+    ns.Feature = function() return false end
+    W.Advance(10)
+    for _ = 1, 6 do eq(ns.SendChat("x", "GUILD"), true) end
+    eq(ns.ChatBudget() >= 1, true, "Budget zählt nicht ohne Testfunktion")
+    ns.Feature, C_ChatInfo = oldFeature, oldChat
+end)
+
+test("Einführung: Stufen-Frage (Light/Medium/Max) beim Einloggen für alle", function()
+    if not ns.IntroDue then W.Load("GuildPrideIntro.lua") end
+    eq(ns.IntroDue(0), true, "neue Spieler: ganze Tour")
+    eq(ns.IntroDue(5), true, "kennt die Tour: Neuerungen mit Stufen-Frage")
+    eq(ns.IntroDue(6), true, "Tester von 2.46: Stufen-Frage auch")
+    eq(ns.IntroDue(7), false)
+    local only = ns.IntroPages(true, 6)
+    eq(#only, 1); eq(only[1].preset, true)
+    eq(only[1].text:find("Light", 1, true) ~= nil, true); eq(only[1].text:find("Max", 1, true) ~= nil, true)
+    eq(only[1].text:find("Entwickler", 1, true), nil, "kein Hinweis auf die Zählung")
+end)
+
+test("Leistung: Messung zählt Zeit je Teil, nur während sie läuft", function()
+    local oldProf, oldStack, t = debugprofilestop, debugstack, 0
+    debugprofilestop = function() t = t + 2; return t end
+    debugstack = function() return "[Interface/AddOns/GuildPrideForever/Guild/GuildPrideRaid.lua]:12: in main chunk" end
+    ns.Perf.Reset()
+    local f = CreateFrame("Frame")
+    ns.RegisterEvents(f, "GROUP_ROSTER_UPDATE")
+    local calls = 0
+    f:SetScript("OnEvent", function() calls = calls + 1 end)
+    W.Fire("GROUP_ROSTER_UPDATE")
+    eq(next(ns.Perf.data), nil, "ohne Messung nichts")
+    ns.Perf.Start()
+    W.Fire("GROUP_ROSTER_UPDATE"); W.Fire("GROUP_ROSTER_UPDATE")
+    local d = ns.Perf.data["GuildPrideRaid: GROUP_ROSTER_UPDATE"]
+    eq(calls, 3); eq(d and d.n, 2); eq(d and d.ms, 4)
+    local wrapped = ns.PerfWrap("Probe", function(a, b) return a + b end)
+    eq(wrapped(2, 3), 5, "Rückgabe bleibt")
+    eq(ns.Perf.data["Probe"].n, 1)
+    local lines = ns.Perf.Lines()
+    eq(lines[1]:find("GuildPrideRaid: GROUP_ROSTER_UPDATE", 1, true) ~= nil, true, "größter Verbrauch oben")
+    ns.Perf.Stop(); ns.Perf.Reset()
+    debugprofilestop, debugstack = oldProf, oldStack
+end)
+
+test("Diagnose: geschützte Werte werden mit Stelle gezählt", function()
+    local oldSecret, oldStack = issecretvalue, debugstack
+    issecretvalue = function(v) return v == "geheim" end
+    debugstack = function() return "[Interface/AddOns/GuildPrideForever/Buffs/GuildPrideBuffs.lua]:42: in function <x>" end
+    ns.ResetSecretHits()
+    ns.IsSecret("offen"); ns.IsSecret("geheim"); ns.IsSecret("geheim"); ns.AnySecret(1, "geheim")
+    local hits, total = ns.SecretHits()
+    eq(total, 3); eq(hits["GuildPrideBuffs:42"], 3)
+    if not ns.DiagReport then W.Load("GuildPrideDiag.lua") end
+    eq(ns.DiagReport():find("GuildPrideBuffs:42", 1, true) ~= nil, true, "steht in /gp diag")
+    ns.ResetSecretHits()
+    issecretvalue, debugstack = oldSecret, oldStack
+end)
+
+test("Chat: gemeinsames Budget für Zeilen, die das Addon selbst schickt", function()
+    local oldChat, sent, oldFeature = C_ChatInfo, {}, ns.Feature
+    ns.Feature = function(k) return k == "chatBudget" end
+    C_ChatInfo = { SendChatMessage = function(text, kind) sent[#sent + 1] = kind .. ":" .. text end }
+    W.Advance(10)   -- Budget voll
+    eq(ns.SendChat("a", "GUILD"), true); eq(ns.SendChat("b", "GUILD"), true); eq(ns.SendChat("c", "GUILD"), true)
+    local ok, why = ns.SendChat("d", "GUILD")
+    eq(ok, false, "viertes sofort: warten"); eq(why, "wait")
+    eq(ns.ChatBudget(), 0)
+    eq(ns.SendChat("selbst getippt", "GUILD", nil, nil, true), true, "eigene Nachricht geht immer")
+    W.Advance(1.6)
+    eq(ns.ChatBudget(), 1, "nach 1,5 Sek. wieder eine")
+    eq(ns.SendChat("e", "GUILD"), true)
+    eq(#sent, 5)
+    C_ChatInfo, ns.Feature = oldChat, oldFeature
+end)
+
+test("Einführung: wer die Tour kennt, bekommt die Stufen-Frage und die Buff-Neuerungen einmal", function()
+    if not ns.IntroPages then W.Load("GuildPrideIntro.lua") end
+    local function Titles(list)
+        local t = {}
+        for _, p in ipairs(list) do t[#t + 1] = p.title end
+        return table.concat(t, " | ")
+    end
+    local fresh = ns.IntroPages(false, 0)
+    eq(Titles(fresh):find("Wie möchtest du GuildPride nutzen?", 1, true) ~= nil, true, "neue Spieler: ganze Tour mit Stufen")
+    local known = Titles(ns.IntroPages(true, 5))
+    eq(known:find("Wie möchtest du GuildPride nutzen?", 1, true) ~= nil, true, "bekannte Tour: Stufen-Frage neu dabei")
+    eq(known:find("Neu: Buff-Food", 1, true) ~= nil, true)
+    eq(known:find("Das Gildenfenster", 1, true), nil, "Altes nicht noch einmal")
+    eq(ns.INTRO_VERSION, 7)
+end)
+
+test("Gespeichert: Schalter und Daten haben nie denselben Namen (Schalter true ≠ Tabelle)", function()
+    local bad = {}
+    for line in io.lines("GuildPrideForever.toc") do
+        local path = line:gsub("\r", ""):gsub("\\", "/")
+        if path:match("%.lua$") and not path:find("^#") then
+            local f = io.open(path, "rb"); local s = f:read("*a"); f:close()
+            for key in s:gmatch("GuildPrideDB%.([%w_]+) = GuildPrideDB%.[%w_]+ or {}") do
+                if type(ns.DEFAULTS[key]) == "boolean" then bad[#bad + 1] = path .. ": " .. key end
+            end
+            for key in s:gmatch("GuildPrideDB%.([%w_]+) = {}") do
+                if type(ns.DEFAULTS[key]) == "boolean" then bad[#bad + 1] = path .. ": " .. key end
+            end
+        end
+    end
+    eq(table.concat(bad, ", "), "")
+end)
+
+test("Forever: gemeinsamer Helfer für geschützte Werte", function()
+    eq(type(ns.IsSecret), "function")
+    eq(ns.IsSecret(5), false, "ohne issecretvalue nie geschützt")
+    local old = issecretvalue
+    issecretvalue = function(v) return v == "geheim" end
+    eq(ns.IsSecret("geheim"), true); eq(ns.IsSecret("offen"), false)
+    eq(ns.AnySecret(1, "geheim", 3), true); eq(ns.AnySecret(1, 2), false)
+    issecretvalue = old
+end)
+
+test("Forever: wer geschützte Werte abfragt, prüft sie auch (Abklingzeiten, Buffs, Einheiten)", function()
+    -- Diese Abfragen liefern im Kampf oder in Instanzen geschützte Werte: schon ein Vergleich stürzt ab
+    local RISKY = { "GetSpellCooldown", "GetItemCooldown", "GetAuraDataByIndex", "UnitBuff%(", "UnitAura%(",
+        "GetInventoryItemDurability", "GetUnit%)", "UnitName%(\"npc\"", "UnitName%(\"target\"", "UnitName%(unit",
+        "UnitIsPlayer", "UnitGUID%(" }
+    local CHECK = { "issecretvalue", "IsSecret", "Secret%(", "AnySecret" }
+    local bad = {}
+    for line in io.lines("GuildPrideForever.toc") do
+        local path = line:gsub("\r", ""):gsub("\\", "/")
+        if path:match("%.lua$") and not path:find("^#") then
+            local f = io.open(path, "rb"); local s = f:read("*a"); f:close()
+            s = s:gsub("%-%-[^\n]*", "")
+            local hit
+            for _, p in ipairs(RISKY) do if s:find(p) then hit = p; break end end
+            local checked = false
+            for _, p in ipairs(CHECK) do if s:find(p) then checked = true; break end end
+            if hit and not checked then bad[#bad + 1] = path .. " (" .. hit:gsub("%%", "") .. ")" end
+        end
+    end
     eq(table.concat(bad, ", "), "")
 end)
 

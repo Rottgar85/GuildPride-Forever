@@ -167,6 +167,20 @@ function ns.DiagReport()
     lines[#lines + 1] = ("Auktionspreise: %d, davon gepackt %d"):format(items, packed)
     Add("Zettel", Count(type(GuildPrideDB) == "table" and GuildPrideDB.zettel))
     Add("Gespeicherte Fehler", Count(type(GuildPrideDB) == "table" and GuildPrideDB.errors))
+    if ns.Perf and next(ns.Perf.data) then
+        lines[#lines + 1] = "Messung (/gp leistung):"
+        for _, l in ipairs(ns.Perf.Lines(8)) do lines[#lines + 1] = "  " .. l end
+    end
+
+    -- Wo kamen seit dem Laden geschützte Werte an? Hilft beim nächsten Forever-Patch
+    Head("Geschützte Werte")
+    local hits, total = {}, 0
+    if ns.SecretHits then hits, total = ns.SecretHits() end
+    lines[#lines + 1] = ("Seit dem Laden: %d"):format(total)
+    local list = {}
+    for where, n in pairs(hits) do list[#list + 1] = { where = where, n = n } end
+    table.sort(list, function(a, b) return a.n > b.n end)
+    for i = 1, math.min(12, #list) do lines[#lines + 1] = ("  %s ×%d"):format(list[i].where, list[i].n) end
 
     return table.concat(lines, "\n")
 end
@@ -174,6 +188,23 @@ end
 local orig = SlashCmdList.GUILDPRIDE
 SlashCmdList.GUILDPRIDE = function(arg)
     local cmd = strtrim(arg or ""):lower()
+    local sub = cmd:match("^leistung%s*(.*)$") or cmd:match("^perf%s*(.*)$")
+    if sub and ns.Perf then
+        local P = ns.Perf
+        if sub == "start" then
+            P.Reset(); P.Start()
+            ns.Print(L["Messung läuft. Spiel wie immer (gern im Raid), dann /gp leistung für das Ergebnis, /gp leistung stopp zum Beenden."])
+        elseif sub == "stopp" or sub == "stop" then
+            P.Stop(); ns.Print(L["Messung beendet. /gp leistung zeigt das Ergebnis."])
+        else
+            if not next(P.data) then ns.Print(L["Noch keine Messung. Starten mit /gp leistung start."]); return end
+            local head = ("GuildPride-Leistung · %d Sek. gemessen%s\n"):format(
+                math.floor(GetTime() - (P.since or GetTime())), P.on and " (läuft noch)" or "")
+            local text = head .. "\n" .. table.concat(P.Lines(30), "\n")
+            if ns.ShowCopy then ns.ShowCopy(L["Leistung – alles markieren, kopieren und uns schicken"], text) else print(text) end
+        end
+        return
+    end
     if cmd == "diag" or cmd == "diagnose" then
         if ns.ShowCopy then
             ns.ShowCopy(L["Diagnose – alles markieren, kopieren und uns schicken"], ns.DiagReport())

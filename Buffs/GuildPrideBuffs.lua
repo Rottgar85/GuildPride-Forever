@@ -1,7 +1,10 @@
 -- GuildPride: Buff-Food- und Erholungs-Erinnerung
--- * Buff-Food (buffFood): läuft „Satt“ (Well Fed) aus, öffnet sich ein kleines
---   Fenster mit dem Buff-Food aus deinen Taschen – das beste für deine Klasse
---   steht vorne. Ein Klick isst es, das Fenster verschwindet.
+-- * Buff-Food (buffFood): 2 Min. bevor „Satt“ (Well Fed) ausläuft oder wenn es
+--   fehlt, öffnet sich ein kleines Fenster mit dem Buff-Food aus deinen Taschen –
+--   das beste für deine Klasse steht vorne. Ein Klick isst es, das Fenster verschwindet.
+--   Nichts dabei: es nennt, was du kochen kannst und was deine Twinks haben.
+--   buffFoodGroupOnly: nur in Instanzen und Gruppen. buffFoodReady: beim
+--   Bereitschaftscheck erinnern, wenn „Satt“ fehlt oder unter 5 Min. hat.
 -- * Erholung (restReminder, nur unter der Höchststufe): läuft „Lagervorteile“
 --   vom Lagerfeuer aus (oder wird der Gemütliche Schlafsack wieder bereit),
 --   öffnet sich das Fenster mit Schlafsack und bestem Lagerfeuer. Ein Klick
@@ -31,7 +34,6 @@ Buffs.CAMPFIRES = {
     { spell = 818 },                -- Basic Campfire (Kochen)
 }
 local WELL_FED_SPELL = 19705        -- „Satt“, nur für den Namen in der Client-Sprache
-local WELL_FED_ICON = 136000        -- Spell_Misc_Food
 local GCD = 1.5
 
 -- Wie viel ein Punkt je Werteart für die Klasse wert ist (Classic-Faustregeln:
@@ -70,7 +72,9 @@ function Buffs.ParseFood(lines)
         if type(line) == "string" then
             local low = line:lower() .. " "
             local e
-            -- nur die „Benutzen:“-Zeile; „satt“ als ganzes Wort (nicht „Sattel“)
+            -- nur die erste „Benutzen:“-Zeile; „satt“ als ganzes Wort (nicht „Sattel“).
+            -- Bei Rezepten lehrt die erste Zeile das Kochen, „satt“ steht erst
+            -- im angehängten Tooltip des fertigen Essens: kein Essen.
             if low:find("use:", 1, true) or low:find("benutzen:", 1, true) then
                 e = select(2, low:find("well fed", 1, true))
                 if not e then
@@ -78,6 +82,7 @@ function Buffs.ParseFood(lines)
                     local s = low:find("satt[^%a\195]")
                     e = s and s + 3
                 end
+                if not e then return nil end
             end
             if e then
                 local rest = low:sub(e + 1)
@@ -133,7 +138,7 @@ end
 ---------------------------------------------------------------------
 -- Client lesen (mit Rückfall auf ältere Funktionen)
 ---------------------------------------------------------------------
-local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local Secret = ns.IsSecret
 local function Opt(key) return type(GuildPrideDB) == "table" and GuildPrideDB[key] ~= false end
 
 local function SpellName(id)
@@ -168,9 +173,11 @@ end
 local function ItemInfo(id)
     local f = (C_Item and C_Item.GetItemInfo) or GetItemInfo
     if not f then return nil end
-    local name, _, _, _, minLevel, _, _, _, _, icon = f(id)
-    return name, minLevel, icon
+    local name, _, _, _, minLevel, _, _, _, _, icon, _, classID = f(id)
+    return name, minLevel, icon, classID
 end
+-- Gegenstandsklasse 9 = Rezept (Enum.ItemClass.Recipe)
+function Buffs.IsRecipe(classID) return classID == 9 end
 local function ItemCount(id)
     local f = (C_Item and C_Item.GetItemCount) or GetItemCount
     return f and f(id) or 0
@@ -197,27 +204,47 @@ local function SlotItem(bag, slot)
 end
 
 local scanTip
-local function TooltipLines(bag, slot)
-    local out = {}
-    if C_TooltipInfo and C_TooltipInfo.GetBagItem then
-        local data = C_TooltipInfo.GetBagItem(bag, slot)
-        for _, line in ipairs(data and data.lines or {}) do
-            if type(line.leftText) == "string" and not Secret(line.leftText) then out[#out + 1] = line.leftText end
-        end
-        return out
-    end
+local function ScanTip()
     if not scanTip then
         scanTip = CreateFrame("GameTooltip", "GuildPrideBuffScanTip", nil, "GameTooltipTemplate")
         scanTip:SetOwner(WorldFrame, "ANCHOR_NONE")
     end
     scanTip:ClearLines()
-    scanTip:SetBagItem(bag, slot)
+    return scanTip
+end
+local function ScanTipLines()
+    local out = {}
     for i = 1, scanTip:NumLines() do
         local fs = _G["GuildPrideBuffScanTipTextLeft" .. i]
         local t = fs and fs:GetText()
         if type(t) == "string" and not Secret(t) then out[#out + 1] = t end
     end
     return out
+end
+local function DataLines(data)
+    local out = {}
+    for _, line in ipairs(type(data) == "table" and data.lines or {}) do
+        if type(line.leftText) == "string" and not Secret(line.leftText) then out[#out + 1] = line.leftText end
+    end
+    return out
+end
+
+-- Tooltip eines Gegenstands nach ID (auch für Dinge, die nicht in deinen Taschen sind)
+local function ItemTooltipLines(id)
+    if C_TooltipInfo and C_TooltipInfo.GetItemByID then
+        local ok, data = pcall(C_TooltipInfo.GetItemByID, id)
+        return DataLines(ok and data)
+    end
+    ScanTip():SetItemByID(id)
+    return ScanTipLines()
+end
+
+local function TooltipLines(bag, slot)
+    if C_TooltipInfo and C_TooltipInfo.GetBagItem then
+        return DataLines(C_TooltipInfo.GetBagItem(bag, slot))
+    end
+    ScanTip():SetBagItem(bag, slot)
+    return ScanTipLines()
 end
 
 -- Tooltip-Ergebnis je Gegenstand: false = kein Buff-Food
@@ -237,8 +264,8 @@ local function BuffFoodInBags()
                     foodCache[id] = stats or false
                 end
                 local stats = foodCache[id]
-                local name, minLevel, icon = ItemInfo(id)
-                if stats and name and (minLevel or 0) <= level and ItemReady(id) then
+                local name, minLevel, icon, classID = ItemInfo(id)
+                if stats and name and not Buffs.IsRecipe(classID) and (minLevel or 0) <= level and ItemReady(id) then
                     list[#list + 1] = { kind = "item", id = id, name = name, icon = icon, count = ItemCount(id),
                                         score = Buffs.Score(stats, class), note = Buffs.StatText(stats) }
                 end
@@ -248,6 +275,92 @@ local function BuffFoodInBags()
     return Buffs.Sort(list)
 end
 Buffs.FoodInBags = BuffFoodInBags
+
+---------------------------------------------------------------------
+-- Buff-Food nach Gegenstands-ID: für Kochrezepte und die Taschen der Twinks
+---------------------------------------------------------------------
+local COOKING = 185          -- Berufslinie Kochkunst
+local CONSUMABLE = 0         -- Gegenstandsklasse Verbrauchsgut (Essen gehört dazu)
+
+local function ItemClass(id)
+    local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    if not f then return nil end
+    local ok, _, _, _, _, _, classID = pcall(f, id)
+    if ok then return classID end
+end
+
+-- Tooltip-Ergebnis je ID; ändert sich nicht, darum nie geleert. false = kein Buff-Food
+local idFood = {}
+function Buffs.FoodStatsByID(id)
+    id = tonumber(id)
+    if not id then return nil end
+    if idFood[id] == nil then
+        if ItemClass(id) ~= CONSUMABLE then
+            idFood[id] = false
+        else
+            local lines = ItemTooltipLines(id)
+            if #lines == 0 then return nil end   -- Spiel kennt das Item noch nicht: später noch mal
+            idFood[id] = Buffs.ParseFood(lines) or false
+        end
+    end
+    return idFood[id] or nil
+end
+
+-- Bestes Satt-Essen, das du mit deinen Rezepten und den Zutaten in den Taschen kochen kannst
+-- → { recipe, id, n, score, note } oder nil. Rezepte kennt das Addon erst, wenn du das
+-- Kochkunst-Fenster einmal geöffnet hast.
+function Buffs.BestCookable(class, level)
+    local Craft = ns.Craft
+    if not (Craft and Craft.MyEntry and Craft.CanCraft and Craft.OutputItem) then return nil end
+    local ok, e = pcall(Craft.MyEntry)
+    local known = ok and type(e) == "table" and type(e.known) == "table" and e.known[COOKING]
+    if type(known) ~= "table" then return nil end
+    local best
+    for rid in pairs(known) do
+        local n = tonumber(Craft.CanCraft(rid)) or 0
+        local out = n > 0 and Craft.OutputItem(rid)
+        local stats = out and Buffs.FoodStatsByID(out)
+        local minLevel = stats and level and select(2, ItemInfo(out))
+        if stats and (not minLevel or minLevel <= level) then
+            local s = Buffs.Score(stats, class)
+            if not best or s > best.score or (s == best.score and rid < best.recipe) then
+                best = { recipe = rid, id = out, n = n, score = s, note = Buffs.StatText(stats) }
+            end
+        end
+    end
+    return best
+end
+
+-- Buff-Food deiner anderen Charaktere (zuletzt gesehene Taschen/Bank):
+-- je Twink das beste → { { name, id, n, score } }, bestes zuerst
+function Buffs.AltFood(class)
+    local Craft = ns.Craft
+    local out = {}
+    if not (Craft and Craft.Chars) then return out end
+    local me = Craft.Me and Craft.Me()
+    for name, e in pairs(Craft.Chars()) do
+        if name ~= me and type(e) == "table" and type(e.items) == "table" then
+            local best
+            for id, n in pairs(e.items) do
+                n = tonumber(n)
+                local stats = n and n > 0 and Buffs.FoodStatsByID(id)
+                if stats then
+                    local s = Buffs.Score(stats, class)
+                    if not best or s > best.score or (s == best.score and n > best.n) then
+                        best = { name = name, id = tonumber(id), n = n, score = s }
+                    end
+                end
+            end
+            if best then out[#out + 1] = best end
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.score ~= b.score then return a.score > b.score end
+        if a.n ~= b.n then return a.n > b.n end
+        return a.name < b.name
+    end)
+    return out
+end
 
 local function RestChoices()
     local list = {}
@@ -284,12 +397,12 @@ local function BagSpell()
 end
 
 -- Aktive Buffs: satt? Lagervorteile (Lagerfeuer)? Gut erholt (Schlafsack)?
--- Geheime Werte im Kampf -> nil = unbekannt
+-- Geheime Werte im Kampf -> nil = unbekannt. Vierter Wert: Sekunden, bis „Satt“ ausläuft.
 local function ReadAuras()
     local fedName, restName = SpellName(WELL_FED_SPELL), SpellName(Buffs.REST_SPELL)
     local bagName, bagSpell = BagSpell()
-    local fed, rest, rested = false, false, false
-    local function Check(name, icon, spellId)
+    local fed, rest, rested, fedLeft = false, false, false, nil
+    local function Check(name, icon, spellId, expires)
         if Secret(name) or Secret(spellId) or Secret(icon) then error("secret") end
         if spellId == Buffs.REST_SPELL or Buffs.FIRE_BUFF_NAMES[name] or (restName and name == restName) then
             rest = true
@@ -297,27 +410,61 @@ local function ReadAuras()
         if Buffs.BAG_BUFF_NAMES[name] or (bagSpell and spellId == bagSpell) or (bagName and name == bagName) then
             rested = true
         end
-        if (fedName and name == fedName) or name == "Well Fed" or name == "Satt" or icon == WELL_FED_ICON then fed = true end
+        -- nur der Buff „Satt“ selbst; das Symbol teilen sich viele andere Buffs (z. B. „Essen“)
+        if (fedName and name == fedName) or name == "Well Fed" or name == "Satt" then
+            fed = true
+            if not Secret(expires) and type(expires) == "number" and expires > 0 then
+                fedLeft = math.max(0, expires - GetTime())
+            end
+        end
     end
     local ok = pcall(function()
         for i = 1, 40 do
             if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
                 local a = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
                 if not a then break end
-                Check(a.name, a.icon, a.spellId)
+                Check(a.name, a.icon, a.spellId, a.expirationTime)
             elseif UnitBuff then
-                local name, icon, _, _, _, _, _, _, _, spellId = UnitBuff("player", i)
+                local name, icon, _, _, _, expires, _, _, _, spellId = UnitBuff("player", i)
                 if not name then break end
-                Check(name, icon, spellId)
+                Check(name, icon, spellId, expires)
             else
                 break
             end
         end
     end)
-    if not ok then return nil, nil, nil end
-    return fed, rest, rested
+    if not ok then return nil, nil, nil, nil end
+    return fed, rest, rested, fedLeft
 end
 Buffs.ReadAuras = ReadAuras
+
+-- Vorwarnung: so viele Sekunden vor dem Ablauf von „Satt“ kommt das Fenster schon
+Buffs.WARN = 120
+Buffs.READY_WARN = 300       -- beim Bereitschaftscheck: weniger als 5 Min. übrig
+
+-- Essen nötig? fed = nil (unbekannt, Kampf) heißt nein
+function Buffs.NeedFood(fed, left, warn)
+    if fed == nil then return false end
+    if not fed then return true end
+    return left ~= nil and left <= (warn or Buffs.WARN)
+end
+
+-- Schalter „nur in Instanzen und Gruppen“ (aus = überall erinnern)
+function Buffs.FoodHere()
+    if not (type(GuildPrideDB) == "table" and GuildPrideDB.buffFoodGroupOnly == true) then return true end
+    if IsInInstance then
+        local inInst, kind = IsInInstance()
+        if inInst and (kind == "party" or kind == "raid") then return true end
+    end
+    return IsInGroup and IsInGroup() and true or false
+end
+
+-- Bereitschaftscheck: fehlt „Satt“ oder läuft es in den nächsten 5 Min. aus?
+function Buffs.ReadyCheckNeedsFood()
+    if not (Opt("buffFood") and Opt("buffFoodReady")) then return false end
+    local fed, _, _, left = ReadAuras()
+    return Buffs.NeedFood(fed, left, Buffs.READY_WARN)
+end
 
 local function Leveling()
     local max = (GetMaxPlayerLevel and GetMaxPlayerLevel()) or MAX_PLAYER_LEVEL or 60
@@ -337,6 +484,10 @@ local ICON_BAG = "Interface\\Icons\\INV_Misc_Bag_08"
 local win, slots
 local SNOOZE = 30 * 60
 local snoozeFood, snoozeBag, snoozeFire = 0, 0, 0 -- GetTime(), bis wann nicht gefragt wird
+local warnLeft    -- Sekunden bis „Satt“ ausläuft, solange das Fenster vorwarnt
+-- Von Hand (/gp buff, Bereitschaftscheck) geöffnet: bleibt offen, bis X, Benutzen,
+-- Kampf oder Tod – die Prüfung frischt es dann nur auf, statt es zu schließen
+local manual = false
 local Check
 
 local function SavePos(f)
@@ -423,6 +574,7 @@ end
 local function Clicked(kind)
     -- Essen/Benutzen kann abbrechen (aufgestanden): nach 45 Sek. noch einmal schauen
     local t = GetTime() + 45
+    manual = false
     if kind == "food" then snoozeFood = t elseif kind == "bag" then snoozeBag = t else snoozeFire = t end
     if C_Timer then C_Timer.After(0.2, function() Check() end); C_Timer.After(46, function() Check() end) end
 end
@@ -446,13 +598,17 @@ local function Build()
     local close = CreateFrame("Button", nil, win, "UIPanelCloseButton")
     close:SetSize(22, 22); close:SetPoint("TOPRIGHT", -4, -6)
     if ns.SkinClose then ns.SkinClose(close) end
-    close:SetScript("OnClick", function()
+    close:SetScript("OnClick", function() Buffs.Close() end)
+    function Buffs.Close()
         local now = GetTime()
-        if slots.food:IsShown() then snoozeFood = now + SNOOZE end
+        manual = false
+        -- Vorwarnung weggeklickt: Ruhe, bis „Satt“ wirklich ausgelaufen ist
+        if slots.food:IsShown() then snoozeFood = now + (warnLeft and warnLeft + 2 or SNOOZE) end
         if slots.bag:IsShown() then snoozeBag = now + SNOOZE end
         if slots.fire:IsShown() then snoozeFire = now + SNOOZE end
+        win:Hide()
         Check()
-    end)
+    end
     -- Zahnrad: Erinnerungen direkt hier abschalten (dieselben Schalter wie in den Einstellungen)
     local gear = CreateFrame("Button", nil, win)
     gear:SetSize(16, 16); gear:SetPoint("RIGHT", close, "LEFT", -2, 0)
@@ -463,25 +619,32 @@ local function Build()
     end)
     gear:SetScript("OnLeave", GameTooltip_Hide)
     local menu = CreateFrame("Frame", nil, win, "BackdropTemplate")
-    menu:SetPoint("TOPRIGHT", win, "BOTTOMRIGHT", 0, -2); menu:SetSize(230, 64)
+    menu:SetPoint("TOPRIGHT", win, "BOTTOMRIGHT", 0, -2); menu:SetSize(250, 116)
     if ns.SkinDialog then ns.SkinDialog(menu) end
     menu:SetFrameStrata("DIALOG"); menu:SetFrameLevel(win:GetFrameLevel() + 10)
     menu:EnableMouse(true); menu:Hide()
-    local function Toggle(y, key, text)
+    -- quiet: Schalter, der nichts abschaltet (nur einschränkt) – ohne Hinweis im Chat
+    local function Toggle(y, key, text, quiet)
         local cb = CreateFrame("CheckButton", nil, menu, "UICheckButtonTemplate")
         cb:SetSize(22, 22); cb:SetPoint("TOPLEFT", 8, y)
         local fs = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         fs:SetPoint("LEFT", cb, "RIGHT", 2, 0); fs:SetText(text)
-        cb:SetScript("OnShow", function(self) self:SetChecked(Opt(key)) end)
+        cb:SetScript("OnShow", function(self)
+            self:SetChecked(quiet and GuildPrideDB[key] == true or (not quiet and Opt(key)))
+        end)
         cb:SetScript("OnClick", function(self)
             if type(GuildPrideDB) ~= "table" then return end
             GuildPrideDB[key] = self:GetChecked() and true or false
-            if not GuildPrideDB[key] then ns.Print(L["Abgeschaltet – wieder an in den Einstellungen oder über das Zahnrad (/gp buff)."]) end
+            if not quiet and not GuildPrideDB[key] then
+                ns.Print(L["Abgeschaltet – wieder an in den Einstellungen oder über das Zahnrad (/gp buff)."])
+            end
             Check()
         end)
     end
     Toggle(-8, "buffFood", L["Buff-Food-Erinnerung"])
-    Toggle(-34, "restReminder", L["Schlafsack-/Lagerfeuer-Erinnerung"])
+    Toggle(-34, "buffFoodGroupOnly", L["… nur in Instanzen und Gruppen"], true)
+    Toggle(-60, "buffFoodReady", L["… beim Bereitschaftscheck"])
+    Toggle(-86, "restReminder", L["Schlafsack-/Lagerfeuer-Erinnerung"])
     gear:SetScript("OnClick", function() menu:SetShown(not menu:IsShown()) end)
     win:HookScript("OnHide", function() menu:Hide() end)
     slots = { food = MakeSlot(1, L["Buff-Food"]), bag = MakeSlot(2, L["Schlafsack"]), fire = MakeSlot(3, L["Lagerfeuer"]) }
@@ -498,15 +661,44 @@ local function Build()
     win:Hide()
 end
 
--- Symbole füllen und nebeneinander setzen; ohne Symbol zu
-local function Show(needFood, needBag, needFire)
+-- Kein Buff-Food in den Taschen: was kannst du kochen, was haben deine Twinks?
+-- → Text unter dem Symbol, Tooltip-Text
+local function FoodMissing()
+    local class = select(2, UnitClass("player"))
+    local status = L["keins dabei"]
+    local why = { L["Kein Buff-Food in deinen Taschen – kauf oder koch dir welches."] }
+    local cook = Buffs.BestCookable(class, UnitLevel("player"))
+    if cook then
+        status = (L["kochbar (%d×)"]):format(cook.n)
+        why[#why + 1] = (L["Du kannst %s %d-mal kochen (Kochkunst öffnen)."]):format(
+            ItemInfo(cook.id) or ("item:" .. cook.id), cook.n)
+    end
+    local alts = Buffs.AltFood(class)
+    if #alts > 0 then
+        if not cook then status = L["bei Twinks"] end
+        why[#why + 1] = L["Bei deinen Twinks:"]
+        for i = 1, math.min(3, #alts) do
+            local a = alts[i]
+            why[#why + 1] = ("%s: %d× %s"):format(a.name, a.n, ItemInfo(a.id) or ("item:" .. a.id))
+        end
+    end
+    return status, table.concat(why, "\n")
+end
+
+-- Symbole füllen und nebeneinander setzen; ohne Symbol zu.
+-- fedLeft: „Satt“ läuft noch, aber bald aus (Vorwarnung)
+local function Show(needFood, needBag, needFire, fedLeft)
     if InCombatLockdown() then return end
     local order = {}
     if needFood then
         local best = BuffFoodInBags()[1]
-        if best then SetSlot(slots.food, best, ICON_FOOD, best.note ~= "" and best.note or L["bereit"])
-        else SetSlot(slots.food, nil, ICON_FOOD, L["keins dabei"],
-            L["Kein Buff-Food in deinen Taschen – kauf oder koch dir welches."]) end
+        if best then
+            local status = best.note ~= "" and best.note or L["bereit"]
+            if fedLeft then status = (L["Satt noch %d Min."]):format(math.max(1, math.ceil(fedLeft / 60))) end
+            SetSlot(slots.food, best, ICON_FOOD, status)
+        else
+            SetSlot(slots.food, nil, ICON_FOOD, FoodMissing())
+        end
         order[#order + 1] = slots.food
     end
     if needBag then
@@ -552,18 +744,27 @@ end
 
 Check = function()
     if not win or InCombatLockdown() then return end
-    local fed, rest, rested = ReadAuras()
+    local fed, rest, rested, fedLeft = ReadAuras()
     if fed == nil then return end
     local now = GetTime()
-    if fed then snoozeFood = 0 end
+    local needFood = Buffs.NeedFood(fed, fedLeft)
+    warnLeft = fed and needFood and fedLeft or nil
+    -- frisch satt: X-Ruhe vorbei (nicht während der Vorwarnung, sonst käme sie gleich wieder)
+    if fed and not needFood then snoozeFood = 0 end
     if rested then snoozeBag = 0 end
     if rest then snoozeFire = 0 end
-    if Blocked() then win:Hide(); return end
+    if Blocked() then manual = false; win:Hide(); return end
+    -- von Hand geöffnet: nur auffrischen (z. B. neues Essen in den Taschen), nicht schließen
+    if manual and win:IsShown() then
+        Show(true, not rested, not rest, fed and fedLeft or nil)
+        return
+    end
+    manual = false
     local resting = Opt("restReminder") and Leveling()
     -- Schlafsack weg, sobald „Gut erholt“ aktiv ist; Lagerfeuer weg bei „Lagervorteile“
-    Show(not fed and Opt("buffFood") and now >= snoozeFood,
+    Show(needFood and Opt("buffFood") and Buffs.FoodHere() and now >= snoozeFood,
          not rested and resting and now >= snoozeBag,
-         not rest and resting and now >= snoozeFire)
+         not rest and resting and now >= snoozeFire, warnLeft)
 end
 Buffs.Check = function() Check() end
 
@@ -571,8 +772,20 @@ Buffs.Check = function() Check() end
 function Buffs.Open(kind)
     Build()
     if InCombatLockdown() then ns.Print(L["Im Kampf nicht möglich."]); return end
-    local _, rest, rested = ReadAuras()
-    Show(true, not rested, not rest)
+    local fed, rest, rested, fedLeft = ReadAuras()
+    manual = true
+    Show(true, not rested, not rest, fed and fedLeft or nil)
+end
+Buffs.Window = function() return win end
+
+-- Bereitschaftscheck: Hinweis im Chat und das Essen-Fenster (auch wenn X Ruhe gegeben hat)
+local function OnReadyCheck()
+    if not win or InCombatLockdown() or not Buffs.ReadyCheckNeedsFood() then return end
+    ns.Print(L["Bereitschaftscheck: „Satt“ fehlt oder läuft bald aus – iss noch etwas!"])
+    local fed, _, _, fedLeft = ReadAuras()
+    warnLeft = fed and fedLeft or nil
+    manual = true
+    Show(true, false, false, warnLeft)
 end
 
 -- /gp rast info: warum (k)ein Fenster aufgeht
@@ -615,6 +828,9 @@ ev:SetScript("OnEvent", function(_, event, arg1)
         ev:RegisterEvent("BAG_UPDATE_COOLDOWN")
         ev:RegisterEvent("PLAYER_UNGHOST")
         ev:RegisterEvent("PLAYER_CONTROL_GAINED")
+        ev:RegisterEvent("READY_CHECK")
+        ev:RegisterEvent("GROUP_ROSTER_UPDATE")      -- Schalter „nur in Gruppen“
+        ev:RegisterEvent("ZONE_CHANGED_NEW_AREA")    -- Schalter „nur in Instanzen“
         if C_Timer then
             C_Timer.After(5, Check)
             -- Abklingzeiten (Schlafsack) enden ohne Ereignis: jede Minute nachsehen
@@ -622,7 +838,10 @@ ev:SetScript("OnEvent", function(_, event, arg1)
         end
     elseif event == "PLAYER_REGEN_DISABLED" then
         -- Kampfbeginn kommt vor der Kampfsperre: jetzt noch zumachen
+        manual = false
         if win then win:Hide() end
+    elseif event == "READY_CHECK" then
+        OnReadyCheck()
     elseif event == "UNIT_AURA" then
         if arg1 == "player" then Soon() end
     elseif event == "BAG_UPDATE_DELAYED" then

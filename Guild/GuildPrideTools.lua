@@ -20,7 +20,7 @@ local TOOLS = {
     { key = "jagd", icon = "INV_Misc_Map_01", label = L["Schnitzeljagd"], text = L["Stationen suchen; Offiziere legen sie an."], open = function() ns.Hunt.Open() end },
     { key = "inv_misc_spyglass_02", icon = "INV_Misc_Spyglass_02", label = L["Gildenalbum"], text = L["Eure ersten Bosskills mit Datum, auf Wunsch mit Screenshot."], open = function() ns.Album.Open() end },
     { key = "inv_misc_spyglass_03", icon = "INV_Misc_Spyglass_03", label = L["Suche über alles"], text = L["Mitglieder, Events, Einstellungen, Befehle und Rezepte finden (/gp suche)."], open = function() ns.Search.Open() end },
-    { key = "luecken", icon = "INV_Scroll_03", label = L["Rezept-Lücken"], text = L["Welche Rezepte niemand in der Gilde kann und wer den Beruf hat."], open = function() ns.CraftGaps.Open() end },
+    { key = "luecken", tier = "solo", icon = "INV_Scroll_03", label = L["Rezept-Lücken"], text = L["Welche Rezepte niemand in der Gilde kann und wer den Beruf hat."], open = function() ns.CraftGaps.Open() end },
     { key = "inv_misc_note_01", icon = "INV_Misc_Note_01", label = L["Event-Auswertung"], text = L["Verlässlichkeit, Wochentage und Verlauf aus der Anwesenheit."], officer = true,
       open = function() ns.EventStats.Open() end },
 }
@@ -75,7 +75,7 @@ function page:Refresh()
     local n = 0
     for _, x in ipairs(tiles) do
         local off = Hidden()[x.t.key]
-        local on = (not x.t.officer or officer) and (showAll or not off)
+        local on = (not x.t.officer or officer) and (showAll or not off) and (not x.t.tier or not ns.TierAllows or ns.TierAllows(x.t.tier))
         x.b:SetShown(on)
         if on then
             x.b:SetAlpha(off and 0.45 or 1)

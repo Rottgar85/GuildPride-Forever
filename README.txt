@@ -1,4 +1,4 @@
-GuildPride Forever 2.45.1 (nur WoW Forever / WoW Forever only) - Autor / author: Rottgar85
+GuildPride Forever 2.46.0 (nur WoW Forever / WoW Forever only) - Autor / author: Rottgar85
 CurseForge: Projekt / project 1788777
 
 DEUTSCH
@@ -16,7 +16,7 @@ Wichtige Befehle (alle mit Erklärung: /gp hilfe)
   /gp handwerk         Handwerk         /gp tracker       Tracker
   /gp loot             Loot-Verlauf     /gp dkp           DKP
   /gp zettel           Notizzettel      /gp nachrichten   Messenger
-  /gp paket gilde | raid | alles        nur anschalten, was du brauchst
+  /gp stufe light | medium | max        nur Gilde, dazu Solo, oder alles
   /gp blizzard         Blizzards Gildenfenster an/aus
   /gp melden           Fehlerbericht zum Kopieren
 
@@ -35,7 +35,7 @@ Important commands (all with explanations: /gp help)
   /gp handwerk         crafting         /gp tracker       tracker
   /gp loot             loot history     /gp dkp           DKP
   /gp zettel           notes on the map /gp messages      messenger
-  /gp preset guild | raid | all         turn on only what you need
+  /gp tier light | medium | max         guild only, plus solo, or everything
   /gp blizzard         Blizzard guild window on/off
   /gp report           bug report to copy
 
